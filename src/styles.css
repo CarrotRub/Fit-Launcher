@@ -1,0 +1,19 @@
+:root {
+    background-color: #2f2f2f;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100vh; 
+    margin: 0; 
+  }
+
+
+
+

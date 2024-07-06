@@ -1,0 +1,195 @@
+.horizontal-slide {
+    bottom: 0;
+    position: fixed;
+    width: calc(100% - 260px); /* Adjust to fit within screen width minus sidebar */
+    background-color: rgba(34, 34, 36, 1);
+    color: white;
+    z-index: 10;
+    border-radius: 60px 60px 0 0;
+    box-shadow: 0px -5px 15px rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    overflow: hidden;
+    transform: translateY(100%);
+    transition: transform 0.5s ease;
+    max-height: 75vh; /* Set max height to 75% of viewport height */
+    display: inline-flex;
+    flex-direction: column;
+}
+
+.game-info {
+    display: inline-flex;
+    flex-direction: column;
+    height: 100%;
+    margin: 30px;
+    overflow: hidden; /* Prevent overflow */
+}
+
+.header-horizontal-game-info {
+    display: inline-flex;
+    align-items: flex-start;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    justify-content: space-between;
+}
+
+.header-horizontal-game-info-logo-title {
+    display: inline-flex;
+    align-items: flex-start;
+    cursor: pointer;
+}
+
+.game-logo {
+    width: 100px;
+    border-radius: 15px;
+}
+
+.game-title {
+    flex: 1;
+    margin: 0 10px;
+    font-weight: 400;
+    margin-top: 10px;
+}
+
+.download-btn {
+    padding: 5px 10px;
+    background-color: #f83200;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    height: 3vw;
+    width: 10vw;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.download-btn:hover {
+    background-color: #94290f;
+}
+
+.note {
+    margin: 10px 0;
+    background-color: #444;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    color: #ffa500;
+}
+
+.body-horizontal-game-info {
+    display: inline-flex;
+    /* flex: 1; */
+    height: 100vh;
+    gap: 10px;
+    overflow: hidden; /* Prevent overflow */
+}
+
+.description-section {
+    flex: 0 0 40%;
+    padding: 10px;
+    position: relative;
+    border-radius: 10px;
+    display: inline-flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+.game-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 22vw;
+    font-weight: 350;
+    margin: 0;
+}
+
+.game-description.open {
+    -webkit-line-clamp: 6;
+    overflow: auto;
+    text-overflow: unset;
+}
+
+.game-description.open::-webkit-scrollbar {
+    background-color: rgba(248, 12, 0, 0.473);
+    border-radius: 18px;
+    width: 0.2vw;
+    /* display: none; */
+}
+.game-description.open::-webkit-scrollbar-thumb {
+    background-color: rgba(105, 11, 6, 0.733);
+    border-radius: 18px;
+    width: 0.2vw;
+    /* display: none; */
+}
+
+.read-more {
+    color: white;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-top: 5px; /* Add space between description and read more */
+    margin-bottom: 10px;
+}
+
+.read-more:hover {
+    color: #ffa500;
+}
+
+.repack-description {
+    margin-top: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 15px;
+    overflow: visible;
+    flex: 1;
+    height: 60%;
+    width: 20vw;
+    font-size: 0.8rem;
+}
+
+.description-box {
+    overflow: hidden; /* Prevent overflow */
+}
+
+.description-box p {
+    white-space: normal; /* Allow text wrapping for paragraphs inside description box */
+    overflow: visible; /* Ensure the full text is visible */
+}
+
+.descriptionUniqueTitle {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.images-section {
+    flex: 0 0 60%;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden; /* Prevent overflow */
+}
+
+.key-image {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.additional-images {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    flex: 1; /* Allow images section to grow */
+    overflow: hidden; /* Prevent overflow */
+}
+
+.additional-image {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    object-fit: cover; /* Ensures the images cover their container */
+}

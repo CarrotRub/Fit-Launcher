@@ -1,0 +1,79 @@
+.searchbar-container {
+    display: flex;
+    width: max-content;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.searchbar-main {
+    padding-left: 25px;
+    padding-top: 25px;
+    z-index: 4;
+}
+
+#searchbar-input {
+    width: 25vh;
+    height: 5vh;
+    border-radius: 18px;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.582);
+    border: none;
+    outline: none;
+    font-size: 15px;
+    padding-left: 2vw;
+}
+
+#searchbar-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Styling for search results */
+.search-results {
+    margin-top: 10px;
+    margin-left: 25px;
+    width: 100%;
+    max-width: 600px; /* Adjust max-width as needed */
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    z-index: 30;
+    overflow: hidden;
+}
+
+.search-results a {
+    display: block;
+    padding: 10px;
+    margin-bottom: 8px;
+    color: #ffffff; /* Text color */
+    text-decoration: none;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    border-radius: 6px;
+}
+
+.search-results p {
+
+    color: white;
+
+}
+
+.search-results ul{
+    list-style:none;
+    padding-left: 0;
+}
+.search-results a:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Lighter background on hover */
+    transform: scale(1.02); /* Slight scale up on hover */
+}
+
+.search-results a:active {
+    transform: scale(0.98); /* Slight scale down when clicked */
+}
+
+.search-results a:focus {
+    outline: none; /* Remove default focus outline */
+}
+
+.search-results a:last-child {
+    margin-bottom: 0; /* No margin bottom on last child */
+}

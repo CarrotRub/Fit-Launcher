@@ -1,0 +1,110 @@
+.current-image-container {
+    display: flex;
+    justify-content: center; /* Center the content horizontally */
+    align-items: center; /* Center the content vertically */
+    position: relative; /* Necessary for absolute positioning of .action-circle */
+}
+
+.action-circle {
+    position: absolute;
+    top: 50%;
+    left: 30%;
+    transform: translate(-30%, -50%);
+    width: 32px; /* Adjust the width as needed */
+    height: 32px; /* Adjust the height as needed */
+    border-radius: 50%; /* Make it a circle */
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Ensure the blur effect doesn't overflow the circle */
+}
+
+.action-circle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 50%; /* Make it a circle */
+    overflow: hidden;
+}
+
+.action-circle-logo {
+    position: relative; /* Ensure the logo is positioned correctly */
+    z-index: 100; /* Place it above the blur effect */
+}
+
+.action-circle-loading {
+    color: white;
+    animation: spin 0.2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+/* SIDEBAR DOWNLOADING GAME CONTAINER, ONE AT A TIME ONLY. */
+
+.currently-downloading-game {
+    display: flex;
+    align-items: center;
+    padding-left: 20px;
+    margin: 2vh;
+    padding-bottom: 2vh;
+    padding-top: 2vh;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    cursor: pointer;
+    position: relative; /* Needed for the pseudo-element */
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.1) var(--bg-length, 0%), transparent var(--bg-length, 0%)); /* Gradient for background progress */
+    background-size: var(--bg-length, 0%) 100%; /* Control the background size */
+    background-repeat: no-repeat; /* Prevent repeating the background */
+    height: 10vh;
+    padding-right: 2vh;
+  }
+  
+  
+  .currently-downloading-game img {
+    flex-shrink: 0;
+    max-width: 10vh;
+    max-height: 10vh;
+    border-radius: 10px;
+    margin-right: 20%;
+  }
+  
+  .currently-downloading-game .text-container {
+    flex: 1; 
+    overflow: hidden;
+  }
+  
+  .currently-downloading-game-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+  }
+  
+  .current-text-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    flex: 1;
+    overflow: hidden;
+  }
+  
+  .currently-downloading-game-info {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  #heading-currently-downloading-game {
+    position: relative;
+    padding: 10px;
+  }
+  

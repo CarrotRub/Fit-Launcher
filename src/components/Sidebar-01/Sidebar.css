@@ -1,0 +1,140 @@
+@font-face {
+    font-family: "IBMPlexSansRegular";
+    src: url("../../assets/fonts/IBMPlexSans-Regular.ttf") format("truetype");
+  }
+  
+  :root {
+    font-family: "IBMPlexSansRegular", sans-serif;
+  }
+  
+  /* CONTAINING EVERYTHING ABOUT THE SIDEBAR*/
+
+  .sidebar-container {
+    font-family: "IBMPlexSansRegular", sans-serif;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 0.8fr 1fr 0.2fr;
+    background-color: #101115;
+    color: white;
+    height: 100%; /* Ensure the sidebar fills its parent container */
+    /* Enable vertical scrolling */
+  }
+  
+  .sidebar-heading {
+    position: relative; /* Position relative to create a stacking context */
+  }
+  
+  .sidebar-heading::before {
+    content: ""; /* Add content */
+    position: absolute; /* Position absolute to position the line */
+    left: -3vh; /* Position the line at the start of the element */
+    width: 150%; /* Make the line span the width of the parent */
+    height: 0.1px;
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-50%); /* Adjust vertical position to center the line */
+  }
+  .sidebar-heading-text {
+    display: block;
+    margin: 0;
+    padding: 0;
+    padding-left: 3vh;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.5vh;
+  }
+  
+  .app-logo-title {
+    display: flex;
+    align-items: center;
+    padding: 2vh;
+  }
+  
+  .app-logo-title img {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+  }
+  
+  /* USEFUL LINKS FOR EXPLORING, SUCH AS GAME HUB AND LIBRARY*/
+  
+  .sidebar-links {
+    padding: 20px;
+    padding-top: 10px;
+  }
+  
+  .useful-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid; /* Apply grid layout */
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(200px, 1fr)
+    ); /* Adjust grid columns */
+    grid-gap: 10px; /* Add gap between grid items */
+    grid-auto-rows: 50px;
+    grid-column: start;
+  }
+  
+  .useful-links li {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    padding: 3vh;
+  }
+  
+  .useful-links li:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    height: auto;
+    cursor: pointer;
+  }
+  
+  .links-svgs {
+    margin-right: 10px;
+  }
+  
+  .links-texts {
+    margin: 0;
+    font-weight: 500;
+  }
+  
+
+/* SIDEBAR GAMES CONTAINER, WILL HAVE ALL GAMES THAT WERE RECENTLY PLAYED.*/
+
+.sidebar-games-container {
+  display: grid;
+  grid-template-columns: 1fr; /* Change to one column for vertical layout. */
+  grid-gap: 10px;
+  padding-top: 1vh;
+  grid-column: start;
+}
+
+.sidebar-unique-game {
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  padding-bottom: 0.5vh;
+  padding-top: 0.7vh;
+}
+
+.sidebar-unique-game img {
+  max-width: 10vh;
+  max-height: 10vh;
+  border-radius: 10px;
+  margin-right: 10px; /* Add spacing between image and text */
+}
+
+.sidebar-unique-game p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Limit the number of lines to 2 */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sidebar-unique-game:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  cursor: pointer;
+}
+

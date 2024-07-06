@@ -1,0 +1,47 @@
+.gamehub-container {
+    display: inline-grid;
+    grid-auto-columns: 1fr;
+    grid-template-columns: 2.1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 20px 0px;
+    padding-left: 4vh;
+    padding-bottom: 4vh;
+    grid-template-areas:
+        "Popular-repacks"
+        "New-Games"
+        "Recently-Updated";
+    overflow-x: hidden;
+    justify-items: start;
+    z-index: 3;
+}
+
+.blur-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  filter: saturate(3);
+  background-size: cover;
+  background-position: center;
+  filter: blur(0);
+  z-index: -2;
+}
+
+.color-blur-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    filter: saturate(3);
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    filter: blur(0);
+    z-index: -1;
+}
+
+.Popular-repacks { grid-row: 1; } /* First row */
+.New-Games { grid-row: 2; } /* Second row */
+.Recently-Updated { grid-row: 3; } /* Third row */
