@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'IBMPlexSans', sans-serif; 
+}
+
+@font-face {
+  font-family: "SatoshiVariable";
+  src: url("./assets/fonts/Satoshi_Complete/Fonts/TTF/Satoshi-Variable.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: IBMPlexSans;
+  src: url("./assets/fonts/IBMPlexSansVar-Roman.ttf") format("truetype");
+}
+
+
+h2 {
+  color: white;
+  font-weight: 450;
+}
+
+.app-container {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar {
+  position: fixed;
+  width: 260px;
+  background-color: #101115;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  color: white;
+
+  height: 100%;
+  overflow-x: hidden;
+  z-index: 9999999;
+}
+
+.main-content {
+  display: inline-grid;
+  grid-column-start: 2;
+  grid-auto-columns: 1fr;
+  grid-template-columns: 2.1fr;
+  grid-template-rows: 0.2fr 3.3fr;
+  gap: 20px 0px;
+  position: absolute;
+  left: 30vh;
+  z-index: 1;
+  overflow-y: auto;
+  grid-template-areas:
+      "searchbar"
+      "rest-content";
+    
+}
+
+html::-webkit-scrollbar{
+  background-color: rgba(43, 42, 42, 0.2);
+  border-radius: 18px;
+  display: none;
+}
+
+
+
+html::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 18px;
+}
