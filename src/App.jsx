@@ -121,7 +121,10 @@ function App() {
                     <div className="searchbar">
                         <Searchbar />
                     </div>
-                    <Gamehub />
+                    <Router>
+                        <Route path="/" component={Gamehub}/>
+                        <Route path="/my-library" component={Mylibrary}/>
+                    </Router>
                 </div>
             </div>
             
