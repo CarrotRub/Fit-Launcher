@@ -1,4 +1,4 @@
-import { createSignal, onMount, createEffect } from "solid-js";
+import { createSignal, onMount, createEffect, onCleanup } from "solid-js";
 import { appConfigDir } from "@tauri-apps/api/path";
 import readFile from "../../components/functions/readFileRust";
 import Slider from "../../components/Slider-01/Slider";
@@ -73,14 +73,49 @@ function Mylibrary() {
             throw error;
         }
     }
+    function randomImageFinder() {
+        const imageElements = document.querySelectorAll(".launcher-container img");
+        if (imageElements.length > 0) {
+            const randomIndex = Math.floor(Math.random() * imageElements.length);
+            const selectedImageSrc = imageElements[randomIndex].getAttribute('src');
 
+            const fitgirlLauncher = document.querySelector('.launcher-container');
+            const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+    
+
+            const docBlurOverlay = document.querySelector('.blur-overlay')
+            if (docBlurOverlay != null) {
+                docBlurOverlay.remove()
+            }
+            
+            const docColorFilterOverlay = document.querySelector('.color-blur-overlay')
+            if (docColorFilterOverlay === null){
+                const colorFilterOverlay = document.createElement('div');
+                colorFilterOverlay.className = 'color-blur-overlay';
+                fitgirlLauncher.appendChild(colorFilterOverlay)
+                console.log("colroe")
+
+            } 
+
+            const blurOverlay = document.createElement('div');
+            blurOverlay.className = 'blur-overlay';
+
+            fitgirlLauncher.appendChild(blurOverlay);
+            blurOverlay.style.backgroundColor = `rgba(0, 0, 0, 0.4)`;
+            blurOverlay.style.backgroundImage = `url(${selectedImageSrc})`;
+            blurOverlay.style.filter = 'blur(15px)';
+            blurOverlay.style.top = `-${scrollPosition}px`;
+            
+          }
+
+    }
     onMount(async () => {
         // Remove the gamehub container if it exists
         let myGamehubDiv = document.querySelector(".gamehub-container");
         if (myGamehubDiv !== null) {
             myGamehubDiv.remove();
         }
-
+        
         try {
             await parseDownloadedGameData();
             setIsDataReady(true); // Set data as ready
@@ -90,6 +125,15 @@ function Mylibrary() {
         }
     });
 
+    createEffect( () => {
+        console.log("finding...")
+        const timeOut = setTimeout(randomImageFinder, 500);
+        const interval = setInterval(randomImageFinder, 5000); 
+        onCleanup(() => {
+            clearInterval(interval)
+            clearTimeout(timeOut);
+        });
+    })
 
     return ( 
         <>

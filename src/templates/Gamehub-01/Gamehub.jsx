@@ -53,8 +53,8 @@ function Gamehub() {
 
     }
     createEffect(() => {
-        const timeOut = setTimeout(randomImageFinder, 1000);
-        const interval = setInterval(randomImageFinder, 20000); 
+        const timeOut = setTimeout(randomImageFinder, 500);
+        const interval = setInterval(randomImageFinder, 5000); 
         onCleanup(() => {
             clearInterval(interval)
             clearTimeout(timeOut);

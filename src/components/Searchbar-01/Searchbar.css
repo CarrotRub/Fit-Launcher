@@ -33,7 +33,7 @@
     margin-left: 25px;
     width: 100%;
     max-width: 600px; /* Adjust max-width as needed */
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgb(173 170 170 / 28%);
     border-radius: 10px;
     padding: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);

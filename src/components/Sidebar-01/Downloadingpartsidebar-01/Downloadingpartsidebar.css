@@ -56,13 +56,13 @@
     padding-bottom: 2vh;
     padding-top: 2vh;
     background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 5px;
+    border-radius: 20px;
     cursor: pointer;
     position: relative; /* Needed for the pseudo-element */
     background: linear-gradient(to right, rgba(255, 255, 255, 0.1) var(--bg-length, 0%), transparent var(--bg-length, 0%)); /* Gradient for background progress */
     background-size: var(--bg-length, 0%) 100%; /* Control the background size */
     background-repeat: no-repeat; /* Prevent repeating the background */
-    height: 10vh;
+    height: 8vh;
     padding-right: 2vh;
   }
   
@@ -73,6 +73,7 @@
     max-height: 10vh;
     border-radius: 10px;
     margin-right: 20%;
+    
   }
   
   .currently-downloading-game .text-container {
@@ -83,10 +84,13 @@
   .currently-downloading-game-title {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     color: white;
+    margin: 0;
+    padding: 0;
   }
   
   .current-text-container {
@@ -100,7 +104,12 @@
   .currently-downloading-game-info {
     display: flex;
     justify-content: space-between;
+    font-size: 0.7em;
+    color: #d1c9c9;
     width: 100%;
+    margin: 0;
+    margin-top: 3vh;
+    padding: 0;
   }
   
   #heading-currently-downloading-game {
