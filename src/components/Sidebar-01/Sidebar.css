@@ -71,22 +71,21 @@
       minmax(200px, 1fr)
     ); /* Adjust grid columns */
     grid-gap: 10px; /* Add gap between grid items */
-    grid-auto-rows: 50px;
     grid-column: start;
+    grid-auto-rows: 50px;
   }
   
   .useful-links li {
     display: flex;
-    align-items: center;
+    /* align-items: center; */
     margin-bottom: 10px;
-    padding: 10px;
     padding: 3vh;
   }
   
   .useful-links li:hover {
     background-color: rgba(255, 255, 255, 0.05);
     border-radius: 5px;
-    height: auto;
+    height: 20px;
     cursor: pointer;
   }
   
@@ -128,10 +127,17 @@
 .sidebar-unique-game p {
   display: -webkit-box;
   -webkit-line-clamp: 2; /* Limit the number of lines to 2 */
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
+.useful-links a {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+  }
 .sidebar-unique-game:hover {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 5px;

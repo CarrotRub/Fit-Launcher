@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onMount } from 'solid-js';
+import { invoke } from '@tauri-apps/api'; // Import invoke from @tauri-apps/api
 import './Searchbar.css'; // Ensure this imports your CSS
 import { translate } from '../../translation/translate'; // Import your translation function
 
@@ -11,21 +12,18 @@ function Searchbar() {
     }
 
     createEffect(() => {
-
         console.log(searchTerm())
         if(!searchTerm()) {
             console.log("empty")
             let searchResultsDiv = document.getElementById('search-results');
             searchResultsDiv.style.display = 'none';
-
         } else {
             let searchResultsDiv = document.getElementById('search-results');
             searchResultsDiv.style.display = 'flex';
         }
-    })    
+    });
 
     async function showResults(query) {
-
         let requests = [];
         for (let i = 1; i <= 5; i++) {
             let sitemapURL = `../src/temp/sitemaps/post-sitemap${i}.xml`; // Adjust the path as per your directory structure
@@ -52,7 +50,6 @@ function Searchbar() {
                 }
             }
 
-    
             let results = postURLs.filter(postURL => {
                 let title = getTitleFromUrl(postURL).toUpperCase().replace(/-/g, ' ');
                 return title.includes(query.toUpperCase().trim());
@@ -82,6 +79,10 @@ function Searchbar() {
         } else {
             clearSearch();
         }
+    }
+
+    function handleResultClick(result) {
+        invoke('get_singular_game_info', { gameLink: result });
     }
 
     onMount(() => {
@@ -116,7 +117,11 @@ function Searchbar() {
                     <ul>
                         {searchResults().map((result, index) => (
                             <li key={index}>
-                                <a href={result} target="_blank" rel="noopener noreferrer">
+                                <a 
+                                    href="#" 
+                                    onClick={() => handleResultClick(result)} // Add onClick event handler
+                                    class="item-results"
+                                >
                                     {capitalizeTitle(getTitleFromUrl(result))}
                                 </a>
                             </li>

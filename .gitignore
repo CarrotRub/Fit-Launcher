@@ -3,3 +3,4 @@ dist
 *.xml
 *.json
 .vscode
+target

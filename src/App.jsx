@@ -1,13 +1,11 @@
-import { createEffect, onMount, createSignal, onCleanup } from 'solid-js'
+import { createEffect, onMount, createSignal, onCleanup, lazy } from 'solid-js'
 import { invoke } from '@tauri-apps/api'
 import { appWindow } from '@tauri-apps/api/window'
-import { Route, Router, A } from '@solidjs/router'
+import { Router, A } from '@solidjs/router'
 
 
 import Sidebar from './components/Sidebar-01/Sidebar'
 import Searchbar from './components/Searchbar-01/Searchbar'
-import Gamehub from './templates/gamehub-01/Gamehub'
-import Mylibrary from './templates/mylibrary-01/Mylibrary'
 
 import './App.css'
 import './templates/titlebar-01/titlebar.css'
@@ -59,6 +57,18 @@ function App() {
                 appWindow.close()
             })
     })
+
+
+    const sidebarRoutes = [
+        {
+            path: "/",
+            component: lazy(() => import("./templates/gamehub-01/Gamehub")),
+        }, 
+        {
+            path: "/my-library",
+            component: lazy(() => import("./templates/mylibrary-01/Mylibrary"))
+        }
+    ]
 
     return (
         <>
@@ -112,21 +122,27 @@ function App() {
             </div>
 
             {/* Contains the sidebar. DO NOT REMOVE. */}
-            <div className="sidebar">
-                <Sidebar />
-            </div>
-
-            <div className="app-container">
-                <div className="main-content">
-                    <div className="searchbar">
-                        <Searchbar />
+            <Router
+                root={(props) => (
+                  <>
+                    <div>
+                      <div className="sidebar">
+                        <Sidebar />
+                      </div>
+                      <div className="app-container">
+                        <div className="main-content">
+                          <div className="searchbar">
+                            <Searchbar />
+                          </div>
+                          {props.children}
+                        </div>
+                      </div>
                     </div>
-                    <Router>
-                        <Route path="/" component={Gamehub}/>
-                        <Route path="/my-library" component={Mylibrary}/>
-                    </Router>
-                </div>
-            </div>
+                  </>
+                )}
+            >
+            {sidebarRoutes}
+            </Router>;
             
         </div>
         </>
