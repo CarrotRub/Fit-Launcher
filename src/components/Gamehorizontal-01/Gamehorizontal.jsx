@@ -187,6 +187,8 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
             const fileContent = fileContentObj.content;
             const gameData = JSON.parse(fileContent);
             const game = gameData.find(game => game.title === title);
+            console.log(gameData)
+            console.log(title)
             setGameInfo(game);
             setLoading(false);
             const horizontalSlide = document.querySelector('.horizontal-slide');

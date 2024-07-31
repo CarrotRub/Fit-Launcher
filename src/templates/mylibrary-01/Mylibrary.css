@@ -50,13 +50,9 @@
   }
   
   .game-container-title {
-    position: absolute; 
-    top: 13%; 
-    left: 8%; 
     color: white;
-    padding: 10px 20px;
     z-index: 1000; 
-    visibility: hidden;
+    padding-left: 15px;
   }
   
   .game-grid img {

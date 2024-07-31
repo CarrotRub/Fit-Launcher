@@ -1,11 +1,17 @@
 import { createEffect, createSignal, onMount } from 'solid-js';
-import { invoke } from '@tauri-apps/api'; // Import invoke from @tauri-apps/api
-import './Searchbar.css'; // Ensure this imports your CSS
-import { translate } from '../../translation/translate'; // Import your translation function
+import { render } from 'solid-js/web';
+import readFile from '../functions/readFileRust';
+import { invoke } from '@tauri-apps/api';
+import { appConfigDir } from '@tauri-apps/api/path';
+import './Searchbar.css'; 
+import { translate } from '../../translation/translate'; 
+import GameHorizontalSlide from '../Gamehorizontal-01/Gamehorizontal';
 
 function Searchbar() {
     const [searchTerm, setSearchTerm] = createSignal('');
     const [searchResults, setSearchResults] = createSignal([]);
+    const [searchedGameTitle, setSearchedGameTitle] = createSignal('');
+    const [selectedGameLink, setSelectedGameLink] = createSignal(null); 
 
     function clearSearch() {
         setSearchResults([]);
@@ -80,9 +86,31 @@ function Searchbar() {
             clearSearch();
         }
     }
+    async function handleResultClick(result) {
+        invoke('get_games_images', { gameLink : result });
+        await invoke('get_singular_game_info', { gameLink: result });
+        
+        const mainContentDiv = document.querySelector('.main-content')
+        getConfigDir().then(async (configDir) => {
 
-    function handleResultClick(result) {
-        invoke('get_singular_game_info', { gameLink: result });
+            
+        })
+        await getConfigDir().then(async (configDir) => {
+            const fileContentObj = await readFile(configDir);
+            const fileContent = fileContentObj.content;
+            const gameData = JSON.parse(fileContent);
+            gameData.forEach(game => {
+                render(
+                    <GameHorizontalSlide gameTitlePromise={game.title} filePathPromise={configDir} />,
+                    mainContentDiv
+                )
+            })
+
+            const gameHorizontalDiv = document.querySelector(".horizontal-slide");
+            
+
+        })
+        setSelectedGameLink(result); // Set the selected game link
     }
 
     onMount(() => {
@@ -97,6 +125,14 @@ function Searchbar() {
         let regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
         let results = regex.exec(window.location.search);
         return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+    }
+
+    async function getConfigDir() {
+        const appDir =  await appConfigDir();
+        const dirPath = appDir.replace(/\\/g, '/');
+        const singularGameFilePath = `${dirPath}singular_game_temp.json`;
+
+        return singularGameFilePath
     }
 
     return (
@@ -119,9 +155,22 @@ function Searchbar() {
                             <li key={index}>
                                 <a 
                                     href="#" 
-                                    onClick={() => handleResultClick(result)} // Add onClick event handler
+                                    onClick={ async () => await handleResultClick(result)} // Add onClick event handler
                                     class="item-results"
                                 >
+                                    {async () => {
+                                        getConfigDir().then(async (configDir) => {
+                                            const fileContentObj = await readFile(configDir);
+                                            const fileContent = fileContentObj.content;
+                                            const gameData = JSON.parse(fileContent);
+                                            gameData.forEach(game => {
+                                                console.log(game.title)
+                                                setSearchedGameTitle(game.title)
+                                            })
+                                            
+                                        })
+
+                                    }}
                                     {capitalizeTitle(getTitleFromUrl(result))}
                                 </a>
                             </li>

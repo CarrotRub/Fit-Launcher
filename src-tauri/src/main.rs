@@ -1019,15 +1019,17 @@ struct SingularGame {
     title: String,
     img: String,
     desc: String,
-    magnetlink: String
+    magnetlink: String,
+    href: String
 }
 
 #[tauri::command]
 async fn get_singular_game_info(app_handle: tauri::AppHandle, game_link: String) -> Result<(), SingularFetchError> {
 
     println!("Before HTTP request");
+    println!("{:#?}", game_link);
     let start_time = Instant::now();
-
+    let mut searched_game: Vec<SingularGame> = Vec::new();
     let client = reqwest::Client::new();
 
     let url = game_link.as_str();
@@ -1057,12 +1059,14 @@ async fn get_singular_game_info(app_handle: tauri::AppHandle, game_link: String)
         title: title.to_string(),
         img: image_src.to_string(),
         desc: description,
-        magnetlink: magnetlink.to_string()
+        magnetlink: magnetlink.to_string(),
+        href: url.to_string()
     };
 
+    searched_game.push(singular_searched_game);
     println!("Execution time: {:?}", start_time.elapsed());
 
-    let json_data = serde_json::to_string_pretty(&singular_searched_game)?;
+    let json_data = serde_json::to_string_pretty(&searched_game)?;
     let binding = app_handle.path_resolver().app_data_dir().unwrap();
     let app_data_dir = binding.to_str().unwrap();
     
@@ -1072,7 +1076,7 @@ async fn get_singular_game_info(app_handle: tauri::AppHandle, game_link: String)
     file.write_all(json_data.as_bytes())?;
     let end_time = Instant::now();
     let duration_time_process = end_time - start_time;
-    println!("Data has been written to recently_updated_games.json. Time was : {:#?}", duration_time_process);
+    println!("Data has been written to singular_game_temp.json. Time was : {:#?}", duration_time_process);
 
     Ok(())
 }

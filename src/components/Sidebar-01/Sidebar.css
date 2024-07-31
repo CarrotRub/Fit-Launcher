@@ -14,7 +14,7 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 0.8fr 1fr 0.2fr;
-    background-color: #101115;
+    background-color: #1818186e;
     color: white;
     height: 100%; /* Ensure the sidebar fills its parent container */
     /* Enable vertical scrolling */
