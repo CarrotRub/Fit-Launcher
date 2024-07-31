@@ -21,7 +21,7 @@ function Downloadingpartsidebar() {
     const [oldDownloadingSpeed, setOldDownloadingSpeed] = createSignal('0 MB/s')
     const [oldRemainingTime, setOldRemainingTime] = createSignal('0H 0M')
     const [isInitializing, setIsInitializing] = createSignal(false);
-
+    const [isTorrentDone, setIsTorrentDone] = createSignal(false);
 
     onMount(() => {
         const cdg = localStorage.getItem('CDG') || '[]'
@@ -69,7 +69,7 @@ function Downloadingpartsidebar() {
                 `${
                     statsFirstCDG.download_speed === null
                         ? 0
-                        : statsFirstCDG.download_speed
+                        : statsFirstCDG.download_speed.toFixed(2)
                 } MB/s`
             )
 
@@ -86,16 +86,16 @@ function Downloadingpartsidebar() {
 
         const hihiChut = JSON.parse(localStorage.getItem('CDG_Stats'));
         let isTorrentFinished = hihiChut.finished;
-        console.log(isTorrentFinished)
+
         if(isTorrentFinished){
             console.log("finishedddddd")
             const current_game = JSON.parse(localStorage.getItem('CDG'))[0];
             console.log(isTorrentFinished)
             
             const gameData = {
-                gameTitle: current_game.gameTitle,
-                gameImage: current_game.gameImage,
-                gameMagnet: current_game.gameMagnet
+                title: current_game.gameTitle,
+                img: current_game.gameImage,
+                magnetlink: current_game.gameMagnet
             };
             
             try {
@@ -125,9 +125,9 @@ function Downloadingpartsidebar() {
             
                 // Check if the game already exists
                 const gameExists = existingData.some(game => 
-                    game.gameTitle === gameData.gameTitle &&
-                    game.gameImage === gameData.gameImage &&
-                    game.gameMagnet === gameData.gameMagnet
+                    game.gameTitle === gameData.title &&
+                    game.gameImage === gameData.img &&
+                    game.gameMagnet === gameData.magnetlink
                 );
             
                 if (!gameExists) {
@@ -156,31 +156,34 @@ function Downloadingpartsidebar() {
             if (element) {
                 element.style.setProperty(
                     '--bg-length',
-                    `${isNaN(progress) ? 0 : progress}%`
+                    `${isNaN(progress) ? 0 : progress + 3}%`
                 )
                 element.style.setProperty('border-radius', '20px')
             }
 
-            setDownloadingSpeed(
-                `${
-                    torrentInfo().download_speed === null
-                        ? 0
-                        : torrentInfo().download_speed
-                } MB/s`
-            )
-            setRemainingTime(
-                `${
-                    torrentInfo().time_remaining === null
-                        ? torrentInfo().finished !== true
-                            ? 'Infinity'
-                            : 'Done'
-                        : torrentInfo().time_remaining
-                }`
-            );
-            console.log(torrentInfo().time_remaining,torrentInfo().state !== "initializing" )
+
+            setIsTorrentDone(torrentInfo.finished);
+            
             setIsInitializing(
                 torrentInfo().state === "initializing" ? true : false
             )
+
+ 
+                setDownloadingSpeed(
+                    `${
+                        torrentInfo().download_speed === null
+                            ? 0
+                            : torrentInfo().download_speed.toFixed(2)
+                    } MB/s`
+                )
+                setRemainingTime(
+                    `${
+                        torrentInfo().time_remaining === null
+                        ? (torrentInfo().finished !== true ? 'Infinity' : 'Done')
+                        : torrentInfo().time_remaining
+                    }`
+                );
+
 
 
         }

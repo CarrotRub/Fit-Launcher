@@ -48,7 +48,7 @@ function Sidebar() {
                 <li id="link-library">
 
                     <nav>
-                    <A href="/my-library" activeClass="underlined" inactiveClass="default">
+                    <A href="/my-library">
                         <svg className="links-svgs" width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <rect x="3.58333" y="4.08333" width="4.66667" height="4.66667" rx="0.583333" stroke="white" strokeWidth="1.16667"/>
                             <rect x="11.75" y="4.08333" width="4.66667" height="4.66667" rx="0.583333" stroke="white" strokeWidth="1.16667"/>

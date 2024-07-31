@@ -47,7 +47,7 @@ h2 {
   grid-template-columns: 2.1fr;
   grid-template-rows: 0.2fr 3.3fr;
   gap: 20px 0px;
-  position: absolute;
+  /* position: absolute; */
   left: 30vh;
   z-index: 1;
   overflow-y: auto;

@@ -1,11 +1,13 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
+
 import Chart from "chart.js/auto";
+import { invoke } from "@tauri-apps/api";
 import './Gamedownloadvertical.css';
 
 function Gameverticaldownloadslide({ isActive }) {
     const [gameInfo, setGameInfo] = createSignal(null);
     const [loading, setLoading] = createSignal(true);
-
+    const [isPaused, setIsPaused] = createSignal(false);
     let downloadUploadChart;
     let bytesChart;
 
@@ -20,6 +22,51 @@ function Gameverticaldownloadslide({ isActive }) {
             console.error('Error fetching torrent stats:', error);
         }
     };
+// Function to handle pause/resume button click
+    const handleButtonClick = async () => {
+        
+        const currentState = gameInfo().state;
+        if(currentState) {
+            if (currentState === 'paused') {
+                await invoke('pause_torrent_command')
+                
+            } else if (currentState === 'live') {
+                await invoke('resume_torrent_command')
+                console.log("pAUSED")
+            }
+        }
+      };
+
+      const PauseResumeButton = () => {
+        const buttonText = () => {
+          try {
+            const state = gameInfo()?.state;
+            if (state === null || state === undefined) {
+              return 'Inactive';
+            }
+            switch (state) {
+              case 'paused':
+                return 'Resume';
+              case 'live':
+                return 'Pause';
+              case 'initializing':
+                return 'Loading...';
+              default:
+                return 'Unknown State';
+            }
+          } catch (error) {
+            console.error('Error determining button text:', error);
+            return 'Error'; // Fallback text in case of an error
+          }
+        };
+      
+        return (
+            <button onClick={handleButtonClick}>
+              {buttonText()}
+            </button>
+          );
+      };
+
 
     const updateCharts = (stats) => {
         if (downloadUploadChart && bytesChart) {
@@ -60,14 +107,17 @@ function Gameverticaldownloadslide({ isActive }) {
                         data: [],
                         borderColor: 'rgba(75, 192, 192, 1)',
                         backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        fill: false
+                        fill: false,
+                        pointStyle: false
+                        
                     },
                     {
                         label: 'Upload Speed (MB/s)',
                         data: [],
                         borderColor: 'rgba(255, 99, 132, 1)',
                         backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        fill: false
+                        fill: false,
+                        pointStyle: false
                     }
                 ]
             },
@@ -100,14 +150,16 @@ function Gameverticaldownloadslide({ isActive }) {
                         data: [],
                         borderColor: 'rgba(144, 238, 144, 1)',
                         backgroundColor: 'rgba(144, 238, 144, 0.2)',
-                        fill: false
+                        fill: false,
+                        pointStyle: false
                     },
                     {
                         label: 'Uploaded MB',
                         data: [],
                         borderColor: 'rgba(221, 160, 221, 1)',
                         backgroundColor: 'rgba(221, 160, 221, 0.2)',
-                        fill: false
+                        fill: false,
+                        pointStyle: false
                     }
                 ]
             },
@@ -136,6 +188,9 @@ function Gameverticaldownloadslide({ isActive }) {
                 <h2>Game Download Progress</h2>
                 <div class="progress-bar">
                     <div class="progress" style={{ width: `${gameInfo()?.progress_bytes / gameInfo()?.total_bytes * 100}%` }}></div>
+                </div>
+                <div class="pause-resume-button">
+                    <PauseResumeButton />
                 </div>
                 <canvas id="downloadUploadChart"></canvas>
                 <canvas id="bytesChart"></canvas>

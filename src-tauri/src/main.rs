@@ -39,6 +39,7 @@ use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, Torre
 use tauri::async_runtime;
 use tracing::info;
 use lazy_static::lazy_static;
+use tauri::PathResolver;
 
 lazy_static! {
     static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
@@ -138,7 +139,7 @@ async fn popular_games_scraping_func() -> Result<(), Box<dyn Error>> {
     
     let client = reqwest::Client::new();
 
-    //* Will change back to of the year soon */
+    //* Will change back to of the month soon */
     let url = "https://fitgirl-repacks.site/popular-repacks-of-the-year/";
     let res = client.get(url).send().await?;
 
@@ -315,7 +316,42 @@ struct GameImages {
     my_all_images: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct SingularFetchError {
+    message: String,
+}
 
+impl fmt::Display for SingularFetchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for SingularFetchError {}
+
+impl From<reqwest::Error> for SingularFetchError {
+    fn from(error: reqwest::Error) -> Self {
+        SingularFetchError {
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for SingularFetchError {
+    fn from(error: std::io::Error) -> Self {
+        SingularFetchError {
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<serde_json::Error> for SingularFetchError {
+    fn from(error: serde_json::Error) -> Self {
+        SingularFetchError {
+            message: error.to_string(),
+        }
+    }
+}
 #[tokio::main]
 async fn recently_updated_games_scraping_func() -> Result<(), Box<dyn Error>> {
     
@@ -762,8 +798,8 @@ struct TorrentStatsInformations{
     uploaded_bytes: u64,
     total_bytes: u64,
     finished: bool,
-    download_speed: Option<u64>,
-    upload_speed: Option<u64>,
+    download_speed: Option<f64>,
+    upload_speed: Option<f64>,
     average_piece_download_time: Option<f64>,
     // * Not the best way to implement the time remaining, but for now this will do the job.
     time_remaining: Option<std::string::String>,
@@ -867,8 +903,8 @@ async fn start_torrent_thread(
 
                 if let Some(live_stats) = stats.live {
 
-                    torrent_stats.download_speed = Some(live_stats.download_speed.mbps as u64);
-                    torrent_stats.upload_speed = Some(live_stats.upload_speed.mbps as u64);
+                    torrent_stats.download_speed = Some(live_stats.download_speed.mbps as f64);
+                    torrent_stats.upload_speed = Some(live_stats.upload_speed.mbps as f64);
 
                     torrent_stats.average_piece_download_time = live_stats
                         .average_piece_download_time
@@ -965,11 +1001,83 @@ async fn pause_torrent_function(torrent_stats: TorrentStatsInformations) {
 }
 
 #[tauri::command]
-async fn pause_torrent_command() -> Result<(), CustomError>{
+async fn pause_torrent_command() -> Result<(), CustomError> {
     // Set the global pause flag
     PAUSE_FLAG.store(true, Ordering::Relaxed);
     Ok(())
 }
+
+#[tauri::command]
+async fn resume_torrent_command() -> Result<(), CustomError> {
+    // Set the global pause flag
+    PAUSE_FLAG.store(false, Ordering::Relaxed);
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SingularGame {
+    title: String,
+    img: String,
+    desc: String,
+    magnetlink: String
+}
+
+#[tauri::command]
+async fn get_singular_game_info(app_handle: tauri::AppHandle, game_link: String) -> Result<(), SingularFetchError> {
+
+    println!("Before HTTP request");
+    let start_time = Instant::now();
+
+    let client = reqwest::Client::new();
+
+    let url = game_link.as_str();
+    let game_res = client.get(url).send().await?;
+
+    let game_body = game_res.text().await?;
+    let game_doc = scraper::Html::parse_document(&game_body);
+    println!("After HTTP request");
+
+    let title_selector = scraper::Selector::parse(".entry-title").unwrap();
+    let images_selector = scraper::Selector::parse(".entry-content > p > a > img").unwrap();
+    let description_selector = Selector::parse("div.entry-content").unwrap();
+    let magnetlink_selector = scraper::Selector::parse("a[href*='magnet']").unwrap();
+
+    let title_elem = game_doc.select(&title_selector).next();
+    let description_elem = game_doc.select(&description_selector).next();
+    let magnetlink_elem = game_doc.select(&magnetlink_selector).next();
+    let image_elem = game_doc.select(&images_selector).next();
+
+    let title = title_elem.map(|elem| elem.text().collect::<String>()).unwrap_or_default();
+    let description = description_elem.map(|elem| elem.text().collect::<String>()).unwrap_or_default();
+    let magnetlink = magnetlink_elem.and_then(|elem| elem.value().attr("href")).unwrap_or_default();
+    let image_src = image_elem.and_then(|elem| elem.value().attr("src")).unwrap_or_default();
+
+
+    let singular_searched_game =  SingularGame {
+        title: title.to_string(),
+        img: image_src.to_string(),
+        desc: description,
+        magnetlink: magnetlink.to_string()
+    };
+
+    println!("Execution time: {:?}", start_time.elapsed());
+
+    let json_data = serde_json::to_string_pretty(&singular_searched_game)?;
+    let binding = app_handle.path_resolver().app_data_dir().unwrap();
+    let app_data_dir = binding.to_str().unwrap();
+    
+    let app_data_dir = app_data_dir.to_string();
+    let filepath = format!( "{}/singular_game_temp.json", app_data_dir);
+    let mut file = File::create(filepath)?;
+    file.write_all(json_data.as_bytes())?;
+    let end_time = Instant::now();
+    let duration_time_process = end_time - start_time;
+    println!("Data has been written to recently_updated_games.json. Time was : {:#?}", duration_time_process);
+
+    Ok(())
+}
+
+
 
 fn main() -> Result<(), Box<dyn Error>> {
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
@@ -1023,7 +1131,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             start_torrent_command,
             get_torrent_stats,
             stop_torrent_command,
-            pause_torrent_command
+            pause_torrent_command,
+            resume_torrent_command,
+            get_singular_game_info
         ])
         .manage(image_cache) // Make the cache available to commands 
         .manage(torrent_state) 

@@ -48,3 +48,24 @@ canvas {
     height: 200px;
     margin-bottom: 20px;
 }
+
+/* Pause/Resume Button CSS */
+.pause-resume-button {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.pause-resume-button button {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.pause-resume-button button:hover {
+    background-color: #0056b3;
+}

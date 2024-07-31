@@ -4,7 +4,7 @@ import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfil
 import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
 import rollupNodePolyfills from 'rollup-plugin-node-polyfills';
 
-export default defineConfig(async () => ({
+export default defineConfig({
   plugins: [
     solid(),
     {
@@ -19,6 +19,7 @@ export default defineConfig(async () => ({
     watch: {
       ignored: ["**/src-tauri/**"],
     },
+    historyApiFallback: true
   },
   resolve: {
     alias: {
@@ -40,4 +41,4 @@ export default defineConfig(async () => ({
       ],
     },
   },
-}));
+});

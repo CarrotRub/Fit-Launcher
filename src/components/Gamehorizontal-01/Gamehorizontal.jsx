@@ -62,11 +62,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                     cancelButtonText: 'Cancel'
                 }).then(async (result) => {
                     if(result.isConfirmed) {
-                        // const inputPathGame = localStorage.getItem('LUP');
-                        // invoke('start_torrent_command', { magnetLink: cdgGameMagnet, downloadPath: inputPathGame });
-                        // // Notify the Downloadingpartsidebar component to start showing stats
-                        // window.dispatchEvent(new Event('start-download'));
-                        // console.log(cdgGameMagnet, inputPathGame)
                         startDownloadProcess();
                     }
                 }) 
