@@ -1,7 +1,11 @@
 import './Updatedrepacks.css';
 import { createSignal, onMount } from 'solid-js';
+import { appConfigDir } from '@tauri-apps/api/path';
 
-const recentlyUpdatedGamesPath = '../src/temp/recently_updated_games.json';
+const appDir =  await appConfigDir();
+const dirPath = appDir.replace(/\\/g, '/');
+
+const recentlyUpdatedGamesPath = `${dirPath}tempGames/recently_updated_games.json`;
 import readFile from '../functions/readFileRust';
 import Slider from '../Slider-01/Slider';
 import { translate } from '../../translation/translate';
@@ -37,7 +41,8 @@ function UpdatedGames() {
     // Return the Slider component once the container is created and data is fetched
     return (
         <>
-          <h2 > {translate('recently_updated_games', {})}</h2>
+        {/* {translate('recently_updated_games', {})} */}
+          <h2 > Recently Updated Games</h2>
           {imagesObject() && (
             <Slider
               containerClassName="recently-updated"

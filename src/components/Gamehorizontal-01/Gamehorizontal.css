@@ -99,6 +99,7 @@
 .game-description {
     display: -webkit-box;
     -webkit-line-clamp: 4;
+    line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -109,6 +110,7 @@
 
 .game-description.open {
     -webkit-line-clamp: 6;
+    line-clamp: 6;
     overflow: auto;
     text-overflow: unset;
 }
@@ -139,16 +141,32 @@
     color: #ffa500;
 }
 
+
 .repack-description {
     margin-top: 10px;
+    
     background-color: rgba(255, 255, 255, 0.05);
     padding: 10px;
     border-radius: 15px;
-    overflow: visible;
+    overflow: auto;
     flex: 1;
     height: 60%;
     width: 20vw;
     font-size: 0.8rem;
+}
+
+.repack-description::-webkit-scrollbar {
+    background-color: rgba(248, 12, 0, 0.473);
+    border-radius: 18px;
+    width: 0.2vw;
+    display: none;
+}
+
+.repack-description::-webkit-scrollbar-thumb {
+    background-color: rgba(105, 11, 6, 0.733);
+    border-radius: 18px;
+    width: 0.2vw;
+    display: none;
 }
 
 .description-box {
@@ -165,9 +183,8 @@
 }
 
 .images-section {
-    flex: 0 0 60%;
+    
     display: inline-flex;
-    flex-direction: column;
     gap: 10px;
     overflow: hidden; /* Prevent overflow */
 }

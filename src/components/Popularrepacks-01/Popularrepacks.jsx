@@ -1,7 +1,11 @@
 import './Popularrepacks.css';
 import { createSignal, onMount } from 'solid-js';
+import { appConfigDir } from '@tauri-apps/api/path';
 
-const popularRepacksPath = '../src/temp/popular_games.json';
+const appDir =  await appConfigDir();
+const dirPath = appDir.replace(/\\/g, '/');
+
+const popularRepacksPath = `${dirPath}tempGames/popular_games.json`;
 
 import readFile from '../functions/readFileRust';
 import Slider from '../Slider-01/Slider';
@@ -64,7 +68,8 @@ function Popularrepacks() {
 
     return (
         <>
-            <h2>{translate('popular_repacks_placeholder', {})}</h2>
+        {/* {translate('popular_repacks_placeholder', {})} */}
+            <h2>Popular Repacks</h2>
             {imagesObject() && (
                 <Slider
                     containerClassName="popular-games"

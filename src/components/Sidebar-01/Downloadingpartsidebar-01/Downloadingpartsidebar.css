@@ -55,8 +55,8 @@
     margin: 2vh;
     padding-bottom: 2vh;
     padding-top: 2vh;
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
+    box-shadow: 0px 0px 19px 3px rgb(0 0 0 / 36%);
+    border-radius: 15px;
     cursor: pointer;
     position: relative; /* Needed for the pseudo-element */
     background: linear-gradient(to right, rgba(255, 255, 255, 0.1) var(--bg-length, 0%), transparent var(--bg-length, 0%)); /* Gradient for background progress */

@@ -1,6 +1,9 @@
 node_modules
 dist
 *.xml
-*.json
+package-lock.json
+temp
+examples
+Cargo.lock
 .vscode
 target

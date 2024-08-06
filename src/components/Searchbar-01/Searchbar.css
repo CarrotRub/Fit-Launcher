@@ -15,7 +15,8 @@
     width: 25vh;
     height: 5vh;
     border-radius: 18px;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgb(124 124 124 / 22%);
+    box-shadow: 0px 0px 19px 3px rgb(0 0 0 / 36%);
     color: rgba(255, 255, 255, 0.582);
     border: none;
     outline: none;
@@ -33,10 +34,10 @@
     margin-left: 25px;
     width: 100%;
     max-width: 600px; /* Adjust max-width as needed */
-    background-color: rgb(173 170 170 / 28%);
+    background-color: rgb(124 124 124 / 22%);
     border-radius: 10px;
     padding: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 0px 19px 3px rgb(0 0 0 / 36%);
     z-index: 30;
     overflow: hidden;
 }
