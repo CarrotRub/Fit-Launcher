@@ -33,7 +33,11 @@
         },
         "fs": {
           "all":true,
-          "scope": ["$APPDATA/**", "$APPCONFIG/**", "$CONFIG/**", "$APP/**", "$APPCONFIG/tempGames/**", "$APPCONFIG/data/**"]
+          "scope": ["$APPDATA/**", "$APPCONFIG/**", "$CONFIG/**", "$APP/**", "$APPCONFIG/tempGames/**", "$APPCONFIG/data/**","$APPCONFIG/sitemaps/**"]
+        },
+        "protocol": {
+          "asset": true,
+          "assetScope": ["$APPCONFIG/sitemaps/**"]
         }
       },
       "windows": [
@@ -48,7 +52,7 @@
         }
       ],
       "security": {
-        "csp": null
+        "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost"
       }
     }
   }
