@@ -3,6 +3,7 @@ import { render } from 'solid-js/web';
 import readFile from '../functions/readFileRust';
 import { invoke } from '@tauri-apps/api';
 import { appConfigDir } from '@tauri-apps/api/path';
+import { convertFileSrc } from '@tauri-apps/api/tauri';
 import './Searchbar.css'; 
 import { translate } from '../../translation/translate'; 
 import GameHorizontalSlide from '../Gamehorizontal-01/Gamehorizontal';
@@ -31,9 +32,13 @@ function Searchbar() {
 
     async function showResults(query) {
         let requests = [];
+        const appDir =  await appConfigDir();
+        const dirPath = appDir.replace(/\\/g, '/');
+        
         for (let i = 1; i <= 5; i++) {
-            let sitemapURL = `../src/temp/sitemaps/post-sitemap${i}.xml`; // Adjust the path as per your directory structure
-            requests.push(fetch(sitemapURL));
+            let sitemapURL = `${dirPath}sitemaps/post-sitemap${i}.xml`;
+            let convertedSitemapURL = convertFileSrc(sitemapURL);
+            requests.push(fetch(convertedSitemapURL));
         }
 
         try {
@@ -79,6 +84,7 @@ function Searchbar() {
 
     function handleInputChange(event) {
         const value = event.target.value.toLowerCase();
+        console.log(value)
         setSearchTerm(value);
         if (value !== '') {
             showResults(value);
