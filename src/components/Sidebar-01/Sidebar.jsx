@@ -2,6 +2,7 @@ import { createEffect, onMount } from "solid-js";
 import { translate } from "../../translation/translate";
 import './Sidebar.css'
 import Downloadingpartsidebar from "./Downloadingpartsidebar-01/Downloadingpartsidebar";
+import Recentlydownloadedgames from "./Recentlydownloaded/Recentlydownloaded";
 import { A } from "@solidjs/router";
 function Sidebar() {
 
@@ -71,17 +72,8 @@ function Sidebar() {
           {/* {translate('recently_downloaded_games_placeholder', {})} */}
         </span>
 
-        <div className="sidebar-games-container">
-          {/* Here should be all recent games played, displayed in a grid. */}
-          <div className="sidebar-unique-game">
-            <img src="../../../src-tauri/examples/spiderman.png"></img>
-            <p className="sidebar-unique-game-title">Marvel’s Spider-Man: Miles Morales</p>
-          </div>
-          <div className="sidebar-unique-game">
-            <img src="../../../src-tauri/examples/reddead.png"></img>
-            <p className="sidebar-unique-game-title">Red Dead Redemption 2</p>
-          </div>
-        </div>
+        <Recentlydownloadedgames/>
+
       </div>
       {/* Sidebar's downloading games, currently downloading, one at a time. Last part.*/}
       <div className="sidebar-downloading-game">
