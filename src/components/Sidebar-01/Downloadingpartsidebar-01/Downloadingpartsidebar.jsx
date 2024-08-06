@@ -6,6 +6,7 @@ import { writeFile, createDir, readTextFile } from '@tauri-apps/api/fs';
 import './Downloadingpartsidebar.css';
 import Gameverticaldownloadslide from '../../Gamedownloadvertical-01/Gamedownloadvertical'
 
+// TODO: Add Timestamps for better ordering inside the sidebar.
 
 function Downloadingpartsidebar() {
 
@@ -95,7 +96,8 @@ function Downloadingpartsidebar() {
             const gameData = {
                 title: current_game.gameTitle,
                 img: current_game.gameImage,
-                magnetlink: current_game.gameMagnet
+                magnetlink: current_game.gameMagnet,
+                timestamp: Date.now()
             };
             
             try {
@@ -105,7 +107,9 @@ function Downloadingpartsidebar() {
             
                 console.log('Creating directory:', dirPath);
                 await createDir(dirPath, { recursive: true });
-                await writeFile(filePath, "[]")
+                if(!filePath) {
+                    await writeFile(filePath, "[]")
+                }
                 console.log('Reading existing file content:', filePath);
                 let existingData = [];
                 try {
@@ -114,18 +118,17 @@ function Downloadingpartsidebar() {
                 } catch (readError) {
                     throw readError;
                 }
-            
+                
                 if (!Array.isArray(existingData)) {
                     existingData = [];
                 }
-            
+                console.log(existingData)
                 // Check if the game already exists
                 const gameExists = existingData.some(game => 
-                    game.gameTitle === gameData.title &&
-                    game.gameImage === gameData.img &&
-                    game.gameMagnet === gameData.magnetlink
+                    game.title === gameData.title
                 );
-            
+                
+                console.log("checked and it is : ", gameExists)
                 if (!gameExists) {
                     existingData.push(gameData);
                     console.log('Writing updated data to path:', filePath);

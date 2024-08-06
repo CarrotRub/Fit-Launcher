@@ -23,7 +23,7 @@
 }
 
 .image-placeholder {
-    position: absolute;
+    /* position: absolute; Because it blocks everything. */
     top: 0;
     left: 0;
     width: 100%;
