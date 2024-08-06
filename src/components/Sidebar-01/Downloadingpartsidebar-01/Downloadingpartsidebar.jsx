@@ -100,23 +100,19 @@ function Downloadingpartsidebar() {
             
             try {
                 const appDir = await appConfigDir();
-                const dirPath = appDir.replace(/\\/g, '/');
+                const dirPath = `${appDir}data\\`
                 const filePath = `${dirPath}downloaded_games.json`;
             
                 console.log('Creating directory:', dirPath);
                 await createDir(dirPath, { recursive: true });
-            
+                await writeFile(filePath, "[]")
                 console.log('Reading existing file content:', filePath);
                 let existingData = [];
                 try {
                     const fileContent = await readTextFile(filePath);
                     existingData = JSON.parse(fileContent);
                 } catch (readError) {
-                    if (readError.message.includes('No such file or directory')) {
-                        console.log('File does not exist, creating a new one.');
-                    } else {
-                        throw readError;
-                    }
+                    throw readError;
                 }
             
                 if (!Array.isArray(existingData)) {

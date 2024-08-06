@@ -39,7 +39,6 @@ use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, Torre
 use tauri::async_runtime;
 use tracing::info;
 use lazy_static::lazy_static;
-use tauri::PathResolver;
 
 lazy_static! {
     static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
@@ -70,7 +69,7 @@ struct SingleGame {
 
 
 #[tokio::main]
-async fn scraping_func() -> Result<(), Box<dyn Error>> {
+async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     let start_time = Instant::now();
     let client = Client::new();
     let mut games: Vec<Game> = Vec::new();
@@ -121,9 +120,24 @@ async fn scraping_func() -> Result<(), Box<dyn Error>> {
     }
     // Serialize the data with pretty formatting
     let json_data = serde_json::to_string_pretty(&games)?;
+    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
 
-    // Write the JSON data to a file named games.json
-    let mut file = File::create("../src/temp/newly_added_games.json")?;
+    binding.push("tempGames");
+
+    match Path::new(&binding).exists() {
+        true => {
+            ()
+        }
+        false => {
+            fs::create_dir_all(&binding)?;
+        },
+    }
+    
+    binding.push("newly_added_games.json");
+
+    // Write the JSON data to a file named newly_added_games.json inside appdata roaming dir tempGames.
+    let mut file = File::create(binding).expect("File could not be created !");
+
     file.write_all(json_data.as_bytes())?;
     let end_time = Instant::now();
     let duration_time_process = end_time - start_time;
@@ -133,7 +147,7 @@ async fn scraping_func() -> Result<(), Box<dyn Error>> {
 }
 
 #[tokio::main]
-async fn popular_games_scraping_func() -> Result<(), Box<dyn Error>> {
+async fn popular_games_scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     let start_time = Instant::now();
     let mut popular_games: Vec<Game> = Vec::new();
     
@@ -272,9 +286,24 @@ async fn popular_games_scraping_func() -> Result<(), Box<dyn Error>> {
     
     println!("Execution time: {:?}", start_time.elapsed());
     let json_data = serde_json::to_string_pretty(&popular_games)?;
+    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
+    
+    binding.push("tempGames");
 
-    // Write the JSON data to a file named games.json
-    let mut file = File::create("../src/temp/popular_games.json")?;
+    match Path::new(&binding).exists() {
+        true => {
+            ()
+        }
+        false => {
+            fs::create_dir_all(&binding)?;
+        },
+    }
+    
+    binding.push("popular_games.json");
+
+    // Write the JSON data to a file named popular_games.json inside appdata roaming dir tempGames.
+    let mut file = File::create(binding).expect("File could not be created !");
+
     file.write_all(json_data.as_bytes())?;
     let end_time = Instant::now() ;
     let duration_time_process = end_time - start_time;
@@ -353,7 +382,7 @@ impl From<serde_json::Error> for SingularFetchError {
     }
 }
 #[tokio::main]
-async fn recently_updated_games_scraping_func() -> Result<(), Box<dyn Error>> {
+async fn recently_updated_games_scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     
     println!("Before HTTP request");
     let start_time = Instant::now();
@@ -423,8 +452,24 @@ async fn recently_updated_games_scraping_func() -> Result<(), Box<dyn Error>> {
 
     println!("Execution time: {:?}", start_time.elapsed());
     let json_data = serde_json::to_string_pretty(&recent_games)?;
+    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
+    
+    binding.push("tempGames");
 
-    let mut file = File::create("../src/temp/recently_updated_games.json")?;
+    match Path::new(&binding).exists() {
+        true => {
+            ()
+        }
+        false => {
+            fs::create_dir_all(&binding)?;
+        },
+    }
+    
+    binding.push("recently_updated_games.json");
+
+    // Write the JSON data to a file named recently_updated_games.json inside appdata roaming dir tempGames.
+    let mut file = File::create(binding).expect("File could not be created !");
+
     file.write_all(json_data.as_bytes())?;
     let end_time = Instant::now();
     let duration_time_process = end_time - start_time;
@@ -1067,13 +1112,23 @@ async fn get_singular_game_info(app_handle: tauri::AppHandle, game_link: String)
     println!("Execution time: {:?}", start_time.elapsed());
 
     let json_data = serde_json::to_string_pretty(&searched_game)?;
-    let binding = app_handle.path_resolver().app_data_dir().unwrap();
-    let app_data_dir = binding.to_str().unwrap();
-    
-    let app_data_dir = app_data_dir.to_string();
-    let filepath = format!( "{}/singular_game_temp.json", app_data_dir);
-    let mut file = File::create(filepath)?;
+    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
+
+    match Path::new(&binding).exists() {
+        true => {
+            ()
+        }
+        false => {
+            fs::create_dir_all(&binding)?;
+        },
+    }
+    binding.push("tempGames");
+    binding.push("singular_game_temp.json");
+
+    let mut file = File::create(binding).expect("File could not be created !");
+
     file.write_all(json_data.as_bytes())?;
+
     let end_time = Instant::now();
     let duration_time_process = end_time - start_time;
     println!("Data has been written to singular_game_temp.json. Time was : {:#?}", duration_time_process);
@@ -1090,10 +1145,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 
     tauri::Builder::default()
-        .setup(move |_app| {
+        .setup(move |app| {
+            let current_app_handle: tauri::AppHandle = app.app_handle();
+
+            // Only way I got it working, it is a performance nightmare please fix it. :(
+            let first_app_handle = current_app_handle.clone();
+            let second_app_handle = current_app_handle.clone();
+            let third_app_handle = current_app_handle.clone();
+
             // Create a thread for the first function
-            let handle1 = thread::Builder::new().name("scraping_func".into()).spawn(|| {
-                if let Err(e) = scraping_func() {
+            let handle1 = thread::Builder::new().name("scraping_func".into()).spawn(move || {
+                if let Err(e) = scraping_func(first_app_handle) {
                     eprintln!("Error in scraping_func: {}", e);
                     std::process::exit(1);
                 }
@@ -1101,7 +1163,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Create a thread for the second function
             let handle2 = thread::Builder::new().name("popular_and_recent_games_scraping_func".into()).spawn(|| {
-                if let Err(e) = popular_games_scraping_func() {    
+                if let Err(e) = popular_games_scraping_func(second_app_handle) {    
                     eprintln!("Error in popular_games_scraping_func: {}", e);
                     std::process::exit(1);
                 }
@@ -1111,7 +1173,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     std::process::exit(1);
                 }
 
-                if let Err(e) = recently_updated_games_scraping_func() {
+                if let Err(e) = recently_updated_games_scraping_func(third_app_handle) {
                     eprintln!("Error in recently_updated_games_scraping_func: {}", e);
                     std::process::exit(1);
                 }

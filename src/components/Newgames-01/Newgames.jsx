@@ -1,7 +1,11 @@
 import './Newgames.css';
 import { createSignal, onMount } from 'solid-js';
+import { appConfigDir } from '@tauri-apps/api/path';
 
-const newlyAddedGamesPath = '../src/temp/newly_added_games.json';
+const appDir =  await appConfigDir();
+const dirPath = appDir.replace(/\\/g, '/');
+
+const newlyAddedGamesPath = `${dirPath}tempGames/newly_added_games.json`;
 import readFile from '../functions/readFileRust';
 import Slider from '../Slider-01/Slider';
 import { translate } from '../../translation/translate';
@@ -37,7 +41,8 @@ function Newgames() {
     // Return the Slider component once the container is created and data is fetched
     return (
         <>
-          <h2 > {translate('newly_added_games', {})}</h2>
+        {/* {translate('newly_added_games', {})} */}
+          <h2 >Newly Added Games</h2>
           {imagesObject() && (
             <Slider
               containerClassName="newly-added"

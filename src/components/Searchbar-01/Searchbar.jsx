@@ -130,18 +130,19 @@ function Searchbar() {
     async function getConfigDir() {
         const appDir =  await appConfigDir();
         const dirPath = appDir.replace(/\\/g, '/');
-        const singularGameFilePath = `${dirPath}singular_game_temp.json`;
+        const singularGameFilePath = `${dirPath}tempGames/singular_game_temp.json`;
 
         return singularGameFilePath
     }
 
     return (
+        // {translate('search_placeholder', {})} 
         <div className='searchbar-container'>
             <div className='searchbar-main'>
                 <input 
                     id='searchbar-input' 
                     type="text" 
-                    placeholder={translate('search_placeholder', {})} 
+                    placeholder= "Search here..."
                     onInput={handleInputChange} 
                     value={searchTerm()} // Ensure the input value is controlled
                 />

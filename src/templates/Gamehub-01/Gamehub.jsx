@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup } from 'solid-js';
+import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/tauri';
 import './Gamehub.css'
 import Newgames from '../../components/Newgames-01/Newgames';
@@ -8,7 +8,19 @@ import clearFile from '../../components/functions/clearFileRust';
 
 
 function Gamehub() {
-
+    onMount(() => {
+        let gamehubDiv = document.querySelector('.gamehub-container')
+    
+        if(gamehubDiv !== null){
+          console.log("findit")
+          let gamehubLinkText = document.querySelector('#link-gamehub');
+          gamehubLinkText.style.backgroundColor = '#ffffff0d'
+          gamehubLinkText.style.height = '20px'
+          gamehubLinkText.style.borderRadius = '5px'
+        }
+        console.log("gamehub not found")
+    
+      })
     const singularGamePath = '../src/temp/singular_games.json';
     
     createEffect(async () => {

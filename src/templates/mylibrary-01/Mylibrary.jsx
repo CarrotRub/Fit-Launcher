@@ -14,7 +14,7 @@ function Mylibrary() {
             // Get the app config directory
             const appDir = await appConfigDir();
             const dirPath = appDir.replace(/\\/g, "/");
-            const filePath = `${dirPath}downloaded_games.json`;
+            const filePath = `${dirPath}data/downloaded_games.json`;
             setDownloadedGamePath(filePath);
             const fileContent = await readFile(filePath); // Use filePath directly
             const gameData = JSON.parse(fileContent.content);
@@ -73,6 +73,7 @@ function Mylibrary() {
             throw error;
         }
     }
+
     function randomImageFinder() {
         const imageElements = document.querySelectorAll(".launcher-container img");
         if (imageElements.length > 0) {
@@ -113,9 +114,13 @@ function Mylibrary() {
         // Remove the gamehub container if it exists
         let myGamehubDiv = document.querySelector(".gamehub-container");
         if (myGamehubDiv !== null) {
+            let gamehubLinkText = document.querySelector('#link-gamehub');
+            gamehubLinkText.style.backgroundColor = ''
             myGamehubDiv.remove();
         }
+
         
+    
         try {
             await parseDownloadedGameData();
             setIsDataReady(true); // Set data as ready
