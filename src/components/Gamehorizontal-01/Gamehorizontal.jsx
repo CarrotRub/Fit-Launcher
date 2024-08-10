@@ -105,8 +105,9 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
             startDownloadProcess();
         }
     
-        function startDownloadProcess() {
-            Swal.fire({
+        async function startDownloadProcess() {
+            // First Swal for selecting game path
+            const pathResult = await Swal.fire({
                 title: 'Where do you want to download this game?',
                 icon: 'question',
                 html: `
@@ -119,7 +120,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                     if (lastInputPath) {
                         document.getElementById('gamePathInput').value = lastInputPath;
                     }
-    
+        
                     document.getElementById('selectPathButton').addEventListener('click', async (event) => {
                         event.preventDefault();
                         const selected = await open({
@@ -132,54 +133,97 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                         }
                     });
                 }
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    const inputPath = document.getElementById('gamePathInput').value;
-                    if (inputPath) {
-                        try {
-                            const exists = await invoke('check_folder_path', { path: inputPath });
-                            if (exists) {
-                                localStorage.setItem('LUP', inputPath);
-                                localStorage.setItem('CDG', JSON.stringify([infoSingleCDG]));  // Store only the current game
+            });
         
-                                await invoke('start_torrent_command', { magnetLink: cdgGameMagnet, downloadPath: inputPath });
-                                console.log(cdgGameMagnet, inputPath)
+            if (pathResult.isConfirmed) {
+                const inputPath = document.getElementById('gamePathInput').value;
+                if (inputPath) {
+                    try {
+                        const exists = await invoke('check_folder_path', { path: inputPath });
+                        if (exists) {
+                            localStorage.setItem('LUP', inputPath);
+                            localStorage.setItem('CDG', JSON.stringify([infoSingleCDG]));  // Store only the current game
+        
+                            // Start the torrent command and get the list of files
+                            const fileList = await invoke('start_torrent_command', {
+                                magnetLink: cdgGameMagnet,
+                                downloadPath: inputPath
+                            });
+        
+                            // Create checkboxes for each file in the list
+                            const fileCheckboxes = fileList.map((file, index) => {
+                                const isOptional = file.includes('optional');
+                                return `
+                                    <div style="display: ${isOptional ? 'block' : 'none'};">
+                                        <input type="checkbox" id="file${index}" value="${index}" ${isOptional ? '' : 'checked'}>
+                                        <label for="file${index}">${file}</label>
+                                    </div>
+                                `;
+                            }).join('');
+        
+                            // Show Swal with the file list and checkboxes
+                            const { value: selectedFiles } = await Swal.fire({
+                                title: "Select Files to Download",
+                                html: `
+                                    <form id="fileSelectionForm">
+                                        ${fileCheckboxes}
+                                    </form>
+                                `,
+                                confirmButtonText: 'Download Selected Files',
+                                showCancelButton: true,
+                                preConfirm: () => {
+                                    const form = document.getElementById('fileSelectionForm');
+                                    const selected = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'))
+                                                          .map(checkbox => parseInt(checkbox.value));
+                                    // if (selected.length === 0) {
+                                    //     Swal.showValidationMessage('You need to select at least one file.');
+                                    //     return false;
+                                    // }
+                                    return selected;
+                                }
+                            });
+        
+
+                            if (selectedFiles) {
+                                // Send the selected files to the backend for downloading
+                                await invoke('select_files_to_download', { selectedFiles });
+                                console.log('Files selected for download:', selectedFiles);
+        
                                 Swal.fire({
                                     title: "Starting Download!",
-                                    text: "The game is downloading.",
+                                    text: "The selected files are now downloading.",
                                     icon: "success"
                                 });
         
                                 // Notify the Downloadingpartsidebar component to start showing stats
                                 window.dispatchEvent(new Event('start-download'));
-                                
-                            } else {
-                                Swal.fire({
-                                    title: "ERROR: PATH DOES NOT EXIST",
-                                    text: "Your path does not exist, please use the 'Select Path' button to be sure you are using the right path.",
-                                    icon: "error"
-                                });
                             }
-                        } catch (error) {
-                            console.error('Error:', error);
+        
+                        } else {
                             Swal.fire({
-                                title: "ERROR: INVALID PATH",
-                                text: "There was an error checking the path, please try again.",
+                                title: "ERROR: PATH DOES NOT EXIST",
+                                text: "Your path does not exist, please use the 'Select Path' button to be sure you are using the right path.",
                                 icon: "error"
                             });
                         }
-                    } else {
+                    } catch (error) {
+                        console.error('Error:', error);
                         Swal.fire({
-                            title: "ERROR: EMPTY PATH",
-                            text: "Your path is empty, please use the dialog button to be sure you are using a path.",
+                            title: "ERROR: INVALID PATH",
+                            text: "There was an error checking the path, please try again.",
                             icon: "error"
                         });
                     }
+                } else {
+                    Swal.fire({
+                        title: "ERROR: EMPTY PATH",
+                        text: "Your path is empty, please use the dialog button to be sure you are using a path.",
+                        icon: "error"
+                    });
                 }
-            });
+            }
         }
     }
-    
     
     async function fetchGameInfo(title, filePath) {
         try {

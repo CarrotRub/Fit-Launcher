@@ -14,6 +14,10 @@ pub use crate::torrentfunc::torrent_commands;
 pub use crate::torrentfunc::torrent_functions;
 pub use crate::torrentfunc::TorrentState;
 
+mod custom_ui_automation;
+mod mighty;
+
+
 use core::str;
 use std::error::Error;
 use std::fs;
@@ -415,6 +419,7 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
 
 
 fn main() -> Result<(), Box<dyn Error>> {
+
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
     let torrent_state = torrentfunc::TorrentState::default();
     // let closing_signal_received = Arc::new(AtomicBool::new(false));
@@ -476,6 +481,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             torrent_commands::stop_torrent_command,
             torrent_commands::pause_torrent_command,
             torrent_commands::resume_torrent_command,
+            torrent_commands::select_files_to_download,
             commands_scraping::get_singular_game_info
         ])
         .manage(image_cache) // Make the cache available to commands 

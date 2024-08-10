@@ -1,6 +1,6 @@
 use librqbit::Session;
 use serde::Serialize;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 use std::sync::{Arc, atomic::AtomicBool};
 use lazy_static::lazy_static;
 use librqbit::TorrentStatsState;
@@ -52,14 +52,23 @@ impl Default for TorrentStatsInformations {
 #[derive(Default)]
 pub struct TorrentState {
     pub stats: Arc<Mutex<TorrentStatsInformations>>,
+    pub file_selection_tx: Arc<Mutex<Option<oneshot::Sender<Vec<usize>>>>>,
 }
 
-
+impl TorrentState {
+    pub fn new() -> Self {
+        TorrentState {
+            stats: Arc::new(Mutex::new(TorrentStatsInformations::default())),
+            file_selection_tx: Arc::new(Mutex::new(None)), // Default to None
+        }
+    }
+}
 
 pub mod torrent_functions {
 
     use std::error::Error;
     use serde::{Deserialize, Serialize};
+    use tokio::sync::oneshot;
     use std::fmt;
     use std::time::Duration;
     use tokio::sync::Mutex;
@@ -121,65 +130,103 @@ pub mod torrent_functions {
 
 
 
+    struct TorrentListing {
+        item_names: Vec<String>,
+        item_idx: Vec<usize>
+    }
+
+    impl TorrentListing {
+        fn new() -> Self {
+            TorrentListing {
+                item_names: Vec::new(),
+                item_idx: Vec::new()
+            }
+        }
+    }
+
     pub async fn start_torrent_thread(
         magnet_link: String,
         torrent_stats: Arc<Mutex<super::TorrentStatsInformations>>,
-        download_path: String
+        download_path: String,
+        file_list_tx: oneshot::Sender<Vec<String>>, // Added oneshot sender for file selection
+        file_selection_rx: oneshot::Receiver<Vec<usize>>, // Added oneshot receiver for file selection
     ) -> Result<(), anyhow::Error> {
         let output_dir: String = download_path;
-        // let persistence_filename = format!("{}/.session_persistence.json", output_dir);
         let mut session = SESSION.lock().await;
-
-
-
-        // Check if a session already exists by looking at the lazy_static
+    
         if session.is_none() {
-            // Define and initialize the SessionOptions struct
             let mut custom_session_options = SessionOptions::default();
-
-            // Customize the options you want to change
             custom_session_options.disable_dht = false;
             custom_session_options.disable_dht_persistence = false;
             custom_session_options.persistence = false;
-            // custom_session_options.persistence_filename = Some(PathBuf::from(persistence_filename.clone()));
             custom_session_options.enable_upnp_port_forwarding = true;
-
-            // Create a new session with the specified options
+    
             let new_session: Arc<Session> = Session::new_with_opts(
-                output_dir.into(),
+                output_dir.clone().into(),
                 custom_session_options
             )
             .await
             .context("error creating session")?;
-
+    
             *session = Some(new_session);
         }
-
+    
         let session = session.clone().unwrap();
-
-
-        // let managed_torrents_list = session.with_torrents( callback);
-
-        let handle = match session
-        .add_torrent(
-            AddTorrent::from_url(&magnet_link),
-            Some(AddTorrentOptions {
-                overwrite: true,
-                disable_trackers: false, // * Not sure about this one, not the best but better for greater optimization. Prevent useless dead trackers.
-
-                ..Default::default()
-            }),
-        )
-        .await
-        .context("error adding torrent")?
-        {
+    
+        let response = session
+            .add_torrent(
+                AddTorrent::from_url(&magnet_link),
+                Some(AddTorrentOptions {
+                    list_only: true,
+                    ..Default::default()
+                }),
+            )
+            .await
+            .context("error adding torrent")?;
+    
+        let handle = match response {
             AddTorrentResponse::Added(_, handle) => handle,
-            _ => unreachable!(),
+            AddTorrentResponse::AlreadyManaged(_, _) => {
+                return Err(anyhow::anyhow!("Torrent is already managed."));
+            }
+            AddTorrentResponse::ListOnly(handle) => {
+                let info = &handle.info;
+    
+                let mut file_list_idx: Vec<usize> = Vec::new();
+                let mut file_list_names: Vec<String> = Vec::new();
+    
+                for (idx, (filename, _len)) in info.iter_filenames_and_lengths()?.enumerate() {
+                    file_list_names.push(filename.to_string()?);
+                    file_list_idx.push(idx);
+                }
+    
+                file_list_tx.send(file_list_names.clone())
+                    .expect("Failed to send file list");
+    
+                let selected_files = file_selection_rx.await
+                    .map_err(|_| anyhow::anyhow!("Failed to receive selected files"))?;
+    
+                let response = session
+                    .add_torrent(
+                        AddTorrent::from_url(&magnet_link),
+                        Some(AddTorrentOptions {
+                            list_only: false,
+                            only_files: Some(selected_files),
+                            overwrite: true,
+                            disable_trackers: false,
+                            ..Default::default()
+                        }),
+                    )
+                    .await
+                    .context("error adding torrent for download")?;
+    
+                match response {
+                    AddTorrentResponse::Added(_, handle) => handle,
+                    _ => return Err(anyhow::anyhow!("Unexpected response when re-adding torrent for download")),
+                }
+            }
         };
-        info!("Details: {:?}", &handle.info().info);
-
-
-
+    
         {
             let handle = handle.clone();
             let torrent_stats = Arc::clone(&torrent_stats);
@@ -188,8 +235,7 @@ pub mod torrent_functions {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                     let stats = handle.stats();
                     let mut torrent_stats = torrent_stats.lock().await;
-
-                    // Just copying stats from the handler to the Structure.
+    
                     torrent_stats.state = stats.state.clone();
                     torrent_stats.file_progress = stats.file_progress.clone();
                     torrent_stats.error = stats.error.clone();
@@ -197,61 +243,54 @@ pub mod torrent_functions {
                     torrent_stats.uploaded_bytes = stats.uploaded_bytes;
                     torrent_stats.total_bytes = stats.total_bytes;
                     torrent_stats.finished = stats.finished;
-
-
+    
                     if let Some(live_stats) = stats.live {
-
                         torrent_stats.download_speed = Some(live_stats.download_speed.mbps as f64);
                         torrent_stats.upload_speed = Some(live_stats.upload_speed.mbps as f64);
-
+    
                         torrent_stats.average_piece_download_time = live_stats
                             .average_piece_download_time
                             .map(|d| d.as_secs_f64());
-
-                        // Gets it directly as a string because I stupidly decided to not use the API.
-                        // I also actually forgot why exactly I couldn't use the impl/struct, probably because it was private though.
+    
                         torrent_stats.time_remaining = live_stats
-                        .time_remaining
-                        .map(|d|d.to_string() );
-
+                            .time_remaining
+                            .map(|d| d.to_string());
+    
                         if torrent_stats.finished {
                             stop_torrent_function(session.clone()).await;
-                            break; // Exit the loop if finished
+                            break;
                         }
-
+    
                         if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
                             stop_torrent_function(session.clone()).await;
-                            break; // Exit the loop if finished
+                            break;
                         }
-
+    
                         if PAUSE_FLAG.load(Ordering::Relaxed) {
                             pause_torrent_function(torrent_stats.to_owned()).await;
-                            break; // Exit the loop if finished
+                            break;
                         }
-
                     } else {
                         torrent_stats.download_speed = None;
                         torrent_stats.upload_speed = None;
                         torrent_stats.average_piece_download_time = None;
                         torrent_stats.time_remaining = None;
                     }
-
+    
                     info!("{:?}", *torrent_stats);
                 }
             });
         }
-
+    
         handle.wait_until_completed().await?;
         info!("torrent downloaded");
-
+    
         Ok(())
     }
-
 
     async fn stop_torrent_function(session_id: Arc<Session>){
         session_id.stop().await;
     }
-
 
 
     // New pause_torrent_function
@@ -273,6 +312,7 @@ pub mod torrent_functions {
 pub mod torrent_commands {
 
     use serde::{Deserialize, Serialize};
+    use tokio::sync::oneshot;
     use std::error::Error;
     use tauri::State;
     use std::fmt;
@@ -313,15 +353,58 @@ pub mod torrent_commands {
         magnet_link: String,
         download_path: String,
         torrent_state: State<'_, super::TorrentState>,
-    ) -> Result<(), String> {
+    ) -> Result<Vec<String>, String> {
+        
         let torrent_stats: Arc<Mutex<super::TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
+    
+        // Create oneshot channels for file list and user selection
+        let (file_list_tx, file_list_rx) = oneshot::channel();
+        let (file_selection_tx, file_selection_rx) = oneshot::channel();
+    
+        // Store the file_selection_tx in the TorrentState
+        {
+            let mut selection_tx_lock = torrent_state.file_selection_tx.lock().await;
+            *selection_tx_lock = Some(file_selection_tx);
+        }
+
+        // Spawn the torrent thread
         spawn(async move {
-            println!("{} , {}",magnet_link, download_path);
-            if let Err(e) = torrent_functions::start_torrent_thread(magnet_link, torrent_stats, download_path).await {
+            println!("{} , {}", magnet_link, download_path);
+            if let Err(e) = torrent_functions::start_torrent_thread(
+                magnet_link,
+                torrent_stats,
+                download_path,
+                file_list_tx,
+                file_selection_rx,
+            )
+            .await
+            {
                 eprintln!("Error in torrent thread: {:?}", e);
             }
         });
-        Ok(())
+    
+        // Wait for the file list from the spawned thread
+        let file_list = file_list_rx.await.map_err(|e| format!("Failed to receive file list: {:?}", e))?;
+    
+        // Return the file list to the frontend for user selection
+        Ok(file_list)
+    }
+    
+    #[tauri::command]
+    pub async fn select_files_to_download(
+        selected_files: Vec<usize>,
+        torrent_state: State<'_, super::TorrentState>,
+    ) -> Result<(), String> {
+        // Take the file_selection_tx from the TorrentState
+        let mut file_selection_tx_lock = torrent_state.file_selection_tx.lock().await;
+        if let Some(file_selection_tx) = file_selection_tx_lock.take() {
+            file_selection_tx
+                .send(selected_files)
+                .map_err(|e| format!("Failed to send file selection: {:?}", e))?;
+            Ok(())
+        } else {
+            Err("No file selection channel available".into())
+        }
     }
 
     #[tauri::command]

@@ -4,6 +4,8 @@ import { render } from 'solid-js/web';
 import { invoke } from '@tauri-apps/api/tauri';
 import './Slider.css'
 
+// TODO: Add a hover to show title, one line divided by three proportionally to the length and the repack size and original size on hover of an image.
+
 const Slider = (props) => {
   const { containerClassName, imageContainerClassName, slides, filePath } = props;
   const [currentSlideIndex, setCurrentSlideIndex] = createSignal(0);

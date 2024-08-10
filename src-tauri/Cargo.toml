@@ -14,22 +14,29 @@ tauri-build = { version = "1", features = [] }
 tauri = { version = "1", features = ["api-all"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.11", features = ["blocking", "rustls-tls"] }
-scraper = "0.12"
+reqwest = { version = "0.12.5", features = ["blocking", "rustls-tls"] }
+scraper = "0.20.0"
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3"
 kuchiki = "0.8"
 anyhow = "1.0.86"
 lru = "0.12.3"
 futures = "0.3.30"
-librqbit  = {version = "5.6.4", features = ["webui"] }
+librqbit  = {version = "6.0.0", features = ["webui"] }
 thiserror = "1.0.63"
 lazy_static = "1.5.0"
 parking_lot = "0.12.1"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 tracing = "0.1"
 select = "0.6"
-
+uiautomation = "0.12.1"
+[dependencies.windows]
+version = "0.58.0"
+features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Controls"
+]
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
