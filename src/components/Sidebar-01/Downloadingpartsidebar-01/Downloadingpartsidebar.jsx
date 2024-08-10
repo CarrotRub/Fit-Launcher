@@ -32,6 +32,7 @@ function Downloadingpartsidebar() {
 
     const fetchTorrentStats = async () => {
         try {
+            console.log("fetching")
             const state = await invoke('get_torrent_stats')
             setTorrentInfo(state)
             localStorage.setItem('CDG_Stats', JSON.stringify(state))
@@ -46,7 +47,7 @@ function Downloadingpartsidebar() {
         const intervalId = setInterval(fetchTorrentStats, 500)
         onCleanup(() => clearInterval(intervalId))
     }
-
+    startDownloadListener()
     window.addEventListener('start-download', startDownloadListener)
 
     onCleanup(() => {
@@ -144,8 +145,10 @@ function Downloadingpartsidebar() {
                 console.error('Error saving game data:', error);
             }
         }
+        console.log(isActiveDownload(), torrentInfo())
         if (torrentInfo() && isActiveDownload()) {
 
+            console.log("donwl")
 
             const progress =
                 (torrentInfo().progress_bytes / torrentInfo().total_bytes) * 100
