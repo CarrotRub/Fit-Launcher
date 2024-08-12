@@ -12,7 +12,7 @@ import './templates/titlebar-01/titlebar.css'
 
 function App() {
     onMount(() => {
-        invoke('close_splashscreen')
+        // invoke('close_splashscreen')
     })
 
     createEffect(() => {

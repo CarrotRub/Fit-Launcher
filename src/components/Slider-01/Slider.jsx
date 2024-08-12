@@ -1,15 +1,14 @@
 import { createSignal, createEffect, onCleanup } from 'solid-js';
 import Gamehorizontalslide from '../Gamehorizontal-01/Gamehorizontal';
-import { render } from 'solid-js/web'; 
+import { render } from 'solid-js/web';
 import { invoke } from '@tauri-apps/api/tauri';
-import './Slider.css'
-
-// TODO: Add a hover to show title, one line divided by three proportionally to the length and the repack size and original size on hover of an image.
+import './Slider.css';
 
 const Slider = (props) => {
   const { containerClassName, imageContainerClassName, slides, filePath } = props;
   const [currentSlideIndex, setCurrentSlideIndex] = createSignal(0);
   const [lastSlideVisible, setLastSlideVisible] = createSignal(false);
+  const [hoveredTitle, setHoveredTitle] = createSignal('');
 
   let scrollIntervalId;
 
@@ -44,7 +43,6 @@ const Slider = (props) => {
     if (container) {
       container.style.transition = 'transform 0.5s ease-in-out';
 
-      // Retrieve slide image width
       const slideImage = container.querySelector('.slide img');
 
       // Slide to a direction by making calculations of how it will work.
@@ -64,7 +62,6 @@ const Slider = (props) => {
         observer.observe(lastSlide);
       }
 
-      // Cleanup function
       onCleanup(() => {
         clearInterval(scrollIntervalId);
         observer.disconnect();
@@ -72,59 +69,62 @@ const Slider = (props) => {
     }
   });
 
-  const mainContentDiv = document.querySelector('.main-content')
+  const mainContentDiv = document.querySelector('.main-content');
 
-  function resetHorizontalSlide(){
-    const horSlide = document.querySelector('.horizontal-slide')
+  function resetHorizontalSlide() {
+    const horSlide = document.querySelector('.horizontal-slide');
     if (horSlide) {
       try {
-        horSlide.remove()
-      } catch(error) {
+        horSlide.remove();
+      } catch (error) {
         throw new Error(error);
       }
     }
   }
-
 
   return (
     <>
       <div className={containerClassName}>
         <div className={imageContainerClassName}>
           {slides.map((slide, index) => (
-            <div class="slide" key={index}>
+            <div class="slide" key={index} style={{ position: 'relative' }}>
               <img
                 src={slide.img}
                 alt={slide.title}
                 href-link={slide.href}
                 file-path={filePath}
                 onClick={() => {
-                  invoke(`get_games_images`,{ gameLink: slide.href });
-                  resetHorizontalSlide()
+                  invoke(`get_games_images`, { gameLink: slide.href });
+                  resetHorizontalSlide();
                   render(
-                    
                     <Gamehorizontalslide
                       gameTitlePromise={slide.title}
                       filePathPromise={filePath}
                     />,
                     mainContentDiv
                   );
-
                 }}
+                onMouseEnter={() => setHoveredTitle(slide.title)}
+                onMouseLeave={() => setHoveredTitle('')}
               />
+              
+              {hoveredTitle() === slide.title && (
+                <div class="hover-title">{hoveredTitle()}</div>
+              )
+              
+              }
             </div>
           ))}
         </div>
       </div>
-      
-      <div className='controls-buttons'>
-        <button onClick={handlePrevSlide} class="scroll-button --prev" style={"background-color: transparent; border: none;"}>
+
+      <div className="controls-buttons">
+        <button onClick={handlePrevSlide} class="scroll-button --prev" style="background-color: transparent; border: none;">
           <svg height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g stroke-width="0"/>
-            <g stroke-linecap="round" stroke-linejoin="round"/>
             <path d="m11 9-3 3m0 0 3 3m-3-3h8m5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button onClick={handleNextSlide} class="scroll-button --next" style={"background-color: transparent; border: none;"} disabled={lastSlideVisible()} >
+        <button onClick={handleNextSlide} class="scroll-button --next" style="background-color: transparent; border: none;" disabled={lastSlideVisible()}>
           <svg height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path transform="translate(24, 0) scale(-1, 1)" d="m11 9-3 3m0 0 3 3m-3-3h8m5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
