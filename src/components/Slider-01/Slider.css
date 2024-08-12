@@ -6,3 +6,27 @@
 .controls-buttons {
     margin-top: 5px;
 }
+
+.hover-title {
+    position: absolute;
+    bottom: 10px; 
+    left: 120%; 
+    transform: translate(-50%, -50%); 
+    width: 20vw;
+    max-width: 200px; /* Ensure it doesn't exceed a certain width */
+    background-color: rgba(37, 37, 37, 0.86);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    pointer-events: none;
+    white-space: normal; /* Allow text to wrap */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limit to 2 lines */
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.2; /* Adjust line height for better readability */
+    z-index: 3;
+  }

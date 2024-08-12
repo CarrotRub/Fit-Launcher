@@ -42,6 +42,7 @@
       },
       "windows": [
         {
+          "label": "main",
           "title": "Fitgirl Repack Launcher",
           "width": 800,
           "height": 800,
@@ -49,6 +50,15 @@
           "transparent": true,
           "fullscreen": false,
           "decorations": false
+        },
+        {
+          "width": 400,
+          "height": 400,
+          "resizable": false,
+          "fullscreen": false,
+          "decorations": false,
+          "url": "splashscreen.html",
+          "label": "splashscreen"
         }
       ],
       "security": {

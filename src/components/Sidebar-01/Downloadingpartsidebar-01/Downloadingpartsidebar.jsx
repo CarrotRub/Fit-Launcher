@@ -25,6 +25,7 @@ function Downloadingpartsidebar() {
     const [isTorrentDone, setIsTorrentDone] = createSignal(false);
 
     onMount(() => {
+        window.addEventListener('start-download', startDownloadListener)
         const cdg = localStorage.getItem('CDG') || '[]'
         setCdgObject(JSON.parse(cdg))
 
@@ -47,18 +48,20 @@ function Downloadingpartsidebar() {
         const intervalId = setInterval(fetchTorrentStats, 500)
         onCleanup(() => clearInterval(intervalId))
     }
-    startDownloadListener()
-    window.addEventListener('start-download', startDownloadListener)
+    
+    
 
     onCleanup(() => {
         window.removeEventListener('start-download', startDownloadListener)
     })
 
     createEffect(async () => {
+        
         const firstCdg = cdgObject()[0]
         if (firstCdg) {
             setCurrentImage(firstCdg.gameImage)
             setCurrentTitle(firstCdg.gameTitle)
+            
             setIsInitializing(
                 firstCdg.state === "initializing" || firstCdg.state === "Initializing"
             );

@@ -425,48 +425,53 @@ fn main() -> Result<(), Box<dyn Error>> {
     // let closing_signal_received = Arc::new(AtomicBool::new(false));
 
 
-    tauri::Builder::default()
-        .setup(move |app| {
-            let current_app_handle: tauri::AppHandle = app.app_handle();
 
-            // Only way I got it working, it is a performance nightmare please fix it. :(
+        tauri::Builder::default()
+        .setup(move |app| {
+            let current_app_handle = app.app_handle();
+
+            // Clone the app handle for each thread
             let first_app_handle = current_app_handle.clone();
             let second_app_handle = current_app_handle.clone();
             let third_app_handle = current_app_handle.clone();
             let fourth_app_handle = current_app_handle.clone();
 
             // Create a thread for the first function
-            let handle1 = thread::Builder::new().name("scraping_func".into()).spawn(move || {
-                if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
-                    eprintln!("Error in scraping_func: {}", e);
-                    std::process::exit(1);
-                }
-            }).expect("Failed to spawn thread for scraping_func");
+            let handle1 = thread::Builder::new()
+                .name("scraping_func".into())
+                .spawn(move || {
+                    if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
+                        eprintln!("Error in scraping_func: {}", e);
+                        std::process::exit(1);
+                    }
+                })
+                .expect("Failed to spawn thread for scraping_func");
 
             // Create a thread for the second function
-            let handle2 = thread::Builder::new().name("popular_and_recent_games_scraping_func".into()).spawn(|| {
-                if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {    
-                    eprintln!("Error in popular_games_scraping_func: {}", e);
-                    std::process::exit(1);
-                }
+            let handle2 = thread::Builder::new()
+                .name("popular_and_recent_games_scraping_func".into())
+                .spawn(move || {
+                    if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
+                        eprintln!("Error in popular_games_scraping_func: {}", e);
+                        std::process::exit(1);
+                    }
 
-                if let Err(e) = get_sitemaps_website(fourth_app_handle) {
-                    eprintln!("Error in get_sitemaps_website: {}", e);
-                    std::process::exit(1);
-                }
+                    if let Err(e) = get_sitemaps_website(fourth_app_handle) {
+                        eprintln!("Error in get_sitemaps_website: {}", e);
+                        std::process::exit(1);
+                    }
 
-                if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
-                    eprintln!("Error in recently_updated_games_scraping_func: {}", e);
-                    std::process::exit(1);
-                }
-            }).expect("Failed to spawn thread for popular_games_scraping_func");
+                    if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
+                        eprintln!("Error in recently_updated_games_scraping_func: {}", e);
+                        std::process::exit(1);
+                    }
+                })
+                .expect("Failed to spawn thread for popular_games_scraping_func");
 
             // Wait for both threads to finish
-            async_runtime::spawn(async move {
-                handle1.join().expect("Thread 1 panicked");
-                handle2.join().expect("Thread 2 panicked");
-            });
-
+            handle1.join().expect("Thread 1 panicked");
+            handle2.join().expect("Thread 2 panicked");
+            
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
