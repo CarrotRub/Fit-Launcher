@@ -1,32 +1,37 @@
-.scroll-button {
-    background-color: transparent;
-    cursor: pointer;
-}
-
-.controls-buttons {
-    margin-top: 5px;
-}
-
 .hover-title {
     position: absolute;
-    bottom: 10px; 
-    left: 120%; 
-    transform: translate(-50%, -50%); 
-    width: 20vw;
-    max-width: 200px; /* Ensure it doesn't exceed a certain width */
     background-color: rgba(37, 37, 37, 0.86);
     color: white;
-    padding: 10px;
+    padding: 5px 10px;
     border-radius: 5px;
     font-size: 14px;
-    pointer-events: none;
-    white-space: normal; /* Allow text to wrap */
+    left: 80%;
+    transform: translate(0%, -150%);
+    max-width: 300px;
+    max-height: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    z-index: 99;
+  }
+  
+  .hover-title .title {
+    font-weight: bold;
+    white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 2; /* Limit to 2 lines */
-    line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
-    line-height: 1.2; /* Adjust line height for better readability */
-    z-index: 3;
   }
+  
+  .hover-title .detail {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .scroll-button {
+    cursor: pointer;
+  }
+  

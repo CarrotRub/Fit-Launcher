@@ -67,6 +67,10 @@ function App() {
         {
             path: "/my-library",
             component: lazy(() => import("./templates/mylibrary-01/Mylibrary"))
+        },
+        {
+            path: "/settings",
+            component: lazy(() => import("./templates/Settings-01/Settings"))
         }
     ]
 

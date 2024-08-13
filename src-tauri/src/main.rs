@@ -287,7 +287,7 @@ async fn stop_get_games_images() {
 }
 
 #[tauri::command]
-async fn get_games_images(game_link: String, image_cache: State<'_, ImageCache>) -> Result<(), CustomError> {
+async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image_cache: State<'_, ImageCache>) -> Result<(), CustomError> {
     STOP_FLAG.store(false, Ordering::Relaxed);
     let start_time = Instant::now();
 
@@ -314,10 +314,27 @@ async fn get_games_images(game_link: String, image_cache: State<'_, ImageCache>)
 
     // Ensure that at least one image URL is included, even if no images were found
     let game = GameImages { my_all_images: image_srcs.clone() };
+
     let json_data = serde_json::to_string_pretty(&game).context("Failed to serialize image sources to JSON")
         .map_err(|e| CustomError { message: e.to_string() })?;
-    fs::write("../src/temp/singular_games.json", json_data).context("Failed to write JSON data to file")
-        .map_err(|e| CustomError { message: e.to_string() })?;
+
+
+    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
+    match Path::new(&binding).exists() {
+        true => {
+            ()
+        }
+        false => {
+            fs::create_dir_all(&binding).context("Failed to create directory for JSON data")
+            .map_err(|e| CustomError { message: e.to_string() })?;
+        },
+    }
+    binding.push("tempGames");
+    binding.push("single_game_images.json");
+
+    let mut file = File::create(binding).expect("File could not be created !");
+    file.write_all(json_data.as_bytes()).context("Failed to write JSON data to file")
+    .map_err(|e| CustomError { message: e.to_string() })?;
 
     if STOP_FLAG.load(Ordering::Relaxed) {
         return Err(CustomError { message: "Function stopped.".to_string() });
@@ -428,6 +445,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         tauri::Builder::default()
         .setup(move |app| {
+
+            let splashscreen_window = app.get_window("splashscreen").unwrap();
+            let main_window = app.get_window("main").unwrap();
             let current_app_handle = app.app_handle();
 
             // Clone the app handle for each thread
@@ -471,6 +491,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             // Wait for both threads to finish
             handle1.join().expect("Thread 1 panicked");
             handle2.join().expect("Thread 2 panicked");
+
+            
+            // After it's done, close the splashscreen and display the main window
+            splashscreen_window.close().unwrap();
+            main_window.show().unwrap();
             
             Ok(())
         })

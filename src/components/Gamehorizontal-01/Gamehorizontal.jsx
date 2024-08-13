@@ -7,8 +7,13 @@ import Carousel from '../Carousel-01/Carousel';
 import { invoke } from '@tauri-apps/api/tauri';
 import { translate } from '../../translation/translate';
 import { open } from '@tauri-apps/api/dialog';
-
+import { appConfigDir } from '@tauri-apps/api/path';
 import './GameHorizontal.css';
+
+const appDir =  await appConfigDir();
+const dirPath = appDir.replace(/\\/g, '/');
+
+const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
 
 const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
     const [gameInfo, setGameInfo] = createSignal(null);
@@ -16,8 +21,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
     const [isDescOpen, setDescOpen] = createSignal(false);
     const [additionalImages, setAdditionalImages] = createSignal([]);
     const [showPlaceholder, setShowPlaceholder] = createSignal(true);
-
-    const singularGamePath = '../src/temp/singular_games.json';
     
     var jsonCheckingTimeoutID;
     var imagesCheckingTimeoutID;
