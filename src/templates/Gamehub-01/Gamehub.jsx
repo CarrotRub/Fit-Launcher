@@ -15,7 +15,6 @@ function Gamehub() {
           console.log("findit")
           let gamehubLinkText = document.querySelector('#link-gamehub');
           gamehubLinkText.style.backgroundColor = '#ffffff0d'
-          gamehubLinkText.style.height = '20px'
           gamehubLinkText.style.borderRadius = '5px'
         }
         console.log("gamehub not found")

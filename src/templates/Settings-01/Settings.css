@@ -1,0 +1,104 @@
+/* src/components/SettingsPage.css */
+
+/* General Styling */
+body {
+
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Settings Page Container */
+  .settings-page {
+    padding: 20px;
+    font-family: 'IBMPlexSans', sans-serif;
+  }
+  
+  /* Headings */
+  .settings-page h1 {
+    font-size: 24px;
+    color: white;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #C54B8C;
+    padding-bottom: 10px;
+  }
+  
+  .settings-page h2 {
+    font-size: 20px;
+    color: #C54B8C;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+  }
+  
+  /* Form Group */
+  .form-group {
+    display: flex;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    flex-direction: column;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  
+  .form-group input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+  }
+  
+  .form-group input[type="checkbox"] {
+    transform: scale(1.2);
+    margin-right: 10px;
+    cursor: pointer;
+  }
+
+   #desc-checkbox  {
+    font-size: 12px;
+    color: #777;
+    margin-top: 5px;
+  }
+
+  /* Section Styling */
+  .settings-page section {
+    margin-bottom: 30px;
+    padding: 20px;
+    /* background-color: #fafafa; */
+    border-radius: 8px;
+    border: 1px solid #eaeaea;
+  }
+  
+  /* Links */
+  .settings-page a {
+    color: #C54B8C;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  
+  .settings-page a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 600px) {
+    .settings-page {
+      padding: 15px;
+      margin: 20px auto;
+    }
+  
+    .settings-page h1 {
+      font-size: 20px;
+    }
+  
+    .settings-page h2 {
+      font-size: 18px;
+    }
+  }
+  

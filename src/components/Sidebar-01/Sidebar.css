@@ -65,14 +65,10 @@
     list-style: none;
     padding: 0;
     margin: 0;
-    display: grid; /* Apply grid layout */
-    grid-template-columns: repeat(
-      auto-fill,
-      minmax(200px, 1fr)
-    ); /* Adjust grid columns */
-    grid-gap: 10px; /* Add gap between grid items */
-    grid-column: start;
-    grid-auto-rows: 50px;
+    max-height: 30vh;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
   
   .useful-links li {
@@ -80,6 +76,8 @@
     /* align-items: center; */
     margin-bottom: 10px;
     padding: 3vh;
+    width: 100%; /* Take full width */
+    box-sizing: border-box; /* Include padding in width calculation */
   }
   
   .useful-links li:hover {
@@ -107,10 +105,25 @@
     color: inherit;
     display: flex;
     align-items: center;
+    width: 100%; /* Take full width */
+    box-sizing: border-box; /* Include padding in width calculation */
   }
+
 .sidebar-unique-game:hover {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 5px;
   cursor: pointer;
 }
 
+#link-gamehub {
+  height: 100%;
+}
+
+#link-library {
+  height: 100%;
+}
+
+
+#link-settings {
+  height: 100%;
+}

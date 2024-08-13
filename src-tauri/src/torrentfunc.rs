@@ -10,7 +10,7 @@ lazy_static! {
 }
 
 // Define a shared boolean flag
-static STOP_FLAG: AtomicBool = AtomicBool::new(false);
+
 static STOP_FLAG_TORRENT: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -148,12 +148,13 @@ pub mod torrent_functions {
         magnet_link: String,
         torrent_stats: Arc<Mutex<super::TorrentStatsInformations>>,
         download_path: String,
-        file_list_tx: oneshot::Sender<Vec<String>>, // Added oneshot sender for file selection
-        file_selection_rx: oneshot::Receiver<Vec<usize>>, // Added oneshot receiver for file selection
+        file_list_tx: oneshot::Sender<Vec<String>>,
+        file_selection_rx: oneshot::Receiver<Vec<usize>>,
     ) -> Result<(), anyhow::Error> {
-        let output_dir: String = download_path;
+        let output_dir = download_path.clone();
         let mut session = SESSION.lock().await;
     
+        // Initialize session if it doesn't exist
         if session.is_none() {
             let mut custom_session_options = SessionOptions::default();
             custom_session_options.disable_dht = false;
@@ -161,18 +162,19 @@ pub mod torrent_functions {
             custom_session_options.persistence = false;
             custom_session_options.enable_upnp_port_forwarding = true;
     
-            let new_session: Arc<Session> = Session::new_with_opts(
+            let new_session = Session::new_with_opts(
                 output_dir.clone().into(),
-                custom_session_options
+                custom_session_options,
             )
             .await
-            .context("error creating session")?;
+            .context("Error creating torrent session")?;
     
             *session = Some(new_session);
         }
     
         let session = session.clone().unwrap();
     
+        // Add torrent with list_only to get file list
         let response = session
             .add_torrent(
                 AddTorrent::from_url(&magnet_link),
@@ -182,30 +184,32 @@ pub mod torrent_functions {
                 }),
             )
             .await
-            .context("error adding torrent")?;
+            .context("Error adding torrent to session")?;
     
         let handle = match response {
             AddTorrentResponse::Added(_, handle) => handle,
             AddTorrentResponse::AlreadyManaged(_, _) => {
-                return Err(anyhow::anyhow!("Torrent is already managed."));
+                return Err(anyhow::anyhow!("Torrent is already being managed by the session."));
             }
             AddTorrentResponse::ListOnly(handle) => {
-                let info = &handle.info;
+                let info = handle
+                    .info
+                    .iter_filenames_and_lengths()
+                    .context("Error iterating over filenames and lengths")?;
     
-                let mut file_list_idx: Vec<usize> = Vec::new();
-                let mut file_list_names: Vec<String> = Vec::new();
-    
-                for (idx, (filename, _len)) in info.iter_filenames_and_lengths()?.enumerate() {
-                    file_list_names.push(filename.to_string()?);
-                    file_list_idx.push(idx);
+                let mut file_list_names = Vec::new();
+                for (filename, _len) in info {
+                    file_list_names.push(filename.to_string().context("Error converting filename to string")?);
                 }
     
-                file_list_tx.send(file_list_names.clone())
-                    .expect("Failed to send file list");
+                file_list_tx.send(file_list_names)
+                    .map_err(|_| anyhow::anyhow!("Failed to send file list to the frontend"))?;
     
+                // Receive selected files from frontend
                 let selected_files = file_selection_rx.await
-                    .map_err(|_| anyhow::anyhow!("Failed to receive selected files"))?;
+                    .map_err(|_| anyhow::anyhow!("Failed to receive selected files from the frontend"))?;
     
+                // Add torrent with the selected files for download
                 let response = session
                     .add_torrent(
                         AddTorrent::from_url(&magnet_link),
@@ -218,7 +222,7 @@ pub mod torrent_functions {
                         }),
                     )
                     .await
-                    .context("error adding torrent for download")?;
+                    .context("Error adding selected files torrent for download")?;
     
                 match response {
                     AddTorrentResponse::Added(_, handle) => handle,
@@ -227,12 +231,14 @@ pub mod torrent_functions {
             }
         };
     
+        // Spawn a task to periodically update torrent statistics
         {
             let handle = handle.clone();
             let torrent_stats = Arc::clone(&torrent_stats);
             tokio::spawn(async move {
                 loop {
                     tokio::time::sleep(Duration::from_secs(1)).await;
+    
                     let stats = handle.stats();
                     let mut torrent_stats = torrent_stats.lock().await;
     
@@ -263,11 +269,13 @@ pub mod torrent_functions {
     
                         if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
                             stop_torrent_function(session.clone()).await;
+            
                             break;
                         }
     
                         if PAUSE_FLAG.load(Ordering::Relaxed) {
                             pause_torrent_function(torrent_stats.to_owned()).await;
+                                
                             break;
                         }
                     } else {
@@ -282,8 +290,11 @@ pub mod torrent_functions {
             });
         }
     
-        handle.wait_until_completed().await?;
-        info!("torrent downloaded");
+        // Wait until the torrent is fully downloaded
+        handle.wait_until_completed().await
+            .context("Error while waiting for torrent to complete")?;
+    
+        info!("Torrent downloaded successfully");
     
         Ok(())
     }
@@ -324,7 +335,8 @@ pub mod torrent_commands {
     use super::torrent_functions;
 
     use super::PAUSE_FLAG;
-    use super::STOP_FLAG;
+ 
+    use super::STOP_FLAG_TORRENT;
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct CustomError {
@@ -431,7 +443,7 @@ pub mod torrent_commands {
     #[tauri::command]
     pub async fn stop_torrent_command() -> Result<(), CustomError> {
         // Set the global stop flag
-        STOP_FLAG.store(true, Ordering::Relaxed);
+        STOP_FLAG_TORRENT.store(true, Ordering::Relaxed);
         Ok(())
     }
 }
