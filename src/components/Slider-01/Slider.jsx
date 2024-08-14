@@ -16,7 +16,6 @@ const Slider = (props) => {
   console.log("Rendering Slider Component");
 
   function cutTheDescription(description) {
-    console.log("cutTheDescription called with:", description);
     if (!description) {
       return { repackDescription: 'Description not available', officialDescription: 'Description not available' };
     }
@@ -34,7 +33,6 @@ const Slider = (props) => {
   }
 
   function extractDetails(description) {
-    console.log("extractDetails called with:", description);
     if (!description) return {
       'Genre/Tags:': 'N/A',
       Companies: 'N/A',
@@ -90,7 +88,6 @@ const Slider = (props) => {
   createEffect(() => {
     const container = document.querySelector(`.${imageContainerClassName}`);
     if (container) {
-      console.log("Image container found:", container);
       container.style.transition = 'transform 0.5s ease-in-out';
 
       const slideImage = container.querySelector('.slide img');
@@ -161,13 +158,13 @@ const Slider = (props) => {
                   href-link={slide.href}
                   file-path={filePath}
                   onClick={() => {
-                    console.log("Image clicked:", slide.title);
                     invoke(`get_games_images`, { gameLink: slide.href });
                     resetHorizontalSlide();
                     render(
                       <Gamehorizontalslide
                         gameTitlePromise={slide.title}
                         filePathPromise={filePath}
+                        gameLinkPromise={slide.href}
                       />,
                       mainContentDiv
                     );

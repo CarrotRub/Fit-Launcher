@@ -1,7 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// TODO: Better thread management during Builder.
 // TODO: Better caching.
 
 
@@ -53,6 +52,7 @@ use lazy_static::lazy_static;
 lazy_static! {
     static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
 }
+
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
@@ -286,22 +286,48 @@ async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
 }
 
+
+#[derive(Serialize, Deserialize, Clone)]
+struct CachedGameImages {
+    game_link: String,
+    images: Vec<String>,
+}
+
+
+// TODO: Add `notify` crate to watch a file for changes without resorting to a performance-draining loop.
+
 #[tauri::command]
-async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image_cache: State<'_, ImageCache>) -> Result<(), CustomError> {
+async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image_cache: State<'_, ImageCache>) -> Result<GameImages, CustomError> {
+    use std::collections::HashMap;
+    use std::path::Path;
+    use tokio::fs;
+
     STOP_FLAG.store(false, Ordering::Relaxed);
     let start_time = Instant::now();
 
-    let mut cache = image_cache.lock().await;
+    // Persistent cache file path
+    let mut cache_file_path = app_handle.path_resolver().app_cache_dir().unwrap();
+    cache_file_path.push("image_cache.json");
 
+    // Load the persistent cache from the file
+    if Path::new(&cache_file_path).exists() {
+        let data = fs::read_to_string(&cache_file_path).await.context("Failed to read cache file")
+            .map_err(|e| CustomError { message: e.to_string() })?;
+        let loaded_cache: HashMap<String, Vec<String>> = serde_json::from_str(&data)
+            .context("Failed to parse cache file").map_err(|e| CustomError { message: e.to_string() })?;
+
+        // Update in-memory LruCache with the loaded HashMap
+        let mut cache = image_cache.lock().await;
+        for (key, value) in loaded_cache {
+            cache.put(key, value);
+        }
+    }
+
+    // Check if the game images are already cached
+    let mut cache = image_cache.lock().await;
     if let Some(cached_images) = cache.get(&game_link) {
         println!("Cache hit! Returning cached images.");
-        let game = GameImages { my_all_images: cached_images.clone() };
-        let json_data = serde_json::to_string_pretty(&game).context("Failed to serialize image sources to JSON")
-            .map_err(|e| CustomError { message: e.to_string() })?;
-        fs::write("../src/temp/singular_games.json", json_data).context("Failed to write JSON data to file")
-            .map_err(|e| CustomError { message: e.to_string() })?;
-
-        return Ok(());
+        return Ok(GameImages { my_all_images: cached_images.clone() }); // Return the cached images
     }
 
     drop(cache); // Release the lock before making network requests
@@ -310,46 +336,27 @@ async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image
         return Err(CustomError { message: "Function stopped.".to_string() });
     }
 
-    let image_srcs = scrape_image_srcs(&game_link).await.map_err(|e| CustomError { message: e.to_string() })?;
+    let image_srcs = scrape_image_srcs(&game_link).await
+        .map_err(|e| CustomError { message: e.to_string() })?;
 
-    // Ensure that at least one image URL is included, even if no images were found
-    let game = GameImages { my_all_images: image_srcs.clone() };
+    // Update the in-memory cache and save it to the persistent cache file
+    let mut cache = image_cache.lock().await;
+    cache.put(game_link.clone(), image_srcs.clone());
 
-    let json_data = serde_json::to_string_pretty(&game).context("Failed to serialize image sources to JSON")
+    // Convert LruCache to HashMap for saving to persistent storage
+    let cache_as_hashmap: HashMap<String, Vec<String>> = cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    let updated_cache_data = serde_json::to_string_pretty(&cache_as_hashmap)
+        .context("Failed to serialize cache data to JSON")
+        .map_err(|e| CustomError { message: e.to_string() })?;
+    fs::write(&cache_file_path, updated_cache_data).await
+        .context("Failed to write cache data to file")
         .map_err(|e| CustomError { message: e.to_string() })?;
 
 
-    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
-    match Path::new(&binding).exists() {
-        true => {
-            ()
-        }
-        false => {
-            fs::create_dir_all(&binding).context("Failed to create directory for JSON data")
-            .map_err(|e| CustomError { message: e.to_string() })?;
-        },
-    }
-    binding.push("tempGames");
-    binding.push("single_game_images.json");
-
-    let mut file = File::create(binding).expect("File could not be created !");
-    file.write_all(json_data.as_bytes()).context("Failed to write JSON data to file")
-    .map_err(|e| CustomError { message: e.to_string() })?;
-
-    if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(CustomError { message: "Function stopped.".to_string() });
-    }
-
-    let end_time = Instant::now();
-    let duration = end_time.duration_since(start_time);
-    println!("Data has been written to single_games.json. Time was: {:?}", duration);
-
-    // Update the cache
-    let mut cache = image_cache.lock().await;
-    cache.put(game_link, image_srcs);
-
-    Ok(())
+    println!("Done Getting Images");    
+    Ok(GameImages { my_all_images: image_srcs }) // Return the newly scraped images
 }
+
 
 //Always serialize returns...
 #[derive(Debug, Serialize, Deserialize)]

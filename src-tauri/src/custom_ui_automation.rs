@@ -93,10 +93,32 @@ mod checklist_automation {
 
 
 pub mod windows_ui_automation {
-    use std::{thread, time};
-
+    use std::process;
+    use std::process::Command;
+    use std::path::Path;
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
+
+    pub fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
+        match Command::new(path)
+        .spawn() {
+
+            Ok(mut child) => {
+                println!("Executable started with PID: {}", child.id());
+                
+                // Wait for the executable to finish
+                match child.wait() {
+                    Ok(status) => println!("Process exited with status: {}", status),
+                    Err(e) => eprintln!("Failed to wait on child process: {}", e),
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to start executable: {}", e);
+                process::exit(1); // Exit the program with an error code
+            },
+    
+        }
+    }
 
     pub fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str) {
 
@@ -113,7 +135,7 @@ pub mod windows_ui_automation {
         // Change path input.
         windows_controls_processes::change_path_input(path_to_game);
         windows_controls_processes::click_next_button();
-        //
+        // Change path input.
         
         // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
         checklist_automation::get_checkboxes_from_list(user_checkboxes_to_check);
