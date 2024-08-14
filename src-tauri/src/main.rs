@@ -1,7 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// TODO: Better caching.
 
 
 mod scrapingfunc;
@@ -46,7 +45,6 @@ use tokio::sync::Mutex;
 use tauri::State;
 // torrenting
 use librqbit::Session;
-use tauri::async_runtime;
 use lazy_static::lazy_static;
 
 lazy_static! {
@@ -303,7 +301,6 @@ async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image
     use tokio::fs;
 
     STOP_FLAG.store(false, Ordering::Relaxed);
-    let start_time = Instant::now();
 
     // Persistent cache file path
     let mut cache_file_path = app_handle.path_resolver().app_cache_dir().unwrap();

@@ -27,6 +27,8 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
     const [isDescOpen, setDescOpen] = createSignal(false);
     const [additionalImages, setAdditionalImages] = createSignal([]);
     const [showPlaceholder, setShowPlaceholder] = createSignal(true);
+    const [externalCheckboxes, setExternalCheckboxes] = createSignal([]);
+
     
     var jsonCheckingTimeoutID;
     var imagesCheckingTimeoutID;
@@ -36,11 +38,14 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
     let searchResultsDiv = document.getElementById('search-results');
     searchResultsDiv.style.display = 'none';
 
-    async function torrentDownloadPopup(cdgGameMagnet, cdgGameTitle, cdgGameImage) {
+
+    async function torrentDownloadPopup(cdgGameMagnet, cdgGameTitle, cdgGameImage) 
+    {
         const lastInputPath = localStorage.getItem('LUP');
         const currentCDG = JSON.parse(localStorage.getItem('CDG'));
         const currentCDGStats = JSON.parse(localStorage.getItem('CDG_Stats'));
-        console.log(currentCDGStats)
+        console.log(currentCDGStats);
+    
         const infoSingleCDG = {
             gameMagnet: cdgGameMagnet,
             gameTitle: cdgGameTitle,
@@ -48,14 +53,14 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
         };
     
         if (currentCDG) {
-            if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state != "paused" ) {
+            if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state !== "paused") {
                 Swal.fire({
                     title: "Information",
                     text: "This game is already downloading.",
                     icon: "info"
                 });
                 return;
-            } else if( currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state === "paused" ) {
+            } else if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state === "paused") {
                 Swal.fire({
                     title: 'Resume your download?',
                     text: "Do you want to resume the current download?",
@@ -67,7 +72,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                     if(result.isConfirmed) {
                         startDownloadProcess();
                     }
-                }) 
+                });
             } else {
                 Swal.fire({
                     title: "Error",
@@ -109,10 +114,9 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
             const pathResult = await Swal.fire({
                 title: 'Where do you want to download this game?',
                 icon: 'question',
-                html: `
-                    <input type="text" id="gamePathInput" class="swal2-input" placeholder="Game Path">
-                    <button id="selectPathButton" class="swal2-confirm swal2-styled">Select Path</button>
-                `,
+                html: 
+                    `<input type="text" id="gamePathInput" class="swal2-input" placeholder="Game Path">
+                     <button id="selectPathButton" class="swal2-confirm swal2-styled">Select Path</button>`,
                 showCancelButton: true,
                 confirmButtonText: 'Download!',
                 didOpen: () => {
@@ -142,14 +146,32 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                         if (exists) {
                             localStorage.setItem('LUP', inputPath);
                             localStorage.setItem('CDG', JSON.stringify([infoSingleCDG]));  // Store only the current game
-
+        
                             // Update the game path in settings.json
                             await updateGamePathInSettings(inputPath);
         
-                            const fileList = await invoke('start_torrent_command', {
+                            // Declare fileList in a higher scope
+                            let fileList = [];
+        
+                            fileList = await invoke('start_torrent_command', {
                                 magnetLink: cdgGameMagnet,
-                                downloadPath: inputPath
+                                downloadPath: inputPath,
+                                listCheckbox: externalCheckboxes()
                             });
+        
+                            console.log("File list:", fileList);
+        
+                            // Add the new checkboxes here
+                            const externalCheckboxesHtml = `
+                                <div>
+                                    <input type="checkbox" id="downloadDirectX" value="Download DirectX">
+                                    <label for="downloadDirectX">Download DirectX</label>
+                                </div>
+                                <div>
+                                    <input type="checkbox" id="downloadMSCpp" value="Download Microsoft C++">
+                                    <label for="downloadMSCpp">Download Microsoft C++</label>
+                                </div>
+                            `;
         
                             const fileCheckboxes = fileList.map((file, index) => {
                                 const isOptional = file.includes('optional');
@@ -163,24 +185,48 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
         
                             const { value: selectedFiles } = await Swal.fire({
                                 title: "Select Files to Download",
-                                html: `
-                                    <form id="fileSelectionForm">
+                                html: 
+                                    `<form id="fileSelectionForm">
+                                        ${externalCheckboxesHtml}
                                         ${fileCheckboxes}
-                                    </form>
-                                `,
+                                    </form>`,
                                 confirmButtonText: 'Download Selected Files',
                                 showCancelButton: true,
                                 preConfirm: () => {
                                     const form = document.getElementById('fileSelectionForm');
+        
+                                    // Check the status of DirectX and Microsoft C++ checkboxes
+                                    const directXCheckbox = form.querySelector('#downloadDirectX');
+                                    const msvcCheckbox = form.querySelector('#downloadMSCpp');
+        
+                                    const uncheckedOptions = [];
+        
+                                    if (!directXCheckbox.checked) {
+                                        uncheckedOptions.push("directx");
+                                    }
+                                    if (!msvcCheckbox.checked) {
+                                        uncheckedOptions.push("microsoft");
+                                    }
+        
+                                    // Update the signal with unchecked options
+                                    setExternalCheckboxes(uncheckedOptions);
+        
                                     const selected = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'))
-                                                          .map(checkbox => parseInt(checkbox.value));
+                                        .map(checkbox => parseInt(checkbox.value, 10)); // Convert string to number
+        
+                                    console.log("Selected files:", selected);
                                     return selected;
                                 }
                             });
-
+        
                             if (selectedFiles) {
+                                console.log("Files selected for download:", selectedFiles);
+                                // Send the selected files to the backend
                                 await invoke('select_files_to_download', { selectedFiles });
                                 console.log('Files selected for download:', selectedFiles);
+        
+                                // Log the external checkboxes signal value
+                                console.log('External checkboxes:', externalCheckboxes());
         
                                 Swal.fire({
                                     title: "Starting Download!",
@@ -189,9 +235,9 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                                 });
         
                                 window.dispatchEvent(new Event('start-download'));
-                            }
-        
+                            } 
                         } else {
+                            console.log("hiiii",selectedFiles)
                             Swal.fire({
                                 title: "ERROR: PATH DOES NOT EXIST",
                                 text: "Your path does not exist, please use the 'Select Path' button to be sure you are using the right path.",
@@ -216,7 +262,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
             }
         }
     }
-    
+
     async function updateGamePathInSettings(newPath) {
         try {
             const fileContentObj = await readFile(ftgConfigPath);

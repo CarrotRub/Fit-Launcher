@@ -137,6 +137,7 @@ pub mod torrent_functions {
         magnet_link: String,
         torrent_stats: Arc<Mutex<super::TorrentStatsInformations>>,
         download_path: String,
+        checkboxes_list: Vec<String>,
         file_list_tx: oneshot::Sender<Vec<String>>,
         file_selection_rx: oneshot::Receiver<Vec<usize>>,
     ) -> Result<(), anyhow::Error> {
@@ -263,8 +264,9 @@ pub mod torrent_functions {
     
                         if torrent_stats.finished {
                             stop_torrent_function(session.clone()).await;
-                            windows_ui_automation::start_executable(output_folder_path);
+                            windows_ui_automation::setup_start(output_folder_path);
                             thread::sleep(time::Duration::from_millis(3000));
+                            // windows_ui_automation::automate_until_download(checkboxes_list, &download_path);
                             break;
                         }
     
@@ -366,6 +368,7 @@ pub mod torrent_commands {
         magnet_link: String,
         download_path: String,
         torrent_state: State<'_, super::TorrentState>,
+        list_checkbox: Vec<String>
     ) -> Result<Vec<String>, String> {
         
         let torrent_stats: Arc<Mutex<super::TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
@@ -387,6 +390,7 @@ pub mod torrent_commands {
                 magnet_link,
                 torrent_stats,
                 download_path,
+                list_checkbox,
                 file_list_tx,
                 file_selection_rx,
             )
