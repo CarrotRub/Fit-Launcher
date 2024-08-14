@@ -99,10 +99,15 @@ pub mod windows_ui_automation {
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
 
+    pub fn setup_start(path: String) {
+        println!("{:#?}",path);
+        Command::new(path);
+    }
+
     pub fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
         match Command::new(path)
-        .spawn() {
-
+            .spawn() 
+        {
             Ok(mut child) => {
                 println!("Executable started with PID: {}", child.id());
                 
@@ -114,9 +119,14 @@ pub mod windows_ui_automation {
             }
             Err(e) => {
                 eprintln!("Failed to start executable: {}", e);
+    
+                // Optionally, you might want to check if the file is being used
+                if e.kind() == std::io::ErrorKind::AlreadyExists {
+                    eprintln!("The file may be used by another process. Please check if it's locked.");
+                }
+    
                 process::exit(1); // Exit the program with an error code
             },
-    
         }
     }
 
