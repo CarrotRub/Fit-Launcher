@@ -6,7 +6,6 @@ import { writeFile, createDir, readTextFile } from '@tauri-apps/api/fs';
 import './Downloadingpartsidebar.css';
 import Gameverticaldownloadslide from '../../Gamedownloadvertical-01/Gamedownloadvertical'
 
-// TODO: Add Timestamps for better ordering inside the sidebar.
 
 function Downloadingpartsidebar() {
 

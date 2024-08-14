@@ -1,7 +1,7 @@
 import { createSignal, onMount } from "solid-js";
 import { appConfigDir } from "@tauri-apps/api/path";
 import { readTextFile, writeTextFile, exists } from "@tauri-apps/api/fs";
-
+import { createDir } from "@tauri-apps/api/fs";
 import './Settings.css';
 
 // Define default settings
@@ -13,13 +13,20 @@ const defaultSettings = {
   importPath: "",
   two_gb_limit: true
 };
-
 // Define a function to load settings from the JSON file
 async function loadSettings() {
   const configDir = await appConfigDir();
-  const settingsPath = `${configDir}/settings.json`;
+  const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`; // Define the directory path
+  const settingsPath = `${dirPath}/settings.json`; // Define the settings file path
 
   try {
+    // Check if the directory exists, and if not, create it
+    const dirExists = await exists(dirPath);
+    if (!dirExists) {
+      await createDir(dirPath, { recursive: true });
+      console.log("Directory created:", dirPath);
+    }
+
     // Check if the settings file exists
     const fileExists = await exists(settingsPath);
     if (!fileExists) {
@@ -38,10 +45,12 @@ async function loadSettings() {
   }
 }
 
+
 // Define a function to save settings to the JSON file
 async function saveSettings(settings) {
   const configDir = await appConfigDir();
-  const settingsPath = `${configDir}/settings.json`;
+  const dirPath = `${configDir.replace(/\\/g, '/')}fitgirlConfig`; // Define the directory path
+  const settingsPath = `${dirPath}/settings.json`; // Define the settings file path
 
   try {
     await writeTextFile(settingsPath, JSON.stringify(settings, null, 2));

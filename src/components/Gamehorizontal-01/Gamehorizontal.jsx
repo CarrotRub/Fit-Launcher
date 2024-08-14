@@ -7,15 +7,21 @@ import Carousel from '../Carousel-01/Carousel';
 import { invoke } from '@tauri-apps/api/tauri';
 import { translate } from '../../translation/translate';
 import { open } from '@tauri-apps/api/dialog';
-import { appConfigDir } from '@tauri-apps/api/path';
+import { appCacheDir, appConfigDir } from '@tauri-apps/api/path';
+import { writeFile } from '@tauri-apps/api/fs';
 import './GameHorizontal.css';
+
+const cacheDir = await appCacheDir();
+const cacheDirPath = cacheDir.replace(/\\/g, '/');
 
 const appDir =  await appConfigDir();
 const dirPath = appDir.replace(/\\/g, '/');
 
 const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
+const ftgConfigPath = `${dirPath}fitgirlConfig/settings.json`;
+const gameImagesCache = `${cacheDirPath}image_cache.json`;
 
-const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
+const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromise }) => {
     const [gameInfo, setGameInfo] = createSignal(null);
     const [loading, setLoading] = createSignal(true);
     const [isDescOpen, setDescOpen] = createSignal(false);
@@ -27,11 +33,8 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
     var errorCheckingTimeoutID;
     var placeholderTimeoutID;
 
-
     let searchResultsDiv = document.getElementById('search-results');
     searchResultsDiv.style.display = 'none';
-
-
 
     async function torrentDownloadPopup(cdgGameMagnet, cdgGameTitle, cdgGameImage) {
         const lastInputPath = localStorage.getItem('LUP');
@@ -45,9 +48,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
         };
     
         if (currentCDG) {
-            // If there's already a game in CDG
             if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state != "paused" ) {
-                // If it's the same game
                 Swal.fire({
                     title: "Information",
                     text: "This game is already downloading.",
@@ -55,9 +56,8 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                 });
                 return;
             } else if( currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state === "paused" ) {
-
                 Swal.fire({
-                    title: 'Resume your download ?',
+                    title: 'Resume your download?',
                     text: "Do you want to resume the current download?",
                     icon: 'info',
                     showCancelButton: true,
@@ -68,10 +68,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                         startDownloadProcess();
                     }
                 }) 
-
-                
             } else {
-                // If it's a different game
                 Swal.fire({
                     title: "Error",
                     text: "A different game is already downloading.",
@@ -83,7 +80,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: 'Are you sure?',
-                            text: "Do you really want to delete the current download?\nIt will stop the current download but you can still start it later.",
+                            text: "Do you really want to delete the current download? It will stop the current download but you can still start it later.",
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonText: 'Yes, delete it!',
@@ -109,7 +106,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
         }
     
         async function startDownloadProcess() {
-            // First Swal for selecting game path
             const pathResult = await Swal.fire({
                 title: 'Where do you want to download this game?',
                 icon: 'question',
@@ -146,14 +142,15 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                         if (exists) {
                             localStorage.setItem('LUP', inputPath);
                             localStorage.setItem('CDG', JSON.stringify([infoSingleCDG]));  // Store only the current game
+
+                            // Update the game path in settings.json
+                            await updateGamePathInSettings(inputPath);
         
-                            // Start the torrent command and get the list of files
                             const fileList = await invoke('start_torrent_command', {
                                 magnetLink: cdgGameMagnet,
                                 downloadPath: inputPath
                             });
         
-                            // Create checkboxes for each file in the list
                             const fileCheckboxes = fileList.map((file, index) => {
                                 const isOptional = file.includes('optional');
                                 return `
@@ -164,7 +161,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                                 `;
                             }).join('');
         
-                            // Show Swal with the file list and checkboxes
                             const { value: selectedFiles } = await Swal.fire({
                                 title: "Select Files to Download",
                                 html: `
@@ -178,17 +174,11 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                                     const form = document.getElementById('fileSelectionForm');
                                     const selected = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'))
                                                           .map(checkbox => parseInt(checkbox.value));
-                                    // if (selected.length === 0) {
-                                    //     Swal.showValidationMessage('You need to select at least one file.');
-                                    //     return false;
-                                    // }
                                     return selected;
                                 }
                             });
-        
 
                             if (selectedFiles) {
-                                // Send the selected files to the backend for downloading
                                 await invoke('select_files_to_download', { selectedFiles });
                                 console.log('Files selected for download:', selectedFiles);
         
@@ -198,7 +188,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
                                     icon: "success"
                                 });
         
-                                // Notify the Downloadingpartsidebar component to start showing stats
                                 window.dispatchEvent(new Event('start-download'));
                             }
         
@@ -228,6 +217,27 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
         }
     }
     
+    async function updateGamePathInSettings(newPath) {
+        try {
+            const fileContentObj = await readFile(ftgConfigPath);
+            const fileContent = fileContentObj.content;
+            const configData = JSON.parse(fileContent);
+
+            // Update the gamePath in the config
+            configData.defaultDownloadPath = newPath;
+
+            // Write the updated config back to the file
+            await writeFile(ftgConfigPath, JSON.stringify(configData, null, 2));
+        } catch (error) {
+            console.error('Failed to update settings.json:', error);
+            Swal.fire({
+                title: "ERROR: FAILED TO UPDATE GAME PATH",
+                text: "There was an error updating the game path in the settings file.",
+                icon: "error"
+            });
+        }
+    }
+    
     async function fetchGameInfo(title, filePath) {
         try {
             const fileContentObj = await readFile(filePath);
@@ -247,35 +257,38 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise }) => {
     }
 
     async function fetchAdditionalImages() {
-        async function checkImages() {
+
+        async function checkImages(url) {
             try {
-                const fileContentObj = await readFile(singularGamePath);
-                const fileContent = fileContentObj.content;
-    
-                let imageSingleGameData;
+                const cacheFileContentObj = await readFile(gameImagesCache);
+                const cacheFileContent = cacheFileContentObj.content;
+
+                let imagesCache;
+
                 try {
-                    imageSingleGameData = JSON.parse(fileContent);
+                    imagesCache = JSON.parse(cacheFileContent);
                 } catch (parseError) {
-                    console.log("Invalid JSON, rechecking in 0.5 seconds...");
-                    jsonCheckingTimeoutID = setTimeout(checkImages, 500);
+                    console.log("Invalid Persistent Cache JSON");
                     return;
                 }
-    
-                if (!imageSingleGameData.my_all_images || imageSingleGameData.my_all_images.length === 0) {
-                    console.log("No images found, rechecking in 0.5 seconds...");
-                    imagesCheckingTimeoutID = setTimeout(checkImages, 500);
+
+                if (imagesCache[url]) {
+                    setAdditionalImages(imagesCache[url]);
+                    setShowPlaceholder(false);
                 } else {
-                    setAdditionalImages(imageSingleGameData.my_all_images);
-                    setShowPlaceholder(false); // Hide the placeholder when images are found
+                    console.log("Not found in persistent cache, going to start the function.");
+                    imagesCheckingTimeoutID = setTimeout(checkImages.bind(null, url), 500);
                 }
+
             } catch (error) {
-                console.error('Error checking images:', error);
-                errorCheckingTimeoutID = setTimeout(checkImages, 2000);
+                throw new Error(error);
             }
+ 
         }
     
         try {
-            await checkImages();
+
+            await checkImages(gameLinkPromise);
         } catch (error) {
             console.error('Error fetching additional images:', error);
         }

@@ -67,6 +67,8 @@ impl TorrentState {
 pub mod torrent_functions {
 
     use std::error::Error;
+    use std::thread;
+    use std::time;
     use serde::{Deserialize, Serialize};
     use tokio::sync::oneshot;
     use std::fmt;
@@ -75,8 +77,8 @@ pub mod torrent_functions {
     use anyhow::{Result, Context};
     use std::sync::{Arc, atomic::Ordering};
     use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, TorrentStatsState, SessionOptions};
+    use crate::custom_ui_automation::windows_ui_automation;
     use tracing::info;
-
     use super::SESSION;
     use super::STOP_FLAG_TORRENT;
     use super::PAUSE_FLAG;
@@ -128,22 +130,9 @@ pub mod torrent_functions {
         }
     }
 
+    // TODO: Add file cleaning for LAAAAATER.
 
-
-    struct TorrentListing {
-        item_names: Vec<String>,
-        item_idx: Vec<usize>
-    }
-
-    impl TorrentListing {
-        fn new() -> Self {
-            TorrentListing {
-                item_names: Vec::new(),
-                item_idx: Vec::new()
-            }
-        }
-    }
-
+    // TODO: Add checkboxes list param.
     pub async fn start_torrent_thread(
         magnet_link: String,
         torrent_stats: Arc<Mutex<super::TorrentStatsInformations>>,
@@ -153,7 +142,7 @@ pub mod torrent_functions {
     ) -> Result<(), anyhow::Error> {
         let output_dir = download_path.clone();
         let mut session = SESSION.lock().await;
-    
+        
         // Initialize session if it doesn't exist
         if session.is_none() {
             let mut custom_session_options = SessionOptions::default();
@@ -185,7 +174,11 @@ pub mod torrent_functions {
             )
             .await
             .context("Error adding torrent to session")?;
-    
+
+
+        let mut output_folder_path: String = String::new();
+
+        
         let handle = match response {
             AddTorrentResponse::Added(_, handle) => handle,
             AddTorrentResponse::AlreadyManaged(_, _) => {
@@ -201,7 +194,13 @@ pub mod torrent_functions {
                 for (filename, _len) in info {
                     file_list_names.push(filename.to_string().context("Error converting filename to string")?);
                 }
-    
+
+                let old_output_folder_path = handle.output_folder;
+                
+                
+
+                output_folder_path = old_output_folder_path.join("setup.exe").to_str().unwrap().into();
+
                 file_list_tx.send(file_list_names)
                     .map_err(|_| anyhow::anyhow!("Failed to send file list to the frontend"))?;
     
@@ -264,6 +263,8 @@ pub mod torrent_functions {
     
                         if torrent_stats.finished {
                             stop_torrent_function(session.clone()).await;
+                            windows_ui_automation::start_executable(output_folder_path);
+                            thread::sleep(time::Duration::from_millis(3000));
                             break;
                         }
     

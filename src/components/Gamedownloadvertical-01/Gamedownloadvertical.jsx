@@ -28,10 +28,11 @@ function Gameverticaldownloadslide({ isActive }) {
         const currentState = gameInfo().state;
         if(currentState) {
             if (currentState === 'paused') {
-                await invoke('pause_torrent_command')
+                await invoke('resume_torrent_command')
                 
             } else if (currentState === 'live') {
-                await invoke('resume_torrent_command')
+                
+                await invoke('pause_torrent_command')
                 console.log("pAUSED")
             }
         }

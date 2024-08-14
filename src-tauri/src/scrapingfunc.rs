@@ -1,14 +1,11 @@
 
 pub mod basic_scraping {
 
-    // TODO: Add better error handling.
     use librqbit::Session;
     use serde::{Deserialize, Serialize};
     use core::str;
-    use std::error::Error;
-    use std::{fs, io};
+    use std::fs;
     use scraper::{Html, Selector};
-    use scraper::error::SelectorErrorKind;
     use reqwest::Client;
     use std::fs::File;
     use std::io::Write;
