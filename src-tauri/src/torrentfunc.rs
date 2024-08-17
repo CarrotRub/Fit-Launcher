@@ -13,6 +13,7 @@ lazy_static! {
 
 static STOP_FLAG_TORRENT: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
+static STOP_GET_STATS: AtomicBool = AtomicBool::new(false);
 
     // Creation of a struct containing every useful infomartion that will be used later on in the FrontEnd.
 #[derive(Debug, Clone, Serialize)]
@@ -65,25 +66,22 @@ impl TorrentState {
 }
 
 pub mod torrent_functions {
-
     use std::error::Error;
+    use std::fmt;
     use std::thread;
     use std::time;
+    use std::time::Duration;
     use serde::{Deserialize, Serialize};
     use tokio::sync::oneshot;
-    use std::fmt;
-    use std::time::Duration;
     use tokio::sync::Mutex;
     use anyhow::{Result, Context};
     use std::sync::{Arc, atomic::Ordering};
     use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, TorrentStatsState, SessionOptions};
-    use crate::custom_ui_automation::windows_ui_automation;
     use tracing::info;
-    use super::SESSION;
-    use super::STOP_FLAG_TORRENT;
-    use super::PAUSE_FLAG;
+    use crate::custom_ui_automation::windows_ui_automation;
 
-    
+    use super::{ SESSION,STOP_FLAG_TORRENT, PAUSE_FLAG, STOP_GET_STATS};
+
     #[derive(Debug, Serialize, Deserialize)]
     struct CustomError {
         message: String,
@@ -105,10 +103,6 @@ pub mod torrent_functions {
         }
     }
 
-
-
-
-    // * Creating a special TorrentError that will just be an impl of anyhow basic string error.
     #[derive(Debug, Serialize)]
     pub struct TorrentError {
         pub message: String,
@@ -120,7 +114,7 @@ pub mod torrent_functions {
         }
     }
 
-    impl std::error::Error for TorrentError {}
+    impl Error for TorrentError {}
 
     impl From<anyhow::Error> for TorrentError {
         fn from(error: anyhow::Error) -> Self {
@@ -130,9 +124,7 @@ pub mod torrent_functions {
         }
     }
 
-    // TODO: Add file cleaning for LAAAAATER.
-
-    // TODO: Add checkboxes list param.
+    // Starts the torrent thread to manage download
     pub async fn start_torrent_thread(
         magnet_link: String,
         torrent_stats: Arc<Mutex<super::TorrentStatsInformations>>,
@@ -176,15 +168,9 @@ pub mod torrent_functions {
             .await
             .context("Error adding torrent to session")?;
 
-
         let mut output_folder_path: String = String::new();
 
-        
         let handle = match response {
-            AddTorrentResponse::Added(_, handle) => handle,
-            AddTorrentResponse::AlreadyManaged(_, _) => {
-                return Err(anyhow::anyhow!("Torrent is already being managed by the session."));
-            }
             AddTorrentResponse::ListOnly(handle) => {
                 let info = handle
                     .info
@@ -196,12 +182,6 @@ pub mod torrent_functions {
                     file_list_names.push(filename.to_string().context("Error converting filename to string")?);
                 }
 
-                let old_output_folder_path = handle.output_folder;
-                
-                
-
-                output_folder_path = old_output_folder_path.join("setup.exe").to_str().unwrap().into();
-
                 file_list_tx.send(file_list_names)
                     .map_err(|_| anyhow::anyhow!("Failed to send file list to the frontend"))?;
     
@@ -209,7 +189,6 @@ pub mod torrent_functions {
                 let selected_files = file_selection_rx.await
                     .map_err(|_| anyhow::anyhow!("Failed to receive selected files from the frontend"))?;
     
-                // Add torrent with the selected files for download
                 let response = session
                     .add_torrent(
                         AddTorrent::from_url(&magnet_link),
@@ -223,109 +202,94 @@ pub mod torrent_functions {
                     )
                     .await
                     .context("Error adding selected files torrent for download")?;
-    
+                let old_output_folder_path = handle.output_folder;
+                output_folder_path = old_output_folder_path.join("setup.exe").to_str().unwrap().into();
                 match response {
                     AddTorrentResponse::Added(_, handle) => handle,
                     _ => return Err(anyhow::anyhow!("Unexpected response when re-adding torrent for download")),
                 }
-            }
+            },
+            _ => return Err(anyhow::anyhow!("Unexpected response when adding torrent")),
         };
     
-        // Spawn a task to periodically update torrent statistics
-        {
-            let handle = handle.clone();
-            let torrent_stats = Arc::clone(&torrent_stats);
-            tokio::spawn(async move {
-                loop {
-                    tokio::time::sleep(Duration::from_secs(1)).await;
-    
-                    let stats = handle.stats();
-                    let mut torrent_stats = torrent_stats.lock().await;
-    
-                    torrent_stats.state = stats.state.clone();
-                    torrent_stats.file_progress = stats.file_progress.clone();
-                    torrent_stats.error = stats.error.clone();
-                    torrent_stats.progress_bytes = stats.progress_bytes;
-                    torrent_stats.uploaded_bytes = stats.uploaded_bytes;
-                    torrent_stats.total_bytes = stats.total_bytes;
-                    torrent_stats.finished = stats.finished;
-    
-                    if let Some(live_stats) = stats.live {
-                        torrent_stats.download_speed = Some(live_stats.download_speed.mbps as f64);
-                        torrent_stats.upload_speed = Some(live_stats.upload_speed.mbps as f64);
-    
-                        torrent_stats.average_piece_download_time = live_stats
-                            .average_piece_download_time
-                            .map(|d| d.as_secs_f64());
-    
-                        torrent_stats.time_remaining = live_stats
-                            .time_remaining
-                            .map(|d| d.to_string());
-    
-                        if torrent_stats.finished {
-                            stop_torrent_function(session.clone()).await;
-                            windows_ui_automation::setup_start(output_folder_path);
-                            thread::sleep(time::Duration::from_millis(3000));
-                            // windows_ui_automation::automate_until_download(checkboxes_list, &download_path);
-                            break;
-                        }
-    
-                        if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
-                            stop_torrent_function(session.clone()).await;
-            
-                            break;
-                        }
-    
-                        if PAUSE_FLAG.load(Ordering::Relaxed) {
-                            pause_torrent_function(torrent_stats.to_owned()).await;
-                                
-                            break;
-                        }
-                    } else {
-                        torrent_stats.download_speed = None;
-                        torrent_stats.upload_speed = None;
-                        torrent_stats.average_piece_download_time = None;
-                        torrent_stats.time_remaining = None;
+        let handle_clone = handle.clone();
+        let game_folder_name = handle.info.info.name.clone();
+        drop(handle); // Drop the original handle, only keep the clone
+        let torrent_stats = Arc::clone(&torrent_stats);
+        let session_clone = session.clone();  // Clone session for usage in the async task
+        drop(session);
+        
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                
+                let stats = handle_clone.stats();
+                let mut torrent_stats = torrent_stats.lock().await;
+                
+                torrent_stats.state = stats.state.clone();
+                torrent_stats.file_progress = stats.file_progress.clone();
+                torrent_stats.error = stats.error.clone();
+                torrent_stats.progress_bytes = stats.progress_bytes;
+                torrent_stats.uploaded_bytes = stats.uploaded_bytes;
+                torrent_stats.total_bytes = stats.total_bytes;
+                torrent_stats.finished = stats.finished;
+                
+                if let Some(live_stats) = stats.live {
+                    torrent_stats.download_speed = Some(live_stats.download_speed.mbps as f64);
+                    torrent_stats.upload_speed = Some(live_stats.upload_speed.mbps as f64);
+                    torrent_stats.average_piece_download_time = live_stats.average_piece_download_time.map(|d| d.as_secs_f64());
+                    torrent_stats.time_remaining = live_stats.time_remaining.map(|d| d.to_string());
+                    
+                    if torrent_stats.finished {
+                        
+                        let mut necessary_game_path = format!("{}\\{}", &download_path, game_folder_name.unwrap());
+                        necessary_game_path = necessary_game_path.replace(" [FitGirl Repack]", "");
+                        println!("{}", necessary_game_path);
+                        session_clone.stop().await;
+                        drop(session_clone);
+                        STOP_GET_STATS.store(true, Ordering::Relaxed);
+                        drop(handle_clone);
+                        let mut lock = SESSION.lock().await;
+                        *lock = None; 
+                        windows_ui_automation::start_executable(output_folder_path);
+                        println!("waiting...");
+                        thread::sleep(time::Duration::from_millis(3000));
+                        println!("continue !");
+                        windows_ui_automation::automate_until_download(checkboxes_list, &necessary_game_path);
+                        println!("done for real");
+                        break;
                     }
-    
-                    info!("{:?}", *torrent_stats);
+                    
+                    if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
+                        session_clone.stop().await;
+                        break;
+                    }
+                    
+                    if PAUSE_FLAG.load(Ordering::Relaxed) {
+                        torrent_stats.state = TorrentStatsState::Paused;
+                        break;
+                    }
+                } else {
+                    torrent_stats.download_speed = None;
+                    torrent_stats.upload_speed = None;
+                    torrent_stats.average_piece_download_time = None;
+                    torrent_stats.time_remaining = None;
                 }
-            });
-        }
-    
-        // Wait until the torrent is fully downloaded
-        handle.wait_until_completed().await
-            .context("Error while waiting for torrent to complete")?;
-    
-        info!("Torrent downloaded successfully");
-    
+                
+                info!("{:?}", *torrent_stats);
+               
+            }
+        });
+        
         Ok(())
     }
-
-    async fn stop_torrent_function(session_id: Arc<Session>){
-        session_id.stop().await;
-    }
-
-
-    // New pause_torrent_function
-    async fn pause_torrent_function(torrent_stats: super::TorrentStatsInformations) {
-        // let torrent_stats: Arc<Mutex<TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
-        let mut stats = torrent_stats;
-
-        // Update the state to paused
-        stats.state = TorrentStatsState::Paused;
-
-
-    }
-
-
-
 }
 
 
 pub mod torrent_commands {
 
     use serde::{Deserialize, Serialize};
+    use tauri::api::process::kill_children;
     use tokio::sync::oneshot;
     use std::error::Error;
     use tauri::State;
@@ -402,7 +366,6 @@ pub mod torrent_commands {
     
         // Wait for the file list from the spawned thread
         let file_list = file_list_rx.await.map_err(|e| format!("Failed to receive file list: {:?}", e))?;
-    
         // Return the file list to the frontend for user selection
         Ok(file_list)
     }
@@ -425,8 +388,18 @@ pub mod torrent_commands {
     }
 
     #[tauri::command]
-    pub async fn get_torrent_stats(torrent_state: State<'_, super::TorrentState>) -> Result<super::TorrentStatsInformations, torrent_functions::TorrentError> {
-        let torrent_stats: tokio::sync::MutexGuard<super::TorrentStatsInformations> = torrent_state.stats.lock().await;
+    pub async fn get_torrent_stats(
+        torrent_state: State<'_, super::TorrentState>,
+    ) -> Result<super::TorrentStatsInformations, torrent_functions::TorrentError> {
+        // Check the stop flag before fetching stats
+        if super::STOP_GET_STATS.load(Ordering::Relaxed) {
+            return Err(torrent_functions::TorrentError {
+                message: "Fetching of torrent stats has been stopped.".into(),
+            });
+        }
+    
+        let torrent_stats: tokio::sync::MutexGuard<super::TorrentStatsInformations> =
+            torrent_state.stats.lock().await;
         println!("Current torrent stats: {:?}", *torrent_stats);
         Ok(torrent_stats.clone())
     }
