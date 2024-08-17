@@ -90,55 +90,53 @@ function Downloadingpartsidebar() {
 
         const hihiChut = JSON.parse(localStorage.getItem('CDG_Stats'));
         let isTorrentFinished = hihiChut.finished;
-
-        if(isTorrentFinished){
-            console.log("finishedddddd")
+        
+        if (isTorrentFinished) {
+            console.log("finishedddddd");
             const current_game = JSON.parse(localStorage.getItem('CDG'))[0];
-            console.log(isTorrentFinished)
-            
+            console.log(isTorrentFinished);
+        
             const gameData = {
                 title: current_game.gameTitle,
                 img: current_game.gameImage,
                 magnetlink: current_game.gameMagnet,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
-            
+        
             try {
                 const appDir = await appConfigDir();
-                const dirPath = `${appDir}data\\`
+                const dirPath = `${appDir}data\\`;
                 const filePath = `${dirPath}downloaded_games.json`;
-            
+        
                 console.log('Creating directory:', dirPath);
                 await createDir(dirPath, { recursive: true });
-                if(!filePath) {
-                    await writeFile(filePath, "[]")
-                }
-                console.log('Reading existing file content:', filePath);
+        
                 let existingData = [];
+        
                 try {
                     const fileContent = await readTextFile(filePath);
                     existingData = JSON.parse(fileContent);
                 } catch (readError) {
-                    throw readError;
+                    // If file doesn't exist, create it with an empty array
+                    console.log('File does not exist, creating a new one.');
+                    await writeFile(filePath, JSON.stringify([]));
+                    existingData = [];
                 }
-                
+        
                 if (!Array.isArray(existingData)) {
                     existingData = [];
                 }
-                console.log(existingData)
+        
+                console.log(existingData);
+        
                 // Check if the game already exists
-                const gameExists = existingData.some(game => 
-                    game.title === gameData.title
-                );
-                
-                console.log("checked and it is : ", gameExists)
+                const gameExists = existingData.some(game => game.title === gameData.title);
+        
+                console.log("checked and it is: ", gameExists);
                 if (!gameExists) {
                     existingData.push(gameData);
                     console.log('Writing updated data to path:', filePath);
-                    await writeFile({
-                        path: filePath,
-                        contents: JSON.stringify(existingData, null, 2), // Beautify JSON with 2 spaces indentation
-                    });
+                    await writeFile(filePath, JSON.stringify(existingData, null, 2)); // Beautify JSON with 2 spaces indentation
                     console.log('Game data saved successfully:', gameData);
                 } else {
                     console.log('Game already exists in the file, not adding again:', gameData);
@@ -147,6 +145,7 @@ function Downloadingpartsidebar() {
                 console.error('Error saving game data:', error);
             }
         }
+        
         console.log(isActiveDownload(), torrentInfo())
         if (torrentInfo() && isActiveDownload()) {
 

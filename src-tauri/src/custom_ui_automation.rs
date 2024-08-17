@@ -98,38 +98,33 @@ pub mod windows_ui_automation {
     use std::path::Path;
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
-
-    pub fn setup_start(path: String) {
-        println!("{:#?}",path);
-        Command::new(path);
-    }
-
+    
     pub fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
         match Command::new(path)
             .spawn() 
         {
             Ok(mut child) => {
                 println!("Executable started with PID: {}", child.id());
-                
-                // Wait for the executable to finish
-                match child.wait() {
-                    Ok(status) => println!("Process exited with status: {}", status),
-                    Err(e) => eprintln!("Failed to wait on child process: {}", e),
-                }
             }
             Err(e) => {
                 eprintln!("Failed to start executable: {}", e);
     
                 // Optionally, you might want to check if the file is being used
-                if e.kind() == std::io::ErrorKind::AlreadyExists {
-                    eprintln!("The file may be used by another process. Please check if it's locked.");
+                if e.raw_os_error() == Some(32) {
+                    eprintln!(" Some Other Process is Creeping on him.")
                 }
     
-                process::exit(1); // Exit the program with an error code
             },
         }
     }
 
+    pub fn open_with_default_application(path: String) -> std::io::Result<()> {
+        Command::new("cmd")
+            .args([&path])
+            .spawn()?
+            .wait()?;
+        Ok(())
+    }
     pub fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str) {
 
         // Skip Select Setup Language.
