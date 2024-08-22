@@ -28,15 +28,22 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
     const [additionalImages, setAdditionalImages] = createSignal([]);
     const [showPlaceholder, setShowPlaceholder] = createSignal(true);
     const [externalCheckboxes, setExternalCheckboxes] = createSignal([]);
-
+    const [searchResultDisplay, setSearchResultDisplay] = createSignal(false);    // False = None, True = Flex
     
     var jsonCheckingTimeoutID;
     var imagesCheckingTimeoutID;
     var errorCheckingTimeoutID;
     var placeholderTimeoutID;
 
+    setSearchResultDisplay(false);
     let searchResultsDiv = document.getElementById('search-results');
-    searchResultsDiv.style.display = 'none';
+    
+    if(searchResultsDiv.style.display === 'none') {
+        setSearchResultDisplay(false);
+    } else {
+        searchResultsDiv.style.display = 'none'
+        setSearchResultDisplay(true);
+    }
 
 
     async function torrentDownloadPopup(cdgGameMagnet, cdgGameTitle, cdgGameImage) 
@@ -151,12 +158,17 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                             await updateGamePathInSettings(inputPath);
         
                             // Declare fileList in a higher scope
-                            let fileList = [];
-        
+                            let fileList = [];  
+                            const fileContentObj = await readFile(ftgConfigPath);
+                            const fileContent = fileContentObj.content;
+                            const configData = JSON.parse(fileContent);
+                            let should_bool_limit = configData.two_gb_limit
                             fileList = await invoke('start_torrent_command', {
                                 magnetLink: cdgGameMagnet,
                                 downloadPath: inputPath,
-                                listCheckbox: externalCheckboxes()
+                                listCheckbox: externalCheckboxes(),
+                                shouldTwoGbLimit: should_bool_limit,
+
                             });
         
                             console.log("File list:", fileList);
@@ -237,7 +249,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                                 window.dispatchEvent(new Event('start-download'));
                             } 
                         } else {
-                            console.log("hiiii",selectedFiles)
                             Swal.fire({
                                 title: "ERROR: PATH DOES NOT EXIST",
                                 text: "Your path does not exist, please use the 'Select Path' button to be sure you are using the right path.",
@@ -418,7 +429,12 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
         horizontalSlide.style.transform = 'translateY(100%)';
         invoke(`stop_get_games_images`);
         clearAllTimeoutsID();
+        if(searchResultDisplay()) {
             document.getElementById('search-results').style.display = 'flex';
+        } else {
+            return;
+        }
+           
         setTimeout(async () => {
             await clearFile(singularGamePath);
             horizontalSlide.remove();
@@ -451,7 +467,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                                     {Object.entries(extractDetails(gameInfo().desc)).map(([title, description], index) => (
                                         <DescriptionSection
                                             key={title}
-                                            title={index === 0 ? title : title.replace(/(?!^)([A-Z])/g, ' $1') + ':'}
+                                            title={index === 0 ? title : title.replace(/(?!^)([A-Z])/g, ' $1')}
                                             description={description}
                                         />
                                     ))}

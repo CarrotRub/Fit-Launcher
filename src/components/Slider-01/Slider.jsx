@@ -160,14 +160,13 @@ const Slider = (props) => {
                   onClick={() => {
                     invoke(`get_games_images`, { gameLink: slide.href });
                     resetHorizontalSlide();
-                    render(
+                    render(() => (
                       <Gamehorizontalslide
                         gameTitlePromise={slide.title}
                         filePathPromise={filePath}
                         gameLinkPromise={slide.href}
-                      />,
-                      mainContentDiv
-                    );
+                      />
+                    ), mainContentDiv);
                   }}
                   onMouseEnter={() => setHoveredTitle(slide.title)}
                   onMouseLeave={() => setHoveredTitle('')}

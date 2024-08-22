@@ -93,9 +93,9 @@ mod checklist_automation {
 
 
 pub mod windows_ui_automation {
-    use std::process;
     use std::process::Command;
     use std::path::Path;
+    use std::{thread, time};
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
     
@@ -103,7 +103,7 @@ pub mod windows_ui_automation {
         match Command::new(path)
             .spawn() 
         {
-            Ok(mut child) => {
+            Ok(child) => {
                 println!("Executable started with PID: {}", child.id());
             }
             Err(e) => {
@@ -118,21 +118,16 @@ pub mod windows_ui_automation {
         }
     }
 
-    pub fn open_with_default_application(path: String) -> std::io::Result<()> {
-        Command::new("cmd")
-            .args([&path])
-            .spawn()?
-            .wait()?;
-        Ok(())
-    }
-    pub fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str) {
+    pub fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str, should_two_gb_limit: bool) {
 
         // Skip Select Setup Language.
         windows_controls_processes::click_ok_button();
         // Skip Select Setup Language.
 
         // Skip until checkboxes.
-        windows_controls_processes::click_8gb_limit();
+        thread::sleep(time::Duration::from_millis(1000));
+        windows_controls_processes::click_8gb_limit(should_two_gb_limit);
+        thread::sleep(time::Duration::from_millis(200));
         windows_controls_processes::click_next_button();
         windows_controls_processes::click_next_button();
         // Skip until checkboxes.
@@ -143,7 +138,9 @@ pub mod windows_ui_automation {
         // Change path input.
         
         // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
+        thread::sleep(time::Duration::from_millis(1000));
         checklist_automation::get_checkboxes_from_list(user_checkboxes_to_check);
+        thread::sleep(time::Duration::from_millis(1000));
         // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
         
         // Start Installation.
@@ -154,4 +151,34 @@ pub mod windows_ui_automation {
 
     }
         // Print and get and send progress bar value every 500ms
+}
+
+pub mod windows_custom_commands {
+    use std::process::Command;
+    
+
+
+    
+    /// Start an executable using tauri::command
+    /// 
+    /// Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
+    #[tauri::command]
+    pub fn start_executable(path: String) {
+        match Command::new(&path)
+            .spawn() 
+        {
+            Ok(child) => {
+                println!("Executable started with PID: {}", child.id());
+            }
+            Err(e) => {
+                eprintln!("Failed to start executable: {}", e);
+                
+                if let Some(32) = e.raw_os_error() {
+                    eprintln!("Another process is using the executable.");
+                }
+            },
+        }
+    }
+
+
 }

@@ -80,3 +80,15 @@
     filter: blur(0);
     z-index: -1;
   }
+
+
+  /* Warning icon style */
+  .image-option {
+    position: relative; /* Ensure the warning icon positions relative to this container */
+    }
+
+.warning-icon svg {
+    width: 32px;
+    height: 32px;
+    fill: #cb6504;
+}

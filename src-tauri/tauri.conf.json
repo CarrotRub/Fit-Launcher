@@ -44,8 +44,8 @@
         {
           "label": "main",
           "title": "Fitgirl Repack Launcher",
-          "width": 800,
-          "height": 800,
+          "width": 1280,
+          "height": 720,
           "resizable": true,
           "transparent": true,
           "fullscreen": false,
@@ -54,17 +54,16 @@
         },
         {
            "label": "splashscreen",
-           "url": "splashscreen.html",
+           "url": "/splashscreen.html",
            "width": 400,
            "height": 400,
            "decorations": false,
            "transparent": true,
-           "alwaysOnTop": true,
            "center": true
         }
       ],
       "security": {
-        "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost"
+        "csp": null
       }
     }
   }
