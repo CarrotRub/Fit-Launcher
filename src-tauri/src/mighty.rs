@@ -13,7 +13,7 @@ pub mod windows_controls_processes {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
     use std::{thread, time};
-
+    use windows::Win32::System::SystemInformation::*;
 
 
     fn get_window_title(hwnd: HWND) -> Option<String> {
@@ -162,25 +162,61 @@ pub mod windows_controls_processes {
     }
 
 
-    pub fn click_8gb_limit() {
+
+
+    pub fn click_8gb_limit(should_limit: bool) {
         let limit_button_text = "Limit installer to 2 GB of RAM usage";
         let first_window_title = "Setup -";
         let limit_button_hwnd = find_child_window_with_text(limit_button_text, first_window_title);
     
-        if let Some(hwnd) = limit_button_hwnd {
+        unsafe {
+            // Initialize MEMORYSTATUSEX structure
+            let mut mem_status = MEMORYSTATUSEX {
+                dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
+                ..MEMORYSTATUSEX::default()
+            };
+    
+            // Call GlobalMemoryStatusEx
+            match GlobalMemoryStatusEx(&mut mem_status) {
+                Ok(_) => {
+                    // Calculate the total RAM in GB
+                    let total_ram_gb = mem_status.ullTotalPhys / (1024 * 1024 * 1024);
+                    println!("Total RAM: {} GB", total_ram_gb);
+    
+                    if total_ram_gb <= 8 {
+                        // If total RAM is 8 GB or less, check the checkbox
+                        check_limit_button(limit_button_hwnd);
+                    } else {
+                        // If total RAM is more than 8 GB, check the should_limit flag
+                        if should_limit {
+                            check_limit_button(limit_button_hwnd);
+                        } else {
+                            println!("No action needed based on should_limit flag.");
+                        }
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Failed to get memory status. Error: {}", err.message());
+                }
+            }
+        }
+    }
+    
+    fn check_limit_button(hwnd: Option<HWND>) {
+        if let Some(hwnd) = hwnd {
             unsafe {
                 let wparam = WPARAM(0);
                 let lparam = LPARAM(0);
                 let result = PostMessageW(hwnd, BM_CLICK, wparam, lparam);
-                
+    
                 if result.is_err() {
                     eprintln!("PostMessageW failed to send the message. Result  {:#?} ", result);
                 } else {
-                    println!("Posted click message to 8GB Limit button!");
+                    println!("Posted click message to Limit button!");
                 }
             }
         } else {
-            println!("OK button not found.");
+            println!("Limit button not found.");
         }
     }
 
@@ -276,7 +312,7 @@ pub mod windows_controls_processes {
 
     }
 
-    
+    #[ignore = "Will be used later"]
     pub fn poll_progress_bar_until_complete() -> f64 {
         let first_window_title = "Setup -";
         let parent_hwnd = get_setup_process_title(first_window_title);

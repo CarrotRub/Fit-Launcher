@@ -30,17 +30,25 @@ function Downloadingpartsidebar() {
 
     })
 
+    let shouldStopFetching = false; // Flag to control the loop
+
     const fetchTorrentStats = async () => {
+        if (shouldStopFetching) return; // Exit if the loop should stop
+    
         try {
-            console.log("fetching")
-            const state = await invoke('get_torrent_stats')
-            setTorrentInfo(state)
-            localStorage.setItem('CDG_Stats', JSON.stringify(state))
-            setIsActiveDownload(true)
+            console.log("fetching");
+            const state = await invoke('get_torrent_stats');
+            setTorrentInfo(state);
+            localStorage.setItem('CDG_Stats', JSON.stringify(state));
+            setIsActiveDownload(true);
         } catch (error) {
-            console.error('Error fetching torrent state:', error)
+            console.error('Error fetching torrent state:', error);
+            
+            if (error.message === 'Fetching of torrent stats has been stopped.') {
+                shouldStopFetching = true; // Stop the loop if the specific error is encountered
+            }
         }
-    }
+    };
 
     const startDownloadListener = () => {
         fetchTorrentStats()
@@ -48,14 +56,14 @@ function Downloadingpartsidebar() {
         onCleanup(() => clearInterval(intervalId))
     }
     
-    
+    window.addEventListener('start-download', startDownloadListener)
 
     onCleanup(() => {
         window.removeEventListener('start-download', startDownloadListener)
     })
 
     createEffect(async () => {
-        
+        window.addEventListener('start-download', startDownloadListener)
         const firstCdg = cdgObject()[0]
         if (firstCdg) {
             setCurrentImage(firstCdg.gameImage)
@@ -99,8 +107,10 @@ function Downloadingpartsidebar() {
             const gameData = {
                 title: current_game.gameTitle,
                 img: current_game.gameImage,
+                desc: current_game.desc,
                 magnetlink: current_game.gameMagnet,
                 timestamp: Date.now(),
+                game_path: "",
             };
         
             try {

@@ -1,11 +1,22 @@
 /* src/components/Carousel.css */
 .carousel {
-  position: relative;
+  /* position: relative;
   width: 50vw;
   max-width: 50vw;
   margin: auto;
   overflow: hidden;
+  border-radius: 15px; */
+  position: relative;
+  width: 50vw;
+  max-width: 50vw;
+  display: flex;
+  margin: auto;
+  overflow: hidden;
   border-radius: 15px;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-wrap: nowrap;
+
 }
 
 .carousel-images {
@@ -13,6 +24,7 @@
   width: fit-content;
   transition: transform 0.5s ease-in-out;
   border-radius: 15px;
+  text-align: -webkit-center;
 }
 
 .carousel-image-container {
@@ -53,20 +65,25 @@
   
 
 .carousel-image {
-  width: 70%;
+  /* width: 70%;
   object-fit: cover;
   border-radius: 15px;
   filter: brightness(1);
   display: block;
   z-index: 0;
-  margin: auto;
-
+  margin: auto; */
+  width: 80%;
+  /* height: 80%; */
+  display: flex;
+  justify-content: space-evenly;
+  border-radius: 15px;
 }
 
 .carousel-controls {
   display: flex;
   justify-content: center;
   align-items: center;
+  align-self: stretch;
   margin-top: 10px;
 }
 

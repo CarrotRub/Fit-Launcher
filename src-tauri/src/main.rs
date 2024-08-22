@@ -2,6 +2,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 
+// TODO: Add Logging to a File.
+
+// TODO: Add updater. 
 
 mod scrapingfunc;
 pub use crate::scrapingfunc::basic_scraping;
@@ -13,16 +16,16 @@ pub use crate::torrentfunc::torrent_functions;
 pub use crate::torrentfunc::TorrentState;
 
 mod custom_ui_automation;
+pub use crate::custom_ui_automation::windows_custom_commands;
+
 mod mighty;
 
 
 use core::str;
 use std::error::Error;
-use std::fs;
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use std::fs::File;
-use std::io::Write;
 use std::io::Read;
 use std::fmt;
 use std::thread;
@@ -82,76 +85,6 @@ struct GameImages {
 
 
 
-async fn download_sitemap(app_handle: tauri::AppHandle, url: &str, filename: &str) -> Result<(), Box<dyn Error>> {
-
-    let client = reqwest::Client::new();
-
-    let mut response = client.get(url).send().await?;
-
-    let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
-            
-    binding.push("sitemaps");
-
-    match Path::new(&binding).exists() {
-        true => {
-            ()
-        }
-        false => {
-            fs::create_dir_all(&binding)?;
-        },
-    }
-
-    // Create the files by joining current directory, relative path, and filename
-    let file_path = &binding
-        .join(format!("{}.xml", filename));    
-    
-    // Open a file at the specified path for writing
-    let mut file = fs::File::create(&file_path).unwrap();
-    
-    // Asynchronously copy the response body to the file
-    while let Some(chunk) = response.chunk().await? {
-        file.write_all(&chunk).unwrap();
-    }
-
-    Ok(())
-}
-
-#[tokio::main]
-async fn get_sitemaps_website(app_handle: tauri::AppHandle) -> Result<(), Box<dyn Error>> {
-
-    println!("Before Sitemaps Request");
-
-    for page_number in 1..=5 {
-
-        let sitemap_number: Option<i32> = if page_number == 0 {
-            None
-        } else {
-            Some(page_number)
-        };
-
-        let relative_url = if let Some(num) = sitemap_number {
-            format!("https://fitgirl-repacks.site/post-sitemap{}.xml", num)
-        } else {
-            "https://fitgirl-repacks.site/post-sitemap/".to_string()
-        };
-
-
-        let relative_filename = format!("post-sitemap{}", if let Some(num) = sitemap_number {
-            num.to_string()
-        } else {
-            "".to_string()
-        });
-
-        println!("relative url :  {}. relative filename: {}", relative_url, relative_filename);
-        let my_app_handle = app_handle.clone();
-        download_sitemap(my_app_handle, &relative_url, &relative_filename).await?;
-
-
-    }
-
-
-    Ok(())
-}
 
 
 fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
@@ -454,6 +387,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let main_window = app.get_window("main").unwrap();
             let current_app_handle = app.app_handle();
 
+            
             // Clone the app handle for each thread
             let first_app_handle = current_app_handle.clone();
             let second_app_handle = current_app_handle.clone();
@@ -480,7 +414,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         std::process::exit(1);
                     }
 
-                    if let Err(e) = get_sitemaps_website(fourth_app_handle) {
+                    if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
                         eprintln!("Error in get_sitemaps_website: {}", e);
                         std::process::exit(1);
                     }
@@ -516,7 +450,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             torrent_commands::pause_torrent_command,
             torrent_commands::resume_torrent_command,
             torrent_commands::select_files_to_download,
-            commands_scraping::get_singular_game_info
+            commands_scraping::get_singular_game_info,
+            windows_custom_commands::start_executable
         ])
         .manage(image_cache) // Make the cache available to commands 
         .manage(torrent_state) 

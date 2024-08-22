@@ -5,17 +5,22 @@ use std::sync::{Arc, atomic::AtomicBool};
 use lazy_static::lazy_static;
 use librqbit::TorrentStatsState;
 
+// Add a lazy_static to allow every function to write and use it through different threads at the same time.
+// Struct could work but this is working for now.
 lazy_static! {
     static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
 }
 
-// Define a shared boolean flag
 
+
+// Define a shared boolean static flags.
 static STOP_FLAG_TORRENT: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
 static STOP_GET_STATS: AtomicBool = AtomicBool::new(false);
 
-    // Creation of a struct containing every useful infomartion that will be used later on in the FrontEnd.
+
+
+// Creation of a struct containing every useful infomartion that will be used later on in the FrontEnd.
 #[derive(Debug, Clone, Serialize)]
 pub struct TorrentStatsInformations{
     state: TorrentStatsState,
@@ -132,6 +137,7 @@ pub mod torrent_functions {
         checkboxes_list: Vec<String>,
         file_list_tx: oneshot::Sender<Vec<String>>,
         file_selection_rx: oneshot::Receiver<Vec<usize>>,
+        should_limit: bool,
     ) -> Result<(), anyhow::Error> {
         let output_dir = download_path.clone();
         let mut session = SESSION.lock().await;
@@ -139,6 +145,9 @@ pub mod torrent_functions {
         // Initialize session if it doesn't exist
         if session.is_none() {
             let mut custom_session_options = SessionOptions::default();
+
+            // Quickest config based upon librqbit creator (I think) : 
+            // `--disable-dht --disable-trackers`
             custom_session_options.disable_dht = false;
             custom_session_options.disable_dht_persistence = false;
             custom_session_options.persistence = false;
@@ -196,7 +205,7 @@ pub mod torrent_functions {
                             list_only: false,
                             only_files: Some(selected_files),
                             overwrite: true,
-                            disable_trackers: false,
+                            disable_trackers: true,
                             ..Default::default()
                         }),
                     )
@@ -242,21 +251,34 @@ pub mod torrent_functions {
                     
                     if torrent_stats.finished {
                         
+                        // Get game path by combining the game name and its path and then removing [FitGirl Repack].
                         let mut necessary_game_path = format!("{}\\{}", &download_path, game_folder_name.unwrap());
                         necessary_game_path = necessary_game_path.replace(" [FitGirl Repack]", "");
-                        println!("{}", necessary_game_path);
+
                         session_clone.stop().await;
+                        // Droping the session just in case it's hogging the path.
                         drop(session_clone);
+
+                        // Stop the get stats.
                         STOP_GET_STATS.store(true, Ordering::Relaxed);
+
+                        // Droping the handle just in case it's hogging the path.
                         drop(handle_clone);
+
+
+                        // Assign None to the SESSION lazy_static to allow the start_executable function to run the executable setup.exe because lazy_statics cannot be dropped.
                         let mut lock = SESSION.lock().await;
                         *lock = None; 
+
                         windows_ui_automation::start_executable(output_folder_path);
+
                         println!("waiting...");
+                        // Wait 3 seconds for the setup to run.
                         thread::sleep(time::Duration::from_millis(3000));
                         println!("continue !");
-                        windows_ui_automation::automate_until_download(checkboxes_list, &necessary_game_path);
-                        println!("done for real");
+
+                        // Run the automatic download, should add a loop to wait for the executable to start.
+                        windows_ui_automation::automate_until_download(checkboxes_list, &necessary_game_path, should_limit);
                         break;
                     }
                     
@@ -266,8 +288,8 @@ pub mod torrent_functions {
                     }
                     
                     if PAUSE_FLAG.load(Ordering::Relaxed) {
+                        // Don't use break to stop the loop.
                         torrent_stats.state = TorrentStatsState::Paused;
-                        break;
                     }
                 } else {
                     torrent_stats.download_speed = None;
@@ -289,7 +311,6 @@ pub mod torrent_functions {
 pub mod torrent_commands {
 
     use serde::{Deserialize, Serialize};
-    use tauri::api::process::kill_children;
     use tokio::sync::oneshot;
     use std::error::Error;
     use tauri::State;
@@ -332,7 +353,8 @@ pub mod torrent_commands {
         magnet_link: String,
         download_path: String,
         torrent_state: State<'_, super::TorrentState>,
-        list_checkbox: Vec<String>
+        list_checkbox: Vec<String>,
+        should_two_gb_limit: bool
     ) -> Result<Vec<String>, String> {
         
         let torrent_stats: Arc<Mutex<super::TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
@@ -357,6 +379,7 @@ pub mod torrent_commands {
                 list_checkbox,
                 file_list_tx,
                 file_selection_rx,
+                should_two_gb_limit
             )
             .await
             {
@@ -375,6 +398,8 @@ pub mod torrent_commands {
         selected_files: Vec<usize>,
         torrent_state: State<'_, super::TorrentState>,
     ) -> Result<(), String> {
+
+
         // Take the file_selection_tx from the TorrentState
         let mut file_selection_tx_lock = torrent_state.file_selection_tx.lock().await;
         if let Some(file_selection_tx) = file_selection_tx_lock.take() {
@@ -385,12 +410,16 @@ pub mod torrent_commands {
         } else {
             Err("No file selection channel available".into())
         }
+
+
     }
 
     #[tauri::command]
     pub async fn get_torrent_stats(
         torrent_state: State<'_, super::TorrentState>,
     ) -> Result<super::TorrentStatsInformations, torrent_functions::TorrentError> {
+
+
         // Check the stop flag before fetching stats
         if super::STOP_GET_STATS.load(Ordering::Relaxed) {
             return Err(torrent_functions::TorrentError {
@@ -402,6 +431,8 @@ pub mod torrent_commands {
             torrent_state.stats.lock().await;
         println!("Current torrent stats: {:?}", *torrent_stats);
         Ok(torrent_stats.clone())
+
+
     }
 
     #[tauri::command]

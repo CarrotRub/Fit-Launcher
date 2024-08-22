@@ -27,7 +27,6 @@ function Recentlydownloadedgames() {
                 return;
             }
             console.log("Searching Data...");
-            // TODO: Add something later with it. Such as horizontal game div.
             const title = game.title;
             const img = game.img;
 

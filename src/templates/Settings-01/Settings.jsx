@@ -77,6 +77,7 @@ const SettingsPage = () => {
   };
 
 
+  const lastInputPath = localStorage.getItem('LUP');
 
   return (
     <div class="settings-page">
@@ -90,7 +91,7 @@ const SettingsPage = () => {
           <input 
             type="text" 
             id="defaultDownloadPath" 
-            value={settings().defaultDownloadPath} 
+            value={settings().defaultDownloadPath ? settings().defaultDownloadPath : lastInputPath } 
             onInput={(e) => setSettings({ ...settings(), defaultDownloadPath: e.target.value })} 
             placeholder="Enter default download path"
           />
