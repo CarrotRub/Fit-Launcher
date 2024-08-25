@@ -65,6 +65,30 @@ const SettingsPage = () => {
   const [loading, setLoading] = createSignal(true);
 
     onMount(() => {
+
+        let gamehubDiv = document.querySelectorAll('.gamehub-container');
+        let libraryDiv = document.querySelectorAll('.launcher-container');
+        let settingsDiv = document.querySelectorAll('.settings-page');
+
+        if(gamehubDiv){
+
+          let gamehubLinkText = document.querySelector('#link-gamehub');
+          gamehubLinkText.style.backgroundColor = ''
+        }
+
+        if(libraryDiv){
+
+            let libraryLinkText = document.querySelector('#link-library');
+            libraryLinkText.style.backgroundColor = '';
+        }
+
+        if(settingsDiv){
+
+            let settingsLinkText = document.querySelector('#link-settings');
+            settingsLinkText.style.backgroundColor = '#ffffff0d';
+            settingsLinkText.style.borderRadius = '5px';
+        }
+
         loadSettings().then(initialSettings => {
             setSettings(initialSettings);
             setLoading(false);
