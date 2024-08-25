@@ -28,18 +28,63 @@
 }
 
 /* Progress Bar CSS */
-.progress-bar {
-    width: 100%;
-    background-color: #555;
-    border-radius: 5px;
-    overflow: hidden;
-    margin-bottom: 20px;
+.progress-container {
+    display: flex;
+    align-items: center;
 }
 
+/* Progress Bar */
+.progress-bar {
+    flex-grow: 1;
+    display: flex;
+    height: 8vh;
+    align-items: center;
+    background-color: #4a90e2;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Progress Indicator */
 .progress {
+    background-color: #007bff; 
+    height: 100%;
+    transition: width 0.4s ease-in-out;
+}
+
+/* Text on progress bar */
+.progress-text {
+    position: absolute;
+    left: 1em;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Icons Container */
+.icons {
+    display: flex;
+    /* justify-content: space-around; */
+    right: 10%;
+    align-items: center;
+    position: fixed;
+    gap: 10px;
+    padding-right: 1em;
+}
+
+/* Icon styles */
+.icon {
+    cursor: pointer;
+    color: white;
+    font-size: 16px;
+    transition: color 0.3s;
+    height: 24px;
+}
+
+.icon-divider {
     height: 20px;
-    background-color: #4CAF50;
-    width: 0;
+    width: 1px;
+    background-color: white;
 }
 
 /* Canvas CSS */
@@ -60,6 +105,7 @@ canvas {
     border: none;
     color: white;
     padding: 10px 20px;
+    display: none;
     font-size: 16px;
     border-radius: 5px;
     cursor: pointer;

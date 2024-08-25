@@ -63,6 +63,9 @@ function Downloadingpartsidebar() {
     })
 
     createEffect(async () => {
+        
+        const actTorrentInfo = torrentInfo();
+
         window.addEventListener('start-download', startDownloadListener)
         const firstCdg = cdgObject()[0]
         if (firstCdg) {
@@ -158,11 +161,10 @@ function Downloadingpartsidebar() {
         
         console.log(isActiveDownload(), torrentInfo())
         if (torrentInfo() && isActiveDownload()) {
-
             console.log("donwl")
 
             const progress =
-                (torrentInfo().progress_bytes / torrentInfo().total_bytes) * 100
+                (actTorrentInfo.progress_bytes / actTorrentInfo.total_bytes) * 100
             const element = document.querySelector(
                 '.currently-downloading-game'
             )
@@ -175,25 +177,25 @@ function Downloadingpartsidebar() {
             }
 
 
-            setIsTorrentDone(torrentInfo.finished);
+            setIsTorrentDone(actTorrentInfo.finished);
             
             setIsInitializing(
-                torrentInfo().state === "initializing" ? true : false
+                actTorrentInfo.state === "initializing" ? true : false
             )
 
  
                 setDownloadingSpeed(
                     `${
-                        torrentInfo().download_speed === null
+                        actTorrentInfo.download_speed === null
                             ? 0
-                            : torrentInfo().download_speed.toFixed(2)
+                            : actTorrentInfo.download_speed.toFixed(2)
                     } MB/s`
                 )
                 setRemainingTime(
                     `${
-                        torrentInfo().time_remaining === null
-                        ? (torrentInfo().finished !== true ? 'Infinity' : 'Done')
-                        : torrentInfo().time_remaining
+                        actTorrentInfo.time_remaining === null
+                        ? (actTorrentInfo.finished !== true ? 'Infinity' : 'Done')
+                        : actTorrentInfo.time_remaining
                     }`
                 );
 

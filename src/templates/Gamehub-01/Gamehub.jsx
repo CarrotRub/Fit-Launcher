@@ -9,16 +9,29 @@ import clearFile from '../../components/functions/clearFileRust';
 
 function Gamehub() {
     onMount(() => {
-        let gamehubDiv = document.querySelector('.gamehub-container')
-    
-        if(gamehubDiv !== null){
+        let gamehubDiv = document.querySelector('.gamehub-container');
+        let libraryDiv = document.querySelectorAll('.launcher-container');
+        let settingsDiv = document.querySelectorAll('.settings-page');
+
+        if(gamehubDiv){
           console.log("findit")
           let gamehubLinkText = document.querySelector('#link-gamehub');
-          gamehubLinkText.style.backgroundColor = '#ffffff0d'
-          gamehubLinkText.style.borderRadius = '5px'
+          gamehubLinkText.style.backgroundColor = '#ffffff0d';
+          gamehubLinkText.style.borderRadius = '5px';
         }
-        console.log("gamehub not found")
-    
+        if(libraryDiv){
+            console.log("findit")
+            let libraryLinkText = document.querySelector('#link-library');
+            libraryLinkText.style.backgroundColor = '';
+        }
+
+        if(settingsDiv){
+
+            let gamehubLinkText = document.querySelector('#link-settings');
+            gamehubLinkText.style.backgroundColor = '';
+            
+        }
+
       })
     const singularGamePath = '../src/temp/singular_games.json';
     

@@ -40,9 +40,11 @@ pub mod basic_scraping {
         #[error("Modifying JSON Error: {0}")]
         FileJSONError(#[from] serde_json::Error),
 
-        #[error("Creating File Error: {0}")]
-        CreatingFileError(#[from] std::io::Error),
-        
+        #[error("Creating File Error in `{fn_name}`: {source}")]
+        CreatingFileError {
+            source: std::io::Error,
+            fn_name: String,
+        },
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -190,6 +192,16 @@ pub mod basic_scraping {
         // Prepare file path
         let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
         binding.push("tempGames");
+    
+        // Ensure the directory exists
+        if let Err(e) = fs::create_dir_all(&binding) {
+            eprintln!("Failed to create directories: {:#?}", e);
+            return Err(Box::new(ScrapingError::CreatingFileError {
+                source: e,
+                fn_name: "scraping_func()".to_string(),
+            }));
+        }
+    
         binding.push("newly_added_games.json");
     
         // Check if file exists
@@ -200,14 +212,20 @@ pub mod basic_scraping {
                 Ok(file) => file,
                 Err(e) => {
                     eprintln!("Error opening the file: {:#?}", e);
-                    return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                    return Err(Box::new(ScrapingError::CreatingFileError {
+                        source: e,
+                        fn_name: "scraping_func()".to_string(),
+                    }));
                 }
             };
         
             let mut file_content = String::new();
             if let Err(e) = file.read_to_string(&mut file_content).await {
                 eprintln!("Error reading file content: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                return Err(Box::new(ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "scraping_func()".to_string(),
+                }));
             }
         
             existing_games = match serde_json::from_str(&file_content) {
@@ -239,13 +257,19 @@ pub mod basic_scraping {
             Ok(file) => file,
             Err(e) => {
                 eprintln!("File could not be created: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                return Err(Box::new(ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "scraping_func()".to_string(),
+                }));
             }
         };
     
         if let Err(e) = file.write_all(json_data.as_bytes()).await {
             eprintln!("Error writing to the file newly_added_games.json: {:#?}", e);
-            return Err(Box::new(ScrapingError::CreatingFileError(e)));
+            return Err(Box::new(ScrapingError::CreatingFileError {
+                source: e,
+                fn_name: "scraping_func()".to_string(),
+            }));
         }
     
         let end_time = Instant::now();
@@ -333,14 +357,20 @@ pub mod basic_scraping {
                 Ok(file) => file,
                 Err(e) => {
                     eprintln!("Error opening the file: {:#?}", e);
-                    return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                    return Err(Box::new(ScrapingError::CreatingFileError {
+                        source: e,
+                        fn_name: "popular_games_scraping_func()".to_string(),
+                    }));
                 }
             };
     
             let mut file_content = String::new();
             if let Err(e) = file.read_to_string(&mut file_content).await {
                 eprintln!("Error reading file content: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                return Err(Box::new(ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "popular_games_scraping_func()".to_string(),
+                }));
             }
     
             let existing_games: Vec<Game> = match serde_json::from_str(&file_content) {
@@ -453,13 +483,19 @@ pub mod basic_scraping {
             Ok(file) => file,
             Err(e) => {
                 eprintln!("File could not be created: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                return Err(Box::new(ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "popular_games_scraping_func()".to_string(),
+                }));
             }
         };
     
         if let Err(e) = file.write_all(json_data.as_bytes()).await {
             eprintln!("Error writing to the file popular_games.json: {:#?}", e);
-            return Err(Box::new(ScrapingError::CreatingFileError(e)));
+            return Err(Box::new(ScrapingError::CreatingFileError {
+                source: e,
+                fn_name: "popular_games_scraping_func()".to_string(),
+            }));
         }
     
         let end_time = Instant::now();
@@ -526,14 +562,20 @@ pub mod basic_scraping {
                 Ok(file) => file,
                 Err(e) => {
                     eprintln!("Error opening the file: {:#?}", e);
-                    return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                    return Err(Box::new(ScrapingError::CreatingFileError {
+                        source: e,
+                        fn_name: "recently_updated_games_scraping_func()".to_string(),
+                    }));
                 }
             };
         
             let mut file_content = String::new();
             if let Err(e) = file.read_to_string(&mut file_content).await {
                 eprintln!("Error reading file content: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                return Err(Box::new(ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "recently_updated_games_scraping_func()".to_string(),
+                }));
             }
         
             let existing_games: Vec<Game> = match serde_json::from_str(&file_content) {
@@ -640,13 +682,19 @@ pub mod basic_scraping {
             Ok(file) => file,
             Err(e) => {
                 eprintln!("File could not be created: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError(e)));
+                return Err(Box::new(ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "recently_updated_games_scraping_func()".to_string(),
+                }));
             }
         };
     
         if let Err(e) = file.write_all(json_data.as_bytes()).await {
             eprintln!("Error writing to the file popular_games.json: {:#?}", e);
-            return Err(Box::new(ScrapingError::CreatingFileError(e)));
+            return Err(Box::new(ScrapingError::CreatingFileError {
+                source: e,
+                fn_name: "recently_updated_games_scraping_func()".to_string(),
+            }));
         }
     
         let end_time = Instant::now();

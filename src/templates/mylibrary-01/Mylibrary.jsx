@@ -12,6 +12,43 @@ function Mylibrary() {
     const [downloadedGamePath, setDownloadedGamePath] = createSignal("");
     const [isDataReady, setIsDataReady] = createSignal(false); // Track if data is ready
 
+
+    onMount(async () => {
+
+        let gamehubDiv = document.querySelectorAll('.gamehub-container');
+        let libraryDiv = document.querySelectorAll('.launcher-container');
+        let settingsDiv = document.querySelectorAll('.settings-page');
+
+        if(gamehubDiv){
+
+          let gamehubLinkText = document.querySelector('#link-gamehub');
+          gamehubLinkText.style.backgroundColor = ''
+        }
+
+        if(libraryDiv){
+
+            let libraryLinkText = document.querySelector('#link-library');
+            libraryLinkText.style.backgroundColor = '#ffffff0d';
+            libraryLinkText.style.borderRadius = '5px';
+        }
+
+        if(settingsDiv){
+
+            let gamehubLinkText = document.querySelector('#link-settings');
+            gamehubLinkText.style.backgroundColor = ''
+
+        }
+
+        try {
+            await parseDownloadedGameData();
+            setIsDataReady(true); // Set data as ready
+        } catch (error) {
+            // Handle error if needed
+            setIsDataReady(false);
+        }
+    });
+
+
     async function updateGamePathInFile(gameTitle, newPath, filePath) {
         try {
             const data = await readFile(filePath);
@@ -189,25 +226,10 @@ function Mylibrary() {
 
     }
 
-    onMount(async () => {
 
-    
-        try {
-            await parseDownloadedGameData();
-            setIsDataReady(true); // Set data as ready
-        } catch (error) {
-            // Handle error if needed
-            setIsDataReady(false);
-        }
-    });
 
     createEffect( () => {
-        let myGamehubDiv = document.querySelector(".gamehub-container");
-        if (myGamehubDiv !== null) {
-            let gamehubLinkText = document.querySelector('#link-gamehub');
-            gamehubLinkText.style.backgroundColor = ''
-            myGamehubDiv.remove();
-        }
+
 
         console.log("finding...")
         const timeOut = setTimeout(randomImageFinder, 500);

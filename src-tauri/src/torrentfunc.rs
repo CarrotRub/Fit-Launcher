@@ -9,6 +9,7 @@ use librqbit::TorrentStatsState;
 // Struct could work but this is working for now.
 lazy_static! {
     static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
+    static ref TORRENT_HANDLE: Mutex<Option<Arc<librqbit::ManagedTorrent>>> = Mutex::new(None);
 }
 
 
@@ -81,9 +82,10 @@ pub mod torrent_functions {
     use tokio::sync::Mutex;
     use anyhow::{Result, Context};
     use std::sync::{Arc, atomic::Ordering};
-    use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, TorrentStatsState, SessionOptions};
+    use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, SessionOptions};
     use tracing::info;
     use crate::custom_ui_automation::windows_ui_automation;
+    use crate::torrentfunc::TORRENT_HANDLE;
 
     use super::{ SESSION,STOP_FLAG_TORRENT, PAUSE_FLAG, STOP_GET_STATS};
 
@@ -221,7 +223,7 @@ pub mod torrent_functions {
             _ => return Err(anyhow::anyhow!("Unexpected response when adding torrent")),
         };
     
-        let handle_clone = handle.clone();
+        let handle_clone: Arc<librqbit::ManagedTorrent> = handle.clone();
         let game_folder_name = handle.info.info.name.clone();
         drop(handle); // Drop the original handle, only keep the clone
         let torrent_stats = Arc::clone(&torrent_stats);
@@ -242,6 +244,9 @@ pub mod torrent_functions {
                 torrent_stats.uploaded_bytes = stats.uploaded_bytes;
                 torrent_stats.total_bytes = stats.total_bytes;
                 torrent_stats.finished = stats.finished;
+
+                let mut my_crec_handle = TORRENT_HANDLE.lock().await;
+                *my_crec_handle = Some(handle_clone.clone());
                 
                 if let Some(live_stats) = stats.live {
                     torrent_stats.download_speed = Some(live_stats.download_speed.mbps as f64);
@@ -261,6 +266,9 @@ pub mod torrent_functions {
 
                         // Stop the get stats.
                         STOP_GET_STATS.store(true, Ordering::Relaxed);
+
+
+
 
                         // Droping the handle just in case it's hogging the path.
                         drop(handle_clone);
@@ -289,7 +297,7 @@ pub mod torrent_functions {
                     
                     if PAUSE_FLAG.load(Ordering::Relaxed) {
                         // Don't use break to stop the loop.
-                        torrent_stats.state = TorrentStatsState::Paused;
+                        handle_clone.pause();
                     }
                 } else {
                     torrent_stats.download_speed = None;
@@ -320,11 +328,14 @@ pub mod torrent_commands {
     use anyhow::Result;
     use std::sync::{Arc, atomic::Ordering};
 
+    use super::SESSION;
+
     use super::torrent_functions;
 
     use super::PAUSE_FLAG;
  
     use super::STOP_FLAG_TORRENT;
+    use super::TORRENT_HANDLE;
 
     #[derive(Debug, Serialize, Deserialize)]
     pub struct CustomError {
@@ -446,6 +457,10 @@ pub mod torrent_commands {
     pub async fn resume_torrent_command() -> Result<(), CustomError> {
         // Set the global pause flag
         PAUSE_FLAG.store(false, Ordering::Relaxed);
+        let session =  SESSION.lock().await;
+        let cus_session = session.as_ref().unwrap();
+        let my_handle = TORRENT_HANDLE.lock().await;
+        let _ = cus_session.unpause(&my_handle.as_ref().unwrap());
         Ok(())
     }
 
