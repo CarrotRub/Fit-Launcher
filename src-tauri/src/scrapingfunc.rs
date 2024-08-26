@@ -2,12 +2,10 @@
 
 
 pub mod basic_scraping {
-
     use librqbit::Session;
     use serde::{Deserialize, Serialize};
     use core::str;
     use std::fs;
-    use std::io::Write;
     use std::time::Instant;
     use std::path::Path;
     use anyhow::Result;
@@ -54,39 +52,25 @@ pub mod basic_scraping {
 
     
     pub async fn download_sitemap(app_handle: tauri::AppHandle, url: &str, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
-
         let client = reqwest::Client::new();
-    
         let mut response = client.get(url).send().await?;
     
-        let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
-                
+        let mut binding = app_handle.path_resolver().app_data_dir().ok_or("Failed to resolve app data directory")?;
         binding.push("sitemaps");
     
-        match Path::new(&binding).exists() {
-            true => {
-                ()
-            }
-            false => {
-                fs::create_dir_all(&binding)?;
-            },
+        if !binding.exists() {
+            tokio::fs::create_dir_all(&binding).await?;
         }
     
-        // Create the files by joining current directory, relative path, and filename
-        let file_path = &binding
-            .join(format!("{}.xml", filename));    
-        
-        // Open a file at the specified path for writing
-        let mut file = fs::File::create(&file_path).unwrap();
-        
-        // Asynchronously copy the response body to the file
+        let file_path = binding.join(format!("{}.xml", filename));
+    
+        let mut file = tokio::fs::File::create(&file_path).await?;
         while let Some(chunk) = response.chunk().await? {
-            file.write_all(&chunk).unwrap();
+            file.write_all(&chunk).await?;
         }
     
         Ok(())
     }
-    
     
     
     #[tokio::main]
@@ -194,7 +178,7 @@ pub mod basic_scraping {
         binding.push("tempGames");
     
         // Ensure the directory exists
-        if let Err(e) = fs::create_dir_all(&binding) {
+        if let Err(e) = tokio::fs::create_dir_all(&binding).await {
             eprintln!("Failed to create directories: {:#?}", e);
             return Err(Box::new(ScrapingError::CreatingFileError {
                 source: e,
@@ -794,7 +778,7 @@ pub mod commands_scraping {
                 ()
             }
             false => {
-                fs::create_dir_all(&binding)?;
+                tokio::fs::create_dir_all(&binding).await?;
             },
         }
     
