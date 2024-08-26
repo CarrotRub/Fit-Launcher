@@ -37,6 +37,7 @@
 .progress-bar {
     flex-grow: 1;
     display: flex;
+    margin-bottom: 2vh;
     height: 8vh;
     align-items: center;
     background-color: #4a90e2;

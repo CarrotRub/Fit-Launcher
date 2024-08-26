@@ -114,6 +114,7 @@
     -webkit-line-clamp: 6;
     line-clamp: 6;
     overflow: auto;
+    overflow-x: hidden;
     text-overflow: unset;
 }
 

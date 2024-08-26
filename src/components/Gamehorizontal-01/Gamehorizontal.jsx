@@ -59,15 +59,17 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
             gameImage: cdgGameImage
         };
     
+
+        // TODO: Add default state of cdgGame to paused in case of leaving the dialog during download.
         if (currentCDG) {
-            if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state !== "paused") {
+            if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state !== "paused" && currentCDGStats.state) {
                 Swal.fire({
                     title: "Information",
                     text: "This game is already downloading.",
                     icon: "info"
                 });
                 return;
-            } else if (currentCDG[0].gameMagnet === cdgGameMagnet && currentCDGStats.state === "paused") {
+            } else if (currentCDG[0].gameMagnet === cdgGameMagnet && (!currentCDGStats.state || currentCDGStats.state === "paused")) {
                 Swal.fire({
                     title: 'Resume your download?',
                     text: "Do you want to resume the current download?",
@@ -80,7 +82,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                         startDownloadProcess();
                     }
                 });
-            } else {
+            }else {
                 Swal.fire({
                     title: "Error",
                     text: "A different game is already downloading.",

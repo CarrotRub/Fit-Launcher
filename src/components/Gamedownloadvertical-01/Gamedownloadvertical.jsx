@@ -218,6 +218,10 @@ function Gameverticaldownloadslide({ isActive }) {
         });
     });
     
+    const handleStopTorrent = () => {
+        invoke('stop_torrent_command');
+    }
+
     return (
         
         <div class="sidebar-space" style={{ display: isActive ? 'block' : 'none' }}>
@@ -228,9 +232,9 @@ function Gameverticaldownloadslide({ isActive }) {
                     <div class="progress-bar">
 
                         <div class="progress" style={{ width: `${percentage()}%` }}></div>
-                        <span class="progress-text">INSTALLING {percentage()}</span>
+                        <span class="progress-text">DOWNLOADING {percentage()}%</span>
                         <div class="icons">
-                        <span class="icon"><svg width="16" height="24" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="m3 21.32 18-18m-18 0 18 18" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                        <span class="icon" onClick={handleStopTorrent}><svg width="16" height="24" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke-width="0"/><g stroke-linecap="round" stroke-linejoin="round"/><path d="m3 21.32 18-18m-18 0 18 18" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                         <div class="icon-divider"></div>
                         <PauseResumeSvg/>
                     </div>
