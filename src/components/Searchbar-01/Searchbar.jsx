@@ -107,7 +107,7 @@ function Searchbar() {
             const gameData = JSON.parse(fileContent);
             gameData.forEach(game => {
                 render(
-                    <GameHorizontalSlide gameTitlePromise={game.title} filePathPromise={configDir} />,
+                    <GameHorizontalSlide gameTitlePromise={game.title} filePathPromise={configDir} gameLinkPromise={game.href} />,
                     mainContentDiv
                 )
             })

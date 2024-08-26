@@ -28,7 +28,6 @@ use reqwest::Client;
 use std::fs::File;
 use std::io::Read;
 use std::fmt;
-use std::thread;
 use tauri::{Manager, Window};
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
@@ -377,92 +376,79 @@ fn main() -> Result<(), Box<dyn Error>> {
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
     let torrent_state = torrentfunc::TorrentState::default();
     // let closing_signal_received = Arc::new(AtomicBool::new(false));
+    tauri::Builder::default()
+    .setup(|app| {
+        let splashscreen_window = app.get_window("splashscreen").unwrap();
+        let main_window = app.get_window("main").unwrap();
+        let current_app_handle = app.app_handle();
 
+        // Clone the app handle for use in async tasks
+        let first_app_handle = current_app_handle.clone();
+        let second_app_handle = current_app_handle.clone();
+        let third_app_handle = current_app_handle.clone();
+        let fourth_app_handle = current_app_handle.clone();
 
+        // Perform asynchronous initialization tasks without blocking the main thread
+        tauri::async_runtime::spawn(async move {
+            let mandatory_tasks_online = tauri::async_runtime::spawn_blocking(move || {
+                if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
+                    eprintln!("Error in scraping_func: {}", e);
+                    std::process::exit(1);
+                }
 
-        tauri::Builder::default()
-        .setup(move |app| {
+                if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
+                    eprintln!("Error in popular_games_scraping_func: {}", e);
+                    std::process::exit(1);
+                }
 
-            let splashscreen_window = app.get_window("splashscreen").unwrap();
-            let main_window = app.get_window("main").unwrap();
-            let current_app_handle = app.app_handle();
+                if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
+                    eprintln!("Error in get_sitemaps_website: {}", e);
+                    std::process::exit(1);
+                }
 
-            
-            // Clone the app handle for each thread
-            let first_app_handle = current_app_handle.clone();
-            let second_app_handle = current_app_handle.clone();
-            let third_app_handle = current_app_handle.clone();
-            let fourth_app_handle = current_app_handle.clone();
+                if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
+                    eprintln!("Error in recently_updated_games_scraping_func: {}", e);
+                    std::process::exit(1);
+                }
+            });
 
-            // Create a thread for the first function
-            let handle1 = thread::Builder::new()
-                .name("scraping_func".into())
-                .spawn(move || {
-                    if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
-                        eprintln!("Error in scraping_func: {}", e);
-                        std::process::exit(1);
-                    }
-                })
-                .expect("Failed to spawn thread for scraping_func");
+            // Await the completion of the tasks
+            mandatory_tasks_online.await.unwrap();
 
-            // Create a thread for the second function
-            let handle2 = thread::Builder::new()
-                .name("popular_and_recent_games_scraping_func".into())
-                .spawn(move || {
-                    if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
-                        eprintln!("Error in popular_games_scraping_func: {}", e);
-                        std::process::exit(1);
-                    }
-
-                    if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
-                        eprintln!("Error in get_sitemaps_website: {}", e);
-                        std::process::exit(1);
-                    }
-
-                    if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
-                        eprintln!("Error in recently_updated_games_scraping_func: {}", e);
-                        std::process::exit(1);
-                    }
-                })
-                .expect("Failed to spawn thread for popular_games_scraping_func");
-
-            // Wait for both threads to finish
-            handle1.join().expect("Thread 1 panicked");
-            handle2.join().expect("Thread 2 panicked");
-
-            
-            // After it's done, close the splashscreen and display the main window
+            // After all tasks are done, close the splash screen and show the main window
             splashscreen_window.close().unwrap();
             main_window.show().unwrap();
-            
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            read_file,
-            close_splashscreen,
-            get_games_images,
-            clear_file,
-            stop_get_games_images,
-            check_folder_path,
-            torrent_commands::start_torrent_command,
-            torrent_commands::get_torrent_stats,
-            torrent_commands::stop_torrent_command,
-            torrent_commands::pause_torrent_command,
-            torrent_commands::resume_torrent_command,
-            torrent_commands::select_files_to_download,
-            commands_scraping::get_singular_game_info,
-            windows_custom_commands::start_executable
-        ])
-        .manage(image_cache) // Make the cache available to commands 
-        .manage(torrent_state) 
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(|_app_handle, event| match event {
-          tauri::RunEvent::ExitRequested { .. } => {
-            
-            PAUSE_FLAG.store(true, Ordering::Relaxed);
-          }
-          _ => {}
         });
+
+        Ok(())
+    })
+    .invoke_handler(tauri::generate_handler![
+        read_file,
+        close_splashscreen,
+        get_games_images,
+        clear_file,
+        stop_get_games_images,
+        check_folder_path,
+        torrent_commands::start_torrent_command,
+        torrent_commands::get_torrent_stats,
+        torrent_commands::stop_torrent_command,
+        torrent_commands::pause_torrent_command,
+        torrent_commands::resume_torrent_command,
+        torrent_commands::select_files_to_download,
+        commands_scraping::get_singular_game_info,
+        windows_custom_commands::start_executable
+    ])
+    .manage(image_cache) // Make the cache available to commands 
+    .manage(torrent_state) 
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|_app_handle, event| match event {
+      tauri::RunEvent::ExitRequested { .. } => {
+        
+        PAUSE_FLAG.store(true, Ordering::Relaxed);
+      }
+      _ => {}
+    });
+    
     Ok(())
 }
