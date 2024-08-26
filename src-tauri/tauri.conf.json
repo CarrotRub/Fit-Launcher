@@ -1,6 +1,6 @@
 {
     "package": {
-      "productName": "Fitgirl Repack Launcher",
+      "productName": "Fit Launcher",
       "version": "1.0.0"
     },
     "build": {
@@ -44,7 +44,7 @@
       "windows": [
         {
           "label": "main",
-          "title": "Fitgirl Repack Launcher",
+          "title": "Fit Launcher",
           "width": 1280,
           "height": 720,
           "resizable": true,

@@ -327,7 +327,8 @@ pub mod torrent_commands {
     use tokio::sync::Mutex;
     use anyhow::Result;
     use std::sync::{Arc, atomic::Ordering};
-
+    use tokio::time::{timeout, Duration};
+    
     use super::SESSION;
 
     use super::torrent_functions;
@@ -359,6 +360,7 @@ pub mod torrent_commands {
     }
 
 
+
     #[tauri::command]
     pub async fn start_torrent_command(
         magnet_link: String,
@@ -379,7 +381,7 @@ pub mod torrent_commands {
             let mut selection_tx_lock = torrent_state.file_selection_tx.lock().await;
             *selection_tx_lock = Some(file_selection_tx);
         }
-
+    
         // Spawn the torrent thread
         spawn(async move {
             println!("{} , {}", magnet_link, download_path);
@@ -398,10 +400,11 @@ pub mod torrent_commands {
             }
         });
     
-        // Wait for the file list from the spawned thread
-        let file_list = file_list_rx.await.map_err(|e| format!("Failed to receive file list: {:?}", e))?;
-        // Return the file list to the frontend for user selection
-        Ok(file_list)
+        // Wait for the file list from the spawned thread with a timeout of 5 seconds
+        match timeout(Duration::from_secs(5), file_list_rx).await {
+            Ok(file_list) => file_list.map_err(|e| format!("Failed to receive file list: {:?}", e)),
+            Err(_) => Err("Timeout waiting for file list".into()),
+        }
     }
     
     #[tauri::command]
