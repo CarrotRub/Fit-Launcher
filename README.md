@@ -6,13 +6,14 @@ Fit Launcher is a 🚀 **blazingly fast** 🚀 game launcher designed specifical
 - ⚡ **Lightning Fast**: Powered by Rust and Tauri for better speed and efficiency.
 - 🎨 **Sleek Design**: Thanks to the creative design by Vintage_Soldier.
 - 🛠️ **Easy to Use**: Simple setup and easy to run—just execute the launcher and you're good to go!
+- 🌌 **Quick Download**: Using **librqbit** for torrenting for optimal speed.
 
 ## Getting Started
 
 ### Running the Launcher
 
 To run the Fit Launcher, simply execute the setup and install it inside
- `C:/Program Files/` then run the executable 😃 :
+`C:/Program Files/` then run the executable 😃:
 
 ```bash
 ./fit-launcher.exe
@@ -43,11 +44,11 @@ npm run tauri build
 
 Got questions or want to hang out with our users? Join us on Discord! Big thanks to **Kürst** for moderating our Discord server, to **Vintage_Soldier** for the amazing app design, and to **SimplyStoned** for maintaining the old launcher while I was developing this one.
 
-[Join the Discord](#) <!-- Replace with your Discord link -->
+[Join the Discord](https://discord.gg/cXaBWdcUSF) <!-- Replace with your Discord link -->
 
 ## Credits
 
-- **CarrotRub** - Me, Developper of this app :3.
+- **CarrotRub** - Me, Developer of this app :3.
 - **Kürst** - Discord Moderator
 - **Vintage_Soldier** - App Design
 - **SimplyStoned** - Maintenance of the Old Launcher
@@ -55,3 +56,9 @@ Got questions or want to hang out with our users? Join us on Discord! Big thanks
 ---
 
 Enjoy your games with Fit Launcher! 🎮🚀
+
+## TODO List 📝
+
+- 🖥️ **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
+- 🌄 **Quicker Image Loading**: Optimize the speed at which images are retrieved and displayed.
+- 🎮 **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
