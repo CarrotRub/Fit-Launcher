@@ -189,8 +189,8 @@ const SettingsPage = () => {
       <section>
         <h2>Contacts</h2>
         <div class="form-group">
-          <a href="https://discord.gg/your-link" target="_blank">Discord</a>
-          <a href="https://github.com/CarrotRub/Better-Fitgirl-Repack-Launcher" target="_blank">GitHub</a>
+          <a href="https://discord.gg/cXaBWdcUSF" target="_blank">Discord</a>
+          <a href="https://github.com/CarrotRub/Fit-Launcher/" target="_blank">GitHub</a>
         </div>
       </section>
 
