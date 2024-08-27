@@ -6,9 +6,11 @@
 }
 
 .searchbar-main {
+    display: flex;
     padding-left: 25px;
     padding-top: 25px;
     z-index: 4;
+    align-items: center;
 }
 
 #searchbar-input {
@@ -22,6 +24,20 @@
     outline: none;
     font-size: 15px;
     padding-left: 2vw;
+}
+
+#dragon-ball-svg {
+    height: 24px;
+    width: 24px;
+    filter: drop-shadow(2px 2px 8px gray);
+    position: absolute;
+    margin-left: 200px;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 #searchbar-input::placeholder {
