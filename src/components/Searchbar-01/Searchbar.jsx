@@ -43,7 +43,7 @@ function Searchbar() {
         const appDir =  await appConfigDir();
         const dirPath = appDir.replace(/\\/g, '/');
         
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 6; i++) {
             let sitemapURL = `${dirPath}sitemaps/post-sitemap${i}.xml`;
             let convertedSitemapURL = convertFileSrc(sitemapURL);
             requests.push(fetch(convertedSitemapURL));
@@ -111,10 +111,12 @@ function Searchbar() {
             const fileContent = fileContentObj.content;
             const gameData = JSON.parse(fileContent);
             gameData.forEach(game => {
-                render(
-                    <GameHorizontalSlide gameTitlePromise={game.title} filePathPromise={configDir} gameLinkPromise={game.href} />,
-                    mainContentDiv
-                );
+                render(() => (
+                    <GameHorizontalSlide 
+                    gameTitlePromise={game.title} 
+                    filePathPromise={configDir} 
+                    gameLinkPromise={game.href} />),
+                    mainContentDiv);
             });
         });
         setSelectedGameLink(result); // Set the selected game link

@@ -135,6 +135,7 @@ pub mod torrent_functions {
         checkboxes_list: Vec<String>,
         file_list_tx: oneshot::Sender<Vec<String>>,
         file_selection_rx: oneshot::Receiver<Vec<usize>>,
+        two_gb_limit: bool,
     ) -> Result<(), anyhow::Error> {
         let output_dir = download_path.clone();
         let mut session = SESSION.lock().await;
@@ -229,8 +230,6 @@ pub mod torrent_functions {
                 let stats = handle_clone.stats();
                 let mut torrent_stats = torrent_stats.lock().await;
 
-                
-                println!("Checking RESUME_FLAG...");
                 if RESUME_FLAG.load(Ordering::Relaxed) {
                     println!("RESUME FLAG IS TRUE");
                     RESUME_FLAG.store(false, Ordering::Relaxed); // Reset the flag
@@ -239,6 +238,19 @@ pub mod torrent_functions {
                         Err(e) => eprintln!("Error resuming torrent: {:#?}", e),
                     }
                 }
+
+                if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
+                    session_clone.stop().await;
+                    STOP_GET_STATS.store(true, Ordering::Relaxed);
+                    break;
+                }
+
+                                    
+                if PAUSE_FLAG.load(Ordering::Relaxed) {
+                    let _ = handle_clone.pause();
+                } 
+
+
                 torrent_stats.state = stats.state.clone();
                 torrent_stats.file_progress = stats.file_progress.clone();
                 torrent_stats.error = stats.error.clone();
@@ -268,19 +280,12 @@ pub mod torrent_functions {
                         println!("waiting...");
                         thread::sleep(time::Duration::from_millis(3000));
                         println!("continue !");
-                        windows_ui_automation::automate_until_download(checkboxes_list, &necessary_game_path, true);
+                        windows_ui_automation::automate_until_download(checkboxes_list, &necessary_game_path, two_gb_limit);
                         println!("done for real");
                         break;
                     }
                     
-                    if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
-                        session_clone.stop().await;
-                        break;
-                    }
-                    
-                    if PAUSE_FLAG.load(Ordering::Relaxed) {
-                        handle_clone.pause();
-                    } 
+
 
 
                 } else {
@@ -347,7 +352,8 @@ pub mod torrent_commands {
         magnet_link: String,
         download_path: String,
         torrent_state: State<'_, super::TorrentState>,
-        list_checkbox: Vec<String>
+        list_checkbox: Vec<String>,
+        should_limit: bool
     ) -> Result<Vec<String>, String> {
         
         let torrent_stats: Arc<Mutex<super::TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
@@ -372,6 +378,7 @@ pub mod torrent_commands {
                 list_checkbox,
                 file_list_tx,
                 file_selection_rx,
+                should_limit
             )
             .await
             {

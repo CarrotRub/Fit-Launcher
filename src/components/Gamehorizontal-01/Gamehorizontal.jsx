@@ -169,7 +169,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                                 magnetLink: cdgGameMagnet,
                                 downloadPath: inputPath,
                                 listCheckbox: externalCheckboxes(),
-                                shouldTwoGbLimit: should_bool_limit,
+                                shouldLimit: should_bool_limit,
 
                             });
         
@@ -360,6 +360,8 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
             fetchGameInfo(gameTitle, filePath);
             try {
                 fetchAdditionalImages();
+                const body = document.body;
+                body.style = 'overflow-y : hidden;'
             } catch (error) {
                 throw new Error(error);
             }
@@ -429,6 +431,8 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
     async function slideDown() {
         const horizontalSlide = document.querySelector('.horizontal-slide');
         horizontalSlide.style.transform = 'translateY(100%)';
+        const body = document.body;
+        body.style = '';
         invoke(`stop_get_games_images`);
         clearAllTimeoutsID();
         if(searchResultDisplay()) {

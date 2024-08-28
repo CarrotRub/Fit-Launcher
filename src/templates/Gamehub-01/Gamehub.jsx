@@ -5,10 +5,58 @@ import Newgames from '../../components/Newgames-01/Newgames';
 import Popularrepacks from '../../components/Popularrepacks-01/Popularrepacks';
 import UpdatedGames from '../../components/Updatedrepacks-01/Updatedrepacks';
 import clearFile from '../../components/functions/clearFileRust';
-
+import { appConfigDir } from "@tauri-apps/api/path";
+import { readTextFile, writeTextFile, exists } from "@tauri-apps/api/fs";
+import { createDir } from "@tauri-apps/api/fs";
 
 function Gamehub() {
     onMount(() => {
+
+        // Define default settings
+        const defaultSettings = {
+            defaultDownloadPath: "",
+            autoClean: true,
+            hoverTitle: true,
+            autoInstall: true,
+            importPath: "",
+            two_gb_limit: true
+        };
+
+        // Define a function to load settings from the JSON file
+        async function loadSettings() {
+          const configDir = await appConfigDir();
+          const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`; // Define the directory path
+          const settingsPath = `${dirPath}/settings.json`; // Define the settings file path
+    
+          try {
+            // Check if the directory exists, and if not, create it
+            const dirExists = await exists(dirPath);
+            if (!dirExists) {
+              await createDir(dirPath, { recursive: true });
+              console.log("Directory created:", dirPath);
+            }
+        
+            // Check if the settings file exists
+            const fileExists = await exists(settingsPath);
+            if (!fileExists) {
+              // If the file does not exist, create it with default settings
+              await writeTextFile(settingsPath, JSON.stringify(defaultSettings, null, 2));
+              console.log("Settings file created with default settings.");
+              return defaultSettings;
+            }
+        
+            // If the file exists, read and parse it
+            const json = await readTextFile(settingsPath);
+            return JSON.parse(json);
+          } catch (error) {
+            console.error("Failed to load settings:", error);
+            return defaultSettings;
+          }
+        }
+  
+
+
+
         let gamehubDiv = document.querySelector('.gamehub-container');
         let libraryDiv = document.querySelectorAll('.launcher-container');
         let settingsDiv = document.querySelectorAll('.settings-page');
