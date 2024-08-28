@@ -10,6 +10,12 @@ Fit Launcher is a 🚀 **blazingly fast** 🚀 game launcher designed specifical
 
 ## Getting Started
 
+### Images of the launcher
+
+![Launcher Screenshot 1](images/screenshot1.png)
+![Launcher Screenshot 2](images/screenshot2.png)
+
+
 ### Running the Launcher
 
 To run the Fit Launcher, simply execute the setup and install it inside

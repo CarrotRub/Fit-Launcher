@@ -4,7 +4,10 @@ on:
   push:
     branches:
       - master
-
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      
 jobs:
   publish-tauri:
     permissions:
