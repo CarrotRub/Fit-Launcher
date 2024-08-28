@@ -26,10 +26,27 @@ function Downloadingpartsidebar() {
     onMount(() => {
         window.addEventListener('start-download', startDownloadListener)
         const cdg = localStorage.getItem('CDG') || '[]'
+        window.addEventListener('storage', stopTorrent)
         setCdgObject(JSON.parse(cdg))
 
     })
 
+    const stopTorrent = async () => {
+        try {
+            // Clear CDG and DownloadSidePart from localStorage
+            localStorage.removeItem('CDG');
+            localStorage.removeItem('CDG_Stats');
+    
+            // Update state to reflect no active download
+            setCdgObject([]);
+
+                window.location.reload();
+    
+        } catch (error) {
+            console.error('Error stopping torrent:', error);
+        }
+    };
+    
     let shouldStopFetching = false; // Flag to control the loop
 
     const fetchTorrentStats = async () => {
@@ -251,24 +268,19 @@ function Downloadingpartsidebar() {
     
     return (
         <>
-            <Dynamic
-                component="div"
-                style={`--bg-length: ${
-                    isNaN(oldPercentage()) ? 0 : oldPercentage()
-                }%`}
-                className="currently-downloading-game"
-                onClick={toggleSidebar}
-            >
+                <div 
+                    style={`--bg-length: ${
+                        isNaN(oldPercentage()) ? 0 : oldPercentage()
+                        }%`}
+                    className="currently-downloading-game"
+                    onClick={toggleSidebar}>
                 { gameObjectProduced() ? (
                 <>
                 <div className="current-image-container">
-                    <Dynamic
-                        component="img"
-                        className="current-image"
-                        src={gameObjectProduced().gameImage}
-                        alt="Game Image"
-                    />
-                        {/* My heart told me to write weird-circle but my brain force me to write action-circle :( */}
+
+                    <img className="current-image" src={gameObjectProduced().gameImage} alt="Game Image"></img>
+                    
+                    {/* My heart told me to write weird-circle but my brain force me to write action-circle :( */}
                     <div className="action-circle">
                         <div className="action-circle-logo">
                             { isInitializing() ? (
@@ -293,13 +305,9 @@ function Downloadingpartsidebar() {
                 </div>
  
                     <div className="current-text-container">
-
-                        <Dynamic
-                            component="p"
-                            className="currently-downloading-game-title"
-                        >
-                            {gameObjectProduced().gameTitle}
-                        </Dynamic>
+                            <p className="currently-downloading-game-title">
+                                {gameObjectProduced().gameTitle}
+                            </p>
                         
                         <p className="currently-downloading-game-info">
                             <span id="downloading-speed">
@@ -314,12 +322,8 @@ function Downloadingpartsidebar() {
             ) : currentImage() || cdgObject().length > 0 ? (
                 <>
                     <div className="current-image-container">
-                        <Dynamic
-                            component="img"
-                            className="current-image"
-                            src={currentImage()}
-                            alt="Game Image"
-                        />
+
+                        <img className="current-image" src={currentImage()} alt="Game Image"></img>
                         
                         {/* My heart told me to write weird-circle but my brain force me to write action-circle :( */}
                         <div className="action-circle">
@@ -333,12 +337,11 @@ function Downloadingpartsidebar() {
                         
                     </div>
                     <div className="current-text-container">
-                        <Dynamic
-                            component="p"
-                            className="currently-downloading-game-title"
-                        >
+
+                            <p className="currently-downloading-game-title">
                             {currentTitle()}
-                        </Dynamic>
+                            </p>
+
                         <p className="currently-downloading-game-info">
                             <span id="downloading-speed">
                                 {oldDownloadingSpeed()}
@@ -354,7 +357,7 @@ function Downloadingpartsidebar() {
             )
                 }
 
-            </Dynamic>
+            </div>
             {isSidebarActive() && (
                 <Gameverticaldownloadslide isActive={isSidebarActive()} />
             )}
