@@ -26,7 +26,7 @@
     padding: 15px;
     grid-column: 2;
     display: grid;
-    gap: 2em;
+    gap: 2vw;
     grid-template-columns: repeat(auto-fill, minmax(15%, 1fr));
     grid-auto-rows: 300px;
     justify-items: start;

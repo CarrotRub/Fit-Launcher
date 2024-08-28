@@ -220,6 +220,9 @@ function Gameverticaldownloadslide({ isActive }) {
     
     const handleStopTorrent = () => {
         invoke('stop_torrent_command');
+        localStorage.removeItem('CDG');
+        window.dispatchEvent(new Event('storage'));
+        console.log("donea")
     }
 
     return (

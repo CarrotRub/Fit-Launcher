@@ -22,12 +22,17 @@ To run the Fit Launcher, simply execute the setup and install it inside
 `C:/Program Files/` then run the executable 😃:
 
 ```bash
-./fit-launcher.exe
+./"Fit Launcher.exe"
 ```
 
 ### Development Mode
 
-If you want to run the launcher in development mode, use the following command:
+If you want to run the launcher in development mode, follow these steps:
+
+1. Ensure you have any **C++ Compiler**, **Rust**, and **Cargo** installed on your system.
+2. Ensure you have these extensions on VSCode **C/C++ Microsoft** or **CodeLLDB** and **rust-analyzer**.
+3. Clone this repository.
+4. Run the build command:
 
 ```bash
 npm run tauri dev
@@ -50,7 +55,7 @@ npm run tauri build
 
 Got questions or want to hang out with our users? Join us on Discord! Big thanks to **Kürst** for moderating our Discord server, to **Vintage_Soldier** for the amazing app design, and to **SimplyStoned** for maintaining the old launcher while I was developing this one.
 
-[Join the Discord](https://discord.gg/cXaBWdcUSF) <!-- Replace with your Discord link -->
+[Join the Discord](https://discord.gg/cXaBWdcUSF)
 
 ## Credits
 
@@ -68,3 +73,4 @@ Enjoy your games with Fit Launcher! 🎮🚀
 - 🖥️ **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
 - 🌄 **Quicker Image Loading**: Optimize the speed at which images are retrieved and displayed.
 - 🎮 **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
+- 📟 **Control CPU Usage**: Allow the user to limit the CPU usage of the setup.

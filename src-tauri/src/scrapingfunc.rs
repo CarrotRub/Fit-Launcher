@@ -782,8 +782,8 @@ pub mod commands_scraping {
             },
         }
     
-        // Check for the first 4 files
-        for page_number in 1..=4 {
+        // Check for the first 5 files
+        for page_number in 1..=5 {
             let relative_filename = format!("post-sitemap{}.xml", page_number);
             let concrete_path = &binding.join(relative_filename);
             println!("{:#?}", concrete_path);
@@ -794,11 +794,11 @@ pub mod commands_scraping {
         }
         
 
-        // If all first 4 files exist, only download the 5th file
+        // If all first 5 files exist, only download the 5th file
         let range = if all_files_exist {
-            5..=5
+            6..=6
         } else {
-            1..=5
+            1..=6
         };
     
         // Download files as needed
