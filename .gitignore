@@ -1,9 +1,7 @@
 node_modules
 dist
 *.xml
-package-lock.json
 temp
 examples
-Cargo.lock
 .vscode
 target
