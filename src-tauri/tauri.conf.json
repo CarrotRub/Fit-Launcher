@@ -60,7 +60,6 @@
             "height": 400,
             "decorations": false,
             "transparent": true,
-            "alwaysOnTop": true,
             "center": true,
             "title": "Splashscreen"
         }
