@@ -127,7 +127,7 @@ const SettingsPage = () => {
               checked={settings().autoClean} 
               onChange={(e) => setSettings({ ...settings(), autoClean: e.target.checked })}
             />
-            Auto-clean game files after installation
+            Auto-clean game files after installation. <strong>//Not working//</strong>
           </label>
         </div>
       </section>
@@ -142,7 +142,7 @@ const SettingsPage = () => {
               checked={settings().autoInstall} 
               onChange={(e) => setSettings({ ...settings(), autoInstall: e.target.checked })}
             />
-            Automatic installation of games
+            Automatic installation of games.
           </label>
         </div>
         <div class="form-group">
@@ -164,9 +164,6 @@ const SettingsPage = () => {
             />
             Limit the installer to 2GB of RAM. (It will be automatically on if you have 8GB or less)
           </label>
-          <span>
-            It will be automatically on if you have 8GB or less
-          </span>
         </div>
       </section>
 
