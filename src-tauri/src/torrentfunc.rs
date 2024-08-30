@@ -247,6 +247,7 @@ pub mod torrent_functions {
 
                                     
                 if PAUSE_FLAG.load(Ordering::Relaxed) {
+                    println!("PAUSE FLAG IS TRUE");
                     let _ = handle_clone.pause();
                 } 
 
@@ -307,7 +308,8 @@ pub mod torrent_functions {
 
 pub mod torrent_commands {
 
-    use serde::{Deserialize, Serialize};
+    use serde::Deserialize;
+    use serde::Serialize;
     use tauri::api::process::kill_children;
     use tokio::sync::oneshot;
     use std::error::Error;
@@ -355,7 +357,6 @@ pub mod torrent_commands {
         list_checkbox: Vec<String>,
         should_limit: bool
     ) -> Result<Vec<String>, String> {
-        
         let torrent_stats: Arc<Mutex<super::TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
     
         // Create oneshot channels for file list and user selection
@@ -367,9 +368,11 @@ pub mod torrent_commands {
             let mut selection_tx_lock = torrent_state.file_selection_tx.lock().await;
             *selection_tx_lock = Some(file_selection_tx);
         }
+    
+        
 
         // Spawn the torrent thread
-        spawn(async move {
+        let torrent_thread = spawn(async move {
             println!("{} , {}", magnet_link, download_path);
             if let Err(e) = torrent_functions::start_torrent_thread(
                 magnet_link,
@@ -383,12 +386,23 @@ pub mod torrent_commands {
             .await
             {
                 eprintln!("Error in torrent thread: {:?}", e);
+                Err(format!("Torrent thread failed: {:?}", e))
+            } else {
+                Ok(())
             }
         });
     
         // Wait for the file list from the spawned thread
-        let file_list = file_list_rx.await.map_err(|e| format!("Failed to receive file list: {:?}", e))?;
-        // Return the file list to the frontend for user selection
+        let file_list = tokio::select! {
+            result = file_list_rx => result.map_err(|e| format!("Failed to receive file list: {:?}", e))?,
+            result = torrent_thread => {
+                match result {
+                    Ok(_) => Err("Torrent thread completed without sending file list".to_string())?,
+                    Err(e) => Err(format!("Failed to join torrent thread: {:?}", e))?
+                }
+            }
+        };
+    
         Ok(file_list)
     }
     
@@ -408,7 +422,7 @@ pub mod torrent_commands {
             Err("No file selection channel available".into())
         }
     }
-
+    
     #[tauri::command]
     pub async fn get_torrent_stats(
         torrent_state: State<'_, super::TorrentState>,

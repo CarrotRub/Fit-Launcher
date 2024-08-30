@@ -213,3 +213,28 @@
     border-radius: 5px;
     object-fit: cover; /* Ensures the images cover their container */
 }
+
+.arrow-container {
+    cursor: pointer;
+    position: absolute;
+
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: rgb(79 79 81 / 67%);
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 11;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+}
+
+.arrow-down {
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid white;
+}

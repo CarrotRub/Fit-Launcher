@@ -215,19 +215,25 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
         
                                     const uncheckedOptions = [];
         
-                                    if (!directXCheckbox.checked) {
+                                    if (directXCheckbox.checked) {
                                         uncheckedOptions.push("directx");
+                                    } else {
+                                        uncheckedOptions.push("")
                                     }
-                                    if (!msvcCheckbox.checked) {
+                                    if (msvcCheckbox.checked) {
                                         uncheckedOptions.push("microsoft");
+                                    } else {
+                                        uncheckedOptions.push("")
                                     }
         
                                     // Update the signal with unchecked options
                                     setExternalCheckboxes(uncheckedOptions);
         
                                     const selected = Array.from(form.querySelectorAll('input[type="checkbox"]:checked'))
-                                        .map(checkbox => parseInt(checkbox.value, 10)); // Convert string to number
-        
+                                    .map(checkbox => parseInt(checkbox.value, 10)) // Convert strings to numbers
+                                    .filter(value => !isNaN(value)); // Ensure NaN values are filtered out
+                            
+                                console.log("Selected files:", selected);
                                     console.log("Selected files:", selected);
                                     return selected;
                                 }
@@ -449,6 +455,9 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
 
     return (
         <div class={`horizontal-slide`}>
+            <div class="arrow-container" onClick={slideDown}>
+                <div class="arrow-down"></div>
+            </div>
             {loading() ? (
                 <p>Loading...</p>
             ) : (

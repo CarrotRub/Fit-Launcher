@@ -11,7 +11,7 @@
     padding: 10px;
     overflow: hidden;
     transform: translateX(260px);
-    transition: transform 0.5s ease;
+    transition: transform 2s ease;
     /* max-height: 75vh;  */
     display: inline-flex;
     flex-direction: column;
@@ -115,4 +115,10 @@ canvas {
 
 .pause-resume-button button:hover {
     background-color: #0056b3;
+}
+
+.arrow-container.left {
+    left: 90%;
+    transform: rotate(90deg);
+    top: 5%;
 }
