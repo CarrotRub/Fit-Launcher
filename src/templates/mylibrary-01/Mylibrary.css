@@ -20,7 +20,95 @@
   border-radius: 10px;
 }
 
+/* Base styles for the context menu */
+.custom-context-menu {
+    position: absolute;
+    background: rgb(179 176 176 / 41%);
+    backdrop-filter: blur(10px);
+    box-shadow: 0px 7px 16px 5px rgb(0 0 0 / 40%);
+    border-radius: 10px;
+    padding: 10px 0;
+    z-index: 1000;
+    min-width: 150px;
+    color: #ffffff;
+}
 
+/* Styles for each context menu item */
+.context-menu-item, .custom-game-context-menu {
+    padding: 10px 20px; /* Spacing within each menu item */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s ease; /* Smooth background color transition */
+    text-align: left; /* Align text to the left */
+}
+
+/* Hover effect for context menu items */
+.custom-context-menu .context-menu-item:hover, .custom-game-context-menu .context-menu-item:hover  {
+    background-color: rgba(255, 255, 255, 0.3); /* Slightly more opaque background on hover */
+    backdrop-filter: blur(15px); /* Increase blur slightly on hover */
+}
+
+/* Shadow effect for each item */
+.context-menu-item {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    border-radius: 5px; 
+}
+
+/* Add some spacing between the menu items */
+.context-menu-item + .context-menu-item {
+    margin-top: 5px;
+}
+
+/*Add transition effects to the menu */
+.custom-context-menu .context-menu-item, .custom-game-context-menu .context-menu-item  {
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: fadeIn 0.3s forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.swal2-results-box {
+    max-height: 150px;
+    overflow-y: scroll;
+    border: 1px solid #535353;
+    border-radius: 4px;
+    margin-top: 10px;
+    padding: 10px;
+    box-shadow: -2px 4px 20px 4px rgb(0 0 0 / 50%);
+    z-index: 10000;
+
+    /* Hide scrollbar for WebKit browsers */
+    scrollbar-width: none; /* For other OSes*/
+    -ms-overflow-style: none;  /* Internet Explorer and Edge */
+}
+
+.swal2-results-box::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+/* Individual result item */
+.search-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: aliceblue;
+    border-radius: 3px;
+}
+
+/* Highlight selected result */
+.search-result-item.swal2-selected-result {
+    background-color: #007bff; /* Blue background for selected item */
+    color: #fff; /* White text for selected item */
+}
+
+/* Add hover effect */
+.search-result-item:hover {
+    color: #19191a;
+    background-color: #f0f0f0; 
+}
 
 .game-grid {
     padding: 15px;
