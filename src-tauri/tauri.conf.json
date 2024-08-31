@@ -1,7 +1,7 @@
 {
     "package": {
       "productName": "Fit Launcher",
-      "version": "1.0.1"
+      "version": "1.0.0"
     },
     "build": {
       "distDir": "../dist",
@@ -10,17 +10,9 @@
       "beforeBuildCommand": "npm run build"
     },
     "tauri": {
-      "updater": {
-        "active": true,
-        "endpoints": [
-            "https://gist.githubusercontent.com/CarrotRub/495fb3cd9e893a19b3d961309e299fc7/raw/"
-        ],
-        "dialog": true,
-        "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU5OUIwNTFCMzc1N0EyQTAKUldTZ29sYzNHd1diV2NXVFpaRVdGZ1l6azZyTFVkNGI3K3U0QmtPc3dQREk2QVgxSHowcUFLMnUK"
-      },
       "bundle": {
         "active": true,
-        "targets": ["msi", "updater"],
+        "targets": "msi",
         "windows": {
           "webviewInstallMode": {
             "type": "downloadBootstrapper"
@@ -68,6 +60,7 @@
             "height": 400,
             "decorations": false,
             "transparent": true,
+            "alwaysOnTop": true,
             "center": true,
             "title": "Splashscreen"
         }

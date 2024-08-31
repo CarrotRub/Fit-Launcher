@@ -130,7 +130,7 @@ function Downloadingpartsidebar() {
                 desc: current_game.desc,
                 magnetlink: current_game.gameMagnet,
                 timestamp: Date.now(),
-                path: "",
+                game_path: "",
             };
         
             try {
@@ -211,7 +211,7 @@ function Downloadingpartsidebar() {
                 setRemainingTime(
                     `${
                         actTorrentInfo.time_remaining === null
-                        ? (actTorrentInfo.finished !== true ? 'Loading...' : 'Done')
+                        ? (actTorrentInfo.finished !== true ? 'Infinity' : 'Done')
                         : actTorrentInfo.time_remaining
                     }`
                 );
@@ -230,12 +230,6 @@ function Downloadingpartsidebar() {
         setIsSidebarActive(newSidebarState)
         localStorage.setItem('isSidebarActive', JSON.stringify(newSidebarState))
     }
-
-    createEffect(() => {
-        let isItActive = localStorage.getItem('isSidebarActive');
-        setIsSidebarActive(isItActive);
-
-    })
 
     const cdgStatsGlobal = JSON.parse(localStorage.getItem('CDG_Stats') || '{}')
     const progressGlobal = cdgStatsGlobal.progress_bytes || 0
@@ -365,7 +359,7 @@ function Downloadingpartsidebar() {
 
             </div>
             {isSidebarActive() && (
-                <Gameverticaldownloadslide isActive={isSidebarActive()} setIsActive={setIsSidebarActive} />
+                <Gameverticaldownloadslide isActive={isSidebarActive()} />
             )}
         </>
     )
