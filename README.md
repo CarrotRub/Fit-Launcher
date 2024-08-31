@@ -2,8 +2,6 @@
 
 Fit Launcher is a 🚀 **blazingly fast** 🚀 game launcher designed specifically for cracked games from FitGirl Repack. Built with Rust, Tauri, and SolidJS, this launcher delivers top-notch performance and a sleek, modern design. 
 
-# ⏳ COMING SOON... ⏳
-
 ## Features
 - ⚡ **Lightning Fast**: Powered by Rust and Tauri for better speed and efficiency.
 - 🎨 **Sleek Design**: Thanks to the creative design by Vintage_Soldier.
@@ -34,9 +32,10 @@ If you want to run the launcher in development mode, follow these steps:
 1. Ensure you have any **C++ Compiler**, **Rust**, and **Cargo** installed on your system.
 2. Ensure you have these extensions on VSCode **C/C++ Microsoft** or **CodeLLDB** and **rust-analyzer**.
 3. Clone this repository.
-4. Run the build command:
+4. Run the dev command:
 
 ```bash
+npm install
 npm run tauri dev
 ```
 
