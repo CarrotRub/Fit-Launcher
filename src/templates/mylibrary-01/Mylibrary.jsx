@@ -1,6 +1,6 @@
 import { createSignal, onMount, createEffect, onCleanup } from "solid-js";
 import { appConfigDir } from "@tauri-apps/api/path";
-import { writeFile } from "@tauri-apps/api/fs";
+import { writeFile, writeTextFile, readTextFile, exists, createDir } from "@tauri-apps/api/fs";
 import { open } from "@tauri-apps/api/dialog";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 import { invoke } from "@tauri-apps/api";
@@ -456,7 +456,7 @@ function Mylibrary() {
                 gameGrid.appendChild(imageOption);
             });
     
-            // Add empty image option with + sign, matching the size of other game options
+            // Always add the "Add Downloaded Game" option
             const emptyImageOption = document.createElement('div');
             emptyImageOption.className = 'image-option empty';
             emptyImageOption.style.position = 'relative';
@@ -469,13 +469,13 @@ function Mylibrary() {
             emptyImageOption.style.borderRadius = '18px'
             emptyImageOption.style.cursor = 'pointer';
             emptyImageOption.style.boxSizing = 'border-box';
-    
+            
             const plusSign = document.createElement('div');
             plusSign.innerHTML = '+';
             plusSign.style.fontSize = '48px';
             plusSign.style.color = '#ccc';
             plusSign.style.textShadow = 'rgb(0, 0, 0) -5px 7px 12px';
-    
+            
             const label = document.createElement('div');
             label.innerText = 'Add Downloaded Game';
             label.style.position = 'absolute';
@@ -486,14 +486,13 @@ function Mylibrary() {
             label.style.textAlign = 'center';
             label.style.width = '100%';
             label.style.textShadow = 'rgb(0, 0, 0) -5px 7px 12px';
-    
+            
             emptyImageOption.appendChild(plusSign);
             emptyImageOption.appendChild(label);
-    
+            
             emptyImageOption.addEventListener('click', handleAddDownloadedGames);
-    
+            
             gameGrid.appendChild(emptyImageOption);
-    
             return gameData;
         } catch (error) {
             console.error("Error parsing game data:", error);
@@ -510,6 +509,36 @@ function Mylibrary() {
             setGameContextMenuVisible(false); 
         }); 
         libraryPage.addEventListener('contextmenu', (e) => {e.preventDefault()}) 
+    })
+
+    onMount(async() => {
+
+        const gameData = []
+
+        const appDir = await appConfigDir();
+        const dirPath = `${appDir.replace(/\\/g, '/')}/data`;
+        const filePath = `${dirPath}/downloaded_games.json`;
+        try {
+            // Check if the directory exists, and if not, create it
+            const dirExists = await exists(dirPath);
+            if (!dirExists) {
+              await createDir(dirPath, { recursive: true });
+              console.log("Directory created:", dirPath);
+            }
+        
+            // Check if the settings file exists
+            const fileExists = await exists(filePath);
+            if (!fileExists) {
+              // If the file does not exist, create it with default settings
+              await writeTextFile(filePath, JSON.stringify(gameData, null, 2));
+              console.log("Settings file created with default settings.");
+              return gameData;
+            }
+        
+          } catch (error) {
+            console.error("Failed to load settings:", error);
+            return filePath;
+          }
     })
 
     return (
