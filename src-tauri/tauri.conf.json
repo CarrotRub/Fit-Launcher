@@ -13,7 +13,7 @@
       "updater": {
         "active": true,
         "endpoints": [
-            "https://github.com/CarrotRub/Fit-Launcher/releases/tag/app-v1.0.1"
+            "https://gist.githubusercontent.com/CarrotRub/495fb3cd9e893a19b3d961309e299fc7/raw/"
         ],
         "dialog": true,
         "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU5OUIwNTFCMzc1N0EyQTAKUldTZ29sYzNHd1diV2NXVFpaRVdGZ1l6azZyTFVkNGI3K3U0QmtPc3dQREk2QVgxSHowcUFLMnUK"
