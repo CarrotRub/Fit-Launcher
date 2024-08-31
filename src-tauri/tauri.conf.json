@@ -20,7 +20,7 @@
       },
       "bundle": {
         "active": true,
-        "targets": "msi",
+        "targets": ["msi", "updater"],
         "windows": {
           "webviewInstallMode": {
             "type": "downloadBootstrapper"
