@@ -10,6 +10,14 @@
       "beforeBuildCommand": "npm run build"
     },
     "tauri": {
+      "updater": {
+        "active": true,
+        "endpoints": [
+            "https://github.com/CarrotRub/Fit-Launcher/releases/tag/app-v1.0.1"
+        ],
+        "dialog": true,
+        "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU5OUIwNTFCMzc1N0EyQTAKUldTZ29sYzNHd1diV2NXVFpaRVdGZ1l6azZyTFVkNGI3K3U0QmtPc3dQREk2QVgxSHowcUFLMnUK"
+      },
       "bundle": {
         "active": true,
         "targets": "msi",
