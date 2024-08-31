@@ -368,14 +368,17 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
 }
 
 
-
+#[tauri::command]
+fn reload_window(window: tauri::Window) {
+    window.eval("window.location.reload();").unwrap();
+}
 
 
 fn main() -> Result<(), Box<dyn Error>> {
 
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
     let torrent_state = torrentfunc::TorrentState::default();
-    // let closing_signal_received = Arc::new(AtomicBool::new(false));
+
     tauri::Builder::default()
     .setup(|app| {
         let splashscreen_window = app.get_window("splashscreen").unwrap();
@@ -417,7 +420,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // After all tasks are done, close the splash screen and show the main window
             splashscreen_window.close().unwrap();
+
+            
             main_window.show().unwrap();
+            current_app_handle.emit_all("scraping-complete", {}).unwrap();
+
+            current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
+            println!("Scraping signal has been sent.")
+            
         });
 
         Ok(())
@@ -429,6 +439,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         clear_file,
         stop_get_games_images,
         check_folder_path,
+        reload_window,
         torrent_commands::start_torrent_command,
         torrent_commands::get_torrent_stats,
         torrent_commands::stop_torrent_command,
