@@ -8,6 +8,7 @@ import clearFile from '../../components/functions/clearFileRust';
 import { appConfigDir } from "@tauri-apps/api/path";
 import { readTextFile, writeTextFile, exists } from "@tauri-apps/api/fs";
 import { createDir } from "@tauri-apps/api/fs";
+import { hide } from '@tauri-apps/api/app';
 
 function Gamehub() {
     onMount(() => {
@@ -19,7 +20,9 @@ function Gamehub() {
             hoverTitle: true,
             autoInstall: true,
             importPath: "",
-            two_gb_limit: true
+            two_gb_limit: true,
+            hide_nsfw_content: false,
+            enrolled_in_beta: false, 
         };
 
         // Define a function to load settings from the JSON file
@@ -138,7 +141,6 @@ function Gamehub() {
             <div className="Popular-repacks">
                 <Popularrepacks />
             </div>
-            
             <div className="New-Games">
                 <Newgames />
             </div>
