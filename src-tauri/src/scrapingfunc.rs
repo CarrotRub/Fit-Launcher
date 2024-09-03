@@ -759,6 +759,7 @@ pub mod commands_scraping {
         let images_selector = scraper::Selector::parse(".entry-content > p > a > img").unwrap();
         let description_selector = Selector::parse("div.entry-content").unwrap();
         let magnetlink_selector = scraper::Selector::parse("a[href*='magnet']").unwrap();
+        let tag_selector = scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap();
 
         
         let title_elem = game_doc.select(&title_selector).next();

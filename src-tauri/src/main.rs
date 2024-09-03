@@ -19,10 +19,14 @@ mod custom_ui_automation;
 pub use crate::custom_ui_automation::windows_custom_commands;
 
 mod mighty;
+use std::fs;
+
+use serde_json::Value;
+use std::error::Error;
 
 
 use core::str;
-use std::error::Error;
+
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use std::fs::File;
@@ -367,9 +371,48 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
     Ok(true)
 }
 
+fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
+    println!("Starting the process to delete invalid JSON files...");
 
+    // Retrieve the correct path dynamically
+    let mut dir_path = app_handle.path_resolver().app_data_dir().unwrap();
+    dir_path.push("tempGames");
 
+    if !dir_path.exists() {
+        println!("Directory does not exist: {:?}", dir_path);
+        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found")));
+    }
 
+    let paths = fs::read_dir(&dir_path)?;
+
+    for path in paths {
+        let path = path?.path();
+
+        if path.extension().and_then(|s| s.to_str()) == Some("json") {
+            let file_content = fs::read_to_string(&path)?;
+
+            let json_data: Value = match serde_json::from_str(&file_content) {
+                Ok(data) => data,
+                Err(err) => {
+                    println!("Failed to parse JSON file {:?}: {}", path, err);
+                    println!("Deleting corrupted file: {:?}", path);
+                    fs::remove_file(&path)?;
+                    println!("Deleted corrupted file successfully: {:?}", path);
+                    continue;
+                }
+            };
+
+            if !json_data.get("tag").is_some() {
+                println!("Deleting file with missing 'tag' field: {:?}", path);
+                fs::remove_file(&path)?;
+                println!("Deleted file successfully: {:?}", path);
+            }
+        }
+    }
+
+    println!("Finished the process to delete invalid JSON files.");
+    Ok(())
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
 
@@ -377,12 +420,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     let torrent_state = torrentfunc::TorrentState::default();
     // let closing_signal_received = Arc::new(AtomicBool::new(false));
     
+
     tauri::Builder::default()
     .setup(|app| {
         let splashscreen_window = app.get_window("splashscreen").unwrap();
         let main_window = app.get_window("main").unwrap();
         let current_app_handle = app.app_handle();
 
+        // Delete JSON files missing the 'tag' field or corrupted and log the process
+        if let Err(e) = delete_invalid_json_files(&current_app_handle) {
+            eprintln!("Error during deletion of invalid or corrupted JSON files: {}", e);
+        }
         // Clone the app handle for use in async tasks
         let first_app_handle = current_app_handle.clone();
         let second_app_handle = current_app_handle.clone();
