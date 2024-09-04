@@ -231,14 +231,15 @@ const SettingsPage = () => {
     <div class="form-group">
       <label>
         <p>Application Version: {version()}</p> {/* Display the version */}
-        <input 
+        </label>
+        {/* <input 
           type="checkbox" 
           checked={settings().enrolled_in_beta} 
           onChange={(e) => setSettings({ ...settings(), enrolled_in_beta: e.target.checked })}
         />
         Enroll in the beta program. (This will enable beta updates for the app)
       </label>
-      <br></br>
+      <br></br> */}
       
   <button class="boton-elegante"onClick={handleCheckForUpdates}>Check for updates</button>
     </div>
