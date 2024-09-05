@@ -12,84 +12,91 @@ import { hide } from '@tauri-apps/api/app';
 
 function Gamehub() {
     onMount(() => {
-
-        // Define default settings
-        const defaultSettings = {
-            defaultDownloadPath: "",
-            autoClean: true,
-            hoverTitle: true,
-            autoInstall: true,
-            importPath: "",
-            two_gb_limit: true,
-            hide_nsfw_content: false,
-            enrolled_in_beta: false, 
-        };
-
-        // Define a function to load settings from the JSON file
-        async function loadSettings() {
-          const configDir = await appConfigDir();
-          const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`; // Define the directory path
-          const settingsPath = `${dirPath}/settings.json`; // Define the settings file path
-    
-          try {
-            // Check if the directory exists, and if not, create it
-            const dirExists = await exists(dirPath);
-            if (!dirExists) {
-              await createDir(dirPath, { recursive: true });
-              console.log("Directory created:", dirPath);
-            }
         
-            // Check if the settings file exists
-            const fileExists = await exists(settingsPath);
-            if (!fileExists) {
-              // If the file does not exist, create it with default settings
-              await writeTextFile(settingsPath, JSON.stringify(defaultSettings, null, 2));
-              console.log("Settings file created with default settings.");
-              return defaultSettings;
-            }
-        
-            // If the file exists, read and parse it
-            const json = await readTextFile(settingsPath);
-            return JSON.parse(json);
-          } catch (error) {
-            console.error("Failed to load settings:", error);
-            return defaultSettings;
-          }
-        }
-  
-
-
+        // Load settings at startup
+        loadSettings().then((settings) => {
+            console.log("Loaded settings on startup:", settings);
+        }).catch((error) => {
+            console.error("Error loading settings on startup:", error);
+        });
 
         let gamehubDiv = document.querySelector('.gamehub-container');
         let libraryDiv = document.querySelectorAll('.launcher-container');
         let settingsDiv = document.querySelectorAll('.settings-page');
 
-        if(gamehubDiv){
-          console.log("findit")
-          let gamehubLinkText = document.querySelector('#link-gamehub');
-          gamehubLinkText.style.backgroundColor = '#ffffff0d';
-          gamehubLinkText.style.borderRadius = '5px';
+        if (gamehubDiv) {
+            console.log("findit");
+            let gamehubLinkText = document.querySelector('#link-gamehub');
+            gamehubLinkText.style.backgroundColor = '#ffffff0d';
+            gamehubLinkText.style.borderRadius = '5px';
         }
-        if(libraryDiv){
-            console.log("findit")
+
+        if (libraryDiv) {
+            console.log("findit");
             let libraryLinkText = document.querySelector('#link-library');
             libraryLinkText.style.backgroundColor = '';
         }
 
-        if(settingsDiv){
-
+        if (settingsDiv) {
             let gamehubLinkText = document.querySelector('#link-settings');
             gamehubLinkText.style.backgroundColor = '';
-            
         }
+    });
 
-      })
+    // Moved outside the onMount, to allow reusability
+    const defaultSettings = {
+        defaultDownloadPath: "",
+        autoClean: true,
+        hoverTitle: true,
+        autoInstall: true,
+        importPath: "",
+        two_gb_limit: true,
+        hide_nsfw_content: false,
+    };
+
+    // Function to load settings from the JSON file, or create it if not present
+    async function loadSettings() {
+        const configDir = await appConfigDir();
+        const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`; // Directory path
+        const settingsPath = `${dirPath}/settings.json`; // Settings file path
+
+        try {
+            console.log("Gamehub: Loading settings from:", settingsPath);
+
+            // Check if the directory exists, and if not, create it
+            const dirExists = await exists(dirPath);
+            if (!dirExists) {
+                console.log("Directory does not exist. Creating directory:", dirPath);
+                await createDir(dirPath, { recursive: true });
+                console.log("Directory created:", dirPath);
+            }
+
+            // Check if the settings file exists
+            const fileExists = await exists(settingsPath);
+            if (!fileExists) {
+                console.log("Settings file does not exist. Creating settings file with default settings.");
+                // If the file does not exist, create it with default settings
+                await writeTextFile(settingsPath, JSON.stringify(defaultSettings, null, 2));
+                console.log("Settings file created with default settings.");
+                return defaultSettings;
+            }
+
+            // If the file exists, read and parse it
+            const json = await readTextFile(settingsPath);
+            console.log("Settings loaded from file.");
+            return JSON.parse(json);
+        } catch (error) {
+            console.error("Failed to load settings:", error);
+            return defaultSettings; // Return defaults in case of error
+        }
+    }
+
     const singularGamePath = '../src/temp/singular_games.json';
-    
+
     createEffect(async () => {
         await clearFile(singularGamePath);
         invoke('stop_get_games_images');
-    })
+    });
 
     function randomImageFinder() {
         const imageElements = document.querySelectorAll(".gamehub-container img");
@@ -99,42 +106,38 @@ function Gamehub() {
 
             const fitgirlLauncher = document.querySelector('.gamehub-container');
             const scrollPosition = window.scrollY || document.documentElement.scrollTop;
-    
 
-            const docBlurOverlay = document.querySelector('.blur-overlay')
+            const docBlurOverlay = document.querySelector('.blur-overlay');
             if (docBlurOverlay != null) {
-                docBlurOverlay.remove()
+                docBlurOverlay.remove();
             }
-            
-            const docColorFilterOverlay = document.querySelector('.color-blur-overlay')
-            if (docColorFilterOverlay === null){
+
+            const docColorFilterOverlay = document.querySelector('.color-blur-overlay');
+            if (docColorFilterOverlay === null) {
                 const colorFilterOverlay = document.createElement('div');
                 colorFilterOverlay.className = 'color-blur-overlay';
-                fitgirlLauncher.appendChild(colorFilterOverlay)
-                console.log("colroe")
-
-            } 
+                fitgirlLauncher.appendChild(colorFilterOverlay);
+                console.log("color filter overlay added");
+            }
 
             const blurOverlay = document.createElement('div');
             blurOverlay.className = 'blur-overlay';
-
             fitgirlLauncher.appendChild(blurOverlay);
             blurOverlay.style.backgroundColor = `rgba(0, 0, 0, 0.4)`;
             blurOverlay.style.backgroundImage = `url(${selectedImageSrc})`;
             blurOverlay.style.filter = 'blur(15px)';
             blurOverlay.style.top = `-${scrollPosition}px`;
-            
-          }
-
+        }
     }
+
     createEffect(() => {
         const timeOut = setTimeout(randomImageFinder, 500);
-        const interval = setInterval(randomImageFinder, 5000); 
+        const interval = setInterval(randomImageFinder, 5000);
         onCleanup(() => {
-            clearInterval(interval)
+            clearInterval(interval);
             clearTimeout(timeOut);
         });
-    })
+    });
 
     return (
         <div className="gamehub-container">
@@ -148,7 +151,7 @@ function Gamehub() {
                 <UpdatedGames />
             </div>
         </div>
-    )
+    );
 }
 
 export default Gamehub;

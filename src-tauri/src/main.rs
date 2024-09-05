@@ -415,11 +415,8 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
     let torrent_state = torrentfunc::TorrentState::default();
-    // let closing_signal_received = Arc::new(AtomicBool::new(false));
-    
 
     tauri::Builder::default()
     .setup(|app| {
@@ -431,6 +428,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if let Err(e) = delete_invalid_json_files(&current_app_handle) {
             eprintln!("Error during deletion of invalid or corrupted JSON files: {}", e);
         }
+
         // Clone the app handle for use in async tasks
         let first_app_handle = current_app_handle.clone();
         let second_app_handle = current_app_handle.clone();
@@ -439,41 +437,43 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         // Perform asynchronous initialization tasks without blocking the main thread
         tauri::async_runtime::spawn(async move {
+            // Wrap network scraping in a block that logs errors and prevents crashing
             let mandatory_tasks_online = tauri::async_runtime::spawn_blocking(move || {
                 if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
                     eprintln!("Error in scraping_func: {}", e);
-                    std::process::exit(1);
+                    // TODO: Will need to alert frontend but this at least let's the app countinue and not crash
                 }
 
                 if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
                     eprintln!("Error in popular_games_scraping_func: {}", e);
-                    std::process::exit(1);
+                    // TODO: Will need to alert frontend but this at least let's the app countinue and not crash
+
                 }
 
                 if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
                     eprintln!("Error in get_sitemaps_website: {}", e);
-                    std::process::exit(1);
+                    // TODO: Will need to alert frontend but this at least let's the app countinue and not crash
+
                 }
 
                 if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
                     eprintln!("Error in recently_updated_games_scraping_func: {}", e);
-                    std::process::exit(1);
+                    // TODO: Will need to alert frontend but this at least let's the app countinue and not crash
                 }
             });
 
-            // Await the completion of the tasks
-            mandatory_tasks_online.await.unwrap();
+            // Await the completion of the tasks, handling any panics gracefully
+            if let Err(e) = mandatory_tasks_online.await {
+                eprintln!("An error occurred during scraping tasks: {:?}", e);
+            }
 
             // After all tasks are done, close the splash screen and show the main window
             splashscreen_window.close().unwrap();
-
-            
             main_window.show().unwrap();
-            current_app_handle.emit_all("scraping-complete", {}).unwrap();
 
+            current_app_handle.emit_all("scraping-complete", {}).unwrap();
             current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
-            println!("Scraping signal has been sent.")
-            
+            println!("Scraping signal has been sent.");
         });
 
         Ok(())

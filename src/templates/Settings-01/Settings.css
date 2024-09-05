@@ -142,4 +142,39 @@ body {
     background: #292929;
   }
   
+  /* Notifications */
+/* Notifications */
+.notification {
+  background-color: #4caf50; /* Green */
+  color: white;
+  padding: 15px;
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  pointer-events: none; /* Prevent it from blocking any user interaction */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.3s ease-in-out;
+}
+
+.notification.show {
+  opacity: 1; /* Show notification */
+}
+
+/* Save button */
+.boton-elegante {
+  background-color: #1d1d1d;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.boton-elegante:hover {
+  background-color: #007bb5;
+}
   

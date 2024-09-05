@@ -6,6 +6,7 @@ pub mod basic_scraping {
     use serde::{Deserialize, Serialize};
     use core::str;
     use std::{fs, sync::Arc};
+    use tauri::Manager;
     use std::time::Instant;
     use std::path::Path;
     use anyhow::Result;
@@ -78,6 +79,8 @@ pub mod basic_scraping {
         let start_time = Instant::now();
         let client = reqwest::Client::new();
         let mut recently_up_games: Vec<Game> = Vec::new();
+
+        // let mut scraping_success = true; // Track scraping boolean
     
         // Change the number of pages it will scrape, knowing that there are 10 games per page.
         for page_number in 1..=2 {
@@ -97,6 +100,34 @@ pub mod basic_scraping {
                 eprintln!("Failed to get a body from URL: {}", &url);
                 ScrapingError::ReqwestError(e)
             })?;
+
+    //     // Handle network errors gracefully
+    //     let res = match client.get(&url).send().await {
+    //         Ok(response) => response,
+    //         Err(e) => {
+    //             eprintln!("Network error while requesting {}: {}", &url, e);
+    //             // Emit failure event to notify frontend
+    //             app_handle.emit_all("scraping_failed", format!("Failed to scrape data from {}. Network error: {}", &url, e)).unwrap();
+    //             continue; // Continue without stopping the app
+    //         }
+    //     };
+
+
+    //   // Check for successful response
+    //   if !res.status().is_success() {
+    //     eprintln!("Error: Failed to connect to the website or the website is down.");
+    //     app_handle.emit_all("scraping_failed", format!("Failed to connect to {}. Website might be down.", &url)).unwrap();
+    //     continue;
+    // }
+
+    // let body = match res.text().await {
+    //     Ok(body) => body,
+    //     Err(e) => {
+    //         eprintln!("Failed to read response body from {}: {}", &url, e);
+    //         app_handle.emit_all("scraping_failed", format!("Failed to read response body from {}.", &url)).unwrap();
+    //         continue;
+    //     }
+    // };
         
             let document = scraper::Html::parse_document(&body);
         
@@ -107,6 +138,7 @@ pub mod basic_scraping {
         
             let pics_selector = scraper::Selector::parse(".alignleft").map_err(|err| {
                 eprintln!("Error parsing images selector: {:#?}", err);
+                
                 ScrapingError::SelectorError(err.to_string())
             })?;
         
@@ -244,6 +276,12 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }));
         }
+
+        // 2024-09-05 - Placeholder for next update to handle alerts on network issues
+        // if !scraping_success {
+        //     // Emit an event that scraping failed
+        //     app_handle.emit_all("scraping_failed", "Unable to scrape data.").unwrap();
+        // }
     
         let end_time = Instant::now();
         let duration_time_process = end_time - start_time;
@@ -274,6 +312,7 @@ pub mod basic_scraping {
             Err(e) => {
                 eprintln!("Failed to get a body from URL: {}", url);
                 eprintln!("Error: {:#?}", e);
+
                 return Err(Box::new(ScrapingError::ReqwestError(e)));
             }
         };
@@ -487,27 +526,39 @@ pub mod basic_scraping {
     
     #[tokio::main]
     pub async fn recently_updated_games_scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
-        println!("Before HTTP request");
+        println!("Starting recently_updated_games_scraping_func...");
+    
         let start_time = Instant::now();
         let mut recent_games: Vec<Game> = Vec::new();
-    
         let client = reqwest::Client::new();
-        let url = "https://fitgirl-repacks.site/category/updates-digest/";
-        let res = client.get(url).send().await.map_err(|e| {
-            eprintln!("Failed to get a response from URL: {}", &url);
-            ScrapingError::ReqwestError(e)
-        })?;
     
-        println!("After HTTP request");
+        let url = "https://fitgirl-repacks.site/category/updates-digest/";
+    
+        // Handle the network request and log failures, but allow continuation
+        let res = match client.get(url).send().await {
+            Ok(response) => response,
+            Err(e) => {
+                eprintln!("Network error while requesting {}: {}", &url, e);
+                app_handle.emit_all("scraping_failed", format!("Failed to scrape recently updated games. Network error: {}", e)).unwrap();
+                return Err(Box::new(ScrapingError::ReqwestError(e)));
+            }
+        };
+    
+        // Check for successful response
         if !res.status().is_success() {
             eprintln!("Error: Failed to connect to the website or the website is down.");
+            app_handle.emit_all("scraping_failed", format!("Failed to connect to {}. Website might be down.", &url)).unwrap();
             return Ok(());
         }
     
-        let body = res.text().await.map_err(|e| {
-            eprintln!("Failed to get a body from URL: {}", &url);
-            ScrapingError::ReqwestError(e)
-        })?;
+        let body = match res.text().await {
+            Ok(body) => body,
+            Err(e) => {
+                eprintln!("Failed to read response body from {}: {}", &url, e);
+                app_handle.emit_all("scraping_failed", format!("Failed to read response body from {}.", &url)).unwrap();
+                return Ok(());
+            }
+        };
     
         let document = scraper::Html::parse_document(&body);
         let title_selector = scraper::Selector::parse(".entry-title").unwrap();
@@ -525,39 +576,40 @@ pub mod basic_scraping {
         binding.push("tempGames");
         binding.push("recently_updated_games.json");
     
-        if Path::new(&binding).exists() {
-            // (Same as the existing code for checking and reading existing games)
-        }
-    
-        // If no file exists or games do not match, continue with the scraping
+        // Continue scraping even if some parts fail
         while let Some(hreflink_elem) = hreflinks.next() {
             let href = match hreflink_elem.value().attr("href") {
                 Some(href) => href,
                 None => continue,
             };
-        
-            let game_res = client.get(href).send().await.map_err(|e| {
-                eprintln!("Error getting game response: {:#?}", e);
-                ScrapingError::ReqwestError(e)
-            })?;
     
-            let game_body = game_res.text().await.map_err(|e| {
-                eprintln!("Error getting game body: {:#?}", e);
-                ScrapingError::ReqwestError(e)
-            })?;
+            // Handle network errors gracefully
+            let game_res = match client.get(href).send().await {
+                Ok(game_res) => game_res,
+                Err(e) => {
+                    eprintln!("Network error while requesting game data from {}: {}", href, e);
+                    app_handle.emit_all("scraping_failed", format!("Failed to fetch game data from {}.", href)).unwrap();
+                    continue; // Continue scraping other games
+                }
+            };
+    
+            let game_body = match game_res.text().await {
+                Ok(game_body) => game_body,
+                Err(e) => {
+                    eprintln!("Failed to read game response body from {}: {}", href, e);
+                    app_handle.emit_all("scraping_failed", format!("Failed to read game response body from {}.", href)).unwrap();
+                    continue;
+                }
+            };
     
             let game_doc = scraper::Html::parse_document(&game_body);
-            let title_elem = game_doc.select(&title_selector).next();
-            let description_elem = game_doc.select(&description_selector).next();
-            let magnetlink_elem = game_doc.select(&magnetlink_selector).next();
-            let image_elem = game_doc.select(&images_selector).next();
-            let tag_elem = game_doc.select(&tag_selector).next();
     
-            let title = title_elem.map(|elem| elem.text().collect::<String>()).unwrap_or_default();
-            let description = description_elem.map(|elem| elem.text().collect::<String>()).unwrap_or_default();
-            let magnetlink = magnetlink_elem.and_then(|elem| elem.value().attr("href")).unwrap_or_default();
-            let image_src = image_elem.and_then(|elem| elem.value().attr("src")).unwrap_or_default();
-            let tag = tag_elem.map(|elem| elem.text().collect::<String>()).unwrap_or_else(|| "Unknown".to_string()); // Collecting the tag
+            // Extract data, handle errors where needed, and move on
+            let title = game_doc.select(&title_selector).next().map(|elem| elem.text().collect::<String>()).unwrap_or_default();
+            let description = game_doc.select(&description_selector).next().map(|elem| elem.text().collect::<String>()).unwrap_or_default();
+            let magnetlink = game_doc.select(&magnetlink_selector).next().and_then(|elem| elem.value().attr("href")).unwrap_or_default();
+            let image_src = game_doc.select(&images_selector).next().and_then(|elem| elem.value().attr("src")).unwrap_or_default();
+            let tag = game_doc.select(&tag_selector).next().map(|elem| elem.text().collect::<String>()).unwrap_or_else(|| "Unknown".to_string());
     
             game_count += 1;
             let recently_updated_game = Game {
@@ -566,29 +618,33 @@ pub mod basic_scraping {
                 desc: description,
                 magnetlink: magnetlink.to_string(),
                 href: href.to_string(),
-                tag: tag.to_string(),  // Store the extracted tag
+                tag: tag.to_string(),
             };
     
             recent_games.push(recently_updated_game);
     
+            // Optionally, limit the number of games to scrape
             if game_count >= 20 {
                 break;
             }
         }
     
-        println!("Execution time: {:#?}", start_time.elapsed());
+        // Serialize the data and write it to the file
         let json_data = match serde_json::to_string_pretty(&recent_games) {
             Ok(json_d) => json_d,
             Err(e) => {
-                eprintln!("Error serializing popular_games: {:#?}", e);
+                eprintln!("Error serializing recent_games: {:#?}", e);
+                app_handle.emit_all("scraping_failed", "Failed to serialize recently updated games.").unwrap();
                 return Err(Box::new(ScrapingError::FileJSONError(e)));
             }
         };
     
+        // Save the scraped data to file
         let mut file = match tokio::fs::File::create(&binding).await {
             Ok(file) => file,
             Err(e) => {
                 eprintln!("File could not be created: {:#?}", e);
+                app_handle.emit_all("scraping_failed", "Failed to create file for recently updated games.").unwrap();
                 return Err(Box::new(ScrapingError::CreatingFileError {
                     source: e,
                     fn_name: "recently_updated_games_scraping_func()".to_string(),
@@ -597,22 +653,22 @@ pub mod basic_scraping {
         };
     
         if let Err(e) = file.write_all(json_data.as_bytes()).await {
-            eprintln!("Error writing to the file popular_games.json: {:#?}", e);
+            eprintln!("Error writing to the file recently_updated_games.json: {:#?}", e);
             return Err(Box::new(ScrapingError::CreatingFileError {
                 source: e,
                 fn_name: "recently_updated_games_scraping_func()".to_string(),
             }));
         }
     
-        let end_time = Instant::now();
-        let duration_time_process = end_time - start_time;
-        println!("Data has been written to recently_updated_games.json. Time was : {:#?}", duration_time_process);
+        let duration_time_process = start_time.elapsed();
+        println!("Data has been written to recently_updated_games.json. Time taken: {:#?}", duration_time_process);
+    
+        // Emit scraping completion event
+        app_handle.emit_all("scraping_complete", "Recently updated games scraping completed.").unwrap();
     
         Ok(())
     }
-
-
-
+    
 }
 
 
