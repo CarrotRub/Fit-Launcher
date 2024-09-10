@@ -1,5 +1,4 @@
 // ! ALWAYS ADMIN MODE.
-// TODO: SPAWN THE CONTROL PROCESS THROUGH AN ADMIN CMD TO BYPASS UIACCESS CUZ FCK WINDOWS AND THEIR LIMITATIONS AND THIS IS STAYING EVEN AFTER FIX CUZ IT MADE ME MAD !
 
 
 
@@ -140,68 +139,80 @@ pub mod windows_controls_processes {
     pub fn click_ok_button() {
         let ok_button_text = "OK";
         let first_window_title = "Select Setup Language";
-        let ok_button_hwnd = find_child_window_with_text(ok_button_text, first_window_title);
     
-        if let Some(hwnd) = ok_button_hwnd {
-            unsafe {
-
-                let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
-                
-                if result.is_err() {
-                    eprintln!("PostMessageW failed to send the message. Result  {:#?} ", result);
-                } else {
-                     // Wait 5 seconds for the other part of the setup to start.
-                     thread::sleep(time::Duration::from_millis(5000));
-                    println!("Posted click message to OK button!");
+        loop {
+            let ok_button_hwnd = find_child_window_with_text(ok_button_text, first_window_title);
+        
+            if let Some(hwnd) = ok_button_hwnd {
+                unsafe {
+                    let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
+                    
+                    if result.is_err() {
+                        eprintln!("PostMessageW failed to send the message. Result  {:#?}", result);
+                    } else {
+                        // // Wait 5 seconds for the next part of the setup to start
+                        // thread::sleep(time::Duration::from_millis(5000));
+                        println!("Posted click message to OK button!");
+                    }
                 }
+                break; // Exit the loop once the button is clicked
+            } else {
+                println!("OK button not found. Retrying in 2 seconds...");
+                thread::sleep(time::Duration::from_secs(2)); // Wait 2 seconds before retrying
             }
-        } else {
-            println!("OK button not found.");
         }
-    
     }
-
 
 
 
     pub fn click_8gb_limit(should_limit: bool) {
         let limit_button_text = "Limit installer to 2 GB of RAM usage";
         let first_window_title = "Setup -";
-        let limit_button_hwnd = find_child_window_with_text(limit_button_text, first_window_title);
     
-        unsafe {
-            // Initialize MEMORYSTATUSEX structure
-            let mut mem_status = MEMORYSTATUSEX {
-                dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
-                ..MEMORYSTATUSEX::default()
-            };
-    
-            // Call GlobalMemoryStatusEx
-            match GlobalMemoryStatusEx(&mut mem_status) {
-                Ok(_) => {
-                    // Calculate the total RAM in GB
-                    let total_ram_gb = mem_status.ullTotalPhys / (1024 * 1024 * 1024);
-                    println!("Total RAM: {} GB", total_ram_gb);
-    
-                    if total_ram_gb <= 8 {
-                        // If total RAM is 8 GB or less, check the checkbox
-                        check_limit_button(limit_button_hwnd);
-                    } else {
-                        // If total RAM is more than 8 GB, check the should_limit flag
-                        if should_limit {
-                            check_limit_button(limit_button_hwnd);
-                        } else {
-                            println!("No action needed based on should_limit flag.");
+        loop {
+            let limit_button_hwnd = find_child_window_with_text(limit_button_text, first_window_title);
+        
+            if let Some(hwnd) = limit_button_hwnd {
+                unsafe {
+                    // Initialize MEMORYSTATUSEX structure
+                    let mut mem_status = MEMORYSTATUSEX {
+                        dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
+                        ..MEMORYSTATUSEX::default()
+                    };
+            
+                    // Call GlobalMemoryStatusEx
+                    match GlobalMemoryStatusEx(&mut mem_status) {
+                        Ok(_) => {
+                            // Calculate the total RAM in GB
+                            let total_ram_gb = mem_status.ullTotalPhys as f64 / (1024.0 * 1024.0 * 1024.0);
+                            println!("Total RAM: {} GB", total_ram_gb);
+            
+                            if total_ram_gb <= 4.0 {
+                                // If total RAM is 8 GB or less, check the checkbox
+                                check_limit_button(Some(hwnd));
+                            } else {
+                                // If total RAM is more than 8 GB, check the should_limit flag
+                                if should_limit {
+                                    check_limit_button(Some(hwnd));
+                                } else {
+                                    println!("No action needed based on should_limit flag.");
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Failed to get memory status. Error: {}", err.message());
                         }
                     }
                 }
-                Err(err) => {
-                    eprintln!("Failed to get memory status. Error: {}", err.message());
-                }
+                break; // Exit the loop once the button is clicked or checked
+            } else {
+                println!("Limit button not found. Retrying in 2 seconds...");
+                thread::sleep(time::Duration::from_secs(2)); // Wait 2 seconds before retrying
             }
         }
     }
-    
+
+
     fn check_limit_button(hwnd: Option<HWND>) {
         if let Some(hwnd) = hwnd {
             unsafe {
@@ -252,7 +263,7 @@ pub mod windows_controls_processes {
         unsafe extern "system" fn find_text_input_proc(hwnd: HWND, l_param: LPARAM) -> BOOL {
             let text_input_hwnd = l_param.0 as *mut HWND;
             let class_name = get_class_name(hwnd); // Helper function to get the class name of the control
-            println!("{:#?}", class_name);
+
             if class_name == "TEdit" { // The class name for text input fields is typically "Edit"
                 println!("found it");
                 unsafe {

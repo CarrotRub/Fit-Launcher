@@ -11,9 +11,9 @@ pub use crate::scrapingfunc::basic_scraping;
 pub use crate::scrapingfunc::commands_scraping;
 
 mod torrentfunc;
+pub use crate::torrentfunc::torrent_calls;
 pub use crate::torrentfunc::torrent_commands;
-pub use crate::torrentfunc::torrent_functions;
-pub use crate::torrentfunc::TorrentState;
+
 
 mod custom_ui_automation;
 pub use crate::custom_ui_automation::windows_custom_commands;
@@ -25,13 +25,16 @@ use core::str;
 use std::error::Error;
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use tauri::api::path::app_log_dir;
 use std::fs::File;
 use std::io::Read;
 use std::fmt;
 use tauri::{Manager, Window};
+use tauri::{api::path::{BaseDirectory, resolve_path}, Env};
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use std::path::PathBuf;
+use tracing_appender::non_blocking::WorkerGuard;
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
@@ -45,19 +48,11 @@ use std::num::NonZeroUsize;
 use lru::LruCache;
 use tokio::sync::Mutex;
 use tauri::State;
-// torrenting
-use librqbit::Session;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
-}
 
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
-
 
 
 
@@ -370,93 +365,119 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
 
 
 
+fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
+    let file_appender = tracing_appender::rolling::never(logs_dir, "app.log");
+    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::fmt()
+        .with_writer(file_writer)
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
+    guard
+}
+
 
 fn main() -> Result<(), Box<dyn Error>> {
-
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
-    let torrent_state = torrentfunc::TorrentState::default();
-    // let closing_signal_received = Arc::new(AtomicBool::new(false));
-    
+    let context = tauri::generate_context!();
+    let logs_dir = app_log_dir(context.config()).unwrap();
+    println!("path to logs : {:#?}", &logs_dir);
+    let _log_guard = setup_logging(logs_dir); 
+ 
+
     tauri::Builder::default()
-    .setup(|app| {
-        let splashscreen_window = app.get_window("splashscreen").unwrap();
-        let main_window = app.get_window("main").unwrap();
-        let current_app_handle = app.app_handle();
+        .setup(|app| {
+            let splashscreen_window = app.get_window("splashscreen").unwrap();
+            let main_window = app.get_window("main").unwrap();
+            let current_app_handle = app.app_handle();
 
-        // Clone the app handle for use in async tasks
-        let first_app_handle = current_app_handle.clone();
-        let second_app_handle = current_app_handle.clone();
-        let third_app_handle = current_app_handle.clone();
-        let fourth_app_handle = current_app_handle.clone();
+ 
 
-        // Perform asynchronous initialization tasks without blocking the main thread
-        tauri::async_runtime::spawn(async move {
-            let mandatory_tasks_online = tauri::async_runtime::spawn_blocking(move || {
-                if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
-                    eprintln!("Error in scraping_func: {}", e);
-                    std::process::exit(1);
-                }
+            // Clone the app handle for use in async tasks
+            let first_app_handle = current_app_handle.clone();
+            let second_app_handle = current_app_handle.clone();
+            let third_app_handle = current_app_handle.clone();
+            let fourth_app_handle = current_app_handle.clone();
 
-                if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
-                    eprintln!("Error in popular_games_scraping_func: {}", e);
-                    std::process::exit(1);
-                }
+            // Perform asynchronous initialization tasks without blocking the main thread
+            tauri::async_runtime::spawn(async move {
+                tracing::info!("Starting async tasks");
+                let mandatory_tasks_online = tauri::async_runtime::spawn_blocking(move || {
+                    if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
+                        eprintln!("Error in scraping_func: {}", e);
+                        std::process::exit(1);
+                    }
 
-                if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
-                    eprintln!("Error in get_sitemaps_website: {}", e);
-                    std::process::exit(1);
-                }
+                    if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
+                        eprintln!("Error in popular_games_scraping_func: {}", e);
+                        std::process::exit(1);
+                    }
 
-                if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
-                    eprintln!("Error in recently_updated_games_scraping_func: {}", e);
-                    std::process::exit(1);
-                }
+                    if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
+                        eprintln!("Error in get_sitemaps_website: {}", e);
+                        std::process::exit(1);
+                    }
+
+                    if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
+                        eprintln!("Error in recently_updated_games_scraping_func: {}", e);
+                        std::process::exit(1);
+                    }
+                });
+
+                // Await the completion of the tasks
+                mandatory_tasks_online.await.unwrap();
+
+                // After all tasks are done, close the splash screen and show the main window
+                splashscreen_window.close().unwrap();
+
+                
+                main_window.show().unwrap();
+                current_app_handle.emit_all("scraping-complete", {}).unwrap();
+
+                current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
+                println!("Scraping signal has been sent.")
+                
             });
 
-            // Await the completion of the tasks
-            mandatory_tasks_online.await.unwrap();
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            read_file,
+            close_splashscreen,
+            get_games_images,
+            clear_file,
+            stop_get_games_images,
+            check_folder_path,
+            torrent_commands::api_get_torrent_details,
+            torrent_commands::api_pause_torrent,
+            torrent_commands::api_resume_torrent,
+            torrent_commands::api_stop_torrent,
+            torrent_commands::api_download_with_args,
+            torrent_commands::api_automate_setup_install,
+            torrent_commands::api_get_torrent_stats,
+            torrent_commands::api_initialize_torrent_manager,
+            commands_scraping::get_singular_game_info,
+            windows_custom_commands::start_executable
+        ])
+        .manage(image_cache) // Make the cache available to commands 
+        .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
+        .build({
+        
+            tauri::generate_context!()
 
-            // After all tasks are done, close the splash screen and show the main window
-            splashscreen_window.close().unwrap();
-
-            
-            main_window.show().unwrap();
-            current_app_handle.emit_all("scraping-complete", {}).unwrap();
-
-            current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
-            println!("Scraping signal has been sent.")
-            
+        
+        })
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { .. } => {
+                PAUSE_FLAG.store(true, Ordering::Relaxed);
+            }
+            _ => {}
         });
 
-        Ok(())
-    })
-    .invoke_handler(tauri::generate_handler![
-        read_file,
-        close_splashscreen,
-        get_games_images,
-        clear_file,
-        stop_get_games_images,
-        check_folder_path,
-        torrent_commands::start_torrent_command,
-        torrent_commands::get_torrent_stats,
-        torrent_commands::stop_torrent_command,
-        torrent_commands::pause_torrent_command,
-        torrent_commands::resume_torrent_command,
-        torrent_commands::select_files_to_download,
-        commands_scraping::get_singular_game_info,
-        windows_custom_commands::start_executable
-    ])
-    .manage(image_cache) // Make the cache available to commands 
-    .manage(torrent_state) 
-    .build(tauri::generate_context!())
-    .expect("error while building tauri application")
-    .run(|_app_handle, event| match event {
-      tauri::RunEvent::ExitRequested { .. } => {
-        
-        PAUSE_FLAG.store(true, Ordering::Relaxed);
-      }
-      _ => {}
-    });
-    
+    // Keep the guard in scope to ensure proper log flushing
+
     Ok(())
 }
+
