@@ -1,451 +1,592 @@
-use librqbit::Session;
-use serde::Serialize;
-use tokio::sync::{oneshot, Mutex};
-use std::sync::{Arc, atomic::AtomicBool};
-use lazy_static::lazy_static;
-use librqbit::TorrentStatsState;
-
-lazy_static! {
-    static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
-}
-
-// Define a shared boolean flag
-
-static STOP_FLAG_TORRENT: AtomicBool = AtomicBool::new(false);
-static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
-static STOP_GET_STATS: AtomicBool = AtomicBool::new(false);
-static RESUME_FLAG: AtomicBool = AtomicBool::new(false);
-
-
-// Creation of a struct containing every useful infomartion that will be used later on in the FrontEnd.
-#[derive(Debug, Clone, Serialize)]
-pub struct TorrentStatsInformations{
-    state: TorrentStatsState,
-    file_progress: Vec<u64>,
-    error: Option<String>,
-    progress_bytes: u64,
-    uploaded_bytes: u64,
-    total_bytes: u64,
-    finished: bool,
-    download_speed: Option<f64>,
-    upload_speed: Option<f64>,
-    average_piece_download_time: Option<f64>,
-    // * Not the best way to implement the time remaining, but for now this will do the job.
-    time_remaining: Option<std::string::String>,
-}
-impl Default for TorrentStatsInformations {
-    fn default() -> Self {
-        Self {
-            state: TorrentStatsState::Paused, // Starting as Paused if null just because it is the base state.
-            file_progress: vec![], // The progress for every file that is downloading.
-            error: None,
-            progress_bytes: 0,
-            uploaded_bytes: 0,
-            total_bytes: 0,
-            finished: false,
-            download_speed: None,
-            upload_speed: None,
-            average_piece_download_time: None,
-            time_remaining: None,
-        }
-    }
-}
-
-
-#[derive(Default)]
-pub struct TorrentState {
-    pub stats: Arc<Mutex<TorrentStatsInformations>>,
-    pub file_selection_tx: Arc<Mutex<Option<oneshot::Sender<Vec<usize>>>>>,
-}
-
-impl TorrentState {
-    pub fn new() -> Self {
-        TorrentState {
-            stats: Arc::new(Mutex::new(TorrentStatsInformations::default())),
-            file_selection_tx: Arc::new(Mutex::new(None)), // Default to None
-        }
-    }
-}
-
-pub mod torrent_functions {
-    use std::error::Error;
-    use std::fmt;
-    use std::thread;
-    use std::time;
-    use std::time::Duration;
+pub mod torrent_calls {
+    // TODO: FIX WHEN GAME START DOWNLOAD, IT DOESN'T SHOW IN DOWNLOADINGPARTSIDEBAR
+    use librqbit::dht::{Id20, PersistentDhtConfig};
     use serde::{Deserialize, Serialize};
-    use tokio::sync::oneshot;
-    use tokio::sync::Mutex;
-    use anyhow::{Result, Context};
-    use std::sync::{Arc, atomic::Ordering};
-    use librqbit::{AddTorrent, AddTorrentOptions, AddTorrentResponse, Session, TorrentStatsState, SessionOptions};
-    use tracing::info;
+    use anyhow::Context;
+    use std::str::FromStr;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::{mpsc, Mutex};
+    use tracing::{error, info};
+    use librqbit::api::{TorrentIdOrHash, TorrentListResponse};
+    use librqbit::{
+        AddTorrent, AddTorrentOptions, Api, Magnet, Session, SessionOptions, SessionPersistenceConfig, TorrentStats
+    };
+
     use crate::custom_ui_automation::windows_ui_automation;
-    use crate::torrentfunc::RESUME_FLAG;
 
-    use super::{ SESSION,STOP_FLAG_TORRENT, PAUSE_FLAG, STOP_GET_STATS};
 
-    #[derive(Debug, Serialize, Deserialize)]
-    struct CustomError {
-        message: String,
+    #[derive(Default)]
+    pub struct TorrentState {
+        pub torrent_manager: Arc<Mutex<Option<Arc<Mutex<TorrentManager>>>>>,
     }
 
-    impl fmt::Display for CustomError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", self.message)
-        }
+    #[derive(Debug, Serialize, thiserror::Error)]
+    pub enum TorrentError {
+        #[error("Anyhow Error: {0}")]
+        AnyhowError(String),
+    
+        #[error("Modifying JSON Error: {0}")]
+        FileJSONError(String),
+
+        #[error("Error While Creating And Manipulating The Regex: {0}")]
+        RegexError(String)
     }
-
-    impl Error for CustomError {}
-
-    impl From<Box<dyn Error>> for CustomError {
-        fn from(error: Box<dyn Error>) -> Self {
-            CustomError {
-                message: error.to_string(),
-            }
-        }
-    }
-
-    #[derive(Debug, Serialize)]
-    pub struct TorrentError {
-        pub message: String,
-    }
-
-    impl fmt::Display for TorrentError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", self.message)
-        }
-    }
-
-    impl Error for TorrentError {}
-
+    
     impl From<anyhow::Error> for TorrentError {
         fn from(error: anyhow::Error) -> Self {
-            TorrentError {
-                message: error.to_string(),
+            TorrentError::AnyhowError(error.to_string())
+        }
+    }
+    
+    impl From<serde_json::Error> for TorrentError {
+        fn from(error: serde_json::Error) -> Self {
+            TorrentError::FileJSONError(error.to_string())
+        }
+    }
+
+    impl From<regex::Error> for TorrentError {
+        fn from(error: regex::Error) -> Self {
+            TorrentError::RegexError(error.to_string())
+        }
+    }
+
+    // Custom Struct that contains crucial informations about the torrent for usage in the frontend and also backend.
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct TorrentCoreInfo {
+        torrent_name: String,
+        torrent_files_names: Vec<String>,
+        torrent_output_folder: String,
+        torrent_idx: TorrentIdOrHash,
+    }
+    
+    impl TorrentCoreInfo {
+        fn new() -> Self {
+            TorrentCoreInfo {
+                torrent_name: String::new(),           
+                torrent_files_names: Vec::new(),       
+                torrent_output_folder: String::new(),  
+                torrent_idx: TorrentIdOrHash::Hash(Id20::from_str("0000000000000000000000000000000000000000").unwrap()),
             }
         }
     }
 
-    // Starts the torrent thread to manage download
-    pub async fn start_torrent_thread(
-        magnet_link: String,
-        torrent_stats: Arc<Mutex<super::TorrentStatsInformations>>,
-        download_path: String,
-        checkboxes_list: Vec<String>,
-        file_list_tx: oneshot::Sender<Vec<String>>,
-        file_selection_rx: oneshot::Receiver<Vec<usize>>,
-        two_gb_limit: bool,
-    ) -> Result<(), anyhow::Error> {
-        let output_dir = download_path.clone();
-        let mut session = SESSION.lock().await;
+
+    // Define a struct that holds the Api Session
+    pub struct TorrentManager {
+        api_session: Arc<Api>
+    }
+    
+    impl TorrentManager {
+
+
+        /// Asynchronously creates a new `TorrentManager` with custom session options.
+        ///
+        /// This method sets up a new torrent session with specific configurations for persistence, DHT, and other session options.
+        /// It also initializes the necessary channels for managing API communication within the session.
+        ///
+        /// # Parameters
+        /// - `download_path`: A `String` representing the path where the downloaded torrent files will be stored.
+        /// - `app_cache_patch`: A `String` representing the path used for storing session and DHT persistence files.
+        ///
+        /// # Returns
+        /// This method returns a `Result`:
+        /// - On success, it returns an instance of `TorrentManager`.
+        /// - On failure, it returns a `Box<TorrentError>` containing an error if the session creation fails.
+        ///
+        /// # Session Configuration
+        /// - `persistence`: Configured with a JSON persistence folder using `app_cache_patch`.
+        /// - `DHT`: Disabled by default but will be added later.
+        /// - `UPnP Port Forwarding`: Enabled.
+        /// - `Port Range`: The session listens on port range 6881-6889.
+        /// - `Fast Resume`: Enabled to quickly resume torrent sessions.
+        /// - `Defer Writes`: Currently disabled, but can be configured for slow disks to defer writes up to a certain size.
+        /// - `Concurrent Initialization Limit`: Set to 1 for limiting concurrent initializations.
+        ///
+        /// # TODO
+        /// - Add functionality for users to choose between HDD and SSD configurations for better performance.
+        /// - Enable DHT persistence in future updates.
+        ///
+        /// # Errors
+        /// This method will return an error if the torrent session fails to initialize or if any configuration options cause issues.
+        pub async fn new(download_path: String, app_cache_patch: String) -> Result<Self, Box<TorrentError>> {
+
+            // app_cache_path already ends with / so no need to add {}/
+            let persistence_path = format!("{}.persistence/", app_cache_patch);
+            let _dht_persistence_path = format!("{}.dht_persistence/", app_cache_patch);
         
-        // Initialize session if it doesn't exist
-        if session.is_none() {
+            let persistence_config = Some(SessionPersistenceConfig::Json {
+                folder: Some(persistence_path.clone().into()),
+            });
+        
+            // Not working, to be added later.
+            let _personal_dht_config = Some(PersistentDhtConfig {
+                config_filename: Some(app_cache_patch.clone().into()),
+                ..Default::default()
+            });
+
+
+            // TODO: Add a way to either ask the user to choose between HDD or SSD (For a different config)
+
             let mut custom_session_options = SessionOptions::default();
-            custom_session_options.disable_dht = false;
-            custom_session_options.disable_dht_persistence = false;
-            custom_session_options.persistence = false;
-            custom_session_options.enable_upnp_port_forwarding = true;
+            custom_session_options.disable_dht= false;
+            custom_session_options.disable_dht_persistence= true;
+            // custom_session_options.dht_config= personal_dht_config;
+            custom_session_options.fastresume= true;
+            custom_session_options.listen_port_range= Some(6881..6889);
+            custom_session_options.enable_upnp_port_forwarding= true;
+            custom_session_options.defer_writes_up_to= None; // Should defer up to 4mB for slow disk.
+            custom_session_options.concurrent_init_limit= Some(1);
+            custom_session_options.persistence= persistence_config ;
     
-            let new_session = Session::new_with_opts(
-                output_dir.clone().into(),
-                custom_session_options,
-            )
-            .await
-            .context("Error creating torrent session")?;
-    
-            *session = Some(new_session);
+            let session_global = match Session::new_with_opts(download_path.into(), custom_session_options).await {
+                Ok(session) => session,
+                Err(err) => {
+                    error!("Error while creating a new session: {:#?}", err);
+                    return Err(Box::new(TorrentError::AnyhowError(err.to_string())));
+                }
+            };
+
+
+            let (tx, _rx) = mpsc::unbounded_channel();
+            let option_tx: Option<mpsc::UnboundedSender<String>> = Some(tx);
+            let cus_api_session = Arc::new(Api::new(session_global.clone(), option_tx));
+
+            Ok(TorrentManager {     
+                api_session: cus_api_session
+            })
         }
+
+        /// Asynchronously fetches detailed information about a torrent from a magnet link.
+        ///
+        /// This method sends a request to add the torrent (in a list-only mode), without actually downloading it.
+        /// The result includes essential torrent details, such as the torrent name, file names, output folder, and the torrent identifier (either ID or hash).
+        ///
+        /// # Parameters
+        /// - `magnet_link`: A `String` containing the magnet link for the torrent.
+        ///
+        /// # Returns
+        /// This method returns a `Result`:
+        /// - On success, it returns a `TorrentCoreInfo` struct containing:
+        ///     - `torrent_name`: The name of the torrent (e.g., "Ubuntu ISO").
+        ///     - `torrent_files_names`: A vector of file names associated with the torrent.
+        ///     - `torrent_output_folder`: The folder where the torrent will be downloaded.
+        ///     - `torrent_idx`: The torrent's identifier, either an ID or a hash value.
+        /// - On failure, it returns a `Box<TorrentError>` containing an error related to adding the torrent.
+        ///
+        /// # Errors
+        /// This method will return an error if there is an issue adding the torrent to the session.
+        pub async fn get_torrent_details(
+            &self, 
+            magnet_link: String
+        ) -> Result<TorrentCoreInfo, Box<TorrentError>> {
+           
     
-        let session = session.clone().unwrap();
-    
-        // Add torrent with list_only to get file list
-        let response = session
-            .add_torrent(
+            let added_torrent_response = Api::api_add_torrent(
+                &self.api_session,
                 AddTorrent::from_url(&magnet_link),
                 Some(AddTorrentOptions {
                     list_only: true,
                     ..Default::default()
-                }),
+                })
             )
             .await
-            .context("Error adding torrent to session")?;
-
-        let mut output_folder_path: String = String::new();
-
-        let handle = match response {
-            AddTorrentResponse::ListOnly(handle) => {
-                let info = handle
-                    .info
-                    .iter_filenames_and_lengths()
-                    .context("Error iterating over filenames and lengths")?;
+            .context("Error While Adding The Torrent To The Session").unwrap();
     
-                let mut file_list_names = Vec::new();
-                for (filename, _len) in info {
-                    file_list_names.push(filename.to_string().context("Error converting filename to string")?);
+
+            let files_names: Vec<String> = added_torrent_response.details.files
+                .iter()
+                .map(|file| file.name.clone())
+                .collect();
+    
+            let mut core_info = TorrentCoreInfo::new();
+            core_info.torrent_files_names = files_names;
+            core_info.torrent_name = added_torrent_response.details.name.unwrap();
+            core_info.torrent_output_folder = added_torrent_response.output_folder;
+            core_info.torrent_idx = TorrentIdOrHash::Hash(Id20::from_str(&added_torrent_response.details.info_hash).unwrap());
+
+            Ok(core_info)
+        }
+    
+    
+        /// Asynchronously downloads a torrent from a magnet link and handles automated installation processes.
+        /// 
+        /// # Arguments
+        /// 
+        /// * `magnet_link` - A `String` containing the magnet link for the torrent.
+        /// * `file_list` - A `Vec<usize>` specifying which files within the torrent to download using their numbers.
+        /// * `torrent_idx` - A `String` representing the torrent's unique hash or ID.
+        /// * `torrent_output_folder` - A `String` specifying the folder where the torrent's files will be downloaded (Example : C:/Games/TorrentGames/SomeGame \[FitGirl Repack]\/).
+        /// * `game_output_folder` - A `String` specifying the folder where the game files will be stored post-automation.
+        /// * `checkboxes_list` - A `Vec<String>` of checkbox labels to be clicked during installation.
+        /// * `two_gb_limit` - A `bool` indicating whether to enforce a 2GB file size limit.
+        ///
+        /// # Returns
+        ///
+        /// * `Ok(())` - If the torrent is successfully added, downloaded, and post-download tasks complete without error.
+        /// * `Err(Box<TorrentError>)` - If there is an error during the torrent download or automation process.
+        /// 
+        pub async fn download_torrent_with_args(
+            &self,
+            magnet_link: String, 
+            file_list: Vec<usize>
+        ) -> Result<(), Box<TorrentError>> {
+
+            
+            // First, delete all previous torrents from the session persistence to avoid any re-download, may be removed later when multiple downloads will be added but the concurrent_init_limit should be raised too.
+
+            // Get the list response.
+            let torrent_list_response = Api::api_torrent_list(&self.api_session);
+
+            // Get the hash of the torrent that will be downloaded.
+            let actual_torrent_magnet = match Magnet::parse(&magnet_link) {
+                Ok(magnet) => magnet,
+                Err(e) => {
+                    error!("Error Parsing Magnet : {:#?}", e);
+                    return Err(Box::new(TorrentError::AnyhowError("Error forgetting the torrent from the session persistence.".to_string())).into());
                 }
+            };
 
-                file_list_tx.send(file_list_names)
-                    .map_err(|_| anyhow::anyhow!("Failed to send file list to the frontend"))?;
-    
-                // Receive selected files from frontend
-                let selected_files = file_selection_rx.await
-                    .map_err(|_| anyhow::anyhow!("Failed to receive selected files from the frontend"))?;
-    
-                let response = session
-                    .add_torrent(
-                        AddTorrent::from_url(&magnet_link),
-                        Some(AddTorrentOptions {
-                            list_only: false,
-                            only_files: Some(selected_files),
-                            overwrite: true,
-                            disable_trackers: false,
-                            ..Default::default()
-                        }),
-                    )
-                    .await
-                    .context("Error adding selected files torrent for download")?;
-                let old_output_folder_path = handle.output_folder;
-                output_folder_path = old_output_folder_path.join("setup.exe").to_str().unwrap().into();
-                match response {
-                    AddTorrentResponse::Added(_, handle) => handle,
-                    _ => return Err(anyhow::anyhow!("Unexpected response when re-adding torrent for download")),
-                }
-            },
-            _ => return Err(anyhow::anyhow!("Unexpected response when adding torrent")),
-        };
-    
-        let handle_clone = handle.clone();
-        let game_folder_name = handle.info.info.name.clone();
-        drop(handle); // Drop the original handle, only keep the clone
-        let torrent_stats = Arc::clone(&torrent_stats);
-        let session_clone = session.clone();  // Clone session for usage in the async task
-        drop(session);
-        
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(Duration::from_secs(1)).await;
+            let actual_torrent_id20 = Magnet::as_id20(&actual_torrent_magnet);
+
+            let actual_torrent_hash = TorrentIdOrHash::Hash(actual_torrent_id20.unwrap()).to_string();
+
+            // Check if the torrent list is empty before proceeding
+            if !torrent_list_response.torrents.is_empty() {
+                // Get the vector and transform it into an Iterator
+                let torrent_list_iter = torrent_list_response.torrents.iter();
                 
-                let stats = handle_clone.stats();
-                let mut torrent_stats = torrent_stats.lock().await;
-
-                if RESUME_FLAG.load(Ordering::Relaxed) {
-                    println!("RESUME FLAG IS TRUE");
-                    RESUME_FLAG.store(false, Ordering::Relaxed); // Reset the flag
-                    match session_clone.unpause(&handle_clone) {
-                        Ok(_) => println!("Torrent resumed"),
-                        Err(e) => eprintln!("Error resuming torrent: {:#?}", e),
+                for torrent in torrent_list_iter {
+                    // Check if the info_hash is not equal to actual_torrent_hash
+                    if torrent.info_hash != actual_torrent_hash {
+                        match self.stop_torrent(torrent.info_hash.clone()).await {
+                            Ok(()) => {
+                                info!("Forgot the torrent ID : {:#?} | Hash : {:#?}", &torrent.id, &torrent.info_hash);
+                            },
+                            Err(e) => {
+                                error!("Error forgetting the torrent from the session persistence : {:#?}", e);
+                                return Err(Box::new(TorrentError::AnyhowError("Error forgetting the torrent from the session persistence.".to_string())).into());
+                            }
+                        }
                     }
                 }
-
-                if STOP_FLAG_TORRENT.load(Ordering::Relaxed) {
-                    session_clone.stop().await;
-                    STOP_GET_STATS.store(true, Ordering::Relaxed);
-                    break;
-                }
-
-                                    
-                if PAUSE_FLAG.load(Ordering::Relaxed) {
-                    let _ = handle_clone.pause();
-                } 
-
-
-                torrent_stats.state = stats.state.clone();
-                torrent_stats.file_progress = stats.file_progress.clone();
-                torrent_stats.error = stats.error.clone();
-                torrent_stats.progress_bytes = stats.progress_bytes;
-                torrent_stats.uploaded_bytes = stats.uploaded_bytes;
-                torrent_stats.total_bytes = stats.total_bytes;
-                torrent_stats.finished = stats.finished;
-                
-                if let Some(live_stats) = stats.live {
-                    torrent_stats.download_speed = Some(live_stats.download_speed.mbps as f64);
-                    torrent_stats.upload_speed = Some(live_stats.upload_speed.mbps as f64);
-                    torrent_stats.average_piece_download_time = live_stats.average_piece_download_time.map(|d| d.as_secs_f64());
-                    torrent_stats.time_remaining = live_stats.time_remaining.map(|d| d.to_string());
-                    
-                    if torrent_stats.finished {
-                        
-                        let mut necessary_game_path = format!("{}\\{}", &download_path, game_folder_name.unwrap());
-                        necessary_game_path = necessary_game_path.replace(" [FitGirl Repack]", "");
-                        println!("{}", necessary_game_path);
-                        session_clone.stop().await;
-                        drop(session_clone);
-                        STOP_GET_STATS.store(true, Ordering::Relaxed);
-                        drop(handle_clone);
-                        let mut lock = SESSION.lock().await;
-                        *lock = None; 
-                        windows_ui_automation::start_executable(output_folder_path);
-                        println!("waiting...");
-                        thread::sleep(time::Duration::from_millis(3000));
-                        println!("continue !");
-                        windows_ui_automation::automate_until_download(checkboxes_list, &necessary_game_path, two_gb_limit);
-                        println!("done for real");
-                        break;
-                    }
-                    
-
-
-
-                } else {
-                    torrent_stats.download_speed = None;
-                    torrent_stats.upload_speed = None;
-                    torrent_stats.average_piece_download_time = None;
-                    torrent_stats.time_remaining = None;
-                }
-                
-                info!("{:?}", *torrent_stats);
-               
             }
-        });
-        
-        Ok(())
-    }
-}
 
+            
+            let _torrent_response = match Api::api_add_torrent(
+                &self.api_session,
+                AddTorrent::from_url(&magnet_link),
+                Some(AddTorrentOptions {
+                    only_files: Some(file_list),
+                    overwrite: true,
+                    disable_trackers: false,
+                    force_tracker_interval: Some(Duration::from_secs(30)), // Check tracker every minute
+                    defer_writes: Some(true), // Defer writes to improve speed
+                    ..Default::default()
+                })
+            ).await {
+                Ok(response) => {
+                    info!("Torrent Was Successfully Added And The Installation Successfully Started");
+                    println!("Torrent Was Successfully Added And The Installation Successfully Started");
+
+                    Some(response)
+                },
+                Err(e) => {
+                    error!("Error While Adding The Torrent To Download : {}", e);
+                    None
+                }
+            };
+
+            Ok(())
+        }
+
+        pub async fn automate_setup_install(
+            &self,
+            torrent_idx: String,
+            torrent_output_folder: String,
+            checkboxes_list: Vec<String>,
+            two_gb_limit: bool
+        ) -> Result<(), Box<TorrentError>> {
+
+            let torrent_hash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+            match Api::api_torrent_action_forget(&self.api_session, torrent_hash).await {
+                Ok(_) => {
+                    info!("Torrent Successfully Stopped");
+                }
+                Err(err) => {
+                    error!("Torrent Couldn't Stop : {}", err)
+                }
+            }
+        
+            let setup_path = format!("{}\\setup.exe", torrent_output_folder);
+            windows_ui_automation::start_executable(setup_path).await;
+            let game_output_folder = torrent_output_folder.replace(" [FitGirl Repack]", "");
+            println!("continue !");
+            windows_ui_automation::automate_until_download(checkboxes_list, &game_output_folder, two_gb_limit).await;
+            println!("Torrent has completed!");
+            info!("Game Installation Has been Started");
+
+            Ok(())
+            
+        }
+
+        pub async fn get_torrent_stats(&self, torrent_idx: String) -> Result<Option<TorrentStats>, Box<TorrentError>>{
+            
+            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+            let torrent_stats = match Api::api_stats_v1(&self.api_session, torrent_hash) {
+
+                Ok(response) => { 
+                    Some(response)
+                },
+                
+                Err(err) => {
+                    error!("Error Getting Stats: {}", err);
+                    None
+                }
+
+            };
+
+            Ok(torrent_stats)
+
+        }
+
+        pub async fn pause_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
+
+            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+            match Api::api_torrent_action_pause(&self.api_session, torrent_hash).await {
+                Ok(_) => {
+                    info!("Torrent Successfully Paused");
+                }
+                Err(err) => {
+                    error!("Torrent Couldn't Pause : {}", err)
+                }
+            }
+
+            Ok(())
+        }
+
+        pub async fn stop_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
+
+            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+            // * Use forget because it will just remove it from the session and not delete the files
+            match Api::api_torrent_action_forget(&self.api_session, torrent_hash).await {
+                Ok(_) => {
+                    info!("Torrent Successfully Stopped");
+                }
+                Err(err) => {
+                    error!("Torrent Couldn't Stop : {}", err)
+                }
+            }
+
+            Ok(())
+        }
+
+        pub async fn resume_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
+
+            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+            // * Use this to resume the function (It will take advantage of the fastresume option)
+            match Api::api_torrent_action_start(&self.api_session, torrent_hash).await {
+                Ok(_) => {
+                    info!("Torrent Successfully Resumed");
+                }
+                Err(err) => {
+                    error!("Torrent Couldn't Resume : {}", err)
+                }
+            }
+
+            Ok(())
+        }
+
+
+    }
+
+    
+}
 
 pub mod torrent_commands {
 
-    use serde::{Deserialize, Serialize};
-    use tauri::api::process::kill_children;
-    use tokio::sync::oneshot;
-    use std::error::Error;
-    use tauri::State;
-    use std::fmt;
-    use tauri::async_runtime::spawn;
+    
+    use std::sync::Arc;
     use tokio::sync::Mutex;
-    use anyhow::Result;
-    use std::sync::{Arc, atomic::Ordering};
+    use librqbit::TorrentStats;
+    use tokio::task;
+    use tracing::error;
 
-    use super::torrent_functions;
-
-    use super::PAUSE_FLAG;
- 
-    use super::RESUME_FLAG;
-    use super::STOP_FLAG_TORRENT;
-
-    #[derive(Debug, Serialize, Deserialize)]
-    pub struct CustomError {
-        pub message: String,
-    }
-
-    impl fmt::Display for CustomError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", self.message)
-        }
-    }
-
-    impl Error for CustomError {}
-
-    impl From<Box<dyn Error>> for CustomError {
-        fn from(error: Box<dyn Error>) -> Self {
-            CustomError {
-                message: error.to_string(),
-            }
-        }
-    }
-
+    use super::torrent_calls::TorrentCoreInfo;
+    use super::torrent_calls::TorrentManager;
+    use super::torrent_calls::TorrentState;
+    use super::torrent_calls::TorrentError;
 
     #[tauri::command]
-    pub async fn start_torrent_command(
-        magnet_link: String,
+    pub async fn api_initialize_torrent_manager(
+        state: tauri::State<'_, TorrentState>,
         download_path: String,
-        torrent_state: State<'_, super::TorrentState>,
-        list_checkbox: Vec<String>,
-        should_limit: bool
-    ) -> Result<Vec<String>, String> {
-        
-        let torrent_stats: Arc<Mutex<super::TorrentStatsInformations>> = Arc::clone(&torrent_state.stats);
-    
-        // Create oneshot channels for file list and user selection
-        let (file_list_tx, file_list_rx) = oneshot::channel();
-        let (file_selection_tx, file_selection_rx) = oneshot::channel();
-    
-        // Store the file_selection_tx in the TorrentState
-        {
-            let mut selection_tx_lock = torrent_state.file_selection_tx.lock().await;
-            *selection_tx_lock = Some(file_selection_tx);
-        }
-
-        // Spawn the torrent thread
-        spawn(async move {
-            println!("{} , {}", magnet_link, download_path);
-            if let Err(e) = torrent_functions::start_torrent_thread(
-                magnet_link,
-                torrent_stats,
-                download_path,
-                list_checkbox,
-                file_list_tx,
-                file_selection_rx,
-                should_limit
-            )
-            .await
-            {
-                eprintln!("Error in torrent thread: {:?}", e);
-            }
-        });
-    
-        // Wait for the file list from the spawned thread
-        let file_list = file_list_rx.await.map_err(|e| format!("Failed to receive file list: {:?}", e))?;
-        // Return the file list to the frontend for user selection
-        Ok(file_list)
+        app_cache_path: String
+    ) -> Result<(), Box<TorrentError>> {
+        let manager = TorrentManager::new(download_path, app_cache_path).await?;
+        let mut torrent_manager = state.torrent_manager.lock().await;
+        *torrent_manager = Some(Arc::new(Mutex::new(manager)));
+        Ok(())
     }
     
     #[tauri::command]
-    pub async fn select_files_to_download(
-        selected_files: Vec<usize>,
-        torrent_state: State<'_, super::TorrentState>,
-    ) -> Result<(), String> {
-        // Take the file_selection_tx from the TorrentState
-        let mut file_selection_tx_lock = torrent_state.file_selection_tx.lock().await;
-        if let Some(file_selection_tx) = file_selection_tx_lock.take() {
-            file_selection_tx
-                .send(selected_files)
-                .map_err(|e| format!("Failed to send file selection: {:?}", e))?;
+    pub async fn api_get_torrent_details(
+        state: tauri::State<'_, TorrentState>,
+        magnet_link: String
+    ) -> Result<TorrentCoreInfo, Box<TorrentError>> {
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+
+            let manager = manager.lock().await; // Lock the manager for use
+            let core_info = manager.get_torrent_details(magnet_link).await?;
+            
+            Ok(core_info)
+        } else {
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
+        }
+    }
+    
+    #[tauri::command]
+    pub async fn api_download_with_args(
+        state: tauri::State<'_, TorrentState>,
+        magnet_link: String,
+        download_file_list: Vec<usize>
+    ) -> Result<(), Box<TorrentError>> {
+
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+
+            let manager = Arc::clone(&manager);
+            // Spawn a new async task to handle the download in a separate thread
+            task::spawn(async move {
+                let manager = manager.lock().await;
+                if let Err(e) = manager.download_torrent_with_args(
+                    magnet_link, 
+                    download_file_list
+                ).await {
+                    error!("Error downloading torrent: {:?}", e);
+                }
+            });
+
             Ok(())
         } else {
-            Err("No file selection channel available".into())
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
         }
+
     }
 
     #[tauri::command]
-    pub async fn get_torrent_stats(
-        torrent_state: State<'_, super::TorrentState>,
-    ) -> Result<super::TorrentStatsInformations, torrent_functions::TorrentError> {
-        // Check the stop flag before fetching stats
-        if super::STOP_GET_STATS.load(Ordering::Relaxed) {
-            return Err(torrent_functions::TorrentError {
-                message: "Fetching of torrent stats has been stopped.".into(),
-            });
+    pub async fn api_automate_setup_install(
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String,
+        torrent_output_folder: String,
+        checkboxes_list: Vec<String>,
+        two_gb_limit: bool
+    ) -> Result<(), Box<TorrentError>> {
+
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+            let manager = manager.lock().await;
+            if let Err(e) = manager.automate_setup_install(
+                torrent_idx,
+                torrent_output_folder,
+                checkboxes_list,
+                two_gb_limit
+            ).await {
+                error!("Error during the automation of the setup install: {:#?}", e);
+            }
+
+            Ok(())
+        } else {
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
+        }
+
+    }
+
+
+    #[tauri::command]
+    pub async fn api_get_torrent_stats(        
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String
+    ) -> Result<TorrentStats, Box<TorrentError>> {
+ 
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+
+            let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
+            let torrent_stats = manager.get_torrent_stats(torrent_idx).await?.unwrap();
+
+
+            Ok(torrent_stats)
+        } else {
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
         }
     
-        let torrent_stats: tokio::sync::MutexGuard<super::TorrentStatsInformations> =
-            torrent_state.stats.lock().await;
-        println!("Current torrent stats: {:?}", *torrent_stats);
-        Ok(torrent_stats.clone())
+    }
+
+    
+
+
+    #[tauri::command]
+    pub async fn api_pause_torrent(        
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String
+    ) -> Result<(), Box<TorrentError>> {
+
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+
+            let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
+            manager.pause_torrent(torrent_idx).await?;
+
+            Ok(())
+        } else {
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
+        }
+
     }
 
     #[tauri::command]
-    pub async fn pause_torrent_command() -> Result<(), CustomError> {
-        // Set the global pause flag
-        PAUSE_FLAG.store(true, Ordering::Relaxed);
-        Ok(())
+    pub async fn api_resume_torrent(        
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String
+    ) -> Result<(), Box<TorrentError>> {
+
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+
+            let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
+            manager.resume_torrent(torrent_idx).await?;
+
+            Ok(())
+        } else {
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
+        }
+
     }
 
     #[tauri::command]
-    pub async fn resume_torrent_command() -> Result<(), CustomError> {
-        // Set the global pause flag
-        println!("SHOUDL RESUME THE TORRENT");
-        PAUSE_FLAG.store(false, Ordering::Relaxed);
-        RESUME_FLAG.store(true, Ordering::Relaxed);
-        Ok(())
+    pub async fn api_stop_torrent(        
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String
+    ) -> Result<(), Box<TorrentError>> {
+
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+
+            let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
+            manager.stop_torrent(torrent_idx).await?;
+
+            Ok(())
+        } else {
+            Err(Box::new(TorrentError::AnyhowError("TorrentManager is not initialized.".to_string())))
+        }
+
     }
 
-    #[tauri::command]
-    pub async fn stop_torrent_command() -> Result<(), CustomError> {
-        // Set the global stop flag
-        STOP_FLAG_TORRENT.store(true, Ordering::Relaxed);
-        Ok(())
-    }
 }
