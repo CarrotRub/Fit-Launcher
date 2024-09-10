@@ -13,8 +13,6 @@ pub use crate::scrapingfunc::commands_scraping;
 mod torrentfunc;
 pub use crate::torrentfunc::torrent_calls;
 pub use crate::torrentfunc::torrent_commands;
-pub use crate::torrentfunc::torrent_functions;
-pub use crate::torrentfunc::TorrentState;
 
 mod custom_ui_automation;
 pub use crate::custom_ui_automation::windows_custom_commands;
