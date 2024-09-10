@@ -233,7 +233,7 @@ const SettingsPage = () => {
           <label>
             <p>Application Version: {version()}</p>
           </label>
-          <button class="boton-elegante" onClick={handleCheckForUpdates}>Check for updates</button>
+          {/* <button class="boton-elegante" onClick={handleCheckForUpdates}>Check for updates</button>  */}
         </div>
       </section>
 
