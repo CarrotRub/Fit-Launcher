@@ -28,12 +28,14 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
 
     const handleButtonClick = async () => {
         const currentState = gameInfo().state;
+        const CTG = localStorage.getItem('CTG');
+        let hash = JSON.parse(CTG).torrent_idx
         try {
             if (currentState === 'paused') {
-                await invoke('resume_torrent_command');
+                await invoke('api_resume_torrent', {torrentIdx:hash });
                 setIsPaused(false);
             } else if (currentState === 'live') {
-                await invoke('pause_torrent_command');
+                await invoke('api_pause_torrent', {torrentIdx:hash });
                 setIsPaused(true);
             }
         } catch (error) {
@@ -48,19 +50,19 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
             switch (state) {
                 case 'paused':
                     return (
-                        <svg width="16" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="24" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 5l10 7-10 7V5z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     );
                 case 'live':
                     return (
-                        <svg width="16" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="24" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 5v14m8-14v14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     );
                 default:
                     return (
-                        <svg width="16" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg width="24" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 5v14m8-14v14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     );
@@ -104,15 +106,15 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
 
     const updateCharts = (stats) => {
         if (downloadUploadChart && bytesChart) {
-            const mbDownloadSpeed = (stats.download_speed || 0);
-            const mbUploadSpeed = (stats.upload_speed || 0);
+            const mbDownloadSpeed = (stats.live.download_speed.human_readable);
+            const mbUploadSpeed = (stats.live.upload_speed.human_readable);
             const downloadedMB = (stats.progress_bytes || 0) / (1024 * 1024);
             const uploadedMB = (stats.uploaded_bytes || 0) / (1024 * 1024);
 
-            downloadUploadChart.data.datasets[0].data.push(mbDownloadSpeed.toFixed(2));
-            downloadUploadChart.data.datasets[1].data.push(mbUploadSpeed.toFixed(2));
-            bytesChart.data.datasets[0].data.push(downloadedMB.toFixed(2));
-            bytesChart.data.datasets[1].data.push(uploadedMB.toFixed(2));
+            downloadUploadChart.data.datasets[0].data.push(parseFloat(mbDownloadSpeed).toFixed(2));
+            downloadUploadChart.data.datasets[1].data.push(parseFloat(mbUploadSpeed).toFixed(2));
+            bytesChart.data.datasets[0].data.push(downloadedMB);
+            bytesChart.data.datasets[1].data.push(uploadedMB);
 
             const currentTime = new Date().toLocaleTimeString();
             downloadUploadChart.data.labels.push("");
@@ -218,15 +220,19 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
         });
     });
 
-    const handleStopTorrent = () => {
-        invoke('stop_torrent_command');
+    const handleStopTorrent = async () => {
+        const CTG = localStorage.getItem('CTG');
+        let hash = JSON.parse(CTG).torrent_idx
+        await invoke('api_stop_torrent', {torrentIdx: hash});
         localStorage.removeItem('CDG');
         window.dispatchEvent(new Event('storage'));
     }
 
     const slideLeft = () => {
         localStorage.setItem('isSidebarActive', false);
-        setIsActive(false);
+        setIsActive = false;
+        const verdiv = document.querySelector('.sidebar-space')
+        verdiv.style = 'display: none'
     }
 
     // Ensure that the percentage is valid before rendering the component
@@ -247,7 +253,7 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
                         <span class="progress-text">DOWNLOADING {percentage()}%</span>
                         <div class="icons">
                             <span class="icon" onClick={handleStopTorrent}>
-                                <svg width="16" height="24" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <svg width="24" height="32" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <g stroke-width="0"/>
                                     <g stroke-linecap="round" stroke-linejoin="round"/>
                                     <path d="m3 21.32 18-18m-18 0 18 18" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

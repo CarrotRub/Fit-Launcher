@@ -5,7 +5,7 @@ import { appConfigDir} from '@tauri-apps/api/path';
 import { writeFile, createDir, readTextFile } from '@tauri-apps/api/fs';
 import './Downloadingpartsidebar.css';
 import Gameverticaldownloadslide from '../../Gamedownloadvertical-01/Gamedownloadvertical'
-
+import { globalTorrentInfo, setTorrentTrigger, torrentTrigger } from '../../functions/dataStoreGlobal';
 
 function Downloadingpartsidebar() {
 
@@ -48,31 +48,47 @@ function Downloadingpartsidebar() {
     };
     
     let shouldStopFetching = false; // Flag to control the loop
+    let intervalId;
 
     const fetchTorrentStats = async () => {
         if (shouldStopFetching) return; // Exit if the loop should stop
     
         try {
             console.log("fetching");
-            const state = await invoke('get_torrent_stats');
+    
+            const CTG = localStorage.getItem('CTG');
+            let hash = JSON.parse(CTG).torrent_idx;
+            const state = await invoke('api_get_torrent_stats', { torrentIdx: hash });
+            
+            const SoloCDG = JSON.parse(localStorage.getItem('CDG'));
             setTorrentInfo(state);
+            setCdgObject(SoloCDG)
             localStorage.setItem('CDG_Stats', JSON.stringify(state));
             setIsActiveDownload(true);
+    
+            if (state.finished) {
+                setIsTorrentDone(true);
+                clearInterval(intervalId); // Stop fetching when torrent is done
+                console.log('Torrent completed, stopping interval.');
+                console.log("Starting the Automated Process Setup Install");
+                await invoke('api_automate_setup_install', globalTorrentInfo)
+                console.log("Started the Automated Process Setup Install");
+            }
         } catch (error) {
             console.error('Error fetching torrent state:', error);
             
             if (error.message === 'Fetching of torrent stats has been stopped.') {
-                shouldStopFetching = true; // Stop the loop if the specific error is encountered
+                shouldStopFetching = true;
+                clearInterval(intervalId); // Stop interval in case of error
             }
         }
     };
-
-    const startDownloadListener = () => {
-        fetchTorrentStats()
-        const intervalId = setInterval(fetchTorrentStats, 500)
-        onCleanup(() => clearInterval(intervalId))
-    }
     
+    const startDownloadListener = () => {
+        fetchTorrentStats();
+        intervalId = setInterval(fetchTorrentStats, 500);
+        onCleanup(() => clearInterval(intervalId));
+    };
     window.addEventListener('start-download', startDownloadListener)
 
     onCleanup(() => {
@@ -88,28 +104,83 @@ function Downloadingpartsidebar() {
         if (firstCdg) {
             setCurrentImage(firstCdg.gameImage)
             setCurrentTitle(firstCdg.gameTitle)
-            
-            setIsInitializing(
-                firstCdg.state === "initializing" || firstCdg.state === "Initializing"
-            );
-            
         }
 
         const statsFirstCDG = JSON.parse(localStorage.getItem('CDG_Stats'));
         if (statsFirstCDG) {
+
+            let isTorrentFinished = statsFirstCDG.finished;
+
+            if (isTorrentFinished) {
+                console.log("finishedddddd");
+                const current_game = JSON.parse(localStorage.getItem('CDG'))[0];
+                console.log(isTorrentFinished);
+            
+                const gameData = {
+                    title: current_game.gameTitle,
+                    img: current_game.gameImage,
+                    desc: current_game.desc,
+                    magnetlink: current_game.gameMagnet,
+                    timestamp: Date.now(),
+                    game_path: "",
+                };
+            
+                try {
+                    const appDir = await appConfigDir();
+                    const dirPath = `${appDir}data\\`;
+                    const filePath = `${dirPath}downloaded_games.json`;
+            
+                    console.log('Creating directory:', dirPath);
+                    await createDir(dirPath, { recursive: true });
+            
+                    let existingData = [];
+            
+                    try {
+                        const fileContent = await readTextFile(filePath);
+                        existingData = JSON.parse(fileContent);
+                    } catch (readError) {
+                        // If file doesn't exist, create it with an empty array
+                        console.log('File does not exist, creating a new one.');
+                        await writeFile(filePath, JSON.stringify([]));
+                        existingData = [];
+                    }
+            
+                    if (!Array.isArray(existingData)) {
+                        existingData = [];
+                    }
+            
+                    console.log(existingData);
+            
+                    // Check if the game already exists
+                    const gameExists = existingData.some(game => game.title === gameData.title);
+            
+                    console.log("checked and it is: ", gameExists);
+                    if (!gameExists) {
+                        existingData.push(gameData);
+                        console.log('Writing updated data to path:', filePath);
+                        await writeFile(filePath, JSON.stringify(existingData, null, 2)); // Beautify JSON with 2 spaces indentation
+                        console.log('Game data saved successfully:', gameData);
+                    } else {
+                        console.log('Game already exists in the file, not adding again:', gameData);
+                    }
+                } catch (error) {
+                    console.error('Error saving game data:', error);
+                }
+            }
+            
             setOldDownloadingSpeed(
                 `${
-                    statsFirstCDG.download_speed === null
+                    statsFirstCDG.live?.download_speed.human_readable === null
                         ? 0
-                        : statsFirstCDG.download_speed.toFixed(2)
-                } MB/s`
+                        : statsFirstCDG.live?.download_speed.human_readable
+                }`
             )
 
             setOldRemainingTime(
                 `${
-                    statsFirstCDG.time_remaining === null || statsFirstCDG.time_remaining === ''
-                        ? (statsFirstCDG.finished !== true ? 'Infinity' : 'Done')
-                        : statsFirstCDG.time_remaining
+                    statsFirstCDG.live?.time_remaining.human_readable === null || statsFirstCDG.live?.time_remaining.human_readable === ''
+                        ? (statsFirstCDG?.finished !== true ? 'Infinity' : 'Done')
+                        : statsFirstCDG.live?.time_remaining.human_readable
                 }`
             );
             
@@ -119,69 +190,20 @@ function Downloadingpartsidebar() {
         const hihiChut = JSON.parse(localStorage.getItem('CDG_Stats'));
         let isTorrentFinished = hihiChut.finished;
         
-        if (isTorrentFinished) {
-            console.log("finishedddddd");
-            const current_game = JSON.parse(localStorage.getItem('CDG'))[0];
-            console.log(isTorrentFinished);
-        
-            const gameData = {
-                title: current_game.gameTitle,
-                img: current_game.gameImage,
-                desc: current_game.desc,
-                magnetlink: current_game.gameMagnet,
-                timestamp: Date.now(),
-                game_path: "",
-            };
-        
-            try {
-                const appDir = await appConfigDir();
-                const dirPath = `${appDir}data\\`;
-                const filePath = `${dirPath}downloaded_games.json`;
-        
-                console.log('Creating directory:', dirPath);
-                await createDir(dirPath, { recursive: true });
-        
-                let existingData = [];
-        
-                try {
-                    const fileContent = await readTextFile(filePath);
-                    existingData = JSON.parse(fileContent);
-                } catch (readError) {
-                    // If file doesn't exist, create it with an empty array
-                    console.log('File does not exist, creating a new one.');
-                    await writeFile(filePath, JSON.stringify([]));
-                    existingData = [];
-                }
-        
-                if (!Array.isArray(existingData)) {
-                    existingData = [];
-                }
-        
-                console.log(existingData);
-        
-                // Check if the game already exists
-                const gameExists = existingData.some(game => game.title === gameData.title);
-        
-                console.log("checked and it is: ", gameExists);
-                if (!gameExists) {
-                    existingData.push(gameData);
-                    console.log('Writing updated data to path:', filePath);
-                    await writeFile(filePath, JSON.stringify(existingData, null, 2)); // Beautify JSON with 2 spaces indentation
-                    console.log('Game data saved successfully:', gameData);
-                } else {
-                    console.log('Game already exists in the file, not adding again:', gameData);
-                }
-            } catch (error) {
-                console.error('Error saving game data:', error);
-            }
-        }
-        
+
         console.log(isActiveDownload(), torrentInfo())
         if (torrentInfo() && isActiveDownload()) {
             console.log("donwl")
 
-            const progress =
-                (actTorrentInfo.progress_bytes / actTorrentInfo.total_bytes) * 100
+            if (actTorrentInfo.state === 'initializing') {
+                setIsInitializing(true);
+            } else {
+                setIsInitializing(false)
+            }
+
+            const progress = (actTorrentInfo.progress_bytes / actTorrentInfo.total_bytes) * 100;
+
+            setOldPercentage(progress);
             const element = document.querySelector(
                 '.currently-downloading-game'
             )
@@ -196,25 +218,13 @@ function Downloadingpartsidebar() {
 
             setIsTorrentDone(actTorrentInfo.finished);
             
-            setIsInitializing(
-                actTorrentInfo.state === "initializing" ? true : false
-            )
+            console.log("actotrentnngo :", actTorrentInfo.state)
 
- 
-                setDownloadingSpeed(
-                    `${
-                        actTorrentInfo.download_speed === null
-                            ? 0
-                            : actTorrentInfo.download_speed.toFixed(2)
-                    } MB/s`
-                )
-                setRemainingTime(
-                    `${
-                        actTorrentInfo.time_remaining === null
-                        ? (actTorrentInfo.finished !== true ? 'Infinity' : 'Done')
-                        : actTorrentInfo.time_remaining
-                    }`
-                );
+            const liveStats = actTorrentInfo.live || {};
+            setDownloadingSpeed(liveStats?.download_speed?.human_readable || '0 MB/s');
+            setRemainingTime(liveStats?.time_remaining?.human_readable || '0H 0M');
+            setIsTorrentDone(actTorrentInfo?.finished);
+            
 
 
 
@@ -264,14 +274,26 @@ function Downloadingpartsidebar() {
     }
 
 
-    const gameObjectProduced = from(objectProducer);
-    
+    let gameObjectProduced = from(objectProducer);
+
+    createEffect(() => {
+        console.log(torrentTrigger());
+        if(torrentTrigger()) {
+            console.log("Setting data")
+            setTorrentTrigger(false)
+            gameObjectProduced = from(objectProducer);
+            let CDG_Info = JSON.parse(localStorage.getItem('CDG'));
+            setCdgObject(CDG_Info);
+        }
+    })
+
+    createEffect(() => {
+        console.log(`Is Initializing: ${isInitializing()}`);
+    });
+
     return (
         <>
                 <div 
-                    style={`--bg-length: ${
-                        isNaN(oldPercentage()) ? 0 : oldPercentage()
-                        }%`}
                     className="currently-downloading-game"
                     onClick={toggleSidebar}>
                 { gameObjectProduced() ? (
@@ -319,7 +341,7 @@ function Downloadingpartsidebar() {
                         </p>
                     </div>
                 </>
-            ) : currentImage() || cdgObject().length > 0 ? (
+            ) : currentImage() || cdgObject() ? (
                 <>
                     <div className="current-image-container">
 

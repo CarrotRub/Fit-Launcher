@@ -99,7 +99,7 @@ pub mod windows_ui_automation {
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
     
-    pub fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
+    pub async fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
         match Command::new(path)
             .spawn() 
         {
@@ -118,7 +118,7 @@ pub mod windows_ui_automation {
         }
     }
 
-    pub fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str, should_two_gb_limit: bool) {
+    pub async fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str, should_two_gb_limit: bool) {
 
         // Skip Select Setup Language.
         windows_controls_processes::click_ok_button();
