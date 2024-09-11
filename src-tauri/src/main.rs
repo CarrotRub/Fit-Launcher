@@ -14,27 +14,32 @@ mod torrentfunc;
 pub use crate::torrentfunc::torrent_calls;
 pub use crate::torrentfunc::torrent_commands;
 
-
 mod custom_ui_automation;
 pub use crate::custom_ui_automation::windows_custom_commands;
 
 mod mighty;
+use std::fs;
+
+use serde_json::Value;
+use std::error::Error;
 
 
 use core::str;
-use std::error::Error;
+use tauri::api::path::app_log_dir;
+
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
-use tauri::api::path::app_log_dir;
 use std::fs::File;
 use std::io::Read;
 use std::fmt;
 use tauri::{Manager, Window};
 use tauri::{api::path::{BaseDirectory, resolve_path}, Env};
+
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use std::path::PathBuf;
 use tracing_appender::non_blocking::WorkerGuard;
+
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
@@ -50,9 +55,11 @@ use tokio::sync::Mutex;
 use tauri::State;
 
 
+
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
+
 
 
 
@@ -362,8 +369,48 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
     Ok(true)
 }
 
+fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
+    println!("Starting the process to delete invalid JSON files...");
 
+    // Retrieve the correct path dynamically
+    let mut dir_path = app_handle.path_resolver().app_data_dir().unwrap();
+    dir_path.push("tempGames");
 
+    if !dir_path.exists() {
+        println!("Directory does not exist: {:?}", dir_path);
+        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found")));
+    }
+
+    let paths = fs::read_dir(&dir_path)?;
+
+    for path in paths {
+        let path = path?.path();
+
+        if path.extension().and_then(|s| s.to_str()) == Some("json") {
+            let file_content = fs::read_to_string(&path)?;
+
+            let json_data: Value = match serde_json::from_str(&file_content) {
+                Ok(data) => data,
+                Err(err) => {
+                    println!("Failed to parse JSON file {:?}: {}", path, err);
+                    println!("Deleting corrupted file: {:?}", path);
+                    fs::remove_file(&path)?;
+                    println!("Deleted corrupted file successfully: {:?}", path);
+                    continue;
+                }
+            };
+
+            if !json_data.get("tag").is_some() {
+                println!("Deleting file with missing 'tag' field: {:?}", path);
+                fs::remove_file(&path)?;
+                println!("Deleted file successfully: {:?}", path);
+            }
+        }
+    }
+
+    println!("Finished the process to delete invalid JSON files.");
+    Ok(())
+}
 
 fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
     let file_appender = tracing_appender::rolling::never(logs_dir, "app.log");
@@ -377,14 +424,13 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
     guard
 }
 
-
 fn main() -> Result<(), Box<dyn Error>> {
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
     let context = tauri::generate_context!();
+    
     let logs_dir = app_log_dir(context.config()).unwrap();
     println!("path to logs : {:#?}", &logs_dir);
     let _log_guard = setup_logging(logs_dir); 
- 
 
     tauri::Builder::default()
         .setup(|app| {
@@ -392,7 +438,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             let main_window = app.get_window("main").unwrap();
             let current_app_handle = app.app_handle();
 
- 
+            // Delete JSON files missing the 'tag' field or corrupted and log the process
+            if let Err(e) = delete_invalid_json_files(&current_app_handle) {
+                eprintln!("Error during deletion of invalid or corrupted JSON files: {}", e);
+            }
 
             // Clone the app handle for use in async tasks
             let first_app_handle = current_app_handle.clone();
@@ -403,41 +452,42 @@ fn main() -> Result<(), Box<dyn Error>> {
             // Perform asynchronous initialization tasks without blocking the main thread
             tauri::async_runtime::spawn(async move {
                 tracing::info!("Starting async tasks");
+
                 let mandatory_tasks_online = tauri::async_runtime::spawn_blocking(move || {
                     if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
                         eprintln!("Error in scraping_func: {}", e);
-                        std::process::exit(1);
+                        // Do not exit, continue running
                     }
 
                     if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
                         eprintln!("Error in popular_games_scraping_func: {}", e);
-                        std::process::exit(1);
+                        // Do not exit, continue running
                     }
 
                     if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
                         eprintln!("Error in get_sitemaps_website: {}", e);
-                        std::process::exit(1);
+                        // Do not exit, continue running
                     }
 
                     if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
                         eprintln!("Error in recently_updated_games_scraping_func: {}", e);
-                        std::process::exit(1);
+                        // Do not exit, continue running
                     }
                 });
 
                 // Await the completion of the tasks
-                mandatory_tasks_online.await.unwrap();
+                if let Err(e) = mandatory_tasks_online.await {
+                    eprintln!("An error occurred during scraping tasks: {:?}", e);
+                    // Continue running even if errors occur
+                }
 
                 // After all tasks are done, close the splash screen and show the main window
                 splashscreen_window.close().unwrap();
-
-                
                 main_window.show().unwrap();
-                current_app_handle.emit_all("scraping-complete", {}).unwrap();
 
+                current_app_handle.emit_all("scraping-complete", {}).unwrap();
                 current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
-                println!("Scraping signal has been sent.")
-                
+                println!("Scraping signal has been sent.");
             });
 
             Ok(())
@@ -463,10 +513,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .manage(image_cache) // Make the cache available to commands 
         .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
         .build({
-        
             tauri::generate_context!()
-
-        
         })
         .expect("error while building tauri application")
         .run(|_app_handle, event| match event {
@@ -477,7 +524,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
 
     // Keep the guard in scope to ensure proper log flushing
-
     Ok(())
 }
-
