@@ -1,105 +1,132 @@
 import { createSignal, onMount } from "solid-js";
 import { appConfigDir } from "@tauri-apps/api/path";
-import { readTextFile, writeTextFile, exists } from "@tauri-apps/api/fs";
-import { createDir } from "@tauri-apps/api/fs";
+import { readTextFile, writeTextFile, exists, createDir } from "@tauri-apps/api/fs";
+import { getVersion } from '@tauri-apps/api/app';
+import { checkUpdate, installUpdate } from '@tauri-apps/api/updater';
+
 import './Settings.css';
 
-// Define default settings
 const defaultSettings = {
   defaultDownloadPath: "",
   autoClean: true,
   hoverTitle: true,
   autoInstall: true,
   importPath: "",
-  two_gb_limit: true
+  two_gb_limit: true,
+  hide_nsfw_content: false,
 };
-// Define a function to load settings from the JSON file
+
 async function loadSettings() {
   const configDir = await appConfigDir();
-  const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`; // Define the directory path
-  const settingsPath = `${dirPath}/settings.json`; // Define the settings file path
+  const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`;
+  const settingsPath = `${dirPath}/settings.json`;
 
   try {
-    // Check if the directory exists, and if not, create it
     const dirExists = await exists(dirPath);
     if (!dirExists) {
       await createDir(dirPath, { recursive: true });
-      console.log("Directory created:", dirPath);
     }
 
-    // Check if the settings file exists
     const fileExists = await exists(settingsPath);
     if (!fileExists) {
-      // If the file does not exist, create it with default settings
       await writeTextFile(settingsPath, JSON.stringify(defaultSettings, null, 2));
-      console.log("Settings file created with default settings.");
       return defaultSettings;
     }
 
-    // If the file exists, read and parse it
     const json = await readTextFile(settingsPath);
-    return JSON.parse(json);
+    let settings = JSON.parse(json);
+
+    if (!settings.hasOwnProperty('hide_nsfw_content')) {
+      settings.hide_nsfw_content = defaultSettings.hide_nsfw_content;
+      await writeTextFile(settingsPath, JSON.stringify(settings, null, 2));
+    }
+
+    return settings;
   } catch (error) {
     console.error("Failed to load settings:", error);
     return defaultSettings;
   }
 }
 
-
-// Define a function to save settings to the JSON file
 async function saveSettings(settings) {
   const configDir = await appConfigDir();
-  const dirPath = `${configDir.replace(/\\/g, '/')}fitgirlConfig`; // Define the directory path
-  const settingsPath = `${dirPath}/settings.json`; // Define the settings file path
+  const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`;
+  const settingsPath = `${dirPath}/settings.json`;
 
   try {
     await writeTextFile(settingsPath, JSON.stringify(settings, null, 2));
+    return true; // Return true on success
   } catch (error) {
     console.error("Failed to save settings:", error);
+    return false; // Return false on error
   }
 }
 
 const SettingsPage = () => {
-  // Load settings from the JSON file
   const [settings, setSettings] = createSignal(defaultSettings);
   const [loading, setLoading] = createSignal(true);
+  const [version, setVersion] = createSignal('');
+  const [notificationVisible, setNotificationVisible] = createSignal(false);
 
-    onMount(() => {
+  onMount(async () => {
+    try {
+      let gamehubDiv = document.querySelectorAll('.gamehub-container');
+      let libraryDiv = document.querySelectorAll('.launcher-container');
+      let settingsDiv = document.querySelectorAll('.settings-page');
 
-        let gamehubDiv = document.querySelectorAll('.gamehub-container');
-        let libraryDiv = document.querySelectorAll('.launcher-container');
-        let settingsDiv = document.querySelectorAll('.settings-page');
+      if(gamehubDiv){
 
-        if(gamehubDiv){
+        let gamehubLinkText = document.querySelector('#link-gamehub');
+        gamehubLinkText.style.backgroundColor = ''
+      }
 
-          let gamehubLinkText = document.querySelector('#link-gamehub');
-          gamehubLinkText.style.backgroundColor = ''
-        }
+      if(libraryDiv){
 
-        if(libraryDiv){
+          let libraryLinkText = document.querySelector('#link-library');
+          libraryLinkText.style.backgroundColor = '';
+      }
 
-            let libraryLinkText = document.querySelector('#link-library');
-            libraryLinkText.style.backgroundColor = '';
-        }
+      if(settingsDiv){
 
-        if(settingsDiv){
+          let settingsLinkText = document.querySelector('#link-settings');
+          settingsLinkText.style.backgroundColor = '#ffffff0d';
+          settingsLinkText.style.borderRadius = '5px';
+      }
+      const initialSettings = await loadSettings();
+      setSettings(initialSettings);
+      const appVersionValue = await getVersion();
+      setVersion(appVersionValue);
+    } catch (error) {
+      console.error('Error during initialization:', error);
+    } finally {
+      setLoading(false); 
+    }
+  });
 
-            let settingsLinkText = document.querySelector('#link-settings');
-            settingsLinkText.style.backgroundColor = '#ffffff0d';
-            settingsLinkText.style.borderRadius = '5px';
-        }
-
-        loadSettings().then(initialSettings => {
-            setSettings(initialSettings);
-            setLoading(false);
-          });
-    }) 
-
-  // Update settings when values change
-  const handleSave = () => {
-    saveSettings(settings());
+  // Save settings and show notification
+  const handleSave = async () => {
+    const success = await saveSettings(settings());
+    if (success) {
+      setNotificationVisible(true);  // Show notification
+      setTimeout(() => {
+        setNotificationVisible(false);  // Hide notification after 3 seconds
+      }, 3000);
+    }
   };
 
+  // Check for updates function
+  const handleCheckForUpdates = async () => {
+    try {
+      const { shouldUpdate } = await checkUpdate();
+      if (shouldUpdate) {
+        await installUpdate();
+      } else {
+        alert('You are already on the latest version.');
+      }
+    } catch (error) {
+      alert('Failed to check for updates.');
+    }
+  };
 
   const lastInputPath = localStorage.getItem('LUP');
 
@@ -107,27 +134,34 @@ const SettingsPage = () => {
     <div class="settings-page">
       <h1>Settings</h1>
 
+      {/* Notification box */}
+      {notificationVisible() && (
+        <div class={`notification ${notificationVisible() ? 'show' : ''}`}>
+          Settings saved successfully!
+        </div>
+      )}
+
       {/* Download Settings */}
       <section>
         <h2>Download Settings</h2>
         <div class="form-group">
           <label for="defaultDownloadPath">Default Download Path</label>
-          <input 
-            type="text" 
-            id="defaultDownloadPath" 
-            value={settings().defaultDownloadPath ? settings().defaultDownloadPath : lastInputPath } 
-            onInput={(e) => setSettings({ ...settings(), defaultDownloadPath: e.target.value })} 
+          <input
+            type="text"
+            id="defaultDownloadPath"
+            value={settings().defaultDownloadPath ? settings().defaultDownloadPath : lastInputPath}
+            onInput={(e) => setSettings({ ...settings(), defaultDownloadPath: e.target.value })}
             placeholder="Enter default download path"
           />
         </div>
         <div class="form-group">
           <label>
-            <input 
-              type="checkbox" 
-              checked={settings().autoClean} 
+            <input
+              type="checkbox"
+              checked={settings().autoClean}
               onChange={(e) => setSettings({ ...settings(), autoClean: e.target.checked })}
             />
-            Auto-clean game files after installation
+            Auto-clean game files after installation. <strong>//Not working//</strong>
           </label>
         </div>
       </section>
@@ -137,36 +171,43 @@ const SettingsPage = () => {
         <h2>Installation Settings</h2>
         <div class="form-group">
           <label>
-            <input 
-              type="checkbox" 
-              checked={settings().autoInstall} 
+            <input
+              type="checkbox"
+              checked={settings().autoInstall}
               onChange={(e) => setSettings({ ...settings(), autoInstall: e.target.checked })}
             />
-            Automatic installation of games
+            Automatic installation of games. (This will automatically start the installation process after downloading the game)
           </label>
         </div>
         <div class="form-group">
           <label>
-            <input 
-              type="checkbox" 
-              checked={settings().hoverTitle} 
+            <input
+              type="checkbox"
+              checked={settings().hoverTitle}
               onChange={(e) => setSettings({ ...settings(), hoverTitle: e.target.checked })}
             />
-            Show hover title on game icons
+            Show hover title on game icons (useful for long game names).
           </label>
         </div>
         <div class="form-group">
           <label>
-            <input 
-              type="checkbox" 
-              checked={settings().two_gb_limit} 
+            <input
+              type="checkbox"
+              checked={settings().two_gb_limit}
               onChange={(e) => setSettings({ ...settings(), two_gb_limit: e.target.checked })}
             />
             Limit the installer to 2GB of RAM. (It will be automatically on if you have 8GB or less)
           </label>
-          <span>
-            It will be automatically on if you have 8GB or less
-          </span>
+        </div>
+        <div class="form-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={settings().hide_nsfw_content}
+              onChange={(e) => setSettings({ ...settings(), hide_nsfw_content: e.target.checked })}
+            />
+            Hide NSFW content. (This will hide all NSFW content from the app)
+          </label>
         </div>
       </section>
 
@@ -175,13 +216,24 @@ const SettingsPage = () => {
         <h2>Import Settings</h2>
         <div class="form-group">
           <label for="importPath">Import Downloaded Games JSON File</label>
-          <input 
-            type="text" 
-            id="importPath" 
-            value={settings().importPath} 
+          <input
+            type="text"
+            id="importPath"
+            value={settings().importPath}
             onInput={(e) => setSettings({ ...settings(), importPath: e.target.value })}
             placeholder="Enter path to imported games"
           />
+        </div>
+      </section>
+
+      {/* Fit Launcher Information */}
+      <section>
+        <h2>Fit Launcher Information</h2>
+        <div class="form-group">
+          <label>
+            <p>Application Version: {version()}</p>
+          </label>
+          {/* <button class="boton-elegante" onClick={handleCheckForUpdates}>Check for updates</button>  */}
         </div>
       </section>
 
@@ -194,7 +246,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <button onClick={handleSave}>Save Settings</button>
+      <button class="boton-elegante" onClick={handleSave}>Save Settings</button>
     </div>
   );
 };
