@@ -22,7 +22,7 @@ kuchiki = "0.8.1"
 anyhow = "1.0.86"
 lru = "0.12.4"
 futures = "0.3.30"
-librqbit  = {version = "7.0.1"}
+librqbit = { git = "https://github.com/ikatson/rqbit", tag = "v7.1.0-beta.1" }
 regex = "1.10.6"
 thiserror = "1.0.63"
 lazy_static = "1.5.0"

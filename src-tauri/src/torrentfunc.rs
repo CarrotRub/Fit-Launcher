@@ -1,14 +1,18 @@
 pub mod torrent_calls {
-    // TODO: FIX WHEN GAME START DOWNLOAD, IT DOESN'T SHOW IN DOWNLOADINGPARTSIDEBAR
-    use librqbit::dht::{Id20, PersistentDhtConfig};
+
+    use librqbit::dht::Id20;
     use serde::{Deserialize, Serialize};
     use anyhow::Context;
+    use tokio::fs;
+    use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+    use std::path::Path;
+    use serde_json::{Value, Map}; // For handling JSON
     use std::str::FromStr;
     use std::sync::Arc;
     use std::time::Duration;
     use tokio::sync::{mpsc, Mutex};
     use tracing::{error, info};
-    use librqbit::api::{TorrentIdOrHash, TorrentListResponse};
+    use librqbit::api::TorrentIdOrHash;
     use librqbit::{
         AddTorrent, AddTorrentOptions, Api, Magnet, Session, SessionOptions, SessionPersistenceConfig, TorrentStats
     };
@@ -79,7 +83,6 @@ pub mod torrent_calls {
     
     impl TorrentManager {
 
-
         /// Asynchronously creates a new `TorrentManager` with custom session options.
         ///
         /// This method sets up a new torrent session with specific configurations for persistence, DHT, and other session options.
@@ -109,22 +112,30 @@ pub mod torrent_calls {
         ///
         /// # Errors
         /// This method will return an error if the torrent session fails to initialize or if any configuration options cause issues.
-        pub async fn new(download_path: String, app_cache_patch: String) -> Result<Self, Box<TorrentError>> {
+        pub async fn new(
+            download_path: String, 
+            app_cache_patch: String,
+            magnet_link: String
+        ) -> Result<Self, Box<TorrentError>> {
 
-            // app_cache_path already ends with / so no need to add {}/
-            let persistence_path = format!("{}.persistence/", app_cache_patch);
+
+            let magnet_id20 = Magnet::parse(&magnet_link).unwrap().as_id20().unwrap();
+            let torrent_hash = TorrentIdOrHash::Hash(magnet_id20).to_string();
+        
+            let persistence_path = format!("{}.persistence", app_cache_patch).replace("/", "\\");
+
             let _dht_persistence_path = format!("{}.dht_persistence/", app_cache_patch);
-        
+            
+
             let persistence_config = Some(SessionPersistenceConfig::Json {
-                folder: Some(persistence_path.clone().into()),
-            });
-        
-            // Not working, to be added later.
-            let _personal_dht_config = Some(PersistentDhtConfig {
-                config_filename: Some(app_cache_patch.clone().into()),
-                ..Default::default()
+                folder: Some(persistence_path.into()),
             });
 
+            // Not working, to be added later.
+            // let _personal_dht_config = Some(PersistentDhtConfig {
+                // config_filename: Some(persistence_path),
+                // ..Default::default()
+            // });
 
             // TODO: Add a way to either ask the user to choose between HDD or SSD (For a different config)
 
@@ -137,8 +148,9 @@ pub mod torrent_calls {
             custom_session_options.enable_upnp_port_forwarding= true;
             custom_session_options.defer_writes_up_to= None; // Should defer up to 4mB for slow disk.
             custom_session_options.concurrent_init_limit= Some(1);
-            custom_session_options.persistence= persistence_config ;
+            custom_session_options.persistence = persistence_config ;
     
+
             let session_global = match Session::new_with_opts(download_path.into(), custom_session_options).await {
                 Ok(session) => session,
                 Err(err) => {
@@ -251,13 +263,13 @@ pub mod torrent_calls {
 
             let actual_torrent_hash = TorrentIdOrHash::Hash(actual_torrent_id20.unwrap()).to_string();
 
-            // Check if the torrent list is empty before proceeding
+    
             if !torrent_list_response.torrents.is_empty() {
                 // Get the vector and transform it into an Iterator
                 let torrent_list_iter = torrent_list_response.torrents.iter();
                 
                 for torrent in torrent_list_iter {
-                    // Check if the info_hash is not equal to actual_torrent_hash
+                    
                     if torrent.info_hash != actual_torrent_hash {
                         match self.stop_torrent(torrent.info_hash.clone()).await {
                             Ok(()) => {
@@ -281,7 +293,6 @@ pub mod torrent_calls {
                     overwrite: true,
                     disable_trackers: false,
                     force_tracker_interval: Some(Duration::from_secs(30)), // Check tracker every minute
-                    defer_writes: Some(true), // Defer writes to improve speed
                     ..Default::default()
                 })
             ).await {
@@ -426,9 +437,10 @@ pub mod torrent_commands {
     pub async fn api_initialize_torrent_manager(
         state: tauri::State<'_, TorrentState>,
         download_path: String,
-        app_cache_path: String
+        app_cache_path: String,
+        magnet_link: String
     ) -> Result<(), Box<TorrentError>> {
-        let manager = TorrentManager::new(download_path, app_cache_path).await?;
+        let manager = TorrentManager::new(download_path, app_cache_path, magnet_link).await?;
         let mut torrent_manager = state.torrent_manager.lock().await;
         *torrent_manager = Some(Arc::new(Mutex::new(manager)));
         Ok(())

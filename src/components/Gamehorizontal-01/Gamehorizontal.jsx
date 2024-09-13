@@ -169,7 +169,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                             const fileContent = fileContentObj.content;
                             const configData = JSON.parse(fileContent);
                             let should_bool_limit = configData.two_gb_limit;
-                            await invoke('api_initialize_torrent_manager', {downloadPath: inputPath, appCachePath: cacheDirPath})
+                            await invoke('api_initialize_torrent_manager', {downloadPath: inputPath, appCachePath: cacheDirPath, magnetLink: cdgGameMagnet})
                             fileList = await invoke('api_get_torrent_details', {
                                 magnetLink: cdgGameMagnet,
                             });
@@ -361,7 +361,16 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
             const fileContentObj = await readFile(filePath);
             const fileContent = fileContentObj.content;
             const gameData = JSON.parse(fileContent);
-            const game = gameData.find(game => game.title === title);
+            let game = gameData.find(game => game.title === title);
+
+            if (game && game.img) {
+                // Check if game.img contains a comma
+                const commaIndex = game.img.indexOf(',');
+                if (commaIndex !== -1) {
+                    // Get the part after the comma
+                    game.img = game.img.substring(commaIndex + 1).trim();
+                }
+            }
             console.log(gameData)
             console.log(title)
             setGameInfo(game);
