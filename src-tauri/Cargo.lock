@@ -101,6 +101,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_cfg"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04e2651f366b7ee3f97729fded1441539b49d5f39eeb05b842689e11e84501b2"
+dependencies = [
+ "const_panic",
+]
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -682,6 +691,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const_panic"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7782af8f90fe69a4bb41e460abe1727d493403d8b2cc43201a3a3e906b24379f"
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -901,11 +916,12 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "5.5.3"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
+checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
 dependencies = [
  "cfg-if",
+ "crossbeam-utils",
  "hashbrown 0.14.3",
  "lock_api",
  "once_cell",
@@ -2230,9 +2246,9 @@ checksum = "8f518f335dce6725a761382244631d86cf0ccb2863413590b31338feb467f9c3"
 
 [[package]]
 name = "itertools"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
 dependencies = [
  "either",
 ]
@@ -2400,15 +2416,14 @@ dependencies = [
 
 [[package]]
 name = "librqbit"
-version = "7.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f71f3c1fcc1b71a0a2f3071722b4b0c7a113013673b0f8273e0866a4b02dc6c0"
+version = "7.1.0-beta.1"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
  "async-stream",
  "async-trait",
  "backoff",
- "base64 0.21.7",
+ "base64 0.22.1",
  "bincode",
  "bitvec",
  "byteorder",
@@ -2452,8 +2467,7 @@ dependencies = [
 [[package]]
 name = "librqbit-bencode"
 version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41523d6b59f316b5e9680c0470a5ee00f1a43e463dbcb1b7a02eab56c87b8e80"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2466,8 +2480,7 @@ dependencies = [
 [[package]]
 name = "librqbit-buffers"
 version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1635d74bbdaaa4bca7c432879492a609694219829b4324ec845f7e60a703f41"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "bytes",
  "librqbit-clone-to-owned",
@@ -2477,8 +2490,7 @@ dependencies = [
 [[package]]
 name = "librqbit-clone-to-owned"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dabe584079813bc1bb675eb8cddfcf378e97590e5927af594e7596b0946757d"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "bytes",
 ]
@@ -2486,10 +2498,10 @@ dependencies = [
 [[package]]
 name = "librqbit-core"
 version = "4.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7eebb00603f98c4fe153f527ce08cd5307040ceb03db074af5d61a4946768c9c"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
+ "assert_cfg",
  "bytes",
  "data-encoding",
  "directories",
@@ -2510,8 +2522,7 @@ dependencies = [
 [[package]]
 name = "librqbit-dht"
 version = "5.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3afca5f53e7b6053312f975e37e98ff75da543015a1d1c30b95868442ffe797d"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
  "backoff",
@@ -2538,14 +2549,14 @@ dependencies = [
 [[package]]
 name = "librqbit-peer-protocol"
 version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c55405ba49f16eddef8aaee83c9f75e0f6e72ed2ffe540fbb7cb63c0fbb8b54e"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
  "bincode",
  "bitvec",
  "byteorder",
  "bytes",
+ "itertools",
  "librqbit-bencode",
  "librqbit-buffers",
  "librqbit-clone-to-owned",
@@ -2556,17 +2567,16 @@ dependencies = [
 [[package]]
 name = "librqbit-sha1-wrapper"
 version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29b096c4cfd6b8a4b56d0231afd1c7047fadab807d8c0c4152152725dcf4b6a3"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
+ "assert_cfg",
  "crypto-hash",
 ]
 
 [[package]]
 name = "librqbit-tracker-comms"
 version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dc018ebb1314f95a04699db7571dd95fcd911f05c9e3d3a0c5cec285bfcfdec"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -2587,17 +2597,16 @@ dependencies = [
 [[package]]
 name = "librqbit-upnp"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f76e619dd4c142762ba2d3cd65d2fbb1438363f2565793508037a8043259e6f"
+source = "git+https://github.com/ikatson/rqbit?tag=v7.1.0-beta.1#7a807f39e00a14cf6d972378e4ebbbd055a9a2c4"
 dependencies = [
  "anyhow",
  "bstr",
  "futures",
  "httparse",
  "network-interface",
+ "quick-xml 0.36.1",
  "reqwest 0.12.7",
  "serde",
- "serde-xml-rs",
  "tokio",
  "tracing",
  "url",
@@ -3703,6 +3712,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96a05e2e8efddfa51a84ca47cec303fac86c8541b686d37cac5efc0e094417bc"
+dependencies = [
+ "memchr",
+ "serde",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4287,18 +4306,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99fce0ffe7310761ca6bf9faf5115afbc19688edd00171d81b1bb1b116c63e09"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-xml-rs"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb3aa78ecda1ebc9ec9847d5d3aba7d618823446a049ba2491940506da6e2782"
-dependencies = [
- "log",
- "serde",
- "thiserror",
- "xml-rs",
 ]
 
 [[package]]
@@ -6569,12 +6576,6 @@ dependencies = [
  "libc",
  "windows-sys 0.52.0",
 ]
-
-[[package]]
-name = "xml-rs"
-version = "0.8.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "791978798f0597cfc70478424c2b4fdc2b7a8024aaff78497ef00f24ef674193"
 
 [[package]]
 name = "xml5ever"

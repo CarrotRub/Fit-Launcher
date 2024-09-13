@@ -76,6 +76,10 @@ mod checklist_automation {
                             Ok(_) => println!("Space key sent to element."),
                             Err(e) => eprintln!("Failed to send space key: {:?}", e),
                         } 
+                        match el.send_keys(" ", 0) {
+                            Ok(_) => println!("Space key sent to element."),
+                            Err(e) => eprintln!("Failed to send space key: {:?}", e),
+                        } 
                     } else {
                         println!("skipped : {:#?}",spec_text_inside);
                     }

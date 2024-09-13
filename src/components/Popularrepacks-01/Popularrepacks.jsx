@@ -50,6 +50,7 @@ function extractSecondaryTitle(title) {
     return match ? match[1].trim() : title; // Extracted secondary title or the original title if no match
 }
 
+
 function Popularrepacks() {
     const [imagesObject, setImagesObject] = createSignal(null);
     const [firstGameTitle, setFirstGameTitle] = createSignal('');
@@ -71,6 +72,30 @@ function Popularrepacks() {
                 firstLongGameTitleElement.textContent = titlesNo[0];
                 firstSlide.appendChild(firstGameTitleElement);
                 firstSlide.appendChild(firstLongGameTitleElement);
+            }
+
+            const slide0 = document.querySelector(`.games-container-pop .slide:first-child img`);
+            const slide1 = document.querySelector(`.games-container-pop .slide:nth-child(2) img`);
+
+            if (slide0) {
+                const imgSrc0 = data.map(game => game.img);
+                console.log(imgSrc0)
+                const srcParts0 = imgSrc0[0].split(','); 
+                slide0.src = srcParts0[0].trim();
+            }
+    
+            if (slide1) {
+                const imgSrc1 = data.map(game => game.img);
+                const srcParts1 = imgSrc1[1].split(','); 
+            
+                // Check if the string contains a comma
+                if (srcParts1.length > 1) {
+                    // If there is a comma, use the part after the comma
+                    slide1.src = srcParts1[1].trim();
+                } else {
+                    // If there is no comma, use the whole string
+                    slide1.src = srcParts1[0].trim();
+                }
             }
         } catch (error) {
             // Handle error if needed
