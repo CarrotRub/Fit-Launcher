@@ -370,9 +370,6 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
 }
 
 fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
-    println!("Starting the process to delete invalid JSON files...");
-
-    // Retrieve the correct path dynamically
     let mut dir_path = app_handle.path_resolver().app_data_dir().unwrap();
     dir_path.push("tempGames");
 
@@ -381,34 +378,41 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
         return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found")));
     }
 
-    let paths = fs::read_dir(&dir_path)?;
+    // Read the folder and iterate over the files
+    for entry in fs::read_dir(dir_path)? {
+        let entry = entry?;
+        let path = entry.path();
 
-    for path in paths {
-        let path = path?.path();
-
+        // Only process JSON files
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let file_content = fs::read_to_string(&path)?;
-
-            let json_data: Value = match serde_json::from_str(&file_content) {
-                Ok(data) => data,
-                Err(err) => {
-                    println!("Failed to parse JSON file {:?}: {}", path, err);
-                    println!("Deleting corrupted file: {:?}", path);
-                    fs::remove_file(&path)?;
-                    println!("Deleted corrupted file successfully: {:?}", path);
-                    continue;
-                }
-            };
-
-            if !json_data.get("tag").is_some() {
-                println!("Deleting file with missing 'tag' field: {:?}", path);
-                fs::remove_file(&path)?;
-                println!("Deleted file successfully: {:?}", path);
+            if let Err(e) = check_file_for_tags(&path) {
+                println!("Error processing file {:?}: {}", path, e);
             }
         }
     }
 
-    println!("Finished the process to delete invalid JSON files.");
+    Ok(())
+}
+
+// Function to check a single JSON file for the "tag" key in each object
+fn check_file_for_tags(path: &Path) -> Result<()> {
+    // Read the file content as a string
+    let file_content = fs::read_to_string(path)?;
+    
+    // Parse the JSON content into a Value object
+    let json: Value = serde_json::from_str(&file_content)?;
+
+    // Ensure the JSON is an array of objects
+    if let Some(arr) = json.as_array() {
+        for obj in arr {
+            // Each object should contain the "tag" key
+            if !obj.get("tag").is_some() {
+                println!("Missing 'tag' key in file: {:?}", path);
+                fs::remove_file(&path)?;
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -418,6 +422,7 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
 
     tracing_subscriber::fmt()
         .with_writer(file_writer)
+        .with_ansi(false)
         .with_max_level(tracing::Level::INFO)
         .init();
 

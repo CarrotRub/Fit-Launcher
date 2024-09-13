@@ -451,12 +451,15 @@ pub mod basic_scraping {
                 }
             };
     
+            let mut images: Vec<String> = Vec::new();
+
             let image_src = if game_count == 0 {
                 let mut p_index = 3;
                 let mut long_image_elem = game_doc.select(&long_image_selector).next();
                 while long_image_elem.is_none() && p_index < 10 {
                     p_index += 1;
-                    let updated_selector = scraper::Selector::parse(&format!(".entry-content > p:nth-of-type({}) a[href] > img[src]:nth-child(1)", p_index))
+                    let updated_selector = scraper::Selector::parse(&format!(
+                        ".entry-content > p:nth-of-type({}) a[href] > img[src]:nth-child(1)", p_index))
                         .expect("Invalid selector");
                     long_image_elem = game_doc.select(&updated_selector).next();
                     if long_image_elem.is_some() {
@@ -471,17 +474,35 @@ pub mod basic_scraping {
             } else {
                 image_elem.value().attr("src").unwrap_or_default()
             };
-    
+            
+            // Add both long image and image src to the images Vec if game_count is 0 or 1
+            if game_count == 0 {
+                if let Some(long_image_elem) = game_doc.select(&long_image_selector).next() {
+                    let long_image_src = long_image_elem.value().attr("src").unwrap_or_default();
+                    images.push(long_image_src.to_string());
+                }
+                images.push(image_src.to_string());
+            } else if game_count == 1 {
+                if let Some(long_image_elem) = game_doc.select(&long_image_selector).next() {
+                    let long_image_src = long_image_elem.value().attr("src").unwrap_or_default();
+                    images.push(long_image_src.to_string());
+                }
+                images.push(image_src.to_string());
+            } else {
+                // Otherwise, just add the regular image src
+                images.push(image_src.to_string());
+            }
+
             game_count += 1;
+            let concatenated_string = images.join(", ");
             let popular_game = Game {
                 title: title.to_string(),
-                img: image_src.to_string(),
+                img: concatenated_string,  // Now store the Vec of images here
                 desc: description,
                 magnetlink: magnetlink.to_string(),
                 href: href.to_string(),
                 tag: tag.to_string(),  // Store the extracted tag
             };
-    
             popular_games.push(popular_game);
     
             if game_count >= 20 {
