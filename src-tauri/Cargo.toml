@@ -30,15 +30,18 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "an
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 select = "0.6"
+
+[target.'cfg(windows)'.dependencies]
 uiautomation = "0.12.2"
-[dependencies.windows]
-version = "0.58.0"
-features = [
+windows = { version = "0.58.0", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Controls",
     "Win32_System_SystemInformation"
-]
+] }
+
+[target.'cfg(unix)'.dependencies]
+
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
