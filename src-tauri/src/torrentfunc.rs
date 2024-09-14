@@ -2,11 +2,7 @@ pub mod torrent_calls {
 
     use librqbit::dht::Id20;
     use serde::{Deserialize, Serialize};
-    use anyhow::Context;
-    use tokio::fs;
-    use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
-    use std::path::Path;
-    use serde_json::{Value, Map}; // For handling JSON
+    use anyhow::Context; // For handling JSON
     use std::str::FromStr;
     use std::sync::Arc;
     use std::time::Duration;
