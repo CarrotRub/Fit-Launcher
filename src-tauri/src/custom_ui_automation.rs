@@ -1,3 +1,5 @@
+
+#[cfg(target_os = "windows")]
 mod checklist_automation {
     use uiautomation::{UIAutomation, UIElement};
     use uiautomation::types::UIProperty::{ClassName, NativeWindowHandle, ToggleToggleState};
@@ -17,6 +19,7 @@ mod checklist_automation {
         sec_elem
     }
 
+    #[cfg(target_os = "windows")]
     pub fn get_checkboxes_from_list(list_to_check: Vec<String>) {
         let automation = UIAutomation::new().unwrap();
         let walker = automation.get_control_view_walker().unwrap();
@@ -95,7 +98,7 @@ mod checklist_automation {
 
 
 
-
+#[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
     use std::process::Command;
     use std::path::Path;
@@ -103,6 +106,7 @@ pub mod windows_ui_automation {
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
     
+
     pub async fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
         match Command::new(path)
             .spawn() 
@@ -122,6 +126,7 @@ pub mod windows_ui_automation {
         }
     }
 
+    #[cfg(target_os = "windows")]
     pub async fn automate_until_download(user_checkboxes_to_check: Vec<String>, path_to_game: &str, should_two_gb_limit: bool) {
 
         // Skip Select Setup Language.
@@ -157,7 +162,7 @@ pub mod windows_ui_automation {
         // Print and get and send progress bar value every 500ms
 }
 
-pub mod windows_custom_commands {
+pub mod executable_custom_commands {
     use std::process::Command;
     
 
@@ -168,6 +173,9 @@ pub mod windows_custom_commands {
     /// Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
     #[tauri::command]
     pub fn start_executable(path: String) {
+
+        // Here, use this **ONLY** for windows OS
+        #[cfg(target_os = "windows")]
         match Command::new(&path)
             .spawn() 
         {
@@ -182,7 +190,29 @@ pub mod windows_custom_commands {
                 }
             },
         }
+
+        #[cfg(target_os = "linux")]
+        todo!()
+
     }
 
+
+}
+
+
+pub mod linux_ui_automation {
+
+    /// This function will start an executable using Wine.
+    /// 
+    ///  This function is specific to Arch Linux + X11
+    /// 
+    /// Note that this will work on SteamDeck OS 3.0
+    /// 
+    pub fn start_executable_arch_x11() {
+
+        // TODO: Ask for Wine to be installed either through the AUR or to be installed through Flatpak if a steamdeck is used
+        // TODO: Ask it through notification after launching the launcher.
+        todo!()
+    }
 
 }

@@ -66,7 +66,8 @@
         }
       ],
       "security": {
-        "csp": null
+
+        "csp": "script-src 'wasm-unsafe-eval'"
       }
     }
   }
