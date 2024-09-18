@@ -13,6 +13,8 @@ pub mod torrent_calls {
         AddTorrent, AddTorrentOptions, Api, Magnet, Session, SessionOptions, SessionPersistenceConfig, TorrentStats
     };
 
+    use crate::{custom_ui_automation, executable_custom_commands};
+    #[cfg(target_os = "windows")]
     use crate::custom_ui_automation::windows_ui_automation;
 
 
@@ -327,10 +329,16 @@ pub mod torrent_calls {
             }
         
             let setup_path = format!("{}\\setup.exe", torrent_output_folder);
-            windows_ui_automation::start_executable(setup_path).await;
+            executable_custom_commands::start_executable(setup_path);
             let game_output_folder = torrent_output_folder.replace(" [FitGirl Repack]", "");
             println!("continue !");
+            
+            #[cfg(target_os = "windows")]
             windows_ui_automation::automate_until_download(checkboxes_list, &game_output_folder, two_gb_limit).await;
+
+            #[cfg(target_os = "linux")]
+            //TODO: Add linux automate_until_download command
+
             println!("Torrent has completed!");
             info!("Game Installation Has been Started");
 
