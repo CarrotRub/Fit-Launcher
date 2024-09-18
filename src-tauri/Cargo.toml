@@ -41,6 +41,7 @@ windows = { version = "0.58.0", features = [
 ] }
 
 [target.'cfg(unix)'.dependencies]
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

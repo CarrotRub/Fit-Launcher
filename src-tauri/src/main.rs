@@ -15,7 +15,7 @@ pub use crate::torrentfunc::torrent_calls;
 pub use crate::torrentfunc::torrent_commands;
 
 mod custom_ui_automation;
-pub use crate::custom_ui_automation::windows_custom_commands;
+pub use crate::custom_ui_automation::executable_custom_commands;
 
 mod mighty;
 use std::fs;
@@ -430,6 +430,7 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let _ = fix_path_env::fix(); 
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
     let context = tauri::generate_context!();
     
@@ -513,7 +514,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             torrent_commands::api_get_torrent_stats,
             torrent_commands::api_initialize_torrent_manager,
             commands_scraping::get_singular_game_info,
-            windows_custom_commands::start_executable
+            executable_custom_commands::start_executable
         ])
         .manage(image_cache) // Make the cache available to commands 
         .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
