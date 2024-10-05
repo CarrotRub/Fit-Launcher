@@ -1,10 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-
 // TODO: Add Logging to a File.
 
-// TODO: Add updater. 
+// TODO: Add updater.
 
 mod scrapingfunc;
 pub use crate::scrapingfunc::basic_scraping;
@@ -21,47 +20,50 @@ mod mighty;
 use std::fs;
 
 use serde_json::Value;
+use tauri::AppHandle;
 use std::error::Error;
-
 
 use core::str;
 use tauri::api::path::app_log_dir;
 
-use serde::{Deserialize, Serialize};
+use serde::{ Deserialize, Serialize };
 use reqwest::Client;
 use std::fs::File;
 use std::io::Read;
 use std::fmt;
-use tauri::{Manager, Window};
-use tauri::{api::path::{BaseDirectory, resolve_path}, Env};
+use tauri::{ Manager, Window, async_runtime::spawn };
+use tauri::{ api::path::{ BaseDirectory, resolve_path }, Env };
 
-use std::time::{Duration, Instant};
+use std::time::{ Duration, Instant };
 use tokio::time::timeout;
 use std::path::PathBuf;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber;
 
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
 use reqwest;
 use kuchiki::traits::*;
-use anyhow::{Result, Context};
+use anyhow::{ Result, Context };
 // stop threads
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{ Arc, atomic::{ AtomicBool, Ordering } };
 // caching
 use std::num::NonZeroUsize;
 use lru::LruCache;
 use tokio::sync::Mutex;
 use tauri::State;
 
-
+use chrono::{ DateTime, Utc };
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
 
-
-
+#[derive(Clone, serde::Serialize)]
+struct Payload {
+    message: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Game {
@@ -69,7 +71,7 @@ struct Game {
     img: String,
     desc: String,
     magnetlink: String,
-    href: String
+    href: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -77,16 +79,10 @@ struct SingleGame {
     my_all_images: Vec<String>,
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 struct GameImages {
     my_all_images: Vec<String>,
 }
-
-
-
-
 
 fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
     let document = kuchiki::parse_html().one(body);
@@ -98,8 +94,7 @@ fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
 
         for anchor_elem in document
             .select(&href_selector_str)
-            .map_err(|_| anyhow::anyhow!("Failed to select anchor element"))?
-        {
+            .map_err(|_| anyhow::anyhow!("Failed to select anchor element"))? {
             if let Some(href_link) = anchor_elem.attributes.borrow().get("href") {
                 hrefs.push(href_link.to_string());
             }
@@ -123,11 +118,7 @@ async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<Strin
     let noscript_selector = "noscript";
     println!("Start getting images process");
 
-    let href_res = client
-        .get(href)
-        .send()
-        .await
-        .context("Failed to send HTTP request to HREF")?;
+    let href_res = client.get(href).send().await.context("Failed to send HTTP request to HREF")?;
     if !href_res.status().is_success() {
         return Ok(image_srcs);
     }
@@ -147,15 +138,13 @@ async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<Strin
 
     for noscript in href_document
         .select(noscript_selector)
-        .map_err(|_| anyhow::anyhow!("Failed to select noscript element"))?
-    {
+        .map_err(|_| anyhow::anyhow!("Failed to select noscript element"))? {
         let inner_noscript_html = noscript.text_contents();
         let inner_noscript_document = kuchiki::parse_html().one(inner_noscript_html);
 
         for img_elem in inner_noscript_document
             .select(image_selector)
-            .map_err(|_| anyhow::anyhow!("Failed to select image element"))?
-        {
+            .map_err(|_| anyhow::anyhow!("Failed to select image element"))? {
             if let Some(src) = img_elem.attributes.borrow().get("src") {
                 image_srcs.push(src.to_string());
             }
@@ -177,11 +166,7 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     }
 
     let client = Client::new();
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .context("Failed to send HTTP request")?;
+    let res = client.get(url).send().await.context("Failed to send HTTP request")?;
 
     if !res.status().is_success() {
         return Err(anyhow::anyhow!("Failed to connect to the website or the website is down."));
@@ -201,7 +186,7 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
                 if !images.is_empty() {
                     image_srcs.extend(images);
                 }
-            },
+            }
             Ok(Err(e)) => println!("Error fetching images from href: {}", e),
             Err(_) => println!("Timeout occurred while fetching images from href"),
         }
@@ -218,18 +203,20 @@ async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
 }
 
-
 #[derive(Serialize, Deserialize, Clone)]
 struct CachedGameImages {
     game_link: String,
     images: Vec<String>,
 }
 
-
 // TODO: Add `notify` crate to watch a file for changes without resorting to a performance-draining loop.
 
 #[tauri::command]
-async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image_cache: State<'_, ImageCache>) -> Result<GameImages, CustomError> {
+async fn get_games_images(
+    app_handle: tauri::AppHandle,
+    game_link: String,
+    image_cache: State<'_, ImageCache>
+) -> Result<GameImages, CustomError> {
     use std::collections::HashMap;
     use std::path::Path;
     use tokio::fs;
@@ -242,10 +229,14 @@ async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image
 
     // Load the persistent cache from the file
     if Path::new(&cache_file_path).exists() {
-        let data = fs::read_to_string(&cache_file_path).await.context("Failed to read cache file")
+        let data = fs
+            ::read_to_string(&cache_file_path).await
+            .context("Failed to read cache file")
             .map_err(|e| CustomError { message: e.to_string() })?;
-        let loaded_cache: HashMap<String, Vec<String>> = serde_json::from_str(&data)
-            .context("Failed to parse cache file").map_err(|e| CustomError { message: e.to_string() })?;
+        let loaded_cache: HashMap<String, Vec<String>> = serde_json
+            ::from_str(&data)
+            .context("Failed to parse cache file")
+            .map_err(|e| CustomError { message: e.to_string() })?;
 
         // Update in-memory LruCache with the loaded HashMap
         let mut cache = image_cache.lock().await;
@@ -267,32 +258,36 @@ async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image
         return Err(CustomError { message: "Function stopped.".to_string() });
     }
 
-    let image_srcs = scrape_image_srcs(&game_link).await
-        .map_err(|e| CustomError { message: e.to_string() })?;
+    let image_srcs = scrape_image_srcs(&game_link).await.map_err(|e| CustomError {
+        message: e.to_string(),
+    })?;
 
     // Update the in-memory cache and save it to the persistent cache file
     let mut cache = image_cache.lock().await;
     cache.put(game_link.clone(), image_srcs.clone());
 
     // Convert LruCache to HashMap for saving to persistent storage
-    let cache_as_hashmap: HashMap<String, Vec<String>> = cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-    let updated_cache_data = serde_json::to_string_pretty(&cache_as_hashmap)
+    let cache_as_hashmap: HashMap<String, Vec<String>> = cache
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let updated_cache_data = serde_json
+        ::to_string_pretty(&cache_as_hashmap)
         .context("Failed to serialize cache data to JSON")
         .map_err(|e| CustomError { message: e.to_string() })?;
-    fs::write(&cache_file_path, updated_cache_data).await
+    fs
+        ::write(&cache_file_path, updated_cache_data).await
         .context("Failed to write cache data to file")
         .map_err(|e| CustomError { message: e.to_string() })?;
 
-
-    println!("Done Getting Images");    
+    println!("Done Getting Images");
     Ok(GameImages { my_all_images: image_srcs }) // Return the newly scraped images
 }
-
 
 //Always serialize returns...
 #[derive(Debug, Serialize, Deserialize)]
 struct FileContent {
-    content: String
+    content: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -316,47 +311,44 @@ impl From<Box<dyn Error>> for CustomError {
     }
 }
 
-
-
 #[tauri::command(async)]
 async fn read_file(file_path: String) -> Result<FileContent, CustomError> {
-    let mut file = File::open(&file_path)
-        .map_err(|e| CustomError { message: e.to_string() })?;
+    let mut file = File::open(&file_path).map_err(|e| CustomError { message: e.to_string() })?;
     let mut data_content = String::new();
-    file.read_to_string(&mut data_content)
-        .map_err(|e| CustomError { message: e.to_string() })?;
+    file.read_to_string(&mut data_content).map_err(|e| CustomError { message: e.to_string() })?;
 
     Ok(FileContent { content: data_content })
 }
-
 
 #[tauri::command]
 async fn clear_file(file_path: String) -> Result<(), CustomError> {
     let path = Path::new(&file_path);
 
     // Attempt to create the file, truncating if it already exists
-    File::create(&path).map_err(|err| CustomError{ message: err.to_string()})?;
-    
+    File::create(&path).map_err(|err| CustomError { message: err.to_string() })?;
+
     Ok(())
 }
 
-
 #[tauri::command]
 async fn close_splashscreen(window: Window) {
-  // Close splashscreen
-  window.get_window("splashscreen").expect("no window labeled 'splashscreen' found").close().unwrap();
-  // Show main window
-  window.get_window("main").expect("no window labeled 'main' found").show().unwrap();
+    // Close splashscreen
+    window
+        .get_window("splashscreen")
+        .expect("no window labeled 'splashscreen' found")
+        .close()
+        .unwrap();
+    // Show main window
+    window.get_window("main").expect("no window labeled 'main' found").show().unwrap();
 }
-
 
 #[tauri::command]
 fn check_folder_path(path: String) -> Result<bool, bool> {
     let path_obj = PathBuf::from(&path);
-    
+
     // Debugging information
     println!("Checking path: {:?}", path_obj);
-    
+
     if !path_obj.exists() {
         println!("Path does not exist.");
         return Ok(false);
@@ -375,7 +367,9 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
 
     if !dir_path.exists() {
         println!("Directory does not exist: {:?}", dir_path);
-        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found")));
+        return Err(
+            Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found"))
+        );
     }
 
     // Read the folder and iterate over the files
@@ -398,7 +392,7 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
 fn check_file_for_tags(path: &Path) -> Result<()> {
     // Read the file content as a string
     let file_content = fs::read_to_string(path)?;
-    
+
     // Parse the JSON content into a Value object
     let json: Value = serde_json::from_str(&file_content)?;
 
@@ -420,7 +414,8 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
     let file_appender = tracing_appender::rolling::never(logs_dir, "app.log");
     let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
 
-    tracing_subscriber::fmt()
+    tracing_subscriber
+        ::fmt()
         .with_writer(file_writer)
         .with_ansi(false)
         .with_max_level(tracing::Level::INFO)
@@ -429,24 +424,83 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
     guard
 }
 
+// Function to perform a network request after ensuring frontend is ready, and emit network-failure if the request fails
+async fn perform_network_request(app_handle: tauri::AppHandle) {
+    println!(
+        "perform_network_request: Waiting for frontend-ready before starting the network request."
+    );
+
+    // Get the main window to listen for 'frontend-ready'
+    if let Some(main_window) = app_handle.get_window("main") {
+        // Clone `app_handle` so it can be moved into both closures
+        let app_handle_clone = app_handle.clone();
+
+        // Listen for 'frontend-ready' before performing the network request
+        main_window.listen("frontend-ready", move |_| {
+            println!("Frontend is ready, starting the network request...");
+
+            // Clone `app_handle_clone` for use in the async block
+            let app_handle_inner_clone = app_handle_clone.clone();
+
+            // Perform the network request directly to the site - This is lazy but it works for now!
+            //TODO: improve this
+            spawn(async move {
+                let result = reqwest::get("https://fitgirl-repacks.site").await;
+
+                // Check if the request was successful
+                match result {
+                    Ok(resp) => {
+                        let text = resp.text().await.unwrap();
+                        println!(
+                            "perform_network_request: Network request to Fitgirl website was successful."
+                        );
+                    }
+                    Err(_) => {
+                        println!("Network request failed, emitting network-failure event.");
+
+                        // Emit the network-failure event after the network request fails
+                        let failure_message = Payload {
+                            message: "There was a network issue, unable to retrieve latest game data. (E01)".to_string(),
+                        };
+                        app_handle_inner_clone
+                            .emit_all("network-failure", failure_message)
+                            .unwrap();
+                    }
+                }
+            });
+        });
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
-    let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
+    println!("{}: Main.rs: Starting the application...", Utc::now().format("%a,%b,%e,%T,%Y"));
+    let image_cache = Arc::new(
+        Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap()))
+    );
     let context = tauri::generate_context!();
-    
+
     let logs_dir = app_log_dir(context.config()).unwrap();
     println!("path to logs : {:#?}", &logs_dir);
-    let _log_guard = setup_logging(logs_dir); 
+    let _log_guard = setup_logging(logs_dir);
 
-    tauri::Builder::default()
+    tauri::Builder
+        ::default()
         .setup(|app| {
             let splashscreen_window = app.get_window("splashscreen").unwrap();
             let main_window = app.get_window("main").unwrap();
-            let current_app_handle = app.app_handle();
+            let current_app_handle = app.app_handle().clone();
+
+            let app_handle = app.handle().clone();
 
             // Delete JSON files missing the 'tag' field or corrupted and log the process
             if let Err(e) = delete_invalid_json_files(&current_app_handle) {
                 eprintln!("Error during deletion of invalid or corrupted JSON files: {}", e);
             }
+
+            // Perform the network request
+            spawn(async move {
+                perform_network_request(app_handle).await;
+            });
 
             // Clone the app handle for use in async tasks
             let first_app_handle = current_app_handle.clone();
@@ -459,31 +513,88 @@ fn main() -> Result<(), Box<dyn Error>> {
                 tracing::info!("Starting async tasks");
 
                 let mandatory_tasks_online = tauri::async_runtime::spawn_blocking(move || {
-                    if let Err(e) = basic_scraping::scraping_func(first_app_handle) {
+                    // Clone before emitting to avoid moving the handle
+                    let first_app_handle_clone = first_app_handle.clone();
+                    if let Err(e) = basic_scraping::scraping_func(first_app_handle_clone.clone()) {
                         eprintln!("Error in scraping_func: {}", e);
+                        tracing::info!("Error in scraping_func: {}", e);
                         // Do not exit, continue running
+                    } else {
+                        tracing::info!(
+                            "[scraping_func] has been completed. No errors are reported."
+                        );
+                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
+                        // when the main reload window code is removed
+                        // first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
                     }
 
-                    if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle) {
+                    // Clone before emitting to avoid moving the handle
+                    let second_app_handle_clone = second_app_handle.clone();
+                    if
+                        let Err(e) = basic_scraping::popular_games_scraping_func(
+                            second_app_handle_clone.clone()
+                        )
+                    {
                         eprintln!("Error in popular_games_scraping_func: {}", e);
+                        tracing::info!("Error in popular_games_scraping_func: {}", e);
                         // Do not exit, continue running
+                    } else {
+                        tracing::info!(
+                            "[popular_games_scraping_func] has been completed. No errors are reported."
+                        );
+                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
+                        // when the main reload window code is removed
+                        // second_app_handle_clone.emit_all("popular-games-ready", {}).unwrap();
                     }
 
-                    if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle) {
-                        eprintln!("Error in get_sitemaps_website: {}", e);
-                        // Do not exit, continue running
-                    }
-
-                    if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
+                    // Clone before emitting to avoid moving the handle
+                    let third_app_handle_clone = third_app_handle.clone();
+                    if
+                        let Err(e) = basic_scraping::recently_updated_games_scraping_func(
+                            third_app_handle_clone.clone()
+                        )
+                    {
                         eprintln!("Error in recently_updated_games_scraping_func: {}", e);
+                        tracing::info!("Error in recently_updated_games_scraping_func: {}", e);
                         // Do not exit, continue running
+                    } else {
+                        tracing::info!(
+                            "[recently_updated_games_scraping_func] has been completed. No errors are reported."
+                        );
+                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
+                        // when the main reload window code is removed
+                        // third_app_handle_clone.emit_all("recent-updated-games-ready", {}).unwrap();
+                    }
+
+                    // Clone before emitting to avoid moving the handle
+                    let fourth_app_handle_clone = fourth_app_handle.clone();
+                    if
+                        let Err(e) = commands_scraping::get_sitemaps_website(
+                            fourth_app_handle_clone.clone()
+                        )
+                    {
+                        eprintln!("Error in get_sitemaps_website: {}", e);
+                        tracing::info!("Error in get_sitemaps_website: {}", e);
+                        // Do not exit, continue running
+                    } else {
+                        tracing::info!(
+                            "[get_sitemaps_website] has been completed. No errors are reported."
+                        );
+                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
+                        // when the main reload window code is removed
+                        //fourth_app_handle_clone.emit_all("sitemaps-ready", {}).unwrap();
                     }
                 });
 
                 // Await the completion of the tasks
                 if let Err(e) = mandatory_tasks_online.await {
                     eprintln!("An error occurred during scraping tasks: {:?}", e);
-                    // Continue running even if errors occur
+                    tracing::info!("An error occurred during scraping tasks: {:?}", e);
+                    // Do not exit, continue running
+                } else {
+                    tracing::info!(
+                        "All scraping tasks have been completed. No errors are reported."
+                    );
                 }
 
                 // After all tasks are done, close the splash screen and show the main window
@@ -491,41 +602,51 @@ fn main() -> Result<(), Box<dyn Error>> {
                 main_window.show().unwrap();
 
                 current_app_handle.emit_all("scraping-complete", {}).unwrap();
-                current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
+
+                //TODO prevent flashing screen at start and prevented emits from being sent
+                //TODO: uncommented this for now
+                current_app_handle
+                    .get_window("main")
+                    .unwrap()
+                    .eval("window.location.reload();")
+                    .unwrap();
                 println!("Scraping signal has been sent.");
             });
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            read_file,
-            close_splashscreen,
-            get_games_images,
-            clear_file,
-            stop_get_games_images,
-            check_folder_path,
-            torrent_commands::api_get_torrent_details,
-            torrent_commands::api_pause_torrent,
-            torrent_commands::api_resume_torrent,
-            torrent_commands::api_stop_torrent,
-            torrent_commands::api_download_with_args,
-            torrent_commands::api_automate_setup_install,
-            torrent_commands::api_get_torrent_stats,
-            torrent_commands::api_initialize_torrent_manager,
-            commands_scraping::get_singular_game_info,
-            windows_custom_commands::start_executable
-        ])
-        .manage(image_cache) // Make the cache available to commands 
+        .invoke_handler(
+            tauri::generate_handler![
+                read_file,
+                close_splashscreen,
+                get_games_images,
+                clear_file,
+                stop_get_games_images,
+                check_folder_path,
+                torrent_commands::api_get_torrent_details,
+                torrent_commands::api_pause_torrent,
+                torrent_commands::api_resume_torrent,
+                torrent_commands::api_stop_torrent,
+                torrent_commands::api_download_with_args,
+                torrent_commands::api_automate_setup_install,
+                torrent_commands::api_get_torrent_stats,
+                torrent_commands::api_initialize_torrent_manager,
+                commands_scraping::get_singular_game_info,
+                windows_custom_commands::start_executable
+            ]
+        )
+
+        .manage(image_cache) // Make the cache available to commands
         .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
-        .build({
-            tauri::generate_context!()
-        })
+        .build({ tauri::generate_context!() })
         .expect("error while building tauri application")
-        .run(|_app_handle, event| match event {
-            tauri::RunEvent::ExitRequested { .. } => {
-                PAUSE_FLAG.store(true, Ordering::Relaxed);
+        .run(|_app_handle, event| {
+            match event {
+                tauri::RunEvent::ExitRequested { .. } => {
+                    PAUSE_FLAG.store(true, Ordering::Relaxed);
+                }
+                _ => {}
             }
-            _ => {}
         });
 
     // Keep the guard in scope to ensure proper log flushing

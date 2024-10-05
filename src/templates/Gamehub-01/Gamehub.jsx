@@ -9,10 +9,10 @@ import { appConfigDir } from "@tauri-apps/api/path";
 import { readTextFile, writeTextFile, exists } from "@tauri-apps/api/fs";
 import { createDir } from "@tauri-apps/api/fs";
 import { hide } from '@tauri-apps/api/app';
+import {listen, emit} from '@tauri-apps/api/event'
 
 function Gamehub() {
     onMount(() => {
-        
         // Load settings at startup
         loadSettings().then((settings) => {
             console.log("Loaded settings on startup:", settings);
@@ -52,6 +52,7 @@ function Gamehub() {
         importPath: "",
         two_gb_limit: true,
         hide_nsfw_content: false,
+        background_image_path: "",
     };
 
     // Function to load settings from the JSON file, or create it if not present

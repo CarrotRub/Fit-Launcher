@@ -13,6 +13,7 @@
     align-items: center;
 }
 
+
 #searchbar-input {
     width: 25vh;
     height: 5vh;
@@ -94,3 +95,4 @@
 .search-results a:last-child {
     margin-bottom: 0; /* No margin bottom on last child */
 }
+
