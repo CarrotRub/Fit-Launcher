@@ -1,0 +1,40 @@
+.notification {
+    padding: 16px;
+    margin: 16px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .notification.info {
+    background-color: #e0f7fa;
+    color: #00796b;
+  }
+  
+  .notification.error {
+    background-color: #ffebee;
+    color: #d32f2f;
+  }
+  
+  .notification.success {
+    background-color: #e8f5e9;
+    color: #388e3c;
+  }
+  
+  .notification-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: inherit;
+  }
+  
+  .notification-exit {
+    opacity: 0;
+  }
+  .hidden {
+    display: none;  /* Ensures the div doesn't take any space */
+  }
