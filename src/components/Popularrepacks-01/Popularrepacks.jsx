@@ -1,8 +1,8 @@
 import './Popularrepacks.css';
 import { createSignal, onMount } from 'solid-js';
-import { appConfigDir } from '@tauri-apps/api/path';
+import { appDataDir } from '@tauri-apps/api/path';
 
-const appDir = await appConfigDir();
+const appDir = await appDataDir();
 const dirPath = appDir.replace(/\\/g, '/');
 
 const popularRepacksPath = `${dirPath}tempGames/popular_games.json`;
