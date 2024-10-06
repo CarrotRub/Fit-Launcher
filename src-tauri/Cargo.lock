@@ -1333,9 +1333,9 @@ name = "fit-launcher"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "fix-path-env",
  "chrono",
  "devtools",
+ "fix-path-env",
  "futures",
  "futures-util",
  "kuchiki",

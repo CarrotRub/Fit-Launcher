@@ -52,3 +52,7 @@
 .Popular-repacks { grid-row: 1; } /* First row */
 .New-Games { grid-row: 2; } /* Second row */
 .Recently-Updated { grid-row: 3; } /* Third row */
+
+.gamehub-container::-webkit-scrollbar {
+    display: none
+}

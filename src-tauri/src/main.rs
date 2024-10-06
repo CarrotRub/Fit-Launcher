@@ -28,7 +28,6 @@ use tauri::api::path::app_log_dir;
 
 use serde::{ Deserialize, Serialize };
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
@@ -41,11 +40,8 @@ use tauri::{Manager, Window};
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use std::fmt;
-use tauri::{ Manager, Window, async_runtime::spawn };
-use tauri::{ api::path::{ BaseDirectory, resolve_path }, Env };
+use tauri::{ async_runtime::spawn };
 
-use std::time::{ Duration, Instant };
 use tokio::time::timeout;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber;
@@ -61,9 +57,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
-use anyhow::{ Result, Context };
 // stop threads
-use std::sync::{ Arc, atomic::{ AtomicBool, Ordering } };
 // caching
 use lru::LruCache;
 use std::num::NonZeroUsize;
