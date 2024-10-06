@@ -1,7 +1,7 @@
 // ! ALWAYS ADMIN MODE.
 
 
-
+#[cfg(target_os = "windows")]
 pub mod windows_controls_processes {
 
     use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, LRESULT, TRUE, WPARAM};
