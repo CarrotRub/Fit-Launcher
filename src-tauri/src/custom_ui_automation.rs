@@ -163,6 +163,7 @@ pub mod windows_ui_automation {
 }
 
 pub mod executable_custom_commands {
+    #[cfg(target_os = "windows")]
     use std::process::Command;
     
 
@@ -192,6 +193,7 @@ pub mod executable_custom_commands {
         }
 
         #[cfg(target_os = "linux")]
+        // Add usage of wine + check beforehand with Flatpak if steamos
         todo!()
 
     }

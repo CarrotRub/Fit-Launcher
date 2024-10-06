@@ -35,7 +35,7 @@ body {
     display: flex;
     flex-wrap: nowrap;
     flex-direction: row;
-
+    width: 150px;
     max-height: -webkit-fill-available;
     border-radius: 18px;
     cursor: pointer;
