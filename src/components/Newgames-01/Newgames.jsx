@@ -1,11 +1,13 @@
 import './Newgames.css';
 import { createSignal, onMount } from 'solid-js';
-import { appConfigDir } from '@tauri-apps/api/path';
+import { appDataDir } from '@tauri-apps/api/path';
+import { readTextFile, BaseDirectory } from '@tauri-apps/api/fs';
 
-const appDir =  await appConfigDir();
+const appDir =  await appDataDir();
 const dirPath = appDir.replace(/\\/g, '/');
 
 const newlyAddedGamesPath = `${dirPath}tempGames/newly_added_games.json`;
+
 import readFile from '../functions/readFileRust';
 import Slider from '../Slider-01/Slider';
 import { translate } from '../../translation/translate';
