@@ -1,7 +1,8 @@
-body {
+html, body {
+  height: 100%; /* Ensure the body and html stretch fully */
   margin: 0;
   padding: 0;
-  font-family: 'IBMPlexSans', sans-serif; 
+  font-family: 'IBMPlexSans', sans-serif;
 }
 
 @font-face {
@@ -14,7 +15,6 @@ body {
   src: url("./assets/fonts/IBMPlexSansVar-Roman.ttf") format("truetype");
 }
 
-
 h2 {
   color: white;
   font-weight: 450;
@@ -23,21 +23,18 @@ h2 {
 .app-container {
   display: grid;
   grid-template-columns: 260px 1fr;
-  grid-template-rows: 100%;
-  height: 100%;
+  height: 100vh; /* Ensure the app container fills the entire viewport */
   overflow: hidden;
 }
 
 .sidebar {
   position: fixed;
   width: 260px;
-  /* background-color: #101115; */
+  height: 100%; /* Sidebar takes full height */
+  overflow-x: hidden;
+  z-index: 9999;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   color: white;
-
-  height: 100%;
-  overflow-x: hidden;
-  z-index: 9999999;
 }
 
 .main-content {
@@ -57,15 +54,74 @@ h2 {
     
 }
 
-html::-webkit-scrollbar{
+.notification-wrapper {
+  position: fixed; /* Makes sure it stays in a specific spot */
+  top: 16px;       /* Adjust the position to your preference */
+  right: 16px;     /* Aligns it to the right corner */
+  max-width: 450px; /* Keeps it from stretching too wide */
+  z-index: 1000;   /* Ensures it's on top of other components */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;        /* Adds space between multiple notifications */
+}
+
+.refreshcontent {
+  position: fixed; /* Makes sure it stays in a specific spot */
+  top: 16px;       /* Adjust the position to your preference */
+  right: 16px;     /* Aligns it to the right corner */
+  max-width: 450px; /* Keeps it from stretching too wide */
+  z-index: 1000;   /* Ensures it's on top of other components */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;        /* Adds space between multiple notifications */
+}
+
+/* Scrollbar customization */
+html::-webkit-scrollbar {
   background-color: rgba(43, 42, 42, 0.2);
   border-radius: 18px;
   display: none;
 }
 
-
-
 html::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.3);
   border-radius: 18px;
+}
+
+/* Popup container */
+.popup-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%; /* Ensure the popup takes full screen */
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* Scrollbar customization for changelog */
+.popup-container::-webkit-scrollbar {
+  width: 8px;
+  border-radius: 10px;
+}
+
+.popup-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+/* Ensure scrollbar respects the rounded corners */
+.popup-container {
+  border-radius: 20px;
+  padding-right: 10px; /* Add space on the right to ensure scrollbar fits well */
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.hidden {
+  display: none;
 }
