@@ -1,5 +1,5 @@
 import { createSignal, onMount } from "solid-js";
-import { appConfigDir } from "@tauri-apps/api/path";
+import { appDataDir } from "@tauri-apps/api/path";
 import { readTextFile, writeTextFile, exists, createDir } from "@tauri-apps/api/fs";
 import { getVersion } from '@tauri-apps/api/app';
 import { checkUpdate, installUpdate } from '@tauri-apps/api/updater';
@@ -19,7 +19,7 @@ const defaultSettings = {
 };
 // Load settings 
 async function loadSettings() {
-  const configDir = await appConfigDir();
+  const configDir = await appDataDir();
   const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`;
   const settingsPath = `${dirPath}/settings.json`;
 
@@ -57,7 +57,7 @@ async function loadSettings() {
 
 // Save settings to a JSON file
 async function saveSettings(settings) {
-  const configDir = await appConfigDir();
+  const configDir = await appDataDir();
   const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`;
   const settingsPath = `${dirPath}/settings.json`;
 

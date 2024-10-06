@@ -5,7 +5,7 @@ import Newgames from '../../components/Newgames-01/Newgames';
 import Popularrepacks from '../../components/Popularrepacks-01/Popularrepacks';
 import UpdatedGames from '../../components/Updatedrepacks-01/Updatedrepacks';
 import clearFile from '../../components/functions/clearFileRust';
-import { appConfigDir } from "@tauri-apps/api/path";
+import { appDataDir } from "@tauri-apps/api/path";
 import { readTextFile, writeTextFile, exists } from "@tauri-apps/api/fs";
 import { createDir } from "@tauri-apps/api/fs";
 import { hide } from '@tauri-apps/api/app';
@@ -57,7 +57,7 @@ function Gamehub() {
 
     // Function to load settings from the JSON file, or create it if not present
     async function loadSettings() {
-        const configDir = await appConfigDir();
+        const configDir = await appDataDir();
         const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`; // Directory path
         const settingsPath = `${dirPath}/settings.json`; // Settings file path
 

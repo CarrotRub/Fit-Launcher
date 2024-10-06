@@ -1,5 +1,5 @@
 import { createSignal, onMount, createEffect, onCleanup } from "solid-js";
-import { appConfigDir } from "@tauri-apps/api/path";
+import { appDataDir } from "@tauri-apps/api/path";
 import { writeFile, writeTextFile, readTextFile, exists, createDir } from "@tauri-apps/api/fs";
 import { open } from "@tauri-apps/api/dialog";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
@@ -26,7 +26,7 @@ function Mylibrary() {
         // Fetch the game information
         await invoke('get_singular_game_info', { gameLink: result });
         // Determine the path for downloaded_games.json
-        const appDir = await appConfigDir();
+        const appDir = await appDataDir();
         const dirPath = appDir.replace(/\\/g, '/');
         const gameInfoPath = `${dirPath}tempGames/singular_game_temp.json`;
         const fileContentObj = await readFile(gameInfoPath);
@@ -44,7 +44,7 @@ function Mylibrary() {
     
         if (executablePath) {
             // Determine the path for downloaded_games.json
-            const appDir = await appConfigDir();
+            const appDir = await appDataDir();
             const dirPath = appDir.replace(/\\/g, '/');
             const filePath = `${dirPath}data/downloaded_games.json`;
     
@@ -85,7 +85,7 @@ function Mylibrary() {
     
     async function showResults(query) {
         let requests = [];
-        const appDir =  await appConfigDir();
+        const appDir =  await appDataDir();
         const dirPath = appDir.replace(/\\/g, '/');
         
         for (let i = 1; i <= 6; i++) {
@@ -365,7 +365,7 @@ function Mylibrary() {
             gameGrid.innerHTML = ``;
         }
         try {
-            const appDir = await appConfigDir();
+            const appDir = await appDataDir();
             const dirPath = appDir.replace(/\\/g, "/");
             const filePath = `${dirPath}data/downloaded_games.json`;
             setDownloadedGamePath(filePath);
@@ -515,7 +515,7 @@ function Mylibrary() {
 
         const gameData = []
 
-        const appDir = await appConfigDir();
+        const appDir = await appDataDir();
         const dirPath = `${appDir.replace(/\\/g, '/')}/data`;
         const filePath = `${dirPath}/downloaded_games.json`;
         try {

@@ -14,7 +14,7 @@ pub use crate::torrentfunc::torrent_calls;
 pub use crate::torrentfunc::torrent_commands;
 
 mod custom_ui_automation;
-pub use crate::custom_ui_automation::windows_custom_commands;
+pub use crate::custom_ui_automation::executable_custom_commands;
 
 mod mighty;
 use std::fs;
@@ -28,31 +28,47 @@ use tauri::api::path::app_log_dir;
 
 use serde::{ Deserialize, Serialize };
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
+
+use tauri::{
+    api::path::{resolve_path, BaseDirectory},
+    Env,
+};
+use tauri::{Manager, Window};
+
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use std::fmt;
 use tauri::{ Manager, Window, async_runtime::spawn };
 use tauri::{ api::path::{ BaseDirectory, resolve_path }, Env };
 
 use std::time::{ Duration, Instant };
 use tokio::time::timeout;
-use std::path::PathBuf;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber;
 
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
-use reqwest;
+use anyhow::{Context, Result};
 use kuchiki::traits::*;
+use reqwest;
+// stop threads
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use anyhow::{ Result, Context };
 // stop threads
 use std::sync::{ Arc, atomic::{ AtomicBool, Ordering } };
 // caching
-use std::num::NonZeroUsize;
 use lru::LruCache;
-use tokio::sync::Mutex;
+use std::num::NonZeroUsize;
 use tauri::State;
+use tokio::sync::Mutex;
 
 use chrono::{ DateTime, Utc };
 
@@ -127,7 +143,10 @@ async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<Strin
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
 
-    let href_body = href_res.text().await.context("Failed to read HREF response body")?;
+    let href_body = href_res
+        .text()
+        .await
+        .context("Failed to read HREF response body")?;
     let href_document = kuchiki::parse_html().one(href_body);
 
     println!("Start getting text process");
@@ -169,7 +188,9 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     let res = client.get(url).send().await.context("Failed to send HTTP request")?;
 
     if !res.status().is_success() {
-        return Err(anyhow::anyhow!("Failed to connect to the website or the website is down."));
+        return Err(anyhow::anyhow!(
+            "Failed to connect to the website or the website is down."
+        ));
     }
 
     let body = res.text().await.context("Failed to read response body")?;
@@ -215,7 +236,7 @@ struct CachedGameImages {
 async fn get_games_images(
     app_handle: tauri::AppHandle,
     game_link: String,
-    image_cache: State<'_, ImageCache>
+    image_cache: State<'_, ImageCache>,
 ) -> Result<GameImages, CustomError> {
     use std::collections::HashMap;
     use std::path::Path;
@@ -249,13 +270,17 @@ async fn get_games_images(
     let mut cache = image_cache.lock().await;
     if let Some(cached_images) = cache.get(&game_link) {
         println!("Cache hit! Returning cached images.");
-        return Ok(GameImages { my_all_images: cached_images.clone() }); // Return the cached images
+        return Ok(GameImages {
+            my_all_images: cached_images.clone(),
+        }); // Return the cached images
     }
 
     drop(cache); // Release the lock before making network requests
 
     if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(CustomError { message: "Function stopped.".to_string() });
+        return Err(CustomError {
+            message: "Function stopped.".to_string(),
+        });
     }
 
     let image_srcs = scrape_image_srcs(&game_link).await.map_err(|e| CustomError {
@@ -313,11 +338,18 @@ impl From<Box<dyn Error>> for CustomError {
 
 #[tauri::command(async)]
 async fn read_file(file_path: String) -> Result<FileContent, CustomError> {
-    let mut file = File::open(&file_path).map_err(|e| CustomError { message: e.to_string() })?;
+    let mut file = File::open(&file_path).map_err(|e| CustomError {
+        message: e.to_string(),
+    })?;
     let mut data_content = String::new();
-    file.read_to_string(&mut data_content).map_err(|e| CustomError { message: e.to_string() })?;
+    file.read_to_string(&mut data_content)
+        .map_err(|e| CustomError {
+            message: e.to_string(),
+        })?;
 
-    Ok(FileContent { content: data_content })
+    Ok(FileContent {
+        content: data_content,
+    })
 }
 
 #[tauri::command]
@@ -325,7 +357,9 @@ async fn clear_file(file_path: String) -> Result<(), CustomError> {
     let path = Path::new(&file_path);
 
     // Attempt to create the file, truncating if it already exists
-    File::create(&path).map_err(|err| CustomError { message: err.to_string() })?;
+    File::create(&path).map_err(|err| CustomError {
+        message: err.to_string(),
+    })?;
 
     Ok(())
 }
@@ -339,7 +373,11 @@ async fn close_splashscreen(window: Window) {
         .close()
         .unwrap();
     // Show main window
-    window.get_window("main").expect("no window labeled 'main' found").show().unwrap();
+    window
+        .get_window("main")
+        .expect("no window labeled 'main' found")
+        .show()
+        .unwrap();
 }
 
 #[tauri::command]
@@ -367,9 +405,10 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
 
     if !dir_path.exists() {
         println!("Directory does not exist: {:?}", dir_path);
-        return Err(
-            Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found"))
-        );
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Directory not found",
+        )));
     }
 
     // Read the folder and iterate over the files
@@ -494,7 +533,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Delete JSON files missing the 'tag' field or corrupted and log the process
             if let Err(e) = delete_invalid_json_files(&current_app_handle) {
-                eprintln!("Error during deletion of invalid or corrupted JSON files: {}", e);
+                eprintln!(
+                    "Error during deletion of invalid or corrupted JSON files: {}",
+                    e
+                );
             }
 
             // Perform the network request
@@ -601,10 +643,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                 splashscreen_window.close().unwrap();
                 main_window.show().unwrap();
 
-                current_app_handle.emit_all("scraping-complete", {}).unwrap();
-
-                //TODO prevent flashing screen at start and prevented emits from being sent
-                //TODO: uncommented this for now
+                current_app_handle
+                    .emit_all("scraping-complete", {})
+                    .unwrap();
                 current_app_handle
                     .get_window("main")
                     .unwrap()
@@ -615,27 +656,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             Ok(())
         })
-        .invoke_handler(
-            tauri::generate_handler![
-                read_file,
-                close_splashscreen,
-                get_games_images,
-                clear_file,
-                stop_get_games_images,
-                check_folder_path,
-                torrent_commands::api_get_torrent_details,
-                torrent_commands::api_pause_torrent,
-                torrent_commands::api_resume_torrent,
-                torrent_commands::api_stop_torrent,
-                torrent_commands::api_download_with_args,
-                torrent_commands::api_automate_setup_install,
-                torrent_commands::api_get_torrent_stats,
-                torrent_commands::api_initialize_torrent_manager,
-                commands_scraping::get_singular_game_info,
-                windows_custom_commands::start_executable
-            ]
-        )
-
+        .invoke_handler(tauri::generate_handler![
+            read_file,
+            close_splashscreen,
+            get_games_images,
+            clear_file,
+            stop_get_games_images,
+            check_folder_path,
+            torrent_commands::api_get_torrent_details,
+            torrent_commands::api_pause_torrent,
+            torrent_commands::api_resume_torrent,
+            torrent_commands::api_stop_torrent,
+            torrent_commands::api_download_with_args,
+            torrent_commands::api_automate_setup_install,
+            torrent_commands::api_get_torrent_stats,
+            torrent_commands::api_initialize_torrent_manager,
+            commands_scraping::get_singular_game_info,
+            executable_custom_commands::start_executable
+        ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
         .build({ tauri::generate_context!() })

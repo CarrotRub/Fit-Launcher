@@ -7,16 +7,18 @@ import Carousel from '../Carousel-01/Carousel';
 import { invoke } from '@tauri-apps/api/tauri';
 import { translate } from '../../translation/translate';
 import { open } from '@tauri-apps/api/dialog';
-import { appCacheDir, appConfigDir } from '@tauri-apps/api/path';
+import { appCacheDir, appDataDir } from '@tauri-apps/api/path';
 import { writeFile, readTextFile, removeFile } from '@tauri-apps/api/fs';
-import './GameHorizontal.css';
+import './Gamehorizontal.css';
 import { setGlobalTorrentInfo, setTorrentTrigger } from '../functions/dataStoreGlobal';
 
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir.replace(/\\/g, '/');
 
-const appDir =  await appConfigDir();
+console.log("App Cache :", cacheDir)
+
+const appDir =  await appDataDir();
 const dirPath = appDir.replace(/\\/g, '/');
 
 const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
