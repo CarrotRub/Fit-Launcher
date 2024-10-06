@@ -1,10 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-
 // TODO: Add Logging to a File.
 
-// TODO: Add updater. 
+// TODO: Add updater.
 
 mod scrapingfunc;
 pub use crate::scrapingfunc::basic_scraping;
@@ -23,45 +22,46 @@ use std::fs;
 use serde_json::Value;
 use std::error::Error;
 
-
 use core::str;
 use tauri::api::path::app_log_dir;
 
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::fmt;
-use tauri::{Manager, Window};
-use tauri::{api::path::{BaseDirectory, resolve_path}, Env};
 
+use tauri::{
+    api::path::{resolve_path, BaseDirectory},
+    Env,
+};
+use tauri::{Manager, Window};
+
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
-use std::path::PathBuf;
 use tracing_appender::non_blocking::WorkerGuard;
 
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
-use reqwest;
+use anyhow::{Context, Result};
 use kuchiki::traits::*;
-use anyhow::{Result, Context};
+use reqwest;
 // stop threads
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 // caching
-use std::num::NonZeroUsize;
 use lru::LruCache;
-use tokio::sync::Mutex;
+use std::num::NonZeroUsize;
 use tauri::State;
-
-
+use tokio::sync::Mutex;
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
-
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Game {
@@ -69,7 +69,7 @@ struct Game {
     img: String,
     desc: String,
     magnetlink: String,
-    href: String
+    href: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -77,16 +77,10 @@ struct SingleGame {
     my_all_images: Vec<String>,
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 struct GameImages {
     my_all_images: Vec<String>,
 }
-
-
-
-
 
 fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
     let document = kuchiki::parse_html().one(body);
@@ -136,7 +130,10 @@ async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<Strin
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
 
-    let href_body = href_res.text().await.context("Failed to read HREF response body")?;
+    let href_body = href_res
+        .text()
+        .await
+        .context("Failed to read HREF response body")?;
     let href_document = kuchiki::parse_html().one(href_body);
 
     println!("Start getting text process");
@@ -184,7 +181,9 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
         .context("Failed to send HTTP request")?;
 
     if !res.status().is_success() {
-        return Err(anyhow::anyhow!("Failed to connect to the website or the website is down."));
+        return Err(anyhow::anyhow!(
+            "Failed to connect to the website or the website is down."
+        ));
     }
 
     let body = res.text().await.context("Failed to read response body")?;
@@ -201,7 +200,7 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
                 if !images.is_empty() {
                     image_srcs.extend(images);
                 }
-            },
+            }
             Ok(Err(e)) => println!("Error fetching images from href: {}", e),
             Err(_) => println!("Timeout occurred while fetching images from href"),
         }
@@ -218,18 +217,20 @@ async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
 }
 
-
 #[derive(Serialize, Deserialize, Clone)]
 struct CachedGameImages {
     game_link: String,
     images: Vec<String>,
 }
 
-
 // TODO: Add `notify` crate to watch a file for changes without resorting to a performance-draining loop.
 
 #[tauri::command]
-async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image_cache: State<'_, ImageCache>) -> Result<GameImages, CustomError> {
+async fn get_games_images(
+    app_handle: tauri::AppHandle,
+    game_link: String,
+    image_cache: State<'_, ImageCache>,
+) -> Result<GameImages, CustomError> {
     use std::collections::HashMap;
     use std::path::Path;
     use tokio::fs;
@@ -242,10 +243,17 @@ async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image
 
     // Load the persistent cache from the file
     if Path::new(&cache_file_path).exists() {
-        let data = fs::read_to_string(&cache_file_path).await.context("Failed to read cache file")
-            .map_err(|e| CustomError { message: e.to_string() })?;
+        let data = fs::read_to_string(&cache_file_path)
+            .await
+            .context("Failed to read cache file")
+            .map_err(|e| CustomError {
+                message: e.to_string(),
+            })?;
         let loaded_cache: HashMap<String, Vec<String>> = serde_json::from_str(&data)
-            .context("Failed to parse cache file").map_err(|e| CustomError { message: e.to_string() })?;
+            .context("Failed to parse cache file")
+            .map_err(|e| CustomError {
+                message: e.to_string(),
+            })?;
 
         // Update in-memory LruCache with the loaded HashMap
         let mut cache = image_cache.lock().await;
@@ -258,41 +266,54 @@ async fn get_games_images(app_handle: tauri::AppHandle, game_link: String, image
     let mut cache = image_cache.lock().await;
     if let Some(cached_images) = cache.get(&game_link) {
         println!("Cache hit! Returning cached images.");
-        return Ok(GameImages { my_all_images: cached_images.clone() }); // Return the cached images
+        return Ok(GameImages {
+            my_all_images: cached_images.clone(),
+        }); // Return the cached images
     }
 
     drop(cache); // Release the lock before making network requests
 
     if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(CustomError { message: "Function stopped.".to_string() });
+        return Err(CustomError {
+            message: "Function stopped.".to_string(),
+        });
     }
 
-    let image_srcs = scrape_image_srcs(&game_link).await
-        .map_err(|e| CustomError { message: e.to_string() })?;
+    let image_srcs = scrape_image_srcs(&game_link)
+        .await
+        .map_err(|e| CustomError {
+            message: e.to_string(),
+        })?;
 
     // Update the in-memory cache and save it to the persistent cache file
     let mut cache = image_cache.lock().await;
     cache.put(game_link.clone(), image_srcs.clone());
 
     // Convert LruCache to HashMap for saving to persistent storage
-    let cache_as_hashmap: HashMap<String, Vec<String>> = cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    let cache_as_hashmap: HashMap<String, Vec<String>> =
+        cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
     let updated_cache_data = serde_json::to_string_pretty(&cache_as_hashmap)
         .context("Failed to serialize cache data to JSON")
-        .map_err(|e| CustomError { message: e.to_string() })?;
-    fs::write(&cache_file_path, updated_cache_data).await
+        .map_err(|e| CustomError {
+            message: e.to_string(),
+        })?;
+    fs::write(&cache_file_path, updated_cache_data)
+        .await
         .context("Failed to write cache data to file")
-        .map_err(|e| CustomError { message: e.to_string() })?;
+        .map_err(|e| CustomError {
+            message: e.to_string(),
+        })?;
 
-
-    println!("Done Getting Images");    
-    Ok(GameImages { my_all_images: image_srcs }) // Return the newly scraped images
+    println!("Done Getting Images");
+    Ok(GameImages {
+        my_all_images: image_srcs,
+    }) // Return the newly scraped images
 }
-
 
 //Always serialize returns...
 #[derive(Debug, Serialize, Deserialize)]
 struct FileContent {
-    content: String
+    content: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -316,47 +337,57 @@ impl From<Box<dyn Error>> for CustomError {
     }
 }
 
-
-
 #[tauri::command(async)]
 async fn read_file(file_path: String) -> Result<FileContent, CustomError> {
-    let mut file = File::open(&file_path)
-        .map_err(|e| CustomError { message: e.to_string() })?;
+    let mut file = File::open(&file_path).map_err(|e| CustomError {
+        message: e.to_string(),
+    })?;
     let mut data_content = String::new();
     file.read_to_string(&mut data_content)
-        .map_err(|e| CustomError { message: e.to_string() })?;
+        .map_err(|e| CustomError {
+            message: e.to_string(),
+        })?;
 
-    Ok(FileContent { content: data_content })
+    Ok(FileContent {
+        content: data_content,
+    })
 }
-
 
 #[tauri::command]
 async fn clear_file(file_path: String) -> Result<(), CustomError> {
     let path = Path::new(&file_path);
 
     // Attempt to create the file, truncating if it already exists
-    File::create(&path).map_err(|err| CustomError{ message: err.to_string()})?;
-    
+    File::create(&path).map_err(|err| CustomError {
+        message: err.to_string(),
+    })?;
+
     Ok(())
 }
 
-
 #[tauri::command]
 async fn close_splashscreen(window: Window) {
-  // Close splashscreen
-  window.get_window("splashscreen").expect("no window labeled 'splashscreen' found").close().unwrap();
-  // Show main window
-  window.get_window("main").expect("no window labeled 'main' found").show().unwrap();
+    // Close splashscreen
+    window
+        .get_window("splashscreen")
+        .expect("no window labeled 'splashscreen' found")
+        .close()
+        .unwrap();
+    // Show main window
+    window
+        .get_window("main")
+        .expect("no window labeled 'main' found")
+        .show()
+        .unwrap();
 }
-
 
 #[tauri::command]
 fn check_folder_path(path: String) -> Result<bool, bool> {
     let path_obj = PathBuf::from(&path);
-    
+
     // Debugging information
     println!("Checking path: {:?}", path_obj);
-    
+
     if !path_obj.exists() {
         println!("Path does not exist.");
         return Ok(false);
@@ -375,7 +406,10 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
 
     if !dir_path.exists() {
         println!("Directory does not exist: {:?}", dir_path);
-        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::NotFound, "Directory not found")));
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Directory not found",
+        )));
     }
 
     // Read the folder and iterate over the files
@@ -398,7 +432,7 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
 fn check_file_for_tags(path: &Path) -> Result<()> {
     // Read the file content as a string
     let file_content = fs::read_to_string(path)?;
-    
+
     // Parse the JSON content into a Value object
     let json: Value = serde_json::from_str(&file_content)?;
 
@@ -430,13 +464,15 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let _ = fix_path_env::fix(); 
-    let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap())));
+    let _ = fix_path_env::fix();
+    let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
+        NonZeroUsize::new(30).unwrap(),
+    )));
     let context = tauri::generate_context!();
-    
+
     let logs_dir = app_log_dir(context.config()).unwrap();
     println!("path to logs : {:#?}", &logs_dir);
-    let _log_guard = setup_logging(logs_dir); 
+    let _log_guard = setup_logging(logs_dir);
 
     tauri::Builder::default()
         .setup(|app| {
@@ -446,7 +482,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Delete JSON files missing the 'tag' field or corrupted and log the process
             if let Err(e) = delete_invalid_json_files(&current_app_handle) {
-                eprintln!("Error during deletion of invalid or corrupted JSON files: {}", e);
+                eprintln!(
+                    "Error during deletion of invalid or corrupted JSON files: {}",
+                    e
+                );
             }
 
             // Clone the app handle for use in async tasks
@@ -475,7 +514,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         // Do not exit, continue running
                     }
 
-                    if let Err(e) = basic_scraping::recently_updated_games_scraping_func(third_app_handle) {
+                    if let Err(e) =
+                        basic_scraping::recently_updated_games_scraping_func(third_app_handle)
+                    {
                         eprintln!("Error in recently_updated_games_scraping_func: {}", e);
                         // Do not exit, continue running
                     }
@@ -491,8 +532,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 splashscreen_window.close().unwrap();
                 main_window.show().unwrap();
 
-                current_app_handle.emit_all("scraping-complete", {}).unwrap();
-                current_app_handle.get_window("main").unwrap().eval("window.location.reload();").unwrap();
+                current_app_handle
+                    .emit_all("scraping-complete", {})
+                    .unwrap();
+                current_app_handle
+                    .get_window("main")
+                    .unwrap()
+                    .eval("window.location.reload();")
+                    .unwrap();
                 println!("Scraping signal has been sent.");
             });
 
@@ -516,11 +563,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             commands_scraping::get_singular_game_info,
             executable_custom_commands::start_executable
         ])
-        .manage(image_cache) // Make the cache available to commands 
+        .manage(image_cache) // Make the cache available to commands
         .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
-        .build({
-            tauri::generate_context!()
-        })
+        .build({ tauri::generate_context!() })
         .expect("error while building tauri application")
         .run(|_app_handle, event| match event {
             tauri::RunEvent::ExitRequested { .. } => {

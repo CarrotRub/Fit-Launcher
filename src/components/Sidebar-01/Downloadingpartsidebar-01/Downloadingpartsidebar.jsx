@@ -1,7 +1,7 @@
 import { createSignal, onCleanup, onMount, createEffect, from } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 import { invoke } from '@tauri-apps/api';
-import { appConfigDir} from '@tauri-apps/api/path';
+import { appDataDir} from '@tauri-apps/api/path';
 import { writeFile, createDir, readTextFile } from '@tauri-apps/api/fs';
 import './Downloadingpartsidebar.css';
 import Gameverticaldownloadslide from '../../Gamedownloadvertical-01/Gamedownloadvertical'
@@ -129,7 +129,7 @@ function Downloadingpartsidebar() {
                 };
             
                 try {
-                    const appDir = await appConfigDir();
+                    const appDir = await appDataDir();
                     const dirPath = `${appDir}data\\`;
                     const filePath = `${dirPath}downloaded_games.json`;
             

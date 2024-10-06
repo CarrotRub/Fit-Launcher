@@ -2,7 +2,7 @@ import { createEffect, createSignal, onMount } from 'solid-js';
 import { render } from 'solid-js/web';
 import readFile from '../functions/readFileRust';
 import { invoke } from '@tauri-apps/api';
-import { appConfigDir } from '@tauri-apps/api/path';
+import { appDataDir } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/tauri';
 import './Searchbar.css'; 
 import { translate } from '../../translation/translate'; 
@@ -40,7 +40,7 @@ function Searchbar() {
 
     async function showResults(query) {
         let requests = [];
-        const appDir =  await appConfigDir();
+        const appDir =  await appDataDir();
         const dirPath = appDir.replace(/\\/g, '/');
         
         for (let i = 1; i <= 6; i++) {
@@ -137,7 +137,7 @@ function Searchbar() {
     }
 
     async function getConfigDir() {
-        const appDir =  await appConfigDir();
+        const appDir =  await appDataDir();
         const dirPath = appDir.replace(/\\/g, '/');
         const singularGameFilePath = `${dirPath}tempGames/singular_game_temp.json`;
 
