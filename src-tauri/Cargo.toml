@@ -26,6 +26,8 @@ librqbit = { git = "https://github.com/ikatson/rqbit", tag = "v7.1.0-beta.1" }
 regex = "1.10.6"
 thiserror = "1.0.63"
 lazy_static = "1.5.0"
+devtools = "0.3.3"
+chrono = "0.4.38"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "ansi"] }
 tracing = "0.1.40"
 tracing-appender = "0.2.3"

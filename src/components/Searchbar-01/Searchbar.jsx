@@ -14,6 +14,7 @@ function Searchbar() {
     const [searchedGameTitle, setSearchedGameTitle] = createSignal('');
     const [selectedGameLink, setSelectedGameLink] = createSignal(null); 
     const [showDragonBallSVG, setShowDragonBallSVG] = createSignal(false);  // Signal for SVG display
+    const [isDialogOpen, setIsDialogopen] = createSignal(false);
 
     function clearSearch() {
         setSearchResults([]);
@@ -144,6 +145,8 @@ function Searchbar() {
         return singularGameFilePath;
     }
 
+
+
     return (
         <div className='searchbar-container'>
             <div className='searchbar-main'>
@@ -180,6 +183,7 @@ function Searchbar() {
                     onInput={handleInputChange} 
                     value={searchTerm()} // Ensure the input value is controlled
                 />
+                
             </div>
             <div id="search-results" className="search-results">
                 {searchResults().length === 0 ? (
@@ -200,6 +204,7 @@ function Searchbar() {
                     </ul>
                 )}
             </div>
+            
         </div>
     );
 }

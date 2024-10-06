@@ -1,0 +1,165 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+ 
+    color: #e0e0e0; 
+}
+
+/* Popup container */
+.popup-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); 
+    z-index: 1000;
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+
+/* Hide the popup container when not visible */
+.hidden {
+    display: none;
+}
+
+/* Popup content */
+.changelog-content {
+    background-color: #2e2e2e; 
+    padding: 20px 30px;
+    max-width: 500px;
+    max-height: 80vh;
+    border-radius: 20px;
+    box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.5); 
+    text-align: left;
+    animation: fadeIn 0.3s ease-in-out;
+    overflow-y: auto;
+    padding-right: 10px;
+    box-sizing: border-box;
+    clip-path: inset(0 round 20px);
+}
+
+/* Center the content more precisely on larger screens */
+@media (min-width: 768px) {
+    .changelog-content {
+        max-width: 450px;
+        margin: auto;
+    }
+}
+
+/* Scrollbar customization */
+.changelog-content::-webkit-scrollbar {
+    width: 8px;
+    border-radius: 10px;
+}
+
+.changelog-content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3); 
+    border-radius: 10px;
+}
+
+/* Heading styles */
+.changelog-content h1 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 5px;
+    margin-top: 0px;
+    color: #f5f5f5; 
+}
+
+.subheading {
+    text-align: center;
+    color: #b0b0b0; 
+    margin-top: 5px;
+    margin-bottom: 20px;
+}
+
+/* Date and list styles */
+.date {
+    font-weight: bold;
+    margin-top: 20px;
+    color: #ffffff;
+}
+
+/* Styles for lists with bullet points */
+.bullet-list {
+    list-style-type: disc;
+    padding-left: 1px;
+}
+
+.bullet-list li {
+    margin-bottom: 10px;
+    color: #d0d0d0; /* Slightly lighter text color for better readability */
+    font-size: 0.9rem;
+}
+
+/* Remove bullet points from label items */
+.label {
+    list-style-type: none;
+    display: inline-block;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: white;
+}
+
+.new {
+    background-color: #3dbd40; 
+}
+
+.bugfix {
+    background-color: #e74c3c;
+}
+
+.improvement {
+    background-color: #5a67d8;
+}
+
+/* Button styles */
+.close-btn {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    background-color: #4a4a4a; /* Slightly darker button background */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.close-btn:hover {
+    background-color: #65aa6e;
+}
+
+/* Checkbox and label styles */
+.dont-show-again {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.dont-show-again label {
+    margin-left: 5px;
+    font-size: 14px;
+    color: #888;
+}
+
+/* Keyframe animation for fade in */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Ensure scrollbar respects the rounded corners */
+.changelog-content {
+    border-radius: 20px;
+    padding-right: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
