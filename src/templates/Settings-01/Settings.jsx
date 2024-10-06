@@ -6,6 +6,7 @@ import { checkUpdate, installUpdate } from '@tauri-apps/api/updater';
 
 import './Settings.css';
 
+// Default settings object
 const defaultSettings = {
   defaultDownloadPath: "",
   autoClean: true,
@@ -14,32 +15,38 @@ const defaultSettings = {
   importPath: "",
   two_gb_limit: true,
   hide_nsfw_content: false,
+  background_image_path: "",
 };
-
+// Load settings 
 async function loadSettings() {
   const configDir = await appConfigDir();
   const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`;
   const settingsPath = `${dirPath}/settings.json`;
 
   try {
+    // Create folder if it does not exist
     const dirExists = await exists(dirPath);
     if (!dirExists) {
       await createDir(dirPath, { recursive: true });
     }
 
+    // Check if the settings file exists, and if not, create it
     const fileExists = await exists(settingsPath);
     if (!fileExists) {
       await writeTextFile(settingsPath, JSON.stringify(defaultSettings, null, 2));
       return defaultSettings;
     }
 
+    // Read and parse the settings file
     const json = await readTextFile(settingsPath);
     let settings = JSON.parse(json);
 
+    // Check if new settings have been added, and add them with default values
     if (!settings.hasOwnProperty('hide_nsfw_content')) {
       settings.hide_nsfw_content = defaultSettings.hide_nsfw_content;
       await writeTextFile(settingsPath, JSON.stringify(settings, null, 2));
     }
+  
 
     return settings;
   } catch (error) {
@@ -48,6 +55,7 @@ async function loadSettings() {
   }
 }
 
+// Save settings to a JSON file
 async function saveSettings(settings) {
   const configDir = await appConfigDir();
   const dirPath = `${configDir.replace(/\\/g, '/')}/fitgirlConfig`;
@@ -92,10 +100,14 @@ const SettingsPage = () => {
           settingsLinkText.style.backgroundColor = '#ffffff0d';
           settingsLinkText.style.borderRadius = '5px';
       }
+      // Load settings from the JSON file
       const initialSettings = await loadSettings();
       setSettings(initialSettings);
+
+      // Fetch the app version
       const appVersionValue = await getVersion();
       setVersion(appVersionValue);
+
     } catch (error) {
       console.error('Error during initialization:', error);
     } finally {
@@ -224,6 +236,18 @@ const SettingsPage = () => {
             placeholder="Enter path to imported games"
           />
         </div>
+
+        {/* TODO: Background Image Path */}
+        {/* <div class="form-group">
+          <label for="background_image_path">Choose background image</label>
+          <input
+            type="text"
+            id="background_image_path"
+            value={settings().background_image_path}
+            onInput={(e) => setSettings({ ...settings(), background_image_path: e.target.value })}
+            placeholder="Enter path to image"
+          />
+        </div> */}
       </section>
 
       {/* Fit Launcher Information */}

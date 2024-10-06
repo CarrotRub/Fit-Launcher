@@ -149,8 +149,8 @@ body {
   color: white;
   padding: 15px;
   position: fixed;
-  top: 30px;
-  right: 30px;
+  top: 16px;
+  right: 16px;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 1000;

@@ -31,6 +31,8 @@ tracing = "0.1.40"
 tracing-appender = "0.2.3"
 select = "0.6"
 uiautomation = "0.12.2"
+devtools = "0.3.3"
+chrono = "0.4.38"
 [dependencies.windows]
 version = "0.58.0"
 features = [
