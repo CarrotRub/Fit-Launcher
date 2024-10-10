@@ -56,6 +56,7 @@ function Popularrepacks() {
     const [firstGameTitle, setFirstGameTitle] = createSignal('');
 
     onMount(async () => {
+        console.log('Popularrepacks component mounted');
         try {
             const data = await parseNewGameData();
             setImagesObject(data);
@@ -79,7 +80,7 @@ function Popularrepacks() {
 
             if (slide0) {
                 const imgSrc0 = data.map(game => game.img);
-                console.log(imgSrc0)
+                //console.log(imgSrc0) // Comment out - takes up a lot of space in the console
                 const srcParts0 = imgSrc0[0].split(','); 
                 slide0.src = srcParts0[0].trim();
             }
