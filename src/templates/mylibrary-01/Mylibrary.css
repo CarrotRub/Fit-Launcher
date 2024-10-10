@@ -4,8 +4,7 @@
 }
 
 .game-container::-webkit-scrollbar {
-width: 10px;
-background-color: #5514326b;
+display: none;
 }
 
 /* Track */
@@ -16,8 +15,7 @@ border-radius: 10px;
 
 /* Handle */
 .game-container::-webkit-scrollbar-thumb{
-background-color: #7c204b;
-border-radius: 10px;
+display:none;
 }
 
 /* Base styles for the context menu */

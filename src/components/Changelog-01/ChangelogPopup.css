@@ -2,8 +2,7 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
- 
-    color: #e0e0e0; 
+    color: #e0e0e0;
 }
 
 /* Popup container */
@@ -16,37 +15,31 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); 
+    background-color: rgba(0, 0, 0, 0.8);
     z-index: 1000;
     overflow: hidden;
     font-size: 0.9rem;
 }
 
-/* Hide the popup container when not visible */
-.hidden {
-    display: none;
-}
-
 /* Popup content */
 .changelog-content {
-    background-color: #2e2e2e; 
-    padding: 20px 30px;
-    max-width: 500px;
+    background-color: #2e2e2e;
+    padding: 30px;
+    max-width: 550px;
     max-height: 80vh;
     border-radius: 20px;
-    box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.5); 
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
     text-align: left;
     animation: fadeIn 0.3s ease-in-out;
     overflow-y: auto;
-    padding-right: 10px;
+    padding-right: 15px;
     box-sizing: border-box;
-    clip-path: inset(0 round 20px);
 }
 
 /* Center the content more precisely on larger screens */
 @media (min-width: 768px) {
     .changelog-content {
-        max-width: 450px;
+        max-width: 500px;
         margin: auto;
     }
 }
@@ -54,61 +47,70 @@ body {
 /* Scrollbar customization */
 .changelog-content::-webkit-scrollbar {
     width: 8px;
-    border-radius: 10px;
 }
 
 .changelog-content::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.3); 
+    background-color: rgba(255, 255, 255, 0.3);
     border-radius: 10px;
 }
 
 /* Heading styles */
 .changelog-content h1 {
     text-align: center;
-    font-size: 24px;
-    margin-bottom: 5px;
-    margin-top: 0px;
-    color: #f5f5f5; 
+    font-size: 28px;
+    margin-bottom: 10px;
+    margin-top: 0;
+    color: #f5f5f5;
 }
 
+/* Subheading */
 .subheading {
     text-align: center;
-    color: #b0b0b0; 
+    color: #b0b0b0;
     margin-top: 5px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    font-size: 0.95rem;
 }
 
-/* Date and list styles */
+/* Date styles */
 .date {
     font-weight: bold;
     margin-top: 20px;
+    margin-bottom: 10px;
     color: #ffffff;
 }
 
-/* Styles for lists with bullet points */
+/* List styles */
 .bullet-list {
+    list-style-type: none;
+    padding-left: 10px;
+}
+
+.bullet-list ul {
     list-style-type: disc;
-    padding-left: 1px;
+    padding-left: 20px;
+    margin-bottom: 15px;
 }
 
 .bullet-list li {
     margin-bottom: 10px;
-    color: #d0d0d0; /* Slightly lighter text color for better readability */
+    color: #d0d0d0;
     font-size: 0.9rem;
 }
 
-/* Remove bullet points from label items */
+/* Label styles */
 .label {
-    list-style-type: none;
     display: inline-block;
     font-weight: bold;
     border-radius: 4px;
-    padding: 2px 6px;
+    padding: 2px 8px;
     color: white;
+    margin-bottom: 7px;
+    
 }
 
 .new {
-    background-color: #3dbd40; 
+    background-color: #3dbd40;
 }
 
 .bugfix {
@@ -122,35 +124,22 @@ body {
 /* Button styles */
 .close-btn {
     display: block;
-    margin: 20px auto;
-    padding: 10px 20px;
-    background-color: #4a4a4a; /* Slightly darker button background */
+    margin: 30px auto 0;
+    padding: 12px 25px;
+    background-color: #4a4a4a;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 16px;
+    transition: background-color 0.3s ease;
 }
 
 .close-btn:hover {
     background-color: #65aa6e;
 }
 
-/* Checkbox and label styles */
-.dont-show-again {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: 20px;
-}
-
-.dont-show-again label {
-    margin-left: 5px;
-    font-size: 14px;
-    color: #888;
-}
-
-/* Keyframe animation for fade in */
+/* Keyframe animation for fade-in */
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
