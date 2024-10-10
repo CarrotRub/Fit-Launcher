@@ -16,7 +16,7 @@ pub mod torrent_calls {
 
     #[cfg(target_os = "windows")]
     use crate::custom_ui_automation::windows_ui_automation;
-    use crate::{custom_ui_automation, executable_custom_commands};
+    use crate::executable_custom_commands;
 
     #[derive(Default)]
     pub struct TorrentState {
@@ -113,7 +113,6 @@ pub mod torrent_calls {
         pub async fn new(
             download_path: String,
             app_cache_patch: String,
-            magnet_link: String,
         ) -> Result<Self, Box<TorrentError>> {
             // let magnet_id20 = Magnet::parse(&magnet_link).unwrap().as_id20().unwrap();
 
@@ -145,7 +144,7 @@ pub mod torrent_calls {
             custom_session_options.concurrent_init_limit = Some(1);
             custom_session_options.persistence = persistence_config;
 
-            let session_global =
+            let session_global: Arc<Session> =
                 match Session::new_with_opts(download_path.into(), custom_session_options).await {
                     Ok(session) => session,
                     Err(err) => {
@@ -411,8 +410,7 @@ pub mod torrent_calls {
         }
 
         pub async fn resume_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
-            let torrent_hash: TorrentIdOrHash =
-                TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
 
             // * Use this to resume the function (It will take advantage of the fastresume option)
             match Api::api_torrent_action_start(&self.api_session, torrent_hash).await {
@@ -426,6 +424,21 @@ pub mod torrent_calls {
 
             Ok(())
         }
+
+        // Function to restart a torrent, mostly after the app has been closed. 
+        // pub async fn restart_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
+        //     let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+        //     // * Use this to resume the function (It will take advantage of the fastresume option)
+        //     match Api::api_torrent_action_start(&self.api_session, torrent_hash).await {
+        //         Ok(_) => {
+        //             info!("Torrent Successfully Resumed");
+        //         }
+        //         Err(err) => {
+        //             error!("Torrent Couldn't Resume : {}", err)
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -447,9 +460,8 @@ pub mod torrent_commands {
         state: tauri::State<'_, TorrentState>,
         download_path: String,
         app_cache_path: String,
-        magnet_link: String,
     ) -> Result<(), Box<TorrentError>> {
-        let manager = TorrentManager::new(download_path, app_cache_path, magnet_link).await?;
+        let manager = TorrentManager::new(download_path, app_cache_path).await?;
         let mut torrent_manager = state.torrent_manager.lock().await;
         *torrent_manager = Some(Arc::new(Mutex::new(manager)));
         Ok(())

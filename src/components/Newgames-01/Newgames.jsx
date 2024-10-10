@@ -4,7 +4,7 @@ import { appDataDir } from '@tauri-apps/api/path';
 import { readTextFile, BaseDirectory } from '@tauri-apps/api/fs';
 
 const appDir =  await appDataDir();
-const dirPath = appDir.replace(/\\/g, '/');
+const dirPath = appDir;
 
 const newlyAddedGamesPath = `${dirPath}tempGames/newly_added_games.json`;
 

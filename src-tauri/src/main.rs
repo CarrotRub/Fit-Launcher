@@ -17,6 +17,7 @@ mod custom_ui_automation;
 pub use crate::custom_ui_automation::executable_custom_commands;
 
 mod mighty;
+use std::collections::HashMap;
 use std::fs;
 
 use serde_json::Value;
@@ -97,9 +98,9 @@ struct GameImages {
 fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
     let document = kuchiki::parse_html().one(body);
     let mut hrefs = Vec::new();
-    let mut p_index = 3;
 
-    while p_index < 10 {
+    // Only process relevant paragraphs
+    for p_index in 3..10 {
         let href_selector_str = format!(".entry-content > p:nth-of-type({}) a[href]", p_index);
 
         for anchor_elem in document
@@ -109,69 +110,41 @@ fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
                 hrefs.push(href_link.to_string());
             }
         }
-
-        p_index += 1;
     }
-
     Ok(hrefs)
 }
 
 async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<String>> {
-    let processing_time = Instant::now();
-
     if STOP_FLAG.load(Ordering::Relaxed) {
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
 
-    let mut image_srcs = Vec::new();
-    let image_selector = "div.big-image > a > img";
-    let noscript_selector = "noscript";
-    println!("Start getting images process");
-
-    let href_res = client.get(href).send().await.context("Failed to send HTTP request to HREF")?;
+    let href_res = client.get(href).send().await?;
     if !href_res.status().is_success() {
-        return Ok(image_srcs);
+        return Ok(vec![]);
     }
 
-    if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(anyhow::anyhow!("Cancelled the Event..."));
-    }
-
-    let href_body = href_res
-        .text()
-        .await
-        .context("Failed to read HREF response body")?;
+    let href_body = href_res.text().await?;
     let href_document = kuchiki::parse_html().one(href_body);
-
-    println!("Start getting text process");
-
-    if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(anyhow::anyhow!("Cancelled the Event..."));
-    }
+    let mut image_srcs = Vec::new();
 
     for noscript in href_document
-        .select(noscript_selector)
+        .select("noscript")
         .map_err(|_| anyhow::anyhow!("Failed to select noscript element"))? {
         let inner_noscript_html = noscript.text_contents();
         let inner_noscript_document = kuchiki::parse_html().one(inner_noscript_html);
 
         for img_elem in inner_noscript_document
-            .select(image_selector)
+            .select("div.big-image > a > img")
             .map_err(|_| anyhow::anyhow!("Failed to select image element"))? {
             if let Some(src) = img_elem.attributes.borrow().get("src") {
                 image_srcs.push(src.to_string());
             }
         }
-
-        // Check if the processing time exceeds 4 seconds
-        if processing_time.elapsed() > Duration::new(4, 0) {
-            println!("Processing time exceeded 4 seconds, returning collected images so far");
-            return Ok(image_srcs);
-        }
     }
-
     Ok(image_srcs)
 }
+
 
 async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     if STOP_FLAG.load(Ordering::Relaxed) {
@@ -179,31 +152,30 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     }
 
     let client = Client::new();
-    let res = client.get(url).send().await.context("Failed to send HTTP request")?;
-
-    if !res.status().is_success() {
-        return Err(anyhow::anyhow!(
-            "Failed to connect to the website or the website is down."
-        ));
-    }
-
-    let body = res.text().await.context("Failed to read response body")?;
-    println!("Start extracting hrefs");
+    let body = client.get(url).send().await?.text().await?;
     let hrefs = extract_hrefs_from_body(&body)?;
 
-    let mut image_srcs = Vec::new();
+    let fetches: Vec<_> = hrefs
+        .iter()  // Use `iter()` to borrow `hrefs`
+        .map(|href| timeout(Duration::new(4, 0), fetch_and_process_href(&client, href.as_ref())))  // Use `as_ref()` to get `&str`
+        .collect();
+    
+    let results: Vec<Result<Vec<String>, anyhow::Error>> = futures::future::join_all(fetches)
+        .await
+        .into_iter()
+        .map(|res| match res {
+            Ok(Ok(images)) => Ok(images),  // Successful fetch within timeout
+            Ok(Err(e)) => Err(e),          // Fetch failed but within the timeout
+            Err(_) => Err(anyhow::anyhow!("Timeout occurred")),  // Timeout error
+        })
+        .collect();
 
-    for href in hrefs {
-        println!("Start fetching process");
-        let result = timeout(Duration::new(4, 0), fetch_and_process_href(&client, &href)).await;
+    // Flatten the results: collect all successful Vec<String> into a single Vec<String>
+    let mut image_srcs = Vec::new();
+    for result in results {
         match result {
-            Ok(Ok(images)) => {
-                if !images.is_empty() {
-                    image_srcs.extend(images);
-                }
-            }
-            Ok(Err(e)) => println!("Error fetching images from href: {}", e),
-            Err(_) => println!("Timeout occurred while fetching images from href"),
+            Ok(images) => image_srcs.extend(images),  // Add images if successful
+            Err(e) => tracing::error!("Error fetching images: {:?}", e),  // Log the error, but continue
         }
     }
 
@@ -224,7 +196,7 @@ struct CachedGameImages {
     images: Vec<String>,
 }
 
-// TODO: Add `notify` crate to watch a file for changes without resorting to a performance-draining loop.
+// TODO: Add notify crate to watch a file for changes without resorting to a performance-draining loop.
 
 #[tauri::command]
 async fn get_games_images(
@@ -232,75 +204,45 @@ async fn get_games_images(
     game_link: String,
     image_cache: State<'_, ImageCache>,
 ) -> Result<GameImages, CustomError> {
-    use std::collections::HashMap;
-    use std::path::Path;
-    use tokio::fs;
 
+    let now = Instant::now();
     STOP_FLAG.store(false, Ordering::Relaxed);
 
-    // Persistent cache file path
     let mut cache_file_path = app_handle.path_resolver().app_cache_dir().unwrap();
     cache_file_path.push("image_cache.json");
 
-    // Load the persistent cache from the file
-    if Path::new(&cache_file_path).exists() {
-        let data = fs
-            ::read_to_string(&cache_file_path).await
-            .context("Failed to read cache file")
-            .map_err(|e| CustomError { message: e.to_string() })?;
-        let loaded_cache: HashMap<String, Vec<String>> = serde_json
-            ::from_str(&data)
-            .context("Failed to parse cache file")
-            .map_err(|e| CustomError { message: e.to_string() })?;
+    let mut cache = image_cache.lock().await;
 
-        // Update in-memory LruCache with the loaded HashMap
-        let mut cache = image_cache.lock().await;
-        for (key, value) in loaded_cache {
-            cache.put(key, value);
+    // Load and merge cache if exists
+    if let Ok(data) = tokio::fs::read_to_string(&cache_file_path).await {
+        if let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
+            for (key, value) in loaded_cache {
+                cache.put(key, value);
+            }
         }
     }
 
-    // Check if the game images are already cached
-    let mut cache = image_cache.lock().await;
     if let Some(cached_images) = cache.get(&game_link) {
-        println!("Cache hit! Returning cached images.");
         return Ok(GameImages {
             my_all_images: cached_images.clone(),
-        }); // Return the cached images
-    }
-
-    drop(cache); // Release the lock before making network requests
-
-    if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(CustomError {
-            message: "Function stopped.".to_string(),
         });
     }
 
-    let image_srcs = scrape_image_srcs(&game_link).await.map_err(|e| CustomError {
-        message: e.to_string(),
-    })?;
+    drop(cache); // Release lock before network operation
 
-    // Update the in-memory cache and save it to the persistent cache file
+    let image_srcs = scrape_image_srcs(&game_link).await?;
+
     let mut cache = image_cache.lock().await;
     cache.put(game_link.clone(), image_srcs.clone());
 
-    // Convert LruCache to HashMap for saving to persistent storage
-    let cache_as_hashmap: HashMap<String, Vec<String>> = cache
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-    let updated_cache_data = serde_json
-        ::to_string_pretty(&cache_as_hashmap)
-        .context("Failed to serialize cache data to JSON")
-        .map_err(|e| CustomError { message: e.to_string() })?;
-    fs
-        ::write(&cache_file_path, updated_cache_data).await
-        .context("Failed to write cache data to file")
-        .map_err(|e| CustomError { message: e.to_string() })?;
+    // Save cache to file
+    let cache_as_hashmap: HashMap<String, Vec<String>> = cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    let updated_cache_data = serde_json::to_string_pretty(&cache_as_hashmap).map_err(|e| CustomError { message: e.to_string() })?;
+    tokio::fs::write(&cache_file_path, updated_cache_data).await?;
 
-    println!("Done Getting Images");
-    Ok(GameImages { my_all_images: image_srcs }) // Return the newly scraped images
+    println!("Time elapsed to find images : {:#?}", now.elapsed());
+
+    Ok(GameImages { my_all_images: image_srcs })
 }
 
 //Always serialize returns...
@@ -324,6 +266,22 @@ impl Error for CustomError {}
 
 impl From<Box<dyn Error>> for CustomError {
     fn from(error: Box<dyn Error>) -> Self {
+        CustomError {
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<anyhow::Error> for CustomError {
+    fn from(error: anyhow::Error) -> Self {
+        CustomError {
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for CustomError {
+    fn from(error: std::io::Error) -> Self {
         CustomError {
             message: error.to_string(),
         }

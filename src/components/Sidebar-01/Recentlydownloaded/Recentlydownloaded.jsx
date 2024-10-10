@@ -8,7 +8,7 @@ function Recentlydownloadedgames() {
 
     onMount( async () => {
         const appDir =  await appDataDir();
-        const dirPath = appDir.replace(/\\/g, '/');
+        const dirPath = appDir;
 
         let downloadedGamesPath = `${dirPath}data/downloaded_games.json`;
 

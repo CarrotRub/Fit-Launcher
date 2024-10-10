@@ -1,7 +1,14 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
+import { appCacheDir } from '@tauri-apps/api/path';
+import Swal from 'sweetalert2';
 import Chart from "chart.js/auto";
 import { invoke } from "@tauri-apps/api";
 import './Gamedownloadvertical.css';
+import { restartTorrentInfo } from "../functions/dataStoreGlobal";
+
+
+const cacheDir = await appCacheDir();
+const cacheDirPath = cacheDir;
 
 function Gameverticaldownloadslide({ isActive, setIsActive }) {
     const [gameInfo, setGameInfo] = createSignal(null);
@@ -10,6 +17,8 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
     const [isPaused, setIsPaused] = createSignal(false);
     let downloadUploadChart;
     let bytesChart;
+
+
 
     const fetchStats = async () => {
         try {
@@ -26,14 +35,77 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
         }
     };
 
+    const finishedGamePopup = () => {
+        Swal.fire({
+            title: "Game is Done",
+            text: "This game is already done downloading, please check your folder and/or check if the game setup is installing, if yes, let it install.",
+            icon: "info"
+        });
+    }
+
+    const unexpectedGameResumeError = () => {
+        Swal.fire({
+            title: "Unexpected Error",
+            text: "An unexpected error happened while resuming the game, please try to continue the download by searching the game and clicking on the Download button again, this will resume it, if not please contact us on Discord available in the Settings page.",
+            icon: "error"
+        });
+    }
+
     const handleButtonClick = async () => {
         const currentState = gameInfo().state;
+        const isFinishedState = gameInfo().finished;
         const CTG = localStorage.getItem('CTG');
         let hash = JSON.parse(CTG).torrent_idx
         try {
-            if (currentState === 'paused') {
-                await invoke('api_resume_torrent', {torrentIdx:hash });
+            if ( currentState === 'paused' && !isFinishedState ) {
+                try {
+                    await invoke('api_resume_torrent', {torrentIdx:hash });
+                } catch (err) {
+                    console.error('Error Resuming Torrent :', err)
+                    if (err.AnyhowError === "TorrentManager is not initialized.") {
+                        const lastInputPath = localStorage.getItem('LUP');
+                        console.log("TorrentManager is not initialized. Initializing it...");
+    
+                        // Initialize Torrent.
+                        try {
+                            console.log("Initializing")
+                            await invoke('api_initialize_torrent_manager', {downloadPath: lastInputPath, appCachePath: cacheDirPath});
+                            console.log("Done Init")
+                            try {
+                                console.log("Resuming");
+
+
+                                //! ERROR :  Read Below.
+                                //TODO: Due to an issue in the librqbit v7.1.0-beta.1 that we are using,we cannot just restart a game by unpausing it, we have to "start" it, we can't do anything but wait for a fix in librqbit.
+                                await invoke('api_download_with_args', {
+                                    magnetLink: restartTorrentInfo.magnetLink,
+                                    downloadFileList: restartTorrentInfo.fileList
+                                })
+
+                                try {
+                                    await invoke('api_resume_torrent', {torrentIdx:hash });
+                                } catch(error) {
+                                    //TODO: Will check state.
+                                    console.log("Not really an error, it's just not paused and it would be too complicated to check for the state (laziness)")
+                                }
+
+                                window.dispatchEvent(new Event('start-download'));
+                            } catch (error) {
+                                console.error('Error Toggling Torrent State Again:', error);
+                                unexpectedGameResumeError();
+                            }
+                        } catch (error) {
+                            console.error('Error Initializing Torrent Session:', error);
+                        }
+                        
+                    } else {
+                        
+                        console.error("An error occurred while resuming torrent:", err);
+                    }
+                }
                 setIsPaused(false);
+            } else if (isFinishedState) {
+                finishedGamePopup();
             } else if (currentState === 'live') {
                 await invoke('api_pause_torrent', {torrentIdx:hash });
                 setIsPaused(true);
@@ -106,8 +178,8 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
 
     const updateCharts = (stats) => {
         if (downloadUploadChart && bytesChart) {
-            const mbDownloadSpeed = (stats.live.download_speed.human_readable);
-            const mbUploadSpeed = (stats.live.upload_speed.human_readable);
+            const mbDownloadSpeed = (stats.live?.download_speed?.human_readable);
+            const mbUploadSpeed = (stats.live?.upload_speed.human_readable);
             const downloadedMB = (stats.progress_bytes || 0) / (1024 * 1024);
             const uploadedMB = (stats.uploaded_bytes || 0) / (1024 * 1024);
 
