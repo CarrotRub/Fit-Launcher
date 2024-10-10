@@ -11,6 +11,7 @@ const newlyAddedGamesPath = `${dirPath}tempGames/newly_added_games.json`;
 import readFile from '../functions/readFileRust';
 import Slider from '../Slider-01/Slider';
 import { translate } from '../../translation/translate';
+import Swal from 'sweetalert2';
 
 /**
  * Get newly added games into the GameHub.
@@ -49,7 +50,16 @@ function Newgames() {
             const data = await parseNewGameData();
             setImagesObject(data);
         } catch (error) {
+            //TOOD: improve error handling if images can't be fetched
             // Handle error if needed
+            //show a message to the user with a alert
+            Swal.fire({
+                title: 'Error',
+                text: 'Error parsing game data',
+                icon: 'error',
+                confirmButtonText: 'Ok'
+            });
+
         }
     });
 
