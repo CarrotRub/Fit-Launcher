@@ -134,6 +134,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-compression"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e614738943d3f68c628ae3dbce7c3daffb196665f82f8c8ea6b65de73c79429"
+dependencies = [
+ "brotli 7.0.0",
+ "flate2",
+ "futures-core",
+ "memchr",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "async-executor"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -497,6 +511,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "brotli"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc97b8f16f944bba54f0433f07e30be199b6dc2bd25937444bbad560bcea29bd"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+ "brotli-decompressor",
+]
+
+[[package]]
 name = "brotli-decompressor"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -747,9 +772,9 @@ dependencies = [
 
 [[package]]
 name = "const_panic"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7782af8f90fe69a4bb41e460abe1727d493403d8b2cc43201a3a3e906b24379f"
+checksum = "013b6c2c3a14d678f38cd23994b02da3a1a1b6a5d1eedddfe63a5a5f11b13a81"
 
 [[package]]
 name = "convert_case"
@@ -2760,7 +2785,7 @@ dependencies = [
  "futures",
  "httparse",
  "network-interface",
- "quick-xml 0.36.1",
+ "quick-xml 0.36.2",
  "reqwest 0.12.7",
  "serde",
  "tokio",
@@ -3913,9 +3938,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.36.1"
+version = "0.36.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96a05e2e8efddfa51a84ca47cec303fac86c8541b686d37cac5efc0e094417bc"
+checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
 dependencies = [
  "memchr",
  "serde",
@@ -4183,6 +4208,7 @@ version = "0.12.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8f4955649ef5c38cc7f9e8aa41761d48fb9677197daea9984dc54f56aad5e63"
 dependencies = [
+ "async-compression",
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
@@ -4218,6 +4244,7 @@ dependencies = [
  "tokio-native-tls",
  "tokio-rustls",
  "tokio-socks",
+ "tokio-util",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -5127,7 +5154,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93a9e3f5cebf779a63bf24903e714ec91196c307d8249a0008b882424328bcda"
 dependencies = [
  "base64 0.21.7",
- "brotli",
+ "brotli 6.0.0",
  "ico",
  "json-patch",
  "plist",
@@ -5209,7 +5236,7 @@ version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83a0c939e88d82903a0a7dfb28388b12a3c03504d6bd6086550edaa3b6d8beaa"
 dependencies = [
- "brotli",
+ "brotli 6.0.0",
  "ctor",
  "dunce",
  "glob",

@@ -8,6 +8,12 @@ const [globalTorrentInfo, setGlobalTorrentInfo] = createStore({
     twoGbLimit: false
   });
 
+
+/// Object containing informations about the current downloading game (CDG), necessary to restart game.
+const [restartTorrentInfo, setRestartTorrentInfo] = createStore({
+    magnetLink: '',
+    fileList: []
+})
 const [torrentTrigger, setTorrentTrigger] = createSignal(false);
 
-export { globalTorrentInfo, setGlobalTorrentInfo, torrentTrigger, setTorrentTrigger };
+export { globalTorrentInfo, setGlobalTorrentInfo, torrentTrigger, setTorrentTrigger, restartTorrentInfo, setRestartTorrentInfo };

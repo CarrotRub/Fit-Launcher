@@ -181,9 +181,9 @@ function Downloadingpartsidebar() {
 
             setOldRemainingTime(
                 `${
-                    statsFirstCDG.live?.time_remaining.human_readable === null || statsFirstCDG.live?.time_remaining.human_readable === ''
+                    statsFirstCDG.live?.time_remaining?.human_readable === null || statsFirstCDG.live?.time_remaining?.human_readable === ''
                         ? (statsFirstCDG?.finished !== true ? 'Infinity' : 'Done')
-                        : statsFirstCDG.live?.time_remaining.human_readable || 'Infinity'
+                        : statsFirstCDG.live?.time_remaining?.human_readable || 'Infinity'
                 }`
             );
             

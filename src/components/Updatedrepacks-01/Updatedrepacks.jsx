@@ -3,7 +3,7 @@ import { createSignal, onMount } from 'solid-js';
 import { appDataDir } from '@tauri-apps/api/path';
 
 const appDir =  await appDataDir();
-const dirPath = appDir.replace(/\\/g, '/');
+const dirPath = appDir;
 
 const recentlyUpdatedGamesPath = `${dirPath}tempGames/recently_updated_games.json`;
 import readFile from '../functions/readFileRust';
