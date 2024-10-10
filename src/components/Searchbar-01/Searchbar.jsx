@@ -42,7 +42,7 @@ function Searchbar() {
     async function showResults(query) {
         let requests = [];
         const appDir =  await appDataDir();
-        const dirPath = appDir.replace(/\\/g, '/');
+        const dirPath = appDir;
         
         for (let i = 1; i <= 6; i++) {
             let sitemapURL = `${dirPath}sitemaps/post-sitemap${i}.xml`;
@@ -139,7 +139,7 @@ function Searchbar() {
 
     async function getConfigDir() {
         const appDir =  await appDataDir();
-        const dirPath = appDir.replace(/\\/g, '/');
+        const dirPath = appDir;
         const singularGameFilePath = `${dirPath}tempGames/singular_game_temp.json`;
 
         return singularGameFilePath;

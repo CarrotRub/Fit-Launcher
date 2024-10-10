@@ -11,15 +11,15 @@ import { appCacheDir, appDataDir } from '@tauri-apps/api/path';
 import { writeFile, readTextFile, removeFile } from '@tauri-apps/api/fs';
 import './Gamehorizontal.css';
 import { setGlobalTorrentInfo, setTorrentTrigger } from '../functions/dataStoreGlobal';
-
+import { setRestartTorrentInfo } from '../functions/dataStoreGlobal';
 
 const cacheDir = await appCacheDir();
-const cacheDirPath = cacheDir.replace(/\\/g, '/');
+const cacheDirPath = cacheDir;
 
 console.log("App Cache :", cacheDir)
 
 const appDir =  await appDataDir();
-const dirPath = appDir.replace(/\\/g, '/');
+const dirPath = appDir;
 
 const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
 const ftgConfigPath = `${dirPath}fitgirlConfig/settings.json`;
@@ -171,7 +171,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                             const fileContent = fileContentObj.content;
                             const configData = JSON.parse(fileContent);
                             let should_bool_limit = configData.two_gb_limit;
-                            await invoke('api_initialize_torrent_manager', {downloadPath: inputPath, appCachePath: cacheDirPath, magnetLink: cdgGameMagnet})
+                            await invoke('api_initialize_torrent_manager', {downloadPath: inputPath, appCachePath: cacheDirPath})
                             fileList = await invoke('api_get_torrent_details', {
                                 magnetLink: cdgGameMagnet,
                             });
@@ -299,6 +299,13 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                                     downloadFileList: selectedFiles
                                 })
 
+                                
+
+                                setRestartTorrentInfo({
+                                    magnetLink: cdgGameMagnet,
+                                    fileList: selectedFiles
+                                })
+                                
                                 Swal.fire({
                                     title: "Starting Download!",
                                     text: "The selected files are now downloading.",

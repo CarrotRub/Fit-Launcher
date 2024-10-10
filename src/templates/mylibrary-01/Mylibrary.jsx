@@ -27,7 +27,7 @@ function Mylibrary() {
         await invoke('get_singular_game_info', { gameLink: result });
         // Determine the path for downloaded_games.json
         const appDir = await appDataDir();
-        const dirPath = appDir.replace(/\\/g, '/');
+        const dirPath = appDir;
         const gameInfoPath = `${dirPath}tempGames/singular_game_temp.json`;
         const fileContentObj = await readFile(gameInfoPath);
         const gameInfo = JSON.parse(fileContentObj.content);
@@ -45,7 +45,7 @@ function Mylibrary() {
         if (executablePath) {
             // Determine the path for downloaded_games.json
             const appDir = await appDataDir();
-            const dirPath = appDir.replace(/\\/g, '/');
+            const dirPath = appDir;
             const filePath = `${dirPath}data/downloaded_games.json`;
     
             // Fetch and initialize game data
@@ -86,7 +86,7 @@ function Mylibrary() {
     async function showResults(query) {
         let requests = [];
         const appDir =  await appDataDir();
-        const dirPath = appDir.replace(/\\/g, '/');
+        const dirPath = appDir;
         
         for (let i = 1; i <= 6; i++) {
             let sitemapURL = `${dirPath}sitemaps/post-sitemap${i}.xml`;
