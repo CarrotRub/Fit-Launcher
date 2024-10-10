@@ -1,89 +1,174 @@
-/* src/components/SettingsPage.css */
-
 /* General Styling */
 body {
-
+  background-color: #1e1e1e;
   margin: 0;
   padding: 0;
+  font-family: 'IBMPlexSans', sans-serif;
+  color: #fff;
 }
 
 /* Settings Page Container */
 .settings-page {
-  padding: 20px;
+  padding: 15px;
   font-family: 'IBMPlexSans', sans-serif;
 }
 
 /* Headings */
 .settings-page h1 {
-  font-size: 24px;
-  color: white;
-  margin-bottom: 20px;
+  font-size: 20px;
+  color: #fff;
+  margin-bottom: 15px;
   border-bottom: 2px solid #C54B8C;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
+  font-size: 2em;
 }
 
 .settings-page h2 {
-  font-size: 20px;
+  font-size: 18px;
   color: #C54B8C;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   border-bottom: 1px solid #ddd;
-  padding-bottom: 5px;
+  padding-bottom: 4px;
 }
 
 /* Form Group */
 .form-group {
-  display: flex;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  flex-direction: column;
+  margin-bottom: 15px;
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   color: #fff;
 }
 
-.form-group input[type="text"] {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-sizing: border-box;
-  font-size: 14px;
-}
-
 .form-group input[type="checkbox"] {
-  transform: scale(1.2);
-  margin-right: 10px;
+  transform: scale(1.1);
+  margin-right: 8px;
   cursor: pointer;
 }
 
- #desc-checkbox  {
+/* Button and Path Output Alignment */
+.upload-container {
+  display: block;
+  align-items: center;
+}
+
+/* The button wrapper */
+.upload-btn-wrapper {
+  flex: 0 0 auto;
+}
+
+/* Path Box Inline - flex container for path output and clear button */
+.path-box-inline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
+/* Styling for the path output next to the button */
+.path-output-inline {
+  background-color: #2a2a2a;
+  display: block;
+  width: 500px; 
+  padding: 8px 30px 8px 8px; 
+  border-radius: 6px;
+  color: #ddd;
   font-size: 12px;
-  color: #777;
-  margin-top: 5px;
+  word-wrap: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
 }
 
-/* Section Styling */
-.settings-page section {
-  margin-bottom: 30px;
-  padding: 20px;
-  /* background-color: #fafafa; */
-  border-radius: 8px;
-  border: 1px solid #eaeaea;
+/* Clear Button Styling - Positioned inside the path box */
+.clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #bdbbbd;
+  cursor: pointer;
+  font-size: 0.9em;
+  padding: 0;
 }
 
-/* Links */
-.settings-page a {
-  color: #C54B8C;
-  text-decoration: none;
+
+
+/* Smaller Button Styling */
+.upload-btn, .boton-elegante {
+  border: 1px solid #2c2c2c;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  padding: 10px 10px;
+  font-size: 14px;
   font-weight: bold;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s ease;
+  display: inline-block;
 }
 
-.settings-page a:hover {
-  text-decoration: underline;
+
+
+
+.upload-btn:hover, .boton-elegante:hover {
+  background-color: #333;
+}
+
+/* Notifications */
+.notification {
+  background-color: #4caf50;
+  color: white;
+  padding: 10px;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  border-radius: 5px;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.notification.show {
+  opacity: 1;
+}
+
+/* Social Links */
+.card {
+  display: flex;
+  height: 40px;
+  width: 220px;
+  margin-bottom: 15px;
+}
+
+.card svg {
+  width: 40px;
+  height: 40px;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+
+.card .social-link1, .card .social-link2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20%;
+  color: whitesmoke;
+  font-size: 20px;
+  text-decoration: none;
+  border-radius: 40px;
+}
+
+.card .social-link1:hover {
+  background: #333;
+}
+
+.card .social-link2:hover {
+  background-color: #5865f2;
 }
 
 /* Responsive Design */
@@ -93,88 +178,8 @@ body {
     margin: 20px auto;
   }
 
-  .settings-page h1 {
-    font-size: 20px;
-  }
 
-  .settings-page h2 {
-    font-size: 18px;
-  }
-}
-
-  .boton-elegante {
-    padding: 10px 15px;
-    border: 2px solid #2c2c2c;
-    background-color: #1a1a1a;
-    color: #ffffff;
-    font-size: 1.0rem;
-    cursor: pointer;
-    border-radius: 30px;
-    transition: all 0.4s ease;
-    outline: none;
-    position: relative;
-    overflow: hidden;
-    font-weight: bold;
-  }
-  
-  .boton-elegante::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
+  .card {
     width: 100%;
-    height: 100%;
-    background: radial-gradient(
-      circle,
-      rgba(255, 255, 255, 0.25) 0%,
-      rgba(255, 255, 255, 0) 70%
-    );
-    transform: scale(0);
-    transition: transform 0.5s ease;
   }
-  
-  .boton-elegante:hover::after {
-    transform: scale(4);
-  }
-  
-  .boton-elegante:hover {
-    border-color: #666666;
-    background: #292929;
-  }
-  
-  /* Notifications */
-/* Notifications */
-.notification {
-  background-color: #4caf50; /* Green */
-  color: white;
-  padding: 15px;
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  border-radius: 5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  pointer-events: none; /* Prevent it from blocking any user interaction */
-  opacity: 0; /* Hidden by default */
-  transition: opacity 0.3s ease-in-out;
 }
-
-.notification.show {
-  opacity: 1; /* Show notification */
-}
-
-/* Save button */
-.boton-elegante {
-  background-color: #1d1d1d;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  cursor: pointer;
-  border-radius: 4px;
-  margin: 2px;
-}
-
-.boton-elegante:hover {
-  background-color: #007bb5;
-}
-  

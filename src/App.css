@@ -1,8 +1,9 @@
 html, body {
-  height: 100%; /* Ensure the body and html stretch fully */
+  height: 100%;
   margin: 0;
   padding: 0;
   font-family: 'IBMPlexSans', sans-serif;
+  overflow: hidden;
 }
 
 @font-face {
