@@ -1,72 +1,90 @@
 {
     "package": {
-      "productName": "Fit Launcher",
-      "version": "1.0.2"
+        "productName": "Fit Launcher",
+        "version": "1.0.2"
     },
     "build": {
-      "distDir": "../dist",
-      "devPath": "http://localhost:1420/",
-      "beforeDevCommand": "npm run dev",
-      "beforeBuildCommand": "npm run build"
+        "distDir": "../dist",
+        "devPath": "http://localhost:1420/",
+        "beforeDevCommand": "npm run dev",
+        "beforeBuildCommand": "npm run build"
     },
     "tauri": {
-      "bundle": {
-        "active": true,
-        "targets": "msi",
-        "windows": {
-          "webviewInstallMode": {
-            "type": "downloadBootstrapper"
-          }
+        "bundle": {
+            "active": true,
+            "targets": "msi",
+            "windows": {
+                "webviewInstallMode": {
+                    "type": "downloadBootstrapper"
+                }
+            },
+            "identifier": "com.fitlauncher.carrotrub",
+            "icon": [
+                "./icons/32x32.png",
+                "./icons/128x128.png",
+                "./icons/128x128@2x.png",
+                "./icons/icon.icns",
+                "./icons/icon.ico"
+            ]
         },
-        "identifier": "com.fitlauncher.carrotrub",
-        "icon": [
-          "./icons/32x32.png",
-          "./icons/128x128.png",
-          "./icons/128x128@2x.png",
-          "./icons/icon.icns",
-          "./icons/icon.ico"
-        ]
-      },
-      "allowlist": {
-        "all": true,
-        "path": {
-          "all": true
+        "allowlist": {
+            "all": true,
+            "path": {
+                "all": true
+            },
+            "fs": {
+                "all": true,
+                "scope": [
+                    "$APPDATA/**",
+                    "$APPCACHE/**",
+                    "$APPCONFIG/**",
+                    "$CONFIG/**",
+                    "$APP/**",
+                    "$APPCONFIG/tempGames/**",
+                    "$APPCONFIG/data/**",
+                    "$APPCONFIG/sitemaps/**",
+                    "$RESOURCE/**",
+                    "$RESOURCE/images/**",  
+                    "$RESOURCE/public/**",  
+                    "./**"
+                ]
+            },
+            "protocol": {
+                "asset": true,
+                "assetScope": [
+                    "$APPCONFIG/sitemaps/**",
+                    "$APPDATA/sitemaps/**",
+                    "$APPCACHE/**",
+                    "$APPCACHE/.persistence/**"
+                ]
+            }
         },
-        "fs": {
-          "all":true,
-          "scope": ["$APPDATA/**", "$APPCACHE/**", "$APPCACHE/.persistence/**", "$APPCONFIG/**", "$CONFIG/**", "$APP/**", "$APPCONFIG/tempGames/**", "$APPCONFIG/data/**","$APPCONFIG/sitemaps/**", "$RESOURCE/*"]
-        },
-        "protocol": {
-          "asset": true,
-          "assetScope": ["$APPCONFIG/sitemaps/**", "$APPDATA/sitemaps/**","$APPCACHE/**", "$APPCACHE/.persistence/**"]
+        "windows": [
+            {
+                "label": "main",
+                "title": "Fit Launcher",
+                "width": 1280,
+                "height": 720,
+                "resizable": true,
+                "transparent": true,
+                "fullscreen": false,
+                "decorations": false,
+                "visible": false
+            },
+            {
+                "label": "splashscreen",
+                "url": "splashscreen.html",
+                "width": 400,
+                "height": 400,
+                "decorations": false,
+                "transparent": true,
+                "alwaysOnTop": true,
+                "center": true,
+                "title": "Splashscreen"
+            }
+        ],
+        "security": {
+            "csp": "script-src 'wasm-unsafe-eval'"
         }
-      },
-      "windows": [
-        {
-          "label": "main",
-          "title": "Fit Launcher",
-          "width": 1280,
-          "height": 720,
-          "resizable": true,
-          "transparent": true,
-          "fullscreen": false,
-          "decorations": false,
-          "visible": false
-        },
-        {
-            "label": "splashscreen",
-            "url": "splashscreen.html",
-            "width": 400,
-            "height": 400,
-            "decorations": false,
-            "transparent": true,
-            "alwaysOnTop": true,
-            "center": true,
-            "title": "Splashscreen"
-        }
-      ],
-      "security": {
-        "csp": "script-src 'wasm-unsafe-eval'"
-      }
     }
-  }
+}

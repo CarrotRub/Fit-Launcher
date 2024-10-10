@@ -94,6 +94,8 @@ struct GameImages {
     my_all_images: Vec<String>,
 }
 
+
+
 fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
     let document = kuchiki::parse_html().one(body);
     let mut hrefs = Vec::new();
@@ -525,6 +527,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             let app_handle = app.handle().clone();
 
+            let scraping_failed_event = app_handle.clone();
+
             // Delete JSON files missing the 'tag' field or corrupted and log the process
             if let Err(e) = delete_invalid_json_files(&current_app_handle) {
                 eprintln!(
@@ -561,7 +565,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         );
                         //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
-                        // first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
+                         first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -580,7 +584,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         );
                         //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
-                        // second_app_handle_clone.emit_all("popular-games-ready", {}).unwrap();
+                        second_app_handle_clone.emit_all("popular-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -599,7 +603,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         );
                         //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
-                        // third_app_handle_clone.emit_all("recent-updated-games-ready", {}).unwrap();
+                        third_app_handle_clone.emit_all("recent-updated-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -618,7 +622,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         );
                         //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
-                        //fourth_app_handle_clone.emit_all("sitemaps-ready", {}).unwrap();
+                        fourth_app_handle_clone.emit_all("sitemaps-ready", {}).unwrap();
                     }
                 });
 
@@ -626,6 +630,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 if let Err(e) = mandatory_tasks_online.await {
                     eprintln!("An error occurred during scraping tasks: {:?}", e);
                     tracing::info!("An error occurred during scraping tasks: {:?}", e);
+                    scraping_failed_event.emit_all("scraping_failed_event", "Test"); //TODO: 
                     // Do not exit, continue running
                 } else {
                     tracing::info!(
@@ -643,7 +648,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 current_app_handle
                     .get_window("main")
                     .unwrap()
-                    .eval("window.location.reload();")
+                    .eval("window.location.reload();") //TODO : we need to remove this as it causes a reload of the page and the emits dont get sent properly
                     .unwrap();
                 println!("Scraping signal has been sent.");
             });
