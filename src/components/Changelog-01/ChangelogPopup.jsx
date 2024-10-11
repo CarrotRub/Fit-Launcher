@@ -3,13 +3,23 @@ import './ChangelogPopup.css';
 
 const ChangelogPopup = () => {
   const [isVisible, setIsVisible] = createSignal(true);
+  const [isHidden, setIsHidden] = createSignal(false);
 
+  // Check localStorage on mount to see if the changelog should be shown
   onMount(() => {
-    setIsVisible(true);
+    const hideChangelog = localStorage.getItem('hideChangelog') === 'true';
+    setIsHidden(hideChangelog);
+    setIsVisible(!hideChangelog);
   });
 
   const handleClose = () => {
     setIsVisible(false);
+  };
+
+  const handleCheckboxChange = (e) => {
+    const shouldHide = e.target.checked;
+    setIsHidden(shouldHide);
+    localStorage.setItem('hideChangelog', shouldHide);
   };
 
   return (
@@ -21,11 +31,43 @@ const ChangelogPopup = () => {
             <p class="subheading">Discover the latest features, improvements, and fixes.</p>
 
             <div class="changelog-item">
-              <div class="date">Oct x, 2024 - v1.0.3</div>
+              <div class="date">Oct 11, 2024 - v1.0.3</div>
               <ul class="bullet-list">
-                <li><span class="label new">New:</span> FIT</li>
-                <li><span class="label bugfix">Bugfix:</span> FIT</li>
-                <li><span class="label improvement">Improvement:</span> FIT</li>
+                <li><span class="label new">New Features:</span>
+                  <ul>
+                    <li>Added popup for Finished Game and Unexpected Resume Error</li>
+                    <li>Allowed user to restart torrent through vertical slide</li>
+                    <li>Overhauled Settings page with file picker, background image handling, and input path clearing</li>
+                    <li>Added changelog popup for displaying updates</li>
+                    <li>Implemented network error alerts</li>
+                    <li>Prepared for background image changes in future updates</li>
+                    <li>Started manual refresh feature for game content updates</li>
+                  </ul>
+                </li>
+                <li><span class="label bugfix">Bug Fixes:</span>
+                  <ul>
+                    <li>Fixed path replacing issues</li>
+                    <li>Corrected search bar type for better input validation</li>
+                    <li>Fixed quick avoidable errors with `?`</li>
+                    <li>Fixed AppCache issue in JSX</li>
+                    <li>Fixed AppDir and AppConfig compatibility (Unix-Based OS and Windows)</li>
+                  </ul>
+                </li>
+                <li><span class="label improvement">Improvements:</span>
+                  <ul>
+                    <li>Increased scraping speed by approximately 70% for faster image fetching</li>
+                    <li>Compressed requests with Brotli, Gzip, or Deflate</li>
+                    <li>Started migration to Stores instead of localStorage</li>
+                    <li>Added store `restartTorrentInfo`</li>
+                    <li>Enhanced HTML readability</li>
+                    <li>Spacing adjustments on changelog</li>
+                    <li>Deprecation of localStorage usage</li>
+                    <li>Increased logging during scraping and network tasks for better debugging</li>
+                    <li>Prepared codebase for UI component updates without full window reloads</li>
+                    <li>Optimized code for better maintainability and performance</li>
+                    <li>Added Clippy usage for cleaner code</li>
+                  </ul>
+                </li>
               </ul>
             </div>
 
@@ -60,6 +102,17 @@ const ChangelogPopup = () => {
                   </ul>
                 </li>
               </ul>
+            </div>
+
+            <div class="checkbox-container">
+              <label>
+                <input 
+                  type="checkbox" 
+                  checked={isHidden()} 
+                  onChange={handleCheckboxChange} 
+                />
+                Don't show again
+              </label>
             </div>
 
             <button class="close-btn" onClick={handleClose}>Close</button>

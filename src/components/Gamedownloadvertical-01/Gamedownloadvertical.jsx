@@ -82,13 +82,6 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
                                     downloadFileList: restartTorrentInfo.fileList
                                 })
 
-                                try {
-                                    await invoke('api_resume_torrent', {torrentIdx:hash });
-                                } catch(error) {
-                                    //TODO: Will check state.
-                                    console.log("Not really an error, it's just not paused and it would be too complicated to check for the state (laziness)")
-                                }
-
                                 window.dispatchEvent(new Event('start-download'));
                             } catch (error) {
                                 console.error('Error Toggling Torrent State Again:', error);
@@ -201,7 +194,7 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
         fetchStats();
         const intervalId = setInterval(fetchStats, 500);
         
-        if (gameInfo().finished) {
+        if (gameInfo()?.finished) {
             clearInterval(intervalId);
         }
         onCleanup(() => clearInterval(intervalId));
