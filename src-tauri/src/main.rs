@@ -1,8 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// TODO: Add Logging to a File.
-
 // TODO: Add updater.
 
 mod scrapingfunc;
@@ -22,6 +20,9 @@ use std::fs;
 
 use serde_json::Value;
 use tauri::AppHandle;
+use tracing::error;
+use tracing::info;
+use tracing::warn;
 use std::error::Error;
 
 use core::str;
@@ -242,7 +243,7 @@ async fn get_games_images(
     let updated_cache_data = serde_json::to_string_pretty(&cache_as_hashmap).map_err(|e| CustomError { message: e.to_string() })?;
     tokio::fs::write(&cache_file_path, updated_cache_data).await?;
 
-    println!("Time elapsed to find images : {:#?}", now.elapsed());
+    info!("Time elapsed to find images : {:#?}", now.elapsed());
 
     Ok(GameImages { my_all_images: image_srcs })
 }
@@ -339,17 +340,17 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
     let path_obj = PathBuf::from(&path);
 
     // Debugging information
-    println!("Checking path: {:?}", path_obj);
+    info!("Checking path: {:?}", path_obj);
 
     if !path_obj.exists() {
-        println!("Path does not exist.");
+        warn!("Path does not exist.");
         return Ok(false);
     }
     if !path_obj.is_dir() {
-        println!("Path is not a directory.");
+        warn!("Path is not a directory.");
         return Ok(false);
     }
-    println!("Path is valid.");
+    info!("Path is valid.");
     Ok(true)
 }
 
@@ -358,7 +359,7 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
     dir_path.push("tempGames");
 
     if !dir_path.exists() {
-        println!("Directory does not exist: {:?}", dir_path);
+        info!("Directory does not exist: {:?}", dir_path);
         return Err(Box::new(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "Directory not found",
@@ -373,7 +374,7 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
         // Only process JSON files
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
             if let Err(e) = check_file_for_tags(&path) {
-                println!("Error processing file {:?}: {}", path, e);
+                error!("Error processing file {:?}: {}", path, e);
             }
         }
     }
@@ -394,7 +395,7 @@ fn check_file_for_tags(path: &Path) -> Result<()> {
         for obj in arr {
             // Each object should contain the "tag" key
             if !obj.get("tag").is_some() {
-                println!("Missing 'tag' key in file: {:?}", path);
+                warn!("Missing 'tag' key in file: {:?}, rebuilding...", path);
                 fs::remove_file(&path)?;
             }
         }
@@ -419,7 +420,7 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
 
 // Function to perform a network request after ensuring frontend is ready, and emit network-failure if the request fails
 async fn perform_network_request(app_handle: tauri::AppHandle) {
-    println!(
+    info!(
         "perform_network_request: Waiting for frontend-ready before starting the network request."
     );
 
@@ -430,7 +431,7 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
 
         // Listen for 'frontend-ready' before performing the network request
         main_window.listen("frontend-ready", move |_| {
-            println!("Frontend is ready, starting the network request...");
+            info!("Frontend is ready, starting the network request...");
 
             // Clone `app_handle_clone` for use in the async block
             let app_handle_inner_clone = app_handle_clone.clone();
@@ -443,13 +444,13 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
                 // Check if the request was successful
                 match result {
                     Ok(resp) => {
-                        let text = resp.text().await.unwrap();
-                        println!(
+                        let _text = resp.text().await.unwrap();
+                        info!(
                             "perform_network_request: Network request to Fitgirl website was successful."
                         );
                     }
                     Err(_) => {
-                        println!("Network request failed, emitting network-failure event.");
+                        info!("Network request failed, emitting network-failure event.");
 
                         // Emit the network-failure event after the network request fails
                         let failure_message = Payload {
@@ -466,14 +467,14 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    println!("{}: Main.rs: Starting the application...", Utc::now().format("%a,%b,%e,%T,%Y"));
+    info!("{}: Main.rs: Starting the application...", Utc::now().format("%a,%b,%e,%T,%Y"));
     let image_cache = Arc::new(
         Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap()))
     );
     let context = tauri::generate_context!();
 
     let logs_dir = app_log_dir(context.config()).unwrap();
-    println!("path to logs : {:#?}", &logs_dir);
+    info!("path to logs : {:#?}", &logs_dir);
     let _log_guard = setup_logging(logs_dir);
 
     tauri::Builder
@@ -608,7 +609,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .unwrap()
                     .eval("window.location.reload();") //TODO : we need to remove this as it causes a reload of the page and the emits dont get sent properly
                     .unwrap();
-                println!("Scraping signal has been sent.");
+                info!("Scraping signal has been sent.");
             });
 
             Ok(())
