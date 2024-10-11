@@ -4,6 +4,7 @@
 pub mod basic_scraping {
     use librqbit::Session;
     use serde::{Deserialize, Serialize};
+    use tracing::{error, info};
     use core::str;
     use std::{fs, sync::Arc};
     use tauri::Manager;
@@ -285,7 +286,7 @@ pub mod basic_scraping {
     
         let end_time = Instant::now();
         let duration_time_process = end_time - start_time;
-        println!("Data has been written to newly_added_games.json. Time was : {:#?}", duration_time_process);
+        info!("Data has been written to newly_added_games.json. Time was : {:#?}", duration_time_process);
     
         Ok(())
     }
@@ -296,7 +297,9 @@ pub mod basic_scraping {
         let mut popular_games: Vec<Game> = Vec::new();
         
         let client = reqwest::Client::new();
-        let url = "https://fitgirl-repacks.site/popular-repacks-of-the-year/";
+
+        //TODO: Add selection for either of the month or of the year (default will be month from now on.) Through the settings front end.
+        let url = "https://fitgirl-repacks.site/popular-repacks/";
         
         let res = match client.get(url).send().await {
             Ok(response) => response,
@@ -393,7 +396,7 @@ pub mod basic_scraping {
             let existing_games: Vec<Game> = match serde_json::from_str(&file_content) {
                 Ok(games) => games,
                 Err(e) => {
-                    eprintln!("Failed to parse existing JSON data: {:#?}", e);
+                    error!("Failed to parse existing JSON data: {:#?}", e);
                     return Err(Box::new(ScrapingError::FileJSONError(e)));
                 }
             };
@@ -403,7 +406,7 @@ pub mod basic_scraping {
                 let _href = hreflink_elem.value().attr("href").unwrap_or_default();
     
                 if i < existing_games.len() && title == existing_games[i].title {
-                    println!("Game '{}' matches with the existing file. Stopping...", title);
+                    info!("Game '{}' matches with the existing file. Stopping...", title);
                     return Ok(()); // Stop the process if the game matches
                 }
             }
@@ -510,7 +513,7 @@ pub mod basic_scraping {
             }
         }
     
-        println!("Execution time: {:#?}", start_time.elapsed());
+        info!("Execution time: {:#?}", start_time.elapsed());
         let json_data = match serde_json::to_string_pretty(&popular_games) {
             Ok(json_d) => json_d,
             Err(e) => {
@@ -540,14 +543,14 @@ pub mod basic_scraping {
     
         let end_time = Instant::now();
         let duration_time_process = end_time - start_time;
-        println!("Data has been written to popular_games.json. Time was: {:#?}", duration_time_process);
+        info!("Data has been written to popular_games.json. Time was: {:#?}", duration_time_process);
     
         Ok(())
     }
     
     #[tokio::main]
     pub async fn recently_updated_games_scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
-        println!("Starting recently_updated_games_scraping_func...");
+        info!("Starting recently_updated_games_scraping_func...");
     
         let start_time = Instant::now();
         let mut recent_games: Vec<Game> = Vec::new();
@@ -682,7 +685,7 @@ pub mod basic_scraping {
         }
     
         let duration_time_process = start_time.elapsed();
-        println!("Data has been written to recently_updated_games.json. Time taken: {:#?}", duration_time_process);
+        info!("Data has been written to recently_updated_games.json. Time taken: {:#?}", duration_time_process);
     
         // Emit scraping completion event
         app_handle.emit_all("scraping_complete", "Recently updated games scraping completed.").unwrap();
@@ -697,6 +700,7 @@ pub mod basic_scraping {
 pub mod commands_scraping {
 
     use serde::{Deserialize, Serialize};
+    use tracing::info;
     use core::str;
     use std::fs;
     use scraper::Selector;
@@ -766,7 +770,6 @@ pub mod commands_scraping {
 
     #[tokio::main]
     pub async fn get_sitemaps_website(app_handle: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Before Sitemaps Request");
     
         let mut all_files_exist = true;
         
@@ -788,7 +791,6 @@ pub mod commands_scraping {
         for page_number in 1..=5 {
             let relative_filename = format!("post-sitemap{}.xml", page_number);
             let concrete_path = &binding.join(relative_filename);
-            println!("{:#?}", concrete_path);
             if !Path::new(concrete_path).try_exists().unwrap(){
                 all_files_exist = false;
                 break;
@@ -808,7 +810,6 @@ pub mod commands_scraping {
             let relative_url = format!("https://fitgirl-repacks.site/post-sitemap{}.xml", page_number);
             let relative_filename = format!("post-sitemap{}", page_number);
             
-            println!("Downloading: {} -> {}", relative_url, relative_filename);
             let my_app_handle = app_handle.clone();
             basic_scraping::download_sitemap(my_app_handle, &relative_url, &relative_filename).await?;
         }
@@ -819,9 +820,8 @@ pub mod commands_scraping {
     #[tauri::command]
     pub async fn get_singular_game_info(app_handle: tauri::AppHandle, game_link: String) -> Result<(), SingularFetchError> {
 
-        println!("Before HTTP request");
-        println!("{:#?}", game_link);
         let start_time = Instant::now();
+
         let mut searched_game: Vec<SingularGame> = Vec::new();
         let client = reqwest::Client::new();
 
@@ -830,7 +830,6 @@ pub mod commands_scraping {
 
         let game_body = game_res.text().await?;
         let game_doc = scraper::Html::parse_document(&game_body);
-        println!("After HTTP request");
 
         let title_selector = scraper::Selector::parse(".entry-title").unwrap();
         let images_selector = scraper::Selector::parse(".entry-content > p > a > img").unwrap();
@@ -862,7 +861,6 @@ pub mod commands_scraping {
         };
 
         searched_game.push(singular_searched_game);
-        println!("Execution time: {:#?}", start_time.elapsed());
 
         let json_data = serde_json::to_string_pretty(&searched_game)?;
         let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
@@ -884,7 +882,7 @@ pub mod commands_scraping {
 
         let end_time = Instant::now();
         let duration_time_process = end_time - start_time;
-        println!("Data has been written to singular_game_temp.json. Time was : {:#?}", duration_time_process);
+        info!("Data has been written to singular_game_temp.json. Time was : {:#?}", duration_time_process);
 
         Ok(())
     }

@@ -118,7 +118,6 @@ pub mod torrent_calls {
 
             // TODO: Fix session issue that create the session folder locally
             let persistence_path = format!("{}.persistence", app_cache_patch);
-            println!("persis path : {:#?}", &persistence_path);
             let _dht_persistence_path = format!("{}.dht_persistence/", app_cache_patch);
 
             let persistence_config = Some(SessionPersistenceConfig::Json {
@@ -302,10 +301,7 @@ pub mod torrent_calls {
                     info!(
                         "Torrent Was Successfully Added And The Installation Successfully Started"
                     );
-                    println!(
-                        "Torrent Was Successfully Added And The Installation Successfully Started"
-                    );
-
+                    
                     Some(response)
                 }
                 Err(e) => {
@@ -338,7 +334,6 @@ pub mod torrent_calls {
             let setup_path = format!("{}\\setup.exe", torrent_output_folder);
             executable_custom_commands::start_executable(setup_path);
             let game_output_folder = torrent_output_folder.replace(" [FitGirl Repack]", "");
-            println!("continue !");
 
             #[cfg(target_os = "windows")]
             windows_ui_automation::automate_until_download(
@@ -351,7 +346,7 @@ pub mod torrent_calls {
             #[cfg(target_os = "linux")]
             //TODO: Add linux automate_until_download command
 
-            println!("Torrent has completed!");
+            info!("Torrent has completed!");
             info!("Game Installation Has been Started");
 
             Ok(())

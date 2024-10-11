@@ -1,6 +1,7 @@
 
 #[cfg(target_os = "windows")]
 mod checklist_automation {
+    use tracing::{error, info, warn};
     use uiautomation::{UIAutomation, UIElement};
     use uiautomation::types::UIProperty::{ClassName, NativeWindowHandle, ToggleToggleState};
 
@@ -21,14 +22,16 @@ mod checklist_automation {
 
     #[cfg(target_os = "windows")]
     pub fn get_checkboxes_from_list(list_to_check: Vec<String>) {
+        use tracing::warn;
+
         let automation = UIAutomation::new().unwrap();
         let walker = automation.get_control_view_walker().unwrap();
     
         let checklistbox_elem = match get_checklistbox() {
             Ok(elem) => elem,
             Err(e) => {
-                println!("Failed to find checklist box: {}", e);
-                return; // Or handle the error appropriately
+                warn!("Failed to find checklist box: {}", e);
+                return;
             }
         };
     
@@ -63,7 +66,7 @@ mod checklist_automation {
                 let spec_control_type = el.get_control_type().unwrap();
     
                 let spec_text_inside = el.get_name().unwrap();
-                println!(
+                info!(
                     "ClassName = {:#?} and HWND = {:#?} and ControlType = {:#?} and TTState = {:#?} and CheckboxText = {:#?}",
                     spec_classname.to_string(),
                     spec_proc_handle.to_string(),
@@ -76,15 +79,15 @@ mod checklist_automation {
 
                     if spec_text_inside.contains(chkbx) {
                         match el.send_keys(" ", 0) {
-                            Ok(_) => println!("Space key sent to element."),
-                            Err(e) => eprintln!("Failed to send space key: {:?}", e),
+                            Ok(_) => info!("Space key sent to element."),
+                            Err(e) => error!("Failed to send space key: {:?}", e),
                         } 
                         match el.send_keys(" ", 0) {
-                            Ok(_) => println!("Space key sent to element."),
-                            Err(e) => eprintln!("Failed to send space key: {:?}", e),
+                            Ok(_) => info!("Space key sent to element."),
+                            Err(e) => error!("Failed to send space key: {:?}", e),
                         } 
                     } else {
-                        println!("skipped : {:#?}",spec_text_inside);
+                        warn!("skipped : {:#?}",spec_text_inside);
                     }
 
                 });
@@ -103,6 +106,8 @@ pub mod windows_ui_automation {
     use std::process::Command;
     use std::path::Path;
     use std::{thread, time};
+    use tracing::{error, info};
+
     use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
     
@@ -112,14 +117,14 @@ pub mod windows_ui_automation {
             .spawn() 
         {
             Ok(child) => {
-                println!("Executable started with PID: {}", child.id());
+                info!("Executable started with PID: {}", child.id());
             }
             Err(e) => {
-                eprintln!("Failed to start executable: {}", e);
+                error!("Failed to start executable: {}", e);
     
                 // Optionally, you might want to check if the file is being used
                 if e.raw_os_error() == Some(32) {
-                    eprintln!(" Some Other Process is Creeping on him.")
+                    error!(" Some Other Process is Creeping on him.")
                 }
     
             },
@@ -165,6 +170,8 @@ pub mod windows_ui_automation {
 pub mod executable_custom_commands {
     #[cfg(target_os = "windows")]
     use std::process::Command;
+
+    use tracing::{error, info};
     
 
 
@@ -181,13 +188,13 @@ pub mod executable_custom_commands {
             .spawn() 
         {
             Ok(child) => {
-                println!("Executable started with PID: {}", child.id());
+                info!("Executable started with PID: {}", child.id());
             }
             Err(e) => {
-                eprintln!("Failed to start executable: {}", e);
+                error!("Failed to start executable: {}", e);
                 
                 if let Some(32) = e.raw_os_error() {
-                    eprintln!("Another process is using the executable.");
+                    error!("Another process is using the executable.");
                 }
             },
         }
