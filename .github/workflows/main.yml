@@ -1,12 +1,13 @@
 name: 'publish'
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'src/**'
-      - 'src-tauri/**'
+    workflow_dispatch:  # Manual trigger only
+#   push:
+#     branches:
+#       - master
+#     paths:
+#       - 'src/**'
+#       - 'src-tauri/**'
       
 jobs:
   publish-tauri:
