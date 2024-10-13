@@ -522,7 +522,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         tracing::info!(
                             "[scraping_func] has been completed. No errors are reported."
                         );
-                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
+                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete and for all other app_handle.
                         // when the main reload window code is removed
                          first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
                     }
@@ -541,7 +541,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                         tracing::info!(
                             "[popular_games_scraping_func] has been completed. No errors are reported."
                         );
-                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
                         second_app_handle_clone.emit_all("popular-games-ready", {}).unwrap();
                     }
@@ -560,7 +559,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                         tracing::info!(
                             "[recently_updated_games_scraping_func] has been completed. No errors are reported."
                         );
-                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
                         third_app_handle_clone.emit_all("recent-updated-games-ready", {}).unwrap();
                     }
@@ -579,7 +577,6 @@ fn main() -> Result<(), Box<dyn Error>> {
                         tracing::info!(
                             "[get_sitemaps_website] has been completed. No errors are reported."
                         );
-                        //TODO: This will be used to emit a signal to the frontend that the scraping is complete
                         // when the main reload window code is removed
                         fourth_app_handle_clone.emit_all("sitemaps-ready", {}).unwrap();
                     }
@@ -589,7 +586,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                 if let Err(e) = mandatory_tasks_online.await {
                     eprintln!("An error occurred during scraping tasks: {:?}", e);
                     tracing::info!("An error occurred during scraping tasks: {:?}", e);
-                    scraping_failed_event.emit_all("scraping_failed_event", "Test"); //TODO: 
+                    match scraping_failed_event.emit_all("scraping_failed_event", "Test") {
+                        Ok(()) => (),
+                        Err(e) => {
+                            error!("Error During Scraping Event, Test Payload : {}", e)
+                        }
+                    } //TODO 
                     // Do not exit, continue running
                 } else {
                     tracing::info!(
@@ -604,10 +606,12 @@ fn main() -> Result<(), Box<dyn Error>> {
                 current_app_handle
                     .emit_all("scraping-complete", {})
                     .unwrap();
+
+                //TODO : we need to remove this as it causes a reload of the page and the emits dont get sent properly
                 current_app_handle
                     .get_window("main")
                     .unwrap()
-                    .eval("window.location.reload();") //TODO : we need to remove this as it causes a reload of the page and the emits dont get sent properly
+                    .eval("window.location.reload();") 
                     .unwrap();
                 info!("Scraping signal has been sent.");
             });
@@ -634,7 +638,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
-        .build({ tauri::generate_context!() })
+        .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
             match event {

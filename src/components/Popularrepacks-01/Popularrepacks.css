@@ -62,14 +62,22 @@ body {
   #first-long-game-title {
     top: 0;
     filter: brightness(0.5);
-    position: fixed;
+    position: absolute;
     margin-left: 1em;
     margin-top: 11.5em;
     font-weight: 500;
     color: white;
     cursor: pointer;
+    
+    white-space: wrap;
+    overflow: hidden; 
+    text-overflow: clip;
+    max-width: 90%; 
+    text-shadow: -11px 9px 4px #ffffff;
   }
   
+
+
   #start-scroll-button {
     position: absolute; /* Position relative to the parent .popular-repacks */
     left: 0; /* Position at the left */

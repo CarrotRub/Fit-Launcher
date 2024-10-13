@@ -10,6 +10,7 @@ import "./Mylibrary.css";
 
 function Mylibrary() {
     const [imagesObject, setImagesObject] = createSignal([]);
+    const [downlaodedGamesList, setDownloadedGamesList] = createSignal([]);
     const [downloadedGamePath, setDownloadedGamePath] = createSignal("");
     const [addedGame, setAddedGame] = createSignal({});
     const [removedGame, setRemovedGame] = createSignal({});
@@ -234,12 +235,6 @@ function Mylibrary() {
 
         }
 
-        try {
-            setIsDataReady(true); // Set data as ready
-        } catch (error) {
-            // Handle error if needed
-            setIsDataReady(false);
-        }
     });
 
 
@@ -360,10 +355,10 @@ function Mylibrary() {
     createEffect( async () => {
         console.log(addedGame());
         console.log(removedGame())
-        if(addedGame()) {
-            let gameGrid = document.querySelector('.game-grid');
-            gameGrid.innerHTML = ``;
-        }
+        // if(addedGame()) {
+        //     let gameGrid = document.querySelector('.game-grid');
+        //     gameGrid.innerHTML = ``;
+        // }
         try {
             const appDir = await appDataDir();
             const dirPath = appDir.replace(/\\/g, "/");
@@ -371,129 +366,7 @@ function Mylibrary() {
             setDownloadedGamePath(filePath);
             const fileContent = await readFile(filePath);
             const gameData = JSON.parse(fileContent.content);
-            let gameGrid = document.querySelector('.game-grid');
-    
-            const warningSvg = `
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#de4005">
-                <g stroke-width="0"/>
-                <g stroke-linecap="round" stroke-linejoin="round"/>
-                <path fill="none" d="M0 0h24v24H0z"/>
-                <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10m-1-7v2h2v-2zm0-8v6h2V7z"/></svg>
-            `;
-    
-            gameData.forEach((game, i) => {
-                const title = game.title;
-                const img = game.img;
-                const magnetlink = game.magnetlink;
-                const path = game.path;
-    
-                const imageOption = document.createElement('div');
-                imageOption.className = 'image-option';
-                imageOption.style.width = '200px';  
-                imageOption.style.height = '300px'; 
-    
-                const imgElement = document.createElement('img');
-                imgElement.src = img;
-                imgElement.alt = title;
-                imgElement.style.width = '100%';
-                imgElement.style.height = '100%';
-                imgElement.style.objectFit = 'cover'; 
-                imageOption.appendChild(imgElement);
-    
-                if (!path) {
-                    const warningIcon = document.createElement('div');
-                    warningIcon.className = 'warning-icon';
-                    warningIcon.innerHTML = warningSvg;
-                    warningIcon.style.position = 'absolute';
-                    warningIcon.style.top = '5px';
-                    warningIcon.style.right = '5px';
-                    warningIcon.style.zIndex = '10';
-                    imageOption.appendChild(warningIcon);
-    
-                    imageOption.addEventListener('click', async () => {
-                        let game_executable_path = await open({
-                            multiple: false,
-                            filters: [{
-                                name: 'Executable',
-                                extensions: ['exe']
-                            }]
-                        });
-    
-                        if (game_executable_path) {
-                            updateGamePathInFile(title, game_executable_path, filePath);
-                            warningIcon.remove();
-                        }
-                    });
-                }
-    
-                imageOption.addEventListener('contextmenu', (event) => {
-                    event.preventDefault();
-                    setGameContextMenuPosition({ x: event.clientX, y: event.clientY });
-                    setSelectedGame(game);
-                    setGameContextMenuVisible(true);
-                    
-                });
-    
-                imageOption.addEventListener('click', async () => {
-                    setGameContextMenuVisible(false); 
-                    if (game.path) {
-                        let correctTitle = game.title.replace(/\s*\+.*$/, '')
-                        Swal.fire({
-                            title: `Launch ${correctTitle}`,
-                            text: `Do you want launch the game ${correctTitle}? \n`,
-                            icon: 'info',
-                            showCancelButton: true,
-                            confirmButtonText: 'Yes, launch it!',
-                            cancelButtonText: 'Cancel'
-                        }).then(async (result) => {
-                            if (result.isConfirmed) {
-                                await invoke('start_executable', { path: game.path });
-                            }
-                        });
-                    }
-                });
-    
-                gameGrid.appendChild(imageOption);
-            });
-    
-            // Always add the "Add Downloaded Game" option
-            const emptyImageOption = document.createElement('div');
-            emptyImageOption.className = 'image-option empty';
-            emptyImageOption.style.position = 'relative';
-            emptyImageOption.style.display = 'flex';
-            emptyImageOption.style.alignItems = 'center';
-            emptyImageOption.style.justifyContent = 'center';
-            emptyImageOption.style.width = '200px';  
-            emptyImageOption.style.height = '300px'; 
-            emptyImageOption.style.border = '4px dashed #ccc';
-            emptyImageOption.style.borderRadius = '18px'
-            emptyImageOption.style.cursor = 'pointer';
-            emptyImageOption.style.boxSizing = 'border-box';
-            
-            const plusSign = document.createElement('div');
-            plusSign.innerHTML = '+';
-            plusSign.style.fontSize = '48px';
-            plusSign.style.color = '#ccc';
-            plusSign.style.textShadow = 'rgb(0, 0, 0) -5px 7px 12px';
-            
-            const label = document.createElement('div');
-            label.innerText = 'Add Downloaded Game';
-            label.style.position = 'absolute';
-            label.style.bottom = '10px';
-            label.style.fontSize = '24px';
-            label.style.fontWeight = '600';
-            label.style.color = 'rgb(204, 204, 204)';
-            label.style.textAlign = 'center';
-            label.style.width = '100%';
-            label.style.textShadow = 'rgb(0, 0, 0) -5px 7px 12px';
-            
-            emptyImageOption.appendChild(plusSign);
-            emptyImageOption.appendChild(label);
-            
-            emptyImageOption.addEventListener('click', handleAddDownloadedGames);
-            
-            gameGrid.appendChild(emptyImageOption);
-            return gameData;
+            setDownloadedGamesList(gameData);
         } catch (error) {
             console.error("Error parsing game data:", error);
             throw error;
@@ -504,7 +377,7 @@ function Mylibrary() {
 
         // It's a nodeList so you have to forEach.
         const libraryPage = document.querySelector('.game-container');
-    
+
         libraryPage.addEventListener('click', (e) => {
             setGameContextMenuVisible(false); 
         }); 
@@ -543,12 +416,85 @@ function Mylibrary() {
 
     return (
         <>
-            <div class="launcher-container">
+             <div class="launcher-container">
                 <div class="game-container">
                     <div class="game-container-title">
                         <h1>My Library</h1>
                     </div>
-                    <div class="game-grid"></div>
+                    
+                    <div class="game-grid">
+                        {/* Iterate over gameData to dynamically create game elements */}
+                        {downlaodedGamesList().map((game, i) => (
+                            <div 
+                                class="image-option" 
+                                key={i} 
+                                onClick={
+                                    async () => 
+                                        {
+                                    if (!game.path) {
+                                        let game_executable_path = await open({
+                                            multiple: false,
+                                            filters: [{
+                                                name: 'Executable',
+                                                extensions: ['exe']
+                                            }]
+                                        });
+                                        if (game_executable_path) {
+                                            // Update game path and remove warning icon
+                                            updateGamePathInFile(game.title, game_executable_path, downloadedGamePath());
+                                        }
+                                    } else {
+                                        let correctTitle = game.title.replace(/\s*\+.*$/, '');
+                                        Swal.fire({
+                                            title: `Launch ${correctTitle}`,
+                                            text: `Do you want to launch the game ${correctTitle}?`,
+                                            icon: 'info',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Yes, launch it!',
+                                            cancelButtonText: 'Cancel'
+                                        }).then(async (result) => {
+                                            if (result.isConfirmed) {
+                                                await invoke('start_executable', { path: game.path });
+                                            }
+                                        });
+                                    }
+                                }}
+                                onContextMenu={
+                                    () => {
+                                        setGameContextMenuPosition({ x: event.clientX, y: event.clientY });
+                                        setSelectedGame(game);
+                                        setGameContextMenuVisible(true);
+                                        
+                                    }
+                                }
+                                >
+                                <img src={game.img} alt={game.title}  />
+                                
+                                {!game.path && (
+                                    <div class="warning-icon">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#de4005">
+                                            <g stroke-width="0"/>
+                                            <g stroke-linecap="round" stroke-linejoin="round"/>
+                                            <path fill="none" d="M0 0h24v24H0z"/>
+                                            <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10m-1-7v2h2v-2zm0-8v6h2V7z"/>
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        
+                        <div class="add-game-container" >
+                            <button class="button" onClick={handleAddDownloadedGames}>
+                                <svg class="svgIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <g stroke-width="0"/>
+                                    <g stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M4 12h16m-8-8v16" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+
+
+                    </div>
                 </div>
             </div>
 

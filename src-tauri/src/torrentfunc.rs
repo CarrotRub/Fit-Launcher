@@ -2,7 +2,7 @@ pub mod torrent_calls {
 
     use anyhow::Context; // For handling JSON
     use librqbit::api::TorrentIdOrHash;
-    use librqbit::dht::Id20;
+    use librqbit::dht::{Id20, PersistentDhtConfig};
     use librqbit::{
         AddTorrent, AddTorrentOptions, Api, Magnet, Session, SessionOptions,
         SessionPersistenceConfig, TorrentStats,
@@ -116,7 +116,6 @@ pub mod torrent_calls {
         ) -> Result<Self, Box<TorrentError>> {
             // let magnet_id20 = Magnet::parse(&magnet_link).unwrap().as_id20().unwrap();
 
-            // TODO: Fix session issue that create the session folder locally
             let persistence_path = format!("{}.persistence", app_cache_patch);
             let _dht_persistence_path = format!("{}.dht_persistence/", app_cache_patch);
 
