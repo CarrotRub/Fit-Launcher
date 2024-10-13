@@ -1,7 +1,7 @@
 .horizontal-slide {
     bottom: 0;
     position: fixed;
-    width: calc(100% - 260px); /* Adjust to fit within screen width minus sidebar */
+    width: calc(100% - 17vw); /* Adjust to fit within screen width minus sidebar */
     background-color: rgba(34, 34, 36, 1);
     color: white;
     z-index: 10;

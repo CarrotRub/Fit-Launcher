@@ -16,9 +16,8 @@ body {
     gap: 2em;
     grid-auto-rows: 200px;
     overflow-x: auto;
-    position: relative;
-    
-}
+    position: relative;  
+    }
   .newly-added::-webkit-scrollbar {
     display: none; /* Hide the default scrollbar */
   }

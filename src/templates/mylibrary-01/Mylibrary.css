@@ -109,15 +109,13 @@ display:none;
 }
 
 .game-grid {
-  padding: 15px;
-  grid-column: 2;
-  display: grid;
-  gap: 2vw;
-  grid-template-columns: repeat(auto-fill, minmax(15%, 1fr));
-  grid-auto-rows: 300px;
-  justify-items: start;
-  overflow-x: clip;
-  position: relative;
+    display: flex;
+    flex-wrap: wrap; /* Enable wrapping */
+    gap: 2em; 
+    overflow-x: unset;
+    overflow-y: hidden;
+    position: relative;
+    padding-left: 15px;
 }
 
 /* Container outside of game-grid styles */
@@ -141,17 +139,25 @@ display:none;
   padding-left: 15px;
 }
 
-.game-grid img {
-  grid-column: span 1;
-  display: flex;
-  flex-wrap: nowrap;
-  flex-direction: row;
-
-  max-height: -webkit-fill-available;
-  border-radius: 18px;
-  cursor: pointer;
+.game-grid > * {
+    height: 20vw;
 }
 
+.game-grid img {
+    display: block; /* Use block to ensure the image fills the grid cell */
+    object-fit: cover; 
+    max-height: 100%; 
+    border-radius: 18px; 
+    cursor: pointer;
+}
+
+.image-option img {
+    display: block; 
+    object-fit: cover;
+    max-height: 100%; 
+    border-radius: 18px;
+    cursor: pointer; 
+}
 
 .color-blur-overlay,
 .blur-overlay {
@@ -171,10 +177,83 @@ display:none;
 /* Warning icon style */
 .image-option {
   position: relative; /* Ensure the warning icon positions relative to this container */
+  display: inline-block;
+}
+
+
+  
+  .warning-icon {
+    position: absolute;
+    top: 5px;
+    left: 1px;
+    z-index: 10;
+  }
+  
+  .warning-icon svg {
+    width: 32px;
+    height: 32px;
+    fill: #cb6504;
   }
 
-.warning-icon svg {
-  width: 32px;
-  height: 32px;
-  fill: #cb6504;
-}
+/* From Uiverse.io by vinodjangid07 Thank You :3*/ 
+.button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: rgb(20, 20, 20);
+    border: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0px 0px 5px 6px rgba(70, 58, 112, 0.66);
+    cursor: pointer;
+    transition-duration: 0.3s;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .svgIcon {
+    width: 12px;
+    transition-duration: 0.3s;
+  }
+  
+  .svgIcon path {
+    fill: white;
+  }
+  
+  .button:hover {
+    width: 120px;
+    border-radius: 50px;
+    transition-duration: 0.3s;
+    background-color: rgb(92, 66, 187);
+    align-items: center;
+  }
+  
+  .button:hover .svgIcon {
+    width: 20px;
+    transition-duration: 0.3s;
+    transform: translateY(-200%);
+  }
+  
+  .button::before {
+    position: absolute;
+    bottom: -20px;
+    content: "Import Game";
+    color: white;
+    transition-duration: .3s;
+    font-size: 1px;
+  }
+  
+  .button:hover::before {
+    font-size: 13px;
+    opacity: 1;
+    bottom: unset;
+    transition-duration: 0.3s;
+  }
+
+  .add-game-container {
+    display: flex;
+    align-items: center;
+    margin-left: 5vw;
+  }

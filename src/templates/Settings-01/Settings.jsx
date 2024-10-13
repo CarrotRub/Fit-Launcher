@@ -266,10 +266,10 @@ const SettingsPage = () => {
                 setNotificationMessage('Applying background, please wait...')
                 setNotificationVisible(true)
 
-                // Delay the reload slightly to allow the notification to appear
+                // Delay the reload slightly to allow the notification to appear (Not 1.5sec, too long, the user will click on save settings again and it will break)
                 setTimeout(() => {
                     window.location.reload() 
-                }, 1500) 
+                }, 200) 
             }
         } catch (error) {
             console.error(
@@ -280,7 +280,8 @@ const SettingsPage = () => {
     }
 
     // Clear the background image path and set it to an empty string
-    const clearBackgroundImagePath = () => {
+    const clearBackgroundImagePath = async () => {
+        
         setSelectedBackgroundImagePath('')
         localStorage.setItem('LBIP', '')
         localStorage.setItem('LBIP_PATH_64', '')
@@ -291,17 +292,19 @@ const SettingsPage = () => {
             background_image_path: '',
             background_image_path_64: '',
         }
-        saveSettings(newSettings)
-
+        await saveSettings(newSettings)
+        setSettings(newSettings)
         // Notify the user that the background is being removed
         setNotificationMessage('Removing background, please wait...')
         setNotificationVisible(true)
-
+        
         // Delay the reload slightly to allow the notification to appear
         setTimeout(() => {
             window.location.reload() // Reload the app to remove the background
-        }, 1500) // Wait for 1.5 seconds before reload
+        }, 200)
     }
+
+
     // Check for updates function
     const handleCheckForUpdates = async () => {
         try {
