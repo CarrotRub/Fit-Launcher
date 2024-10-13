@@ -23,14 +23,14 @@ h2 {
 
 .app-container {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 17vw 1fr;
   height: 100vh; /* Ensure the app container fills the entire viewport */
   overflow: hidden;
 }
 
 .sidebar {
   position: fixed;
-  width: 260px;
+  width: 17vw;
   height: 100%; /* Sidebar takes full height */
   overflow-x: hidden;
   z-index: 9999;

@@ -50,7 +50,7 @@ function Newgames() {
             const data = await parseNewGameData();
             setImagesObject(data);
         } catch (error) {
-            //TOOD: improve error handling if images can't be fetched
+            //TODO: improve error handling if images can't be fetched
             // Handle error if needed
             //show a message to the user with a alert
             Swal.fire({
