@@ -171,10 +171,10 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
 
     const updateCharts = (stats) => {
         if (downloadUploadChart && bytesChart) {
-            const mbDownloadSpeed = (stats.live?.download_speed?.human_readable);
-            const mbUploadSpeed = (stats.live?.upload_speed.human_readable);
-            const downloadedMB = (stats.progress_bytes || 0) / (1024 * 1024);
-            const uploadedMB = (stats.uploaded_bytes || 0) / (1024 * 1024);
+            const mbDownloadSpeed = (stats?.live?.download_speed?.human_readable);
+            const mbUploadSpeed = (stats?.live?.upload_speed?.human_readable);
+            const downloadedMB = (stats?.progress_bytes || 0) / (1024 * 1024);
+            const uploadedMB = (stats?.uploaded_bytes || 0) / (1024 * 1024);
 
             downloadUploadChart.data.datasets[0].data.push(parseFloat(mbDownloadSpeed).toFixed(2));
             downloadUploadChart.data.datasets[1].data.push(parseFloat(mbUploadSpeed).toFixed(2));
@@ -287,10 +287,69 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
 
     const handleStopTorrent = async () => {
         const CTG = localStorage.getItem('CTG');
-        let hash = JSON.parse(CTG).torrent_idx
-        await invoke('api_stop_torrent', {torrentIdx: hash});
-        localStorage.removeItem('CDG');
-        window.dispatchEvent(new Event('storage'));
+        let hash = JSON.parse(CTG)?.torrent_idx;
+        console.log(hash)
+        if (CTG) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you really want to delete the current download? It will stop the current download but won't delete the files so you can still start it later.",
+                footer: 'You can also delete the files directly by clicking on this button <button id="delete-files-btn" class="swal2-styled" style="background-color: red; color: white;">Delete Files</button>!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                didRender: () => {
+                    if (hash) {
+                        // Add event listener for the custom "Delete Files" button
+                        const deleteFilesBtn = document.getElementById('delete-files-btn');
+                        deleteFilesBtn.addEventListener('click', async () => {
+                            try {
+                                await invoke('api_delete_torrent', { torrentIdx: hash });
+                                Swal.fire({
+                                    title: "Deleted",
+                                    text: "The files of the current download have been deleted.",
+                                    icon: "success"
+                                }).then(()=> {
+                                    localStorage.removeItem('CDG');
+                                    localStorage.removeItem('CTG');
+                                    window.dispatchEvent(new Event('storage'));
+                                });
+                            } catch (error) {
+                                Swal.fire({
+                                    title: "Error Deleting Files",
+                                    text: `An error occurred while deleting the files: ${error}`,
+                                    footer: "If you do not understand the error, please contact us on Discord before opening any issues on GitHub.",
+                                    icon: 'error'
+                                });
+                            }
+                        });
+                    } else {
+                        const deleteFilesBtn = document.getElementById('delete-files-btn');
+                        deleteFilesBtn.style.backgroundColor = 'gray';
+                        deleteFilesBtn.disabled = true;
+                    }
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await invoke('api_stop_torrent', {torrentIdx: hash});
+                    localStorage.removeItem('CDG');
+                    window.dispatchEvent(new Event('storage'));
+                    Swal.fire({
+                        title: "Deleted",
+                        text: "The current download has been deleted.",
+                        icon: "success"
+                    });
+                }
+            });
+        } else {
+            Swal.fire({
+                title: "Nothing",
+                text: "Nothing to stop here :D",
+                icon: "question"
+            })
+        }
+
+        
     }
 
     const slideLeft = () => {

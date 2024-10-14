@@ -10,8 +10,8 @@ import { open } from '@tauri-apps/api/dialog';
 import { appCacheDir, appDataDir } from '@tauri-apps/api/path';
 import { writeFile, readTextFile, removeFile } from '@tauri-apps/api/fs';
 import './Gamehorizontal.css';
-import { setGlobalTorrentInfo, setTorrentTrigger } from '../functions/dataStoreGlobal';
-import { setRestartTorrentInfo } from '../functions/dataStoreGlobal';
+import { globalTorrentInfo, setGlobalTorrentInfo, setTorrentTrigger } from '../functions/dataStoreGlobal';
+import { setRestartTorrentInfo, restartTorrentInfo } from '../functions/dataStoreGlobal';
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir;
@@ -85,11 +85,11 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                     confirmButtonText: 'Yes, resume it!',
                     cancelButtonText: 'Cancel'
                 }).then(async (result) => {
-                    if(result.isConfirmed) {
+                    if (result.isConfirmed) {
                         startDownloadProcess();
                     }
                 });
-            }else {
+            } else {
                 Swal.fire({
                     title: "Error",
                     text: "A different game is already downloading.",
@@ -97,15 +97,49 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                     showCancelButton: true,
                     confirmButtonText: 'Delete Current Download',
                     cancelButtonText: 'Cancel'
-                }).then(async (result) => {
+                }).then((result) => {
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: 'Are you sure?',
-                            text: "Do you really want to delete the current download? It will stop the current download but you can still start it later.",
+                            text: "Do you really want to delete the current download? It will stop the current download but won't delete the files so you can still start it later.",
+                            footer: 'You can also delete the files directly by clicking on this button <button id="delete-files-btn" class="swal2-styled" style="background-color: red; color: white;">Delete Files</button>!',
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonText: 'Yes, delete it!',
-                            cancelButtonText: 'Cancel'
+                            cancelButtonText: 'Cancel',
+                            didRender: () => {
+                                let CTG = localStorage.getItem('CTG');
+                                let hash = JSON.parse(CTG).torrent_idx;
+        
+                                if (hash) {
+                                    // Add event listener for the custom "Delete Files" button
+                                    const deleteFilesBtn = document.getElementById('delete-files-btn');
+                                    deleteFilesBtn.addEventListener('click', async () => {
+                                        try {
+                                            await invoke('api_delete_torrent', { torrentIdx: hash });
+                                            Swal.fire({
+                                                title: "Deleted",
+                                                text: "The files of the current download have been deleted.",
+                                                icon: "success"
+                                            }).then(()=> {
+                                                localStorage.removeItem('CTG');
+                                                startDownloadProcess();
+                                            });
+                                        } catch (error) {
+                                            Swal.fire({
+                                                title: "Error Deleting Files",
+                                                text: `An error occurred while deleting the files: ${error}`,
+                                                footer: "If you do not understand the error, please contact us on Discord before opening any issues on GitHub.",
+                                                icon: 'error'
+                                            });
+                                        }
+                                    });
+                                } else {
+                                    const deleteFilesBtn = document.getElementById('delete-files-btn');
+                                    deleteFilesBtn.style.backgroundColor = 'gray';
+                                    deleteFilesBtn.disabled = true;
+                                }
+                            }
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 localStorage.removeItem('CDG');
