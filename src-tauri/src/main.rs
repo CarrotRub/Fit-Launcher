@@ -633,6 +633,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             torrent_commands::api_automate_setup_install,
             torrent_commands::api_get_torrent_stats,
             torrent_commands::api_initialize_torrent_manager,
+            torrent_commands::api_delete_torrent,
             commands_scraping::get_singular_game_info,
             executable_custom_commands::start_executable
         ])
