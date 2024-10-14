@@ -419,20 +419,22 @@ pub mod torrent_calls {
             Ok(())
         }
 
-        // Function to restart a torrent, mostly after the app has been closed. 
-        // pub async fn restart_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
-        //     let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+        pub async fn delete_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
+            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
 
-        //     // * Use this to resume the function (It will take advantage of the fastresume option)
-        //     match Api::api_torrent_action_start(&self.api_session, torrent_hash).await {
-        //         Ok(_) => {
-        //             info!("Torrent Successfully Resumed");
-        //         }
-        //         Err(err) => {
-        //             error!("Torrent Couldn't Resume : {}", err)
-        //         }
-        //     }
-        // }
+            
+            match Api::api_torrent_action_delete(&self.api_session, torrent_hash).await {
+                Ok(_) => {
+                    info!("Torrent Successfully Resumed");
+                }
+                Err(err) => {
+                    error!("Torrent Couldn't Resume : {}", err)
+                }
+            }
+
+            Ok(())
+        }
+
     }
 }
 
@@ -601,6 +603,24 @@ pub mod torrent_commands {
         if let Some(manager) = &*torrent_manager {
             let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
             manager.stop_torrent(torrent_idx).await?;
+
+            Ok(())
+        } else {
+            Err(Box::new(TorrentError::AnyhowError(
+                "TorrentManager is not initialized.".to_string(),
+            )))
+        }
+    }
+
+    #[tauri::command]
+    pub async fn api_delete_torrent(
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String,
+    ) -> Result<(), Box<TorrentError>> {
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+            let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
+            manager.delete_torrent(torrent_idx).await?;
 
             Ok(())
         } else {
