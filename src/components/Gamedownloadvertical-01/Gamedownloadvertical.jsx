@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
-import { appCacheDir } from '@tauri-apps/api/path';
+import { appCacheDir, appDataDir } from '@tauri-apps/api/path';
 import Swal from 'sweetalert2';
 import Chart from "chart.js/auto";
 import { invoke } from "@tauri-apps/api";
@@ -9,6 +9,9 @@ import { restartTorrentInfo } from "../functions/dataStoreGlobal";
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir;
+
+const appDir =  await appDataDir();
+const dirPath = appDir;
 
 function Gameverticaldownloadslide({ isActive, setIsActive }) {
     const [gameInfo, setGameInfo] = createSignal(null);
@@ -69,7 +72,7 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
                         // Initialize Torrent.
                         try {
                             console.log("Initializing")
-                            await invoke('api_initialize_torrent_manager', {downloadPath: lastInputPath, appCachePath: cacheDirPath});
+                            await invoke('api_initialize_torrent_manager', {downloadPath: lastInputPath, appCachePath: cacheDirPath, appSettingsPath: dirPath});
                             console.log("Done Init")
                             try {
                                 console.log("Resuming");

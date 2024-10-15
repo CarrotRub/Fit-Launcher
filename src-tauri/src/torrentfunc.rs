@@ -2,12 +2,14 @@ pub mod torrent_calls {
 
     use anyhow::Context; // For handling JSON
     use librqbit::api::TorrentIdOrHash;
+    //TODO: Add DHT Persistence
     use librqbit::dht::{Id20, PersistentDhtConfig};
     use librqbit::{
         AddTorrent, AddTorrentOptions, Api, Magnet, Session, SessionOptions,
         SessionPersistenceConfig, TorrentStats,
     };
-    use serde::{Deserialize, Serialize};
+    use serde::{Deserialize, Serialize, Serializer};
+    use std::fs;
     use std::str::FromStr;
     use std::sync::Arc;
     use std::time::Duration;
@@ -75,6 +77,82 @@ pub mod torrent_calls {
         }
     }
 
+    #[derive(Debug, Deserialize, Serialize)]
+    struct TorrentServerConfig {
+        pub listen_port_range: Option<std::ops::Range<u16>>,
+        pub enable_upnp_port_forwarding: bool,
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct TorrentDiskConfig {
+        pub defer_writes_up_to: Option<usize>,
+    }
+
+    //TODO: Add socks_proxy_url
+    #[derive(Debug, Deserialize, Serialize)]
+    struct TorrentTorrentingConfig {
+        pub fastresume: bool,
+        pub concurrent_init_limit: Option<usize>,
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct TorrentConfig {
+        pub server_config: TorrentServerConfig,
+        pub disk_config: TorrentDiskConfig,
+        pub torrenting_config: TorrentTorrentingConfig,
+    }
+
+    impl TorrentConfig {
+        // Provide default values for TorrentConfig
+        pub fn default() -> Self {
+            TorrentConfig {
+                server_config: TorrentServerConfig {
+                    listen_port_range: Some(6881..6889),
+                    enable_upnp_port_forwarding: true,
+                },
+                disk_config: TorrentDiskConfig {
+                    defer_writes_up_to: None, // None for SSD and 4096 (4mB) for HDD
+                },
+                torrenting_config: TorrentTorrentingConfig {
+                    fastresume: true,
+                    concurrent_init_limit: Some(1), // For now let's stick with one, we will add more later on
+                },
+            }
+        }
+
+        pub fn new(config_path: &str) -> Self {
+            let content = match fs::read_to_string(config_path) {
+                Ok(content) => content,
+                Err(err) => {
+                    error!("Error while reading TOML config file: {:#?}", err);
+                    return Self::create_default_toml(config_path);
+                }
+            };
+
+            match toml::from_str(&content) {
+                Ok(configuration) => configuration,
+                Err(err) => {
+                    error!("Error while parsing TOML file: {:#?}", err);
+                    panic!("Failed to parse config file.");
+                }
+            }
+        }
+
+        // Create a default TOML file if it doesn't exist, return default_config
+        fn create_default_toml(config_path: &str) -> Self {
+            let default_config = Self::default();
+            let toml_string =
+                toml::to_string(&default_config).expect("Failed to serialize default config");
+
+            match fs::write(config_path, toml_string) {
+                Ok(_) => info!("Default TOML configuration created at: {}", config_path),
+                Err(err) => error!("Failed to create default TOML file: {:#?}", err),
+            }
+
+            default_config
+        }
+    }
+
     // Define a struct that holds the Api Session
     pub struct TorrentManager {
         api_session: Arc<Api>,
@@ -113,8 +191,14 @@ pub mod torrent_calls {
         pub async fn new(
             download_path: String,
             app_cache_patch: String,
+            app_settings_path: String,
         ) -> Result<Self, Box<TorrentError>> {
             // let magnet_id20 = Magnet::parse(&magnet_link).unwrap().as_id20().unwrap();
+
+            let config_file_path =
+                format!("{}fitgirlConfig\\torrent_config.toml", app_settings_path).to_string();
+
+            let torrent_config = TorrentConfig::new(&config_file_path);
 
             let persistence_path = format!("{}.persistence", app_cache_patch);
             let _dht_persistence_path = format!("{}.dht_persistence/", app_cache_patch);
@@ -134,13 +218,17 @@ pub mod torrent_calls {
             let mut custom_session_options = SessionOptions::default();
             custom_session_options.disable_dht = false;
             custom_session_options.disable_dht_persistence = true;
-            // custom_session_options.dht_config= personal_dht_config;
-            custom_session_options.fastresume = true;
-            custom_session_options.listen_port_range = Some(6881..6889);
-            custom_session_options.enable_upnp_port_forwarding = true;
-            custom_session_options.defer_writes_up_to = None; // Should defer up to 4mB for slow disk.
-            custom_session_options.concurrent_init_limit = Some(1);
             custom_session_options.persistence = persistence_config;
+            // custom_session_options.dht_config= personal_dht_config;
+            custom_session_options.fastresume = torrent_config.torrenting_config.fastresume;
+            custom_session_options.concurrent_init_limit =
+                torrent_config.torrenting_config.concurrent_init_limit;
+            custom_session_options.enable_upnp_port_forwarding =
+                torrent_config.server_config.enable_upnp_port_forwarding;
+            custom_session_options.listen_port_range =
+                torrent_config.server_config.listen_port_range;
+            custom_session_options.defer_writes_up_to =
+                torrent_config.disk_config.defer_writes_up_to;
 
             let session_global: Arc<Session> =
                 match Session::new_with_opts(download_path.into(), custom_session_options).await {
@@ -247,8 +335,7 @@ pub mod torrent_calls {
                     error!("Error Parsing Magnet : {:#?}", e);
                     return Err(Box::new(TorrentError::AnyhowError(
                         "Error forgetting the torrent from the session persistence.".to_string(),
-                    ))
-                    .into());
+                    )));
                 }
             };
 
@@ -275,8 +362,7 @@ pub mod torrent_calls {
                                 return Err(Box::new(TorrentError::AnyhowError(
                                     "Error forgetting the torrent from the session persistence."
                                         .to_string(),
-                                ))
-                                .into());
+                                )));
                             }
                         }
                     }
@@ -300,7 +386,7 @@ pub mod torrent_calls {
                     info!(
                         "Torrent Was Successfully Added And The Installation Successfully Started"
                     );
-                    
+
                     Some(response)
                 }
                 Err(e) => {
@@ -404,7 +490,8 @@ pub mod torrent_calls {
         }
 
         pub async fn resume_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
-            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+            let torrent_hash: TorrentIdOrHash =
+                TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
 
             // * Use this to resume the function (It will take advantage of the fastresume option)
             match Api::api_torrent_action_start(&self.api_session, torrent_hash).await {
@@ -420,9 +507,9 @@ pub mod torrent_calls {
         }
 
         pub async fn delete_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
-            let torrent_hash: TorrentIdOrHash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+            let torrent_hash: TorrentIdOrHash =
+                TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
 
-            
             match Api::api_torrent_action_delete(&self.api_session, torrent_hash).await {
                 Ok(_) => {
                     info!("Torrent Successfully Resumed");
@@ -434,7 +521,6 @@ pub mod torrent_calls {
 
             Ok(())
         }
-
     }
 }
 
@@ -456,8 +542,9 @@ pub mod torrent_commands {
         state: tauri::State<'_, TorrentState>,
         download_path: String,
         app_cache_path: String,
+        app_settings_path: String,
     ) -> Result<(), Box<TorrentError>> {
-        let manager = TorrentManager::new(download_path, app_cache_path).await?;
+        let manager = TorrentManager::new(download_path, app_cache_path, app_settings_path).await?;
         let mut torrent_manager = state.torrent_manager.lock().await;
         *torrent_manager = Some(Arc::new(Mutex::new(manager)));
         Ok(())
@@ -489,7 +576,7 @@ pub mod torrent_commands {
     ) -> Result<(), Box<TorrentError>> {
         let torrent_manager = state.torrent_manager.lock().await;
         if let Some(manager) = &*torrent_manager {
-            let manager = Arc::clone(&manager);
+            let manager = Arc::clone(manager);
             // Spawn a new async task to handle the download in a separate thread
             task::spawn(async move {
                 let manager = manager.lock().await;

@@ -205,7 +205,7 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                             const fileContent = fileContentObj.content;
                             const configData = JSON.parse(fileContent);
                             let should_bool_limit = configData.two_gb_limit;
-                            await invoke('api_initialize_torrent_manager', {downloadPath: inputPath, appCachePath: cacheDirPath})
+                            await invoke('api_initialize_torrent_manager', {downloadPath: inputPath, appCachePath: cacheDirPath, appSettingsPath: dirPath})
                             fileList = await invoke('api_get_torrent_details', {
                                 magnetLink: cdgGameMagnet,
                             });
