@@ -32,6 +32,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json", "an
 tracing = "0.1.40"
 tracing-appender = "0.2.3"
 select = "0.6"
+toml = "0.8.19"
 
 [target.'cfg(windows)'.dependencies]
 uiautomation = "0.12.2"

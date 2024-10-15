@@ -50,16 +50,23 @@ function Newgames() {
             const data = await parseNewGameData();
             setImagesObject(data);
         } catch (error) {
-            //TODO: improve error handling if images can't be fetched
-            // Handle error if needed
-            //show a message to the user with a alert
             Swal.fire({
                 title: 'Error',
-                text: 'Error parsing game data',
+                html: `
+                    <p>Error parsing game data, please close the app and open it again. If it still doesn't work, try a VPN.</p>
+                    <p>This is a list of countries and/or ISPs that are known to block access to fitgirl-repacks:</p>
+                    <ul>
+                        <li><strong>Italy</strong></li>
+                        <li><strong>Verizon</strong></li>
+                        <li><strong>Germany</strong> (<em>ALWAYS USE A VPN IN GERMANY !</em>)</li>
+                        <li><strong><em>Free Proton VPN may block P2P</em></strong></li>
+                    </ul>
+                    <p>If you know any more countries or ISP that blocks fitgirls repack website or P2P, please contact us on Discord, link in the settings.</p>
+                `,
+                footer: `Error: ${error}`,
                 icon: 'error',
                 confirmButtonText: 'Ok'
             });
-
         }
     });
 
