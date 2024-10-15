@@ -96,7 +96,10 @@
     font-weight: 500;
   }
   
-
+  
+.sidebar-downloading-game {
+    width: 17vw;
+}
 /* SIDEBAR GAMES CONTAINER, WILL HAVE ALL GAMES THAT WERE RECENTLY PLAYED.*/
 
 

@@ -19,41 +19,34 @@ use std::collections::HashMap;
 use std::fs;
 
 use serde_json::Value;
-use tauri::AppHandle;
+use std::error::Error;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
-use std::error::Error;
 
 use core::str;
 use tauri::api::path::app_log_dir;
 
-use serde::{ Deserialize, Serialize };
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
 
-use tauri::{
-    api::path::{resolve_path, BaseDirectory},
-    Env,
-};
 use tauri::{Manager, Window};
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use tauri::{ async_runtime::spawn };
+use tauri::async_runtime::spawn;
 
 use tokio::time::timeout;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber;
 
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
-use anyhow::{Context, Result};
+use anyhow::Result;
 use kuchiki::traits::*;
-use reqwest;
 // stop threads
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -66,7 +59,7 @@ use std::num::NonZeroUsize;
 use tauri::State;
 use tokio::sync::Mutex;
 
-use chrono::{ DateTime, Utc };
+use chrono::Utc;
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
@@ -96,8 +89,6 @@ struct GameImages {
     my_all_images: Vec<String>,
 }
 
-
-
 fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
     let document = kuchiki::parse_html().one(body);
     let mut hrefs = Vec::new();
@@ -108,7 +99,8 @@ fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
 
         for anchor_elem in document
             .select(&href_selector_str)
-            .map_err(|_| anyhow::anyhow!("Failed to select anchor element"))? {
+            .map_err(|_| anyhow::anyhow!("Failed to select anchor element"))?
+        {
             if let Some(href_link) = anchor_elem.attributes.borrow().get("href") {
                 hrefs.push(href_link.to_string());
             }
@@ -133,13 +125,15 @@ async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<Strin
 
     for noscript in href_document
         .select("noscript")
-        .map_err(|_| anyhow::anyhow!("Failed to select noscript element"))? {
+        .map_err(|_| anyhow::anyhow!("Failed to select noscript element"))?
+    {
         let inner_noscript_html = noscript.text_contents();
         let inner_noscript_document = kuchiki::parse_html().one(inner_noscript_html);
 
         for img_elem in inner_noscript_document
             .select("div.big-image > a > img")
-            .map_err(|_| anyhow::anyhow!("Failed to select image element"))? {
+            .map_err(|_| anyhow::anyhow!("Failed to select image element"))?
+        {
             if let Some(src) = img_elem.attributes.borrow().get("src") {
                 image_srcs.push(src.to_string());
             }
@@ -147,7 +141,6 @@ async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<Strin
     }
     Ok(image_srcs)
 }
-
 
 async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     if STOP_FLAG.load(Ordering::Relaxed) {
@@ -159,17 +152,22 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     let hrefs = extract_hrefs_from_body(&body)?;
 
     let fetches: Vec<_> = hrefs
-        .iter()  // Use `iter()` to borrow `hrefs`
-        .map(|href| timeout(Duration::new(4, 0), fetch_and_process_href(&client, href.as_ref())))  // Use `as_ref()` to get `&str`
+        .iter() // Use `iter()` to borrow `hrefs`
+        .map(|href| {
+            timeout(
+                Duration::new(4, 0),
+                fetch_and_process_href(&client, href.as_ref()),
+            )
+        }) // Use `as_ref()` to get `&str`
         .collect();
-    
+
     let results: Vec<Result<Vec<String>, anyhow::Error>> = futures::future::join_all(fetches)
         .await
         .into_iter()
         .map(|res| match res {
-            Ok(Ok(images)) => Ok(images),  // Successful fetch within timeout
-            Ok(Err(e)) => Err(e),          // Fetch failed but within the timeout
-            Err(_) => Err(anyhow::anyhow!("Timeout occurred")),  // Timeout error
+            Ok(Ok(images)) => Ok(images), // Successful fetch within timeout
+            Ok(Err(e)) => Err(e),         // Fetch failed but within the timeout
+            Err(_) => Err(anyhow::anyhow!("Timeout occurred")), // Timeout error
         })
         .collect();
 
@@ -177,8 +175,8 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     let mut image_srcs = Vec::new();
     for result in results {
         match result {
-            Ok(images) => image_srcs.extend(images),  // Add images if successful
-            Err(e) => tracing::error!("Error fetching images: {:?}", e),  // Log the error, but continue
+            Ok(images) => image_srcs.extend(images), // Add images if successful
+            Err(e) => tracing::error!("Error fetching images: {:?}", e), // Log the error, but continue
         }
     }
 
@@ -207,7 +205,6 @@ async fn get_games_images(
     game_link: String,
     image_cache: State<'_, ImageCache>,
 ) -> Result<GameImages, CustomError> {
-
     let now = Instant::now();
     STOP_FLAG.store(false, Ordering::Relaxed);
 
@@ -239,13 +236,19 @@ async fn get_games_images(
     cache.put(game_link.clone(), image_srcs.clone());
 
     // Save cache to file
-    let cache_as_hashmap: HashMap<String, Vec<String>> = cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-    let updated_cache_data = serde_json::to_string_pretty(&cache_as_hashmap).map_err(|e| CustomError { message: e.to_string() })?;
+    let cache_as_hashmap: HashMap<String, Vec<String>> =
+        cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    let updated_cache_data =
+        serde_json::to_string_pretty(&cache_as_hashmap).map_err(|e| CustomError {
+            message: e.to_string(),
+        })?;
     tokio::fs::write(&cache_file_path, updated_cache_data).await?;
 
     info!("Time elapsed to find images : {:#?}", now.elapsed());
 
-    Ok(GameImages { my_all_images: image_srcs })
+    Ok(GameImages {
+        my_all_images: image_srcs,
+    })
 }
 
 //Always serialize returns...
@@ -312,7 +315,7 @@ async fn clear_file(file_path: String) -> Result<(), CustomError> {
     let path = Path::new(&file_path);
 
     // Attempt to create the file, truncating if it already exists
-    File::create(&path).map_err(|err| CustomError {
+    File::create(path).map_err(|err| CustomError {
         message: err.to_string(),
     })?;
 
@@ -394,9 +397,9 @@ fn check_file_for_tags(path: &Path) -> Result<()> {
     if let Some(arr) = json.as_array() {
         for obj in arr {
             // Each object should contain the "tag" key
-            if !obj.get("tag").is_some() {
+            if obj.get("tag").is_none() {
                 warn!("Missing 'tag' key in file: {:?}, rebuilding...", path);
-                fs::remove_file(&path)?;
+                fs::remove_file(path)?;
             }
         }
     }
@@ -408,8 +411,7 @@ fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
     let file_appender = tracing_appender::rolling::never(logs_dir, "app.log");
     let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
 
-    tracing_subscriber
-        ::fmt()
+    tracing_subscriber::fmt()
         .with_writer(file_writer)
         .with_ansi(false)
         .with_max_level(tracing::Level::INFO)
@@ -467,10 +469,13 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    info!("{}: Main.rs: Starting the application...", Utc::now().format("%a,%b,%e,%T,%Y"));
-    let image_cache = Arc::new(
-        Mutex::new(LruCache::<String, Vec<String>>::new(NonZeroUsize::new(30).unwrap()))
+    info!(
+        "{}: Main.rs: Starting the application...",
+        Utc::now().format("%a,%b,%e,%T,%Y")
     );
+    let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
+        NonZeroUsize::new(30).unwrap(),
+    )));
     let context = tauri::generate_context!();
 
     let logs_dir = app_log_dir(context.config()).unwrap();
@@ -524,7 +529,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         );
                         //TODO: This will be used to emit a signal to the frontend that the scraping is complete and for all other app_handle.
                         // when the main reload window code is removed
-                         first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
+                        first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -642,11 +647,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
-            match event {
-                tauri::RunEvent::ExitRequested { .. } => {
-                    PAUSE_FLAG.store(true, Ordering::Relaxed);
-                }
-                _ => {}
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                PAUSE_FLAG.store(true, Ordering::Relaxed);
             }
         });
 
