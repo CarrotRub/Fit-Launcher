@@ -13,6 +13,7 @@
     transition: transform 0.5s ease;
     max-height: 75vh; /* Set max height to 75% of viewport height */
     display: inline-flex;
+    user-select:text;
     flex-direction: column;
 }
 

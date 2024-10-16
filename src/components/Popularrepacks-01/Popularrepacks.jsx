@@ -1,15 +1,14 @@
 import './Popularrepacks.css';
-import { createSignal, onMount } from 'solid-js';
+import { createEffect, createSignal, onMount } from 'solid-js';
 import { appDataDir } from '@tauri-apps/api/path';
+import readFile from '../functions/readFileRust';
+import Slider from '../Slider-01/Slider';
 
 const appDir = await appDataDir();
 const dirPath = appDir;
 
 const popularRepacksPath = `${dirPath}tempGames/popular_games.json`;
 
-import readFile from '../functions/readFileRust';
-import Slider from '../Slider-01/Slider';
-import { translate } from '../../translation/translate';
 
 /**
  * Get newly added games into the GameHub.
@@ -54,6 +53,11 @@ function extractSecondaryTitle(title) {
 function Popularrepacks() {
     const [imagesObject, setImagesObject] = createSignal(null);
     const [firstGameTitle, setFirstGameTitle] = createSignal('');
+    const [tags, setTags] = createSignal([]); // All unique tags
+    const [selectedTags, setSelectedTags] = createSignal([]); // Selected tags
+    const [filteredImages, setFilteredImages] = createSignal([]); // Images after filtering
+    const [sliderComponent, setSliderComponent] = createSignal(null); // Hold slider component
+
 
     onMount(async () => {
         console.log('Popularrepacks component mounted');
@@ -98,24 +102,107 @@ function Popularrepacks() {
                     slide1.src = srcParts1[0].trim();
                 }
             }
+
+            const allTags = new Set();
+            data.forEach(game => {
+                const tagsArray = game.tag.split(',').map(tag => tag.trim());
+                tagsArray.forEach(tag => allTags.add(tag));
+            });
+            setTags(Array.from(allTags));
+
+            // Initialize filtered images to show all initially
+            setFilteredImages(data);
         } catch (error) {
             // Handle error if needed
             console.error('Error during component mount:', error);
         }
     });
 
-    return (
-        <>
-            <h2>Popular Repacks</h2>
-            {imagesObject() && (
+    createEffect(() => {
+        const currentImages = imagesObject();
+        const currentSelectedTags = selectedTags();
+
+
+        // If no tags are selected, set filtered images to all images
+        if (currentSelectedTags.length === 0) {
+            setFilteredImages(currentImages);
+            console.log(filteredImages())
+        } else {
+            // Filter images based on selected tags
+            const newFilteredImages = currentImages.filter(game =>
+                currentSelectedTags.every(tag => game.tag.includes(tag)) // Change here to use 'every'
+            );
+            setFilteredImages(newFilteredImages);
+        }
+
+        // Render Slider when filteredImages changes
+        setSliderComponent(
+            filteredImages()?.length > 0 ? (
                 <Slider
                     containerClassName="popular-games"
                     imageContainerClassName="games-container-pop"
-                    slides={imagesObject()}
+                    slides={filteredImages()}
                     filePath={popularRepacksPath}
                     showPrevNextButtons={true} // Set to false if you don't want to show prev/next buttons
                 />
-            )}
+            ) : null
+        );
+    });
+
+    const toggleTagSelection = (tag) => {
+        setSelectedTags((prevTags) => {
+            // If tag is already selected, remove it
+            if (prevTags.includes(tag)) {
+                return prevTags.filter(t => t !== tag);
+            }
+            // If tag is not selected, add it
+            return [...prevTags, tag];
+        });
+    };
+
+    const resetFilters = () => {
+        setSelectedTags([]); 
+    };
+
+    return (
+        <>
+            <div className='title-category poprepacks'>
+                <h2>Popular Repacks</h2>
+                <div className='filter-box'>
+                    <details className='filter-details poprepacks'  onToggle={(e) => e.preventDefault()}>
+                        <summary onClick={(e) => {
+                            e.preventDefault();
+                            const details = document.querySelector(".filter-details.poprepacks");
+                            details.open = !details.open; // Toggle the open state
+                        }}>
+                            Filter {selectedTags().length > 0 && <span>({selectedTags().length})</span>}
+                        </summary>
+                        <ul className='tags-list'>
+                            {tags().map(tag => (
+                                <li key={tag} onClick={() => toggleTagSelection(tag)}>
+                                    <div className='checkbox-wrapper'>
+                                        <label>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedTags().includes(tag)} 
+                                                onChange={() => toggleTagSelection(tag)} 
+                                                className='custom-checkbox'
+                                            />
+                                            {tag}
+                                        </label>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </details>
+                    {/* <svg 
+                        className='filter-reset-icon'
+                        onClick={resetFilters}
+                    >
+                    </svg> */}
+                </div>
+            </div>
+            {sliderComponent()} {/* Render Slider component here */}
         </>
     );
 }

@@ -55,5 +55,152 @@ body {
     right: 0; /* Position at the right */
   }
 
+/* SPECIFICALLY FOR TITLE CLASS*/
+.title-category {
+    display: inline-flex;
+    gap: 2em;
+    align-items: center;
+    width: 100%;
+    padding: 1em;
+}
 
-  
+.title-category h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #fff; /* Adjust according to your theme */
+}
+
+.filter-box {
+    display: grid;
+    grid-template-columns: 1fr auto; /* Title takes most space, filter box auto-sizes */
+    align-items: center;
+    justify-content: center;
+    background-color: #333;
+    border-radius: 30px;
+    padding: 0.5em 1em;
+    width: fit-content;
+    height: 1.5em;
+    color: #fff;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.filter-box:hover {
+    background-color: #444; /* Slightly lighter gray on hover */
+}
+
+.filter-box details {
+    width: 100%;
+    position: relative;
+}
+
+.filter-box summary {
+    list-style: none;
+    user-select: none;
+    cursor: pointer;
+}
+
+.filter-box summary::marker {
+    display: none;
+}
+
+.filter-box details[open] summary {
+    font-weight: bold;
+
+}
+
+
+/* Filter dropdown style */
+.filter-box ul {
+    position: sticky;
+    top: 100%;
+    width: max-content;
+    left: 0;
+    right: 0;
+    background-color: #222;
+    padding: 10px;
+    border-radius: 8px;
+    overflow: auto;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    max-height: 0;
+    transition: max-height 0.3s ease-in-out;
+    grid-template-rows: 1.5em 0fr;
+}
+
+.filter-box details[open] ul {
+    max-height: 25vh; /* Expand to desired size */
+    grid-template-rows: 1.5em 1fr;
+}
+
+.filter-box ul li {
+    list-style: none;
+    padding: 8px 12px;
+    color: #ddd;
+    border-radius: 6px;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.filter-box ul li:hover {
+    background-color: #444;
+    border-radius: 6px;
+}
+
+.filter-box input[type="checkbox"] {
+    margin-right: 10px;
+    user-select: none;
+    clip-path: circle(50%);
+    border: 2px solid #ddd;
+    outline: none; 
+}
+
+.filter-box label {
+    cursor: pointer;
+}
+
+/* Filter reset icon */
+.filter-reset-icon {
+    fill: #fff;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+
+.filter-reset-icon:hover {
+    transform: rotate(90deg); /* Rotate the reset icon on hover WIP */
+}
+
+.tags-list::-webkit-scrollbar {
+    background-color: #33333300;
+}
+
+.custom-checkbox {
+    appearance: none; /* Remove default checkbox styling */
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ddd; /* Border color when unchecked */
+    border-radius: 50%; 
+    margin-right: 8px; /* Space between checkbox and label */
+    cursor: pointer; 
+    outline: none; 
+    position: relative; /* For positioning the pseudo-elements */
+    transition: background-color 0.3s, border-color 0.3s; /* Smooth color transitions */
+}
+
+.custom-checkbox:checked {
+    background-color: purple; 
+    border-color: purple;
+}
+
+.custom-checkbox:checked::after {
+    content: ''; /* Necessary for the pseudo-element */
+    position: absolute; /* Position it absolutely within the checkbox */
+    width: 8px; 
+    height: 8px; 
+    border-radius: 50%; /* Make it round */
+    background-color: #fff; 
+    top: 50%; 
+    left: 50%; 
+    transition: background-color 0.3s, border-color 0.3s;
+    transform: translate(-50%, -50%); 
+}

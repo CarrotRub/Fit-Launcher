@@ -1,17 +1,13 @@
 import './Newgames.css';
-import { createSignal, onMount } from 'solid-js';
+import { createEffect, createSignal, onMount } from 'solid-js';
 import { appDataDir } from '@tauri-apps/api/path';
-import { readTextFile, BaseDirectory } from '@tauri-apps/api/fs';
-
-const appDir =  await appDataDir();
-const dirPath = appDir;
-
-const newlyAddedGamesPath = `${dirPath}tempGames/newly_added_games.json`;
-
 import readFile from '../functions/readFileRust';
 import Slider from '../Slider-01/Slider';
-import { translate } from '../../translation/translate';
 import Swal from 'sweetalert2';
+
+const appDir = await appDataDir();
+const dirPath = appDir;
+const newlyAddedGamesPath = `${dirPath}tempGames/newly_added_games.json`;
 
 /**
  * Get newly added games into the GameHub.
@@ -27,12 +23,11 @@ async function parseNewGameData() {
         const settings = JSON.parse(settingsContent.content);
         const hideNSFW = settings.hide_nsfw_content;
 
-        //Filter out NSFw games based on the "Adult" tag if the setting is enabled
+        // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
             ? gameData.filter(game => !game.tag.includes('Adult'))
             : gameData;
 
-        console.log(filteredGameData);
         return filteredGameData;
     } catch (error) {
         console.error('Error parsing game data:', error);
@@ -40,15 +35,27 @@ async function parseNewGameData() {
     }
 }
 
-
-
 function Newgames() {
-    const [imagesObject, setImagesObject] = createSignal(null);
+    const [imagesObject, setImagesObject] = createSignal([]);
+    const [tags, setTags] = createSignal([]); // All unique tags
+    const [selectedTags, setSelectedTags] = createSignal([]); // Selected tags
+    const [filteredImages, setFilteredImages] = createSignal([]); // Images after filtering
+    const [sliderComponent, setSliderComponent] = createSignal(null); // Hold slider component
 
     onMount(async () => {
         try {
             const data = await parseNewGameData();
             setImagesObject(data);
+
+            const allTags = new Set();
+            data.forEach(game => {
+                const tagsArray = game.tag.split(',').map(tag => tag.trim());
+                tagsArray.forEach(tag => allTags.add(tag));
+            });
+            setTags(Array.from(allTags));
+
+            // Initialize filtered images to show all initially
+            setFilteredImages(data);
         } catch (error) {
             Swal.fire({
                 title: 'Error',
@@ -70,22 +77,92 @@ function Newgames() {
         }
     });
 
-    // Return the Slider component once the container is created and data is fetched
+    // Effect to filter images whenever selectedTags change
+    createEffect(() => {
+        const currentImages = imagesObject();
+        const currentSelectedTags = selectedTags();
+
+        // If no tags are selected, set filtered images to all images
+        if (currentSelectedTags.length === 0) {
+            setFilteredImages(currentImages);
+        } else {
+            // Filter images based on selected tags
+            const newFilteredImages = currentImages.filter(game =>
+                currentSelectedTags.every(tag => game.tag.includes(tag)) // Change here to use 'every'
+            );
+            setFilteredImages(newFilteredImages);
+        }
+
+        // Render Slider when filteredImages changes
+        setSliderComponent(
+            filteredImages().length > 0 ? (
+                <Slider
+                    containerClassName="newly-added"
+                    imageContainerClassName="games-container"
+                    slides={filteredImages()} // Pass the filtered images
+                    filePath={newlyAddedGamesPath}
+                    showPrevNextButtons={true}
+                />
+            ) : null
+        );
+    });
+
+    const toggleTagSelection = (tag) => {
+        setSelectedTags((prevTags) => {
+            // If tag is already selected, remove it
+            if (prevTags.includes(tag)) {
+                return prevTags.filter(t => t !== tag);
+            }
+            // If tag is not selected, add it
+            return [...prevTags, tag];
+        });
+    };
+
+    const resetFilters = () => {
+        setSelectedTags([]); 
+    };
+
     return (
         <>
-        {/* {translate('newly_added_games', {})} */}
-          <h2 >Newly Added Games</h2>
-          {imagesObject() && (
-            <Slider
-              containerClassName="newly-added"
-              imageContainerClassName="games-container"
-              slides={imagesObject()}
-              filePath={newlyAddedGamesPath}
-              showPrevNextButtons={true} // Set to false if you don't want to show prev/next buttons
-            />
-          )}
+            <div className='title-category newgames'>
+                <h2>Newly Added Games</h2>
+                <div className='filter-box'>
+                    <details className='filter-details newgames'>
+                        <summary onClick={(e) => {
+                            e.preventDefault();
+                            const details = document.querySelector(".filter-details.newgames");
+                            details.open = !details.open; // Toggle the open state
+                        }}>
+                            Filter {selectedTags().length > 0 && <span>({selectedTags().length})</span>}
+                        </summary>
+                        <ul className='tags-list'>
+                            {tags().map(tag => (
+                                <li key={tag} onClick={() => toggleTagSelection(tag)}>
+                                    <div className='checkbox-wrapper'>
+                                        <label>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedTags().includes(tag)} 
+                                                onChange={() => toggleTagSelection(tag)} 
+                                                className='custom-checkbox'
+                                            />
+                                            {tag}
+                                        </label>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </details>
+                    {/* <svg 
+                        className='filter-reset-icon'
+                        onClick={resetFilters}
+                    >
+                    </svg> */}
+                </div>
+            </div>
+            {sliderComponent()} {/* Render Slider component here */}
         </>
-      );
+    );
 }
 
 export default Newgames;
