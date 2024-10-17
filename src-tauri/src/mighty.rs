@@ -167,7 +167,26 @@ pub mod windows_controls_processes {
         }
     }
 
-    pub fn click_8gb_limit(should_limit: bool) {
+    /// Function to check the user's ram.
+    ///
+    /// Will return `true` if the user has 9gb or less and false if they have more.
+    ///
+    /// Usually used before running the UI automation.
+    pub fn check_8gb_limit() -> bool {
+        let mut sys: sysinfo::System = sysinfo::System::new_all();
+
+        sys.refresh_all();
+        let total_memory = sys.total_memory();
+
+        // Convert to megabytes
+        let total_memory_mb = total_memory / 1024;
+
+        // Use 9gB because the sysinfo might round it and better be safe than sorry.
+        // No need for an if-else statement.
+        total_memory_mb <= 9
+    }
+
+    pub fn click_8gb_limit() {
         let limit_button_text = "Limit installer to 2 GB of RAM usage";
         let first_window_title = "Setup -";
 
@@ -176,38 +195,8 @@ pub mod windows_controls_processes {
                 find_child_window_with_text(limit_button_text, first_window_title);
 
             if let Some(hwnd) = limit_button_hwnd {
-                unsafe {
-                    // Initialize MEMORYSTATUSEX structure
-                    let mut mem_status = MEMORYSTATUSEX {
-                        dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
-                        ..MEMORYSTATUSEX::default()
-                    };
+                check_limit_button(Some(hwnd));
 
-                    // Call GlobalMemoryStatusEx
-                    match GlobalMemoryStatusEx(&mut mem_status) {
-                        Ok(_) => {
-                            // Calculate the total RAM in GB
-                            let total_ram_gb =
-                                mem_status.ullTotalPhys as f64 / (1024.0 * 1024.0 * 1024.0);
-                            println!("Total RAM: {} GB", total_ram_gb);
-
-                            if total_ram_gb <= 4.0 {
-                                // If total RAM is 8 GB or less, check the checkbox
-                                check_limit_button(Some(hwnd));
-                            } else {
-                                // If total RAM is more than 8 GB, check the should_limit flag
-                                if should_limit {
-                                    check_limit_button(Some(hwnd));
-                                } else {
-                                    println!("No action needed based on should_limit flag.");
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            eprintln!("Failed to get memory status. Error: {}", err.message());
-                        }
-                    }
-                }
                 break; // Exit the loop once the button is clicked or checked
             } else {
                 println!("Limit button not found. Retrying in 2 seconds...");
@@ -320,21 +309,25 @@ pub mod windows_controls_processes {
         let install_button_text = "Install";
         let first_window_title = "Setup -";
 
-        let install_button_hwnd =
-            find_child_window_with_text(install_button_text, first_window_title);
+        loop {
+            let install_button_hwnd =
+                find_child_window_with_text(install_button_text, first_window_title);
 
-        if let Some(hwnd) = install_button_hwnd {
-            unsafe {
-                let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
+            if let Some(hwnd) = install_button_hwnd {
+                unsafe {
+                    let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
 
-                if result.is_err() {
-                    eprintln!("PostMessageW for Install Button failed to send the message. Result  {:#?} ", result);
-                } else {
-                    println!("Posted click message to Next button!");
+                    if result.is_err() {
+                        eprintln!("PostMessageW for Install Button failed to send the message. Result  {:#?} ", result);
+                    } else {
+                        println!("Posted click message to Install button!");
+                        break;
+                    }
                 }
+            } else {
+                println!("Install button not found. Trying again in 2 seconds...");
+                thread::sleep(time::Duration::from_secs(2)); // Wait 2 seconds before retrying
             }
-        } else {
-            println!("Install button not found.");
         }
     }
 
