@@ -339,6 +339,7 @@ const SettingsPage = () => {
                 <div class="form-group">
                     <label>
                         <input
+                            className="switch"
                             type="checkbox"
                             checked={settings().autoInstall}
                             onChange={(e) =>
@@ -356,6 +357,7 @@ const SettingsPage = () => {
                 <div class="form-group">
                     <label>
                         <input
+                            class="switch"
                             type="checkbox"
                             checked={settings().autoClean}
                             onChange={(e) =>
@@ -372,6 +374,7 @@ const SettingsPage = () => {
                 <div class="form-group">
                     <label>
                         <input
+                            class="switch"
                             type="checkbox"
                             checked={settings().hoverTitle}
                             onChange={(e) =>
@@ -388,6 +391,7 @@ const SettingsPage = () => {
                 <div class="form-group">
                     <label>
                         <input
+                            class="switch"
                             type="checkbox"
                             checked={settings().two_gb_limit}
                             onChange={(e) =>
@@ -404,6 +408,7 @@ const SettingsPage = () => {
                 <div class="form-group">
                     <label>
                         <input
+                            class="switch"
                             type="checkbox"
                             checked={settings().hide_nsfw_content}
                             onChange={(e) =>
