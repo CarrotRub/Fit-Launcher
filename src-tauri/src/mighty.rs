@@ -331,7 +331,7 @@ pub mod windows_controls_processes {
         }
     }
 
-    #[ignore = "Will be used later"]
+    #[allow(dead_code)]
     pub fn poll_progress_bar_until_complete() -> f64 {
         let first_window_title = "Setup -";
         let parent_hwnd = get_setup_process_title(first_window_title);

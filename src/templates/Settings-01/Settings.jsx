@@ -552,11 +552,14 @@ const SettingsPage = () => {
                         </svg>
                     </a>
                 </div>
+
+                <button class="boton-elegante" style={"width: fit-content;"} onClick={handleSave}>
+                    Save Settings
+                </button>
+
             </section>
 
-            <button class="boton-elegante" onClick={handleSave}>
-                Save Settings
-            </button>
+
         </div>
     )
 }

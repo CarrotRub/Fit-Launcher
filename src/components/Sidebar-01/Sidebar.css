@@ -1,16 +1,7 @@
-@font-face {
-    font-family: "IBMPlexSansRegular";
-    src: url("../../assets/fonts/IBMPlexSans-Regular.ttf") format("truetype");
-  }
-  
-  :root {
-    font-family: "IBMPlexSansRegular", sans-serif;
-  }
-  
-  /* CONTAINING EVERYTHING ABOUT THE SIDEBAR*/
+/* CONTAINING EVERYTHING ABOUT THE SIDEBAR*/
 
   .sidebar-container {
-    font-family: "IBMPlexSansRegular", sans-serif;
+    font-family: 'Overpass Variable', sans-serif;
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: 0.8fr 1fr 0.2fr;
@@ -76,6 +67,7 @@
     list-style: none;
     padding: 0;
     margin: 0;
+    gap: 1em;
     max-height: 30vh;
     display: flex;
     flex-direction: column;
@@ -85,7 +77,6 @@
   .useful-links li {
     display: flex;
     /* align-items: center; */
-    margin-bottom: 10px;
     padding: 3vh;
     width: 100%; /* Take full width */
     box-sizing: border-box; /* Include padding in width calculation */
@@ -96,15 +87,6 @@
     border-radius: 5px;
     height: 20px;
     cursor: pointer;
-  }
-  
-  .links-svgs {
-    margin-right: 10px;
-  }
-  
-  .links-texts {
-    margin: 0;
-    font-weight: 500;
   }
   
   
@@ -123,21 +105,30 @@
     box-sizing: border-box; /* Include padding in width calculation */
   }
 
+.useful-links svg {
+    margin-right: 10px;
+}
+
+.useful-links p {
+    margin: 0;
+    align-content: center;
+}
+
 .sidebar-unique-game:hover {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 5px;
   cursor: pointer;
 }
 
-#link-gamehub {
+#link-settings, #link-library, #link-gamehub {
   height: 100%;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: flex-end;
+  position: relative;
+  overflow: hidden;
 }
 
-#link-library {
-  height: 100%;
-}
-
-
-#link-settings {
-  height: 100%;
+#link-settings:hover, #link-library:hover, #link-gamehub:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }

@@ -216,7 +216,6 @@ pub mod torrent_calls {
             // TODO: Add a way to either ask the user to choose between HDD or SSD (For a different config)
 
             let mut custom_session_options = SessionOptions::default();
-            custom_session_options.disable_dht = false;
             custom_session_options.disable_dht_persistence = true;
             custom_session_options.persistence = persistence_config;
             // custom_session_options.dht_config= personal_dht_config;
