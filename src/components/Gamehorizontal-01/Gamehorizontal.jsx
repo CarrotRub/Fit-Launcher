@@ -349,7 +349,6 @@ const GameHorizontalSlide = ({ gameTitlePromise, filePathPromise, gameLinkPromis
                                     
                                 });
                                 
-                                window.dispatchEvent(new Event('start-download'));
                                 setTorrentTrigger(true);
                             } 
                         } else {

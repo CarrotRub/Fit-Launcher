@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import Chart from 'chart.js/auto'
 import { invoke } from '@tauri-apps/api'
 import './Gamedownloadvertical.css'
-import { restartTorrentInfo } from '../functions/dataStoreGlobal'
+import { restartTorrentInfo, setTorrentTrigger } from '../functions/dataStoreGlobal'
 
 const cacheDir = await appCacheDir()
 const cacheDirPath = cacheDir
@@ -98,9 +98,7 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
                                         restartTorrentInfo.fileList,
                                 })
 
-                                window.dispatchEvent(
-                                    new Event('start-download')
-                                )
+                                setTorrentTrigger(true)
                             } catch (error) {
                                 console.error(
                                     'Error Toggling Torrent State Again:',
