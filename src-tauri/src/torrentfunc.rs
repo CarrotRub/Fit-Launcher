@@ -417,7 +417,9 @@ pub mod torrent_calls {
             }
 
             let setup_path = format!("{}\\setup.exe", torrent_output_folder);
-            executable_custom_commands::start_executable(setup_path);
+
+            windows_ui_automation::start_executable_components_args(setup_path, &checkboxes_list);
+
             let game_output_folder = torrent_output_folder.replace(" [FitGirl Repack]", "");
 
             #[cfg(target_os = "windows")]

@@ -33,6 +33,7 @@ tracing = "0.1.40"
 tracing-appender = "0.2.3"
 select = "0.6"
 toml = "0.8.19"
+sysinfo = "0.32.0"
 
 [target.'cfg(windows)'.dependencies]
 uiautomation = "0.12.2"

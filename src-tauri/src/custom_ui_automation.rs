@@ -1,4 +1,8 @@
 #[cfg(target_os = "windows")]
+/// DEPRECATED VERSION
+///
+/// PLEASE USE start_executable_components_args(path: String, checkboxes_list: &[String]) INSTEAD
+#[allow(dead_code)]
 mod checklist_automation {
     use tracing::{error, info, warn};
     use uiautomation::types::UIProperty::{ClassName, NativeWindowHandle, ToggleToggleState};
@@ -91,9 +95,12 @@ pub mod windows_ui_automation {
     use std::{thread, time};
     use tracing::{error, info};
 
-    use super::checklist_automation;
     use crate::mighty::windows_controls_processes;
 
+    #[allow(dead_code)]
+    /// DEPRECATED VERSION OF THE START_EXECUTABLE.
+    ///
+    /// PLEASE USE start_executable_components_args(path: String, checkboxes_list: &\[String]) INSTEAD.
     pub async fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
         match Command::new(path).spawn() {
             Ok(child) => {
@@ -110,6 +117,34 @@ pub mod windows_ui_automation {
         }
     }
 
+    /// Start an executable using tauri::command and gets the components that needs to be checked.
+    ///
+    /// # ! ONLY USE WHEN THE 2GB LIMIT IS UNCHECKED !
+    ///
+    ///
+    /// Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
+    pub fn start_executable_components_args(path: String, checkboxes_list: &[String]) {
+        // Here, use this **ONLY** for windows OS
+        #[cfg(target_os = "windows")]
+        {
+            let components = checkboxes_list.join(",");
+            let args = format!("/COMPONENTS=\"{}\"", components);
+
+            match Command::new(&path).arg(args).spawn() {
+                Ok(child) => {
+                    info!("Executable started with PID: {}", child.id());
+                }
+                Err(e) => {
+                    error!("Failed to start executable: {}", e);
+
+                    if let Some(32) = e.raw_os_error() {
+                        error!("Another process is using the executable.");
+                    }
+                }
+            }
+        }
+    }
+
     #[cfg(target_os = "windows")]
     pub async fn automate_until_download(
         user_checkboxes_to_check: Vec<String>,
@@ -120,28 +155,55 @@ pub mod windows_ui_automation {
         windows_controls_processes::click_ok_button();
         // Skip Select Setup Language.
 
-        // Skip until checkboxes.
-        thread::sleep(time::Duration::from_millis(1000));
-        windows_controls_processes::click_8gb_limit(should_two_gb_limit);
-        thread::sleep(time::Duration::from_millis(200));
-        windows_controls_processes::click_next_button();
-        windows_controls_processes::click_next_button();
-        // Skip until checkboxes.
+        if should_two_gb_limit {
+            // Skip until checkboxes.
+            thread::sleep(time::Duration::from_millis(1000));
+            windows_controls_processes::click_8gb_limit();
+            thread::sleep(time::Duration::from_millis(200));
+            windows_controls_processes::click_next_button();
+            windows_controls_processes::click_next_button();
+            // Skip until checkboxes.
+            // Change path input, important for both cases.
+            windows_controls_processes::change_path_input(path_to_game);
+            windows_controls_processes::click_next_button();
+            // Change path input, important for both cases.
+            // Start Installation.
+            windows_controls_processes::click_install_button();
+            // Start Installation.
+        } else if !should_two_gb_limit && !windows_controls_processes::check_8gb_limit() {
+            thread::sleep(time::Duration::from_millis(1000));
+            windows_controls_processes::click_next_button();
+            windows_controls_processes::click_next_button();
+            // Change path input, important for both cases.
+            windows_controls_processes::change_path_input(path_to_game);
+            windows_controls_processes::click_next_button();
+            // Change path input, important for both cases.
+            // Start Installation.
+            windows_controls_processes::click_install_button();
+            // Start Installation.
+        } else if !should_two_gb_limit && windows_controls_processes::check_8gb_limit() {
+            // Skip until checkboxes.
+            thread::sleep(time::Duration::from_millis(1000));
+            windows_controls_processes::click_8gb_limit();
+            thread::sleep(time::Duration::from_millis(200));
+            windows_controls_processes::click_next_button();
+            windows_controls_processes::click_next_button();
+            // Skip until checkboxes.
+            // Change path input, important for both cases.
+            windows_controls_processes::change_path_input(path_to_game);
+            windows_controls_processes::click_next_button();
+            // Change path input, important for both cases.
+            // Start Installation.
+            windows_controls_processes::click_install_button();
+            // Start Installation.
+        }
 
-        // Change path input.
-        windows_controls_processes::change_path_input(path_to_game);
-        windows_controls_processes::click_next_button();
-        // Change path input.
-
-        // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
-        thread::sleep(time::Duration::from_millis(1000));
-        checklist_automation::get_checkboxes_from_list(user_checkboxes_to_check);
-        thread::sleep(time::Duration::from_millis(1000));
-        // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
-
-        // Start Installation.
-        windows_controls_processes::click_install_button();
-        // Start Installation.
+        // * No need for this anymore since we can contact the components directly through commandline.
+        // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
+        // thread::sleep(time::Duration::from_millis(1000));
+        // checklist_automation::get_checkboxes_from_list(user_checkboxes_to_check);
+        // thread::sleep(time::Duration::from_millis(1000));
+        // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
     }
     // Print and get and send progress bar value every 500ms
 }
