@@ -9,6 +9,9 @@ import Searchbar from './components/Searchbar-01/Searchbar';
 import Notification from './components/Notification-01/Notification';
 import ChangelogPopup from './components/Changelog-01/ChangelogPopup';
 
+// Supports weights 100-900
+import '@fontsource-variable/overpass';
+
 import './App.css';
 import './templates/titlebar-01/titlebar.css';
 

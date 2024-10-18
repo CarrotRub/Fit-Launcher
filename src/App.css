@@ -2,18 +2,8 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: 'IBMPlexSans', sans-serif;
+  font-family: 'Overpass Variable', sans-serif;
   overflow: hidden;
-}
-
-@font-face {
-  font-family: "SatoshiVariable";
-  src: url("./assets/fonts/Satoshi_Complete/Fonts/TTF/Satoshi-Variable.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: IBMPlexSans;
-  src: url("./assets/fonts/IBMPlexSansVar-Roman.ttf") format("truetype");
 }
 
 h2 {

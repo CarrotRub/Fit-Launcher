@@ -1,5 +1,4 @@
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
     color: #e0e0e0;
@@ -7,6 +6,7 @@ body {
 
 /* Popup container */
 .popup-container {
+    font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;

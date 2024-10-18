@@ -3,14 +3,14 @@ body {
   background-color: #1e1e1e;
   margin: 0;
   padding: 0;
-  font-family: 'IBMPlexSans', sans-serif;
+  font-family: 'Overpass Variable', sans-serif;
   color: #fff;
 }
 
 /* Settings Page Container */
 .settings-page {
   padding: 15px;
-  font-family: 'IBMPlexSans', sans-serif;
+  font-family: 'Overpass Variable', sans-serif;
 }
 
 /* Headings */
@@ -107,7 +107,7 @@ body {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  border-radius: 5px;
+  border-radius: 16px;
   transition: background-color 0.3s ease;
   display: inline-block;
 }
@@ -117,6 +117,8 @@ body {
 
 .upload-btn:hover, .boton-elegante:hover {
   background-color: #333;
+  border-color: #656464;
+  box-shadow: 0 0px 10px rgb(101 107 115 / 64%);
 }
 
 /* Notifications */
@@ -138,17 +140,24 @@ body {
 }
 
 /* Social Links */
+.social-links {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
 .card {
   display: flex;
   height: 40px;
+  gap: 1em;
   width: 220px;
   margin-bottom: 15px;
 }
 
 .card svg {
-  width: 40px;
-  height: 40px;
-  padding: 0.2rem;
+  width: 50px;
+  height: 50px;
+  padding: 0.2em;
   cursor: pointer;
 }
 
@@ -156,19 +165,33 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20%;
+  width: 50px;
+  height: 50px;
   color: whitesmoke;
   font-size: 20px;
   text-decoration: none;
-  border-radius: 40px;
+  border-radius: 50%;
+  transition: all 0.5s ease;
 }
 
 .card .social-link1:hover {
-  background: #333;
+    background: #333;
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(51, 51, 51, 0.7);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-
+  
 .card .social-link2:hover {
   background-color: #5865f2;
+  transform: scale(1.2);
+  box-shadow: 0 0 15px rgba(88, 101, 242, 0.7);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card .social-link1:hover svg, 
+.card .social-link2:hover svg {
+  transform: scale(0.9); 
+  transition: transform 0.3s ease;
 }
 
 /* Responsive Design */
