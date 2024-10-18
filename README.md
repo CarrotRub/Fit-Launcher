@@ -17,6 +17,8 @@ Fit Launcher is a 🚀 **blazingly fast** 🚀 game launcher designed specifical
 
 ## Installation Guide
 
+### Standard Mode
+
 1. **Visit the Release Page**  
    Go to the [release page here](https://github.com/CarrotRub/Fit-Launcher/releases/latest).
 
