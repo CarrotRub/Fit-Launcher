@@ -1,15 +1,5 @@
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'IBMPlexSansRegular', sans-serif; 
-  }
-
-
-
-
-  /* NEWLY ADDED GAMES, FOCUS ON THIS FIRST.*/
-
-  .newly-added {
+/* NEWLY ADDED GAMES */
+.newly-added {
     display: inline-grid;
     grid-auto-flow: column;
     grid-area: Newly-Added;
@@ -17,48 +7,49 @@ body {
     grid-auto-rows: 200px;
     overflow-x: auto;
     position: relative;  
-    }
-  .newly-added::-webkit-scrollbar {
-    display: none; /* Hide the default scrollbar */
-  }
-  
+}
 
-  .games-container {
+.newly-added::-webkit-scrollbar {
+    display: none; /* Hide the default scrollbar */
+}
+
+.games-container {
     display: inline-flex;
+    width: 100vw;
     gap: inherit;
-  }
-  
-  /* Optional: Adjust styling for the image and title */
-  .newly-added img {
+}
+
+/* Image and Title Styling for Games */
+.newly-added img {
     grid-column: span 1;
     display: flex;
     flex-wrap: nowrap;
     flex-direction: row;
-
     width: 150px;
     max-height: -webkit-fill-available;
     border-radius: 18px;
     cursor: pointer;
-  }
-  
-  .gamehub-unique-game-title {
+}
+
+.gamehub-unique-game-title {
     margin-top: 0.5rem;
     font-size: 1.2rem;
-  }
-  #start-scroll-button {
-    position: absolute; /* Position relative to the parent .newly-added */
-    left: 0; /* Position at the left */
-  }
-  
-  #end-scroll-button {
-    position: absolute; /* Position relative to the parent .newly-added */
-    right: 0; /* Position at the right */
-  }
+}
 
-/* SPECIFICALLY FOR TITLE CLASS*/
+/* Scroll Buttons */
+#start-scroll-button {
+    position: absolute; /* Position relative to the parent .newly-added */
+    left: 0;
+}
+
+#end-scroll-button {
+    position: absolute; /* Position relative to the parent .newly-added */
+    right: 0;
+}
+
+/* TITLE CATEGORY */
 .title-category {
     display: inline-flex;
-    
     align-items: center;
     width: 100%;
     padding: 1em;
@@ -67,18 +58,21 @@ body {
 .title-category h2 {
     margin: 0;
     font-size: 1.5em;
+    -webkit-filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
+    filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
     color: #fff; /* Adjust according to your theme */
 }
 
+/* FILTER BOX */
 .filter-box {
     display: grid;
     grid-template-columns: 1fr auto; /* Title takes most space, filter box auto-sizes */
     align-items: center;
     justify-content: center;
     border-radius: 30px;
-    padding: 0.5em 0.5em;
+    padding: 0.5em;
     width: fit-content;
-    height: 1.3em;
+    height: 1.5em;
     color: #fff;
     position: relative;
     cursor: pointer;
@@ -88,20 +82,38 @@ body {
 .filter-box svg {
     stroke: #fff;
 }
+
 .filter-icon {
     width: 1.2em; 
     height: 1.5em; 
+    -webkit-filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
+    filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
     vertical-align: middle;
-    fill: #fff;
 }
 
-/* .filter-box:hover {
+/* Optional: Filter Box Hover Effect */
+/*
+.filter-box:hover {
     background-color: #b1aeae; 
-} */
+}
+*/
 
 .filter-box details {
     width: 100%;
     position: relative;
+    transition: max-height 0.3s ease-in-out; /* Smooth expand and collapse */
+    max-height: 2.5em; /* Initial height when closed */
+    -webkit-filter: drop-shadow(0px 0px 12px rgba(0, 0, 0, .8));
+    filter: drop-shadow(0px 0px 12px rgba(0, 0, 0, .8));
+    z-index: 9;
+}
+
+.filter-box details[open] {
+    max-height: 25vh; /* Expand when open */
+}
+
+.filter-box details[collapsed] {
+    transition: 0em 0.3s ease-out; 
 }
 
 .filter-box summary {
@@ -116,11 +128,9 @@ body {
 
 .filter-box details[open] summary {
     font-weight: bold;
-
 }
 
-
-/* Filter dropdown style */
+/* Filter Dropdown List Styling */
 .filter-box ul {
     position: sticky;
     top: 100%;
@@ -132,17 +142,19 @@ body {
     border-radius: 8px;
     overflow: auto;
     box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
-    z-index: 1;
+    z-index: 9;
     max-height: 0;
-    transition: max-height 0.3s ease-in-out;
+    transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
     grid-template-rows: 1.5em 0fr;
 }
 
 .filter-box details[open] ul {
+    opacity: 1;
     max-height: 25vh; /* Expand to desired size */
     grid-template-rows: 1.5em 1fr;
 }
 
+/* Filter List Items */
 .filter-box ul li {
     list-style: none;
     padding: 8px 12px;
@@ -156,33 +168,7 @@ body {
     border-radius: 6px;
 }
 
-.filter-box input[type="checkbox"] {
-    margin-right: 10px;
-    user-select: none;
-    clip-path: circle(50%);
-    border: 2px solid #ddd;
-    outline: none; 
-}
-
-.filter-box label {
-    cursor: pointer;
-}
-
-/* Filter reset icon */
-.filter-reset-icon {
-    fill: #fff;
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out;
-}
-
-.filter-reset-icon:hover {
-    transform: rotate(90deg); /* Rotate the reset icon on hover WIP */
-}
-
-.tags-list::-webkit-scrollbar {
-    background-color: #33333300;
-}
-
+/* CUSTOM CHECKBOX */
 .custom-checkbox {
     appearance: none; /* Remove default checkbox styling */
     width: 12px;
@@ -193,7 +179,7 @@ body {
     cursor: pointer; 
     outline: none; 
     position: relative; /* For positioning the pseudo-elements */
-    transition: background-color 0.3s, border-color 0.3s; /* Smooth color transitions */
+    transition: background-color 0.3s, border-color 0.3s; /* Smooth transitions */
 }
 
 .custom-checkbox:checked {
@@ -203,13 +189,28 @@ body {
 
 .custom-checkbox:checked::after {
     content: ''; /* Necessary for the pseudo-element */
-    position: absolute; /* Position it absolutely within the checkbox */
+    position: absolute;
     width: 8px; 
     height: 8px; 
     border-radius: 50%; /* Make it round */
     background-color: #fff; 
     top: 50%; 
     left: 50%; 
-    transition: background-color 0.3s, border-color 0.3s;
     transform: translate(-50%, -50%); 
+}
+
+/* FILTER RESET ICON */
+.filter-reset-icon {
+    fill: #fff;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+
+.filter-reset-icon:hover {
+    transform: rotate(90deg); /* Rotate the reset icon on hover */
+}
+
+/* CUSTOM SCROLLBAR FOR TAGS LIST */
+.tags-list::-webkit-scrollbar {
+    background-color: #33333300; /* Transparent scrollbar */
 }

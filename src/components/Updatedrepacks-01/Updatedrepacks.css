@@ -1,13 +1,4 @@
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'IBMPlexSansRegular', sans-serif; 
-  }
-
-
-
-
-  /* NEWLY ADDED GAMES, FOCUS ON THIS FIRST.*/
+/* NEWLY ADDED GAMES, FOCUS ON THIS FIRST.*/
 
   .recently-updated {
     display: inline-grid;
@@ -16,6 +7,7 @@ body {
     gap: 2em;
     grid-auto-rows: 200px;
     overflow-x: auto;
+    overflow-x: hidden;
     position: relative;
     
 }
@@ -26,6 +18,7 @@ body {
 
   .updated-games-container {
     display: inline-flex;
+    width: 100vw;
     gap: inherit;
   }
   
@@ -44,17 +37,6 @@ body {
   .gamehub-unique-game-title {
     margin-top: 0.5rem;
     font-size: 1.2rem;
-  }
-  #start-scroll-button {
-    position: absolute; /* Position relative to the parent .newly-added */
-    left: 0; /* Position at the left */
-    cursor: pointer;
-  }
-  
-  #end-scroll-button {
-    position: absolute; /* Position relative to the parent .newly-added */
-    right: 0; /* Position at the right */
-    cursor: pointer;
   }
 
 

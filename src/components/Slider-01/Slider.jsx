@@ -151,7 +151,27 @@ const Slider = (props) => {
               };
 
             return (
-              <div class="slide" key={index} style={{ position: 'relative' }}>
+              <div class="slide" key={index} style={{ position: 'relative' }}
+              onMouseEnter={(e) => {
+                const hoverDiv = document.createElement('div');
+                hoverDiv.className = 'hover-title';
+                hoverDiv.innerHTML = `
+                  <div class="title">${slide.title}</div>
+                  <div class="detail"><strong>Genres/Tags:</strong> ${details['Genre/Tags:']}</div>
+                  <div class="detail"><strong>Company:</strong> ${details.Companies}</div>
+                  <div class="detail"><strong>Language:</strong> ${details.Language}</div>
+                  <div class="detail"><strong>Original Size:</strong> ${details.OriginalSize}</div>
+                  <div class="detail"><strong>Repack Size:</strong> ${details.RepackSize}</div>
+                `;
+                e.currentTarget.appendChild(hoverDiv);
+              }}
+              onMouseLeave={(e) => {
+                const hoverDiv = e.currentTarget.querySelector('.hover-title');
+                if (hoverDiv) {
+                  e.currentTarget.removeChild(hoverDiv);
+                }
+              }}
+              >
                 <img
                   src={slide.img}
                   alt={slide.title}
@@ -172,18 +192,7 @@ const Slider = (props) => {
                   onMouseLeave={() => setHoveredTitle('')}
                   onMouseMove={handleMouseMove}
                 />
-                {hoveredTitle() === slide.title && (
-                  <div
-                    class="hover-title"
-                  >
-                    <div class="title">{slide.title}</div>
-                    <div class="detail"><strong>Genres/Tags:</strong> {details['Genre/Tags:']}</div>
-                    <div class="detail"><strong>Company:</strong> {details.Companies}</div>
-                    <div class="detail"><strong>Language:</strong> {details.Language}</div>
-                    <div class="detail"><strong>Original Size:</strong> {details.OriginalSize}</div>
-                    <div class="detail"><strong>Repack Size:</strong> {details.RepackSize}</div>
-                  </div>
-                )}
+
               </div>
             );
           })}
@@ -192,14 +201,17 @@ const Slider = (props) => {
 
       <div className="controls-buttons">
         <button onClick={handlePrevSlide} class="scroll-button --prev" style="background-color: transparent; border: none;">
-          <svg height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="m11 9-3 3m0 0 3 3m-3-3h8m5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-left">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M16 12H8m4-4-4 4 4 4"/>
+            </svg>
         </button>
         <button onClick={handleNextSlide} class="scroll-button --next" style="background-color: transparent; border: none;" disabled={lastSlideVisible()}>
-          <svg height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path transform="translate(24, 0) scale(-1, 1)" d="m11 9-3 3m0 0 3 3m-3-3h8m5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-arrow-right">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8m-4 4 4-4-4-4"/>
+        </svg>
+
         </button>
       </div>
     </>

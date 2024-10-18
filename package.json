@@ -12,6 +12,7 @@
   },
   "license": "GPL-3.0-only",
   "dependencies": {
+    "@fontsource-variable/overpass": "^5.1.1",
     "@solidjs/router": "^0.14.1",
     "@tauri-apps/api": "^1.6.0",
     "chart.js": "4.4.4",

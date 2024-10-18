@@ -16,13 +16,15 @@
   }
   
   .hover-title .title {
-    font-weight: bold;
+    font-weight: 700;
     white-space: normal;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
     -webkit-box-orient: vertical;
+    box-orient: vertical;
   }
   
   .hover-title .detail {
@@ -33,5 +35,7 @@
 
   .scroll-button {
     cursor: pointer;
+    -webkit-filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
+    filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
   }
   

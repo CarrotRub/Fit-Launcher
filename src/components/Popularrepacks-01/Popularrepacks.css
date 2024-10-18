@@ -1,13 +1,4 @@
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'IBMPlexSansRegular', sans-serif; 
-  }
-
-
-
-
-  /* NEWLY ADDED GAMES, FOCUS ON THIS FIRST.*/
+/* NEWLY ADDED GAMES, FOCUS ON THIS FIRST.*/
 
   .popular-games {
     display: inline-grid;
@@ -26,6 +17,7 @@ body {
 
   .games-container-pop {
     display: inline-flex;
+    width: 100vw;
     gap: inherit;
   }
   
@@ -76,14 +68,3 @@ body {
     text-shadow: -11px 9px 4px #ffffff;
   }
   
-
-
-  #start-scroll-button {
-    position: absolute; /* Position relative to the parent .popular-repacks */
-    left: 0; /* Position at the left */
-  }
-  
-  #end-scroll-button {
-    position: absolute; /* Position relative to the parent .popular-repacks */
-    right: 0; /* Position at the right */
-  }
