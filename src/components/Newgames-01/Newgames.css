@@ -58,7 +58,7 @@ body {
 /* SPECIFICALLY FOR TITLE CLASS*/
 .title-category {
     display: inline-flex;
-    gap: 2em;
+    
     align-items: center;
     width: 100%;
     padding: 1em;
@@ -75,20 +75,29 @@ body {
     grid-template-columns: 1fr auto; /* Title takes most space, filter box auto-sizes */
     align-items: center;
     justify-content: center;
-    background-color: #333;
     border-radius: 30px;
-    padding: 0.5em 1em;
+    padding: 0.5em 0.5em;
     width: fit-content;
-    height: 1.5em;
+    height: 1.3em;
     color: #fff;
     position: relative;
     cursor: pointer;
     transition: background-color 0.3s ease-in-out;
 }
 
-.filter-box:hover {
-    background-color: #444; /* Slightly lighter gray on hover */
+.filter-box svg {
+    stroke: #fff;
 }
+.filter-icon {
+    width: 1.2em; 
+    height: 1.5em; 
+    vertical-align: middle;
+    fill: #fff;
+}
+
+/* .filter-box:hover {
+    background-color: #b1aeae; 
+} */
 
 .filter-box details {
     width: 100%;

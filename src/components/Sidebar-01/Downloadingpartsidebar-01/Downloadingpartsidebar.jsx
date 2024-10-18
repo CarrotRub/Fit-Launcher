@@ -69,6 +69,7 @@ function Downloadingpartsidebar() {
             localStorage.setItem('CDG_Stats', JSON.stringify(state));
             setIsActiveDownload(true);
     
+    
             if (state.finished) {
                 setIsTorrentDone(true);
                 clearInterval(intervalId); // Stop fetching when torrent is done

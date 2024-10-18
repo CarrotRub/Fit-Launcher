@@ -20,6 +20,17 @@
     /* Enable vertical scrolling */
   }
   
+/* Scrollbar customization */
+.sidebar-container {
+  overflow-y: scroll; 
+  scrollbar-width: none; 
+}
+
+.sidebar-container::-webkit-scrollbar {
+  display: none; 
+}
+
+
   .sidebar-heading {
     position: relative; /* Position relative to create a stacking context */
   }
