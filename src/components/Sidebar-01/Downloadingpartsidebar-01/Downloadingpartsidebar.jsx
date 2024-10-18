@@ -24,10 +24,13 @@ function Downloadingpartsidebar() {
     const [isTorrentDone, setIsTorrentDone] = createSignal(false);
 
     onMount(() => {
-        window.addEventListener('start-download', startDownloadListener)
         const cdg = localStorage.getItem('CDG') || '[]'
         window.addEventListener('storage', stopTorrent)
         setCdgObject(JSON.parse(cdg))
+        onCleanup(() => {
+            window.removeEventListener('storage', stopTorrent);
+            clearInterval(fetchIntervalId)
+        });
 
     })
 
@@ -51,9 +54,10 @@ function Downloadingpartsidebar() {
     };
     
     let shouldStopFetching = false; // Flag to control the loop
-    let intervalId;
+    let fetchIntervalId;
 
-    const fetchTorrentStats = async () => {
+    async function fetchTorrentStats() {
+        console.log("fetchTorrentStats")
         if (shouldStopFetching) return; // Exit if the loop should stop
     
         try {
@@ -69,10 +73,9 @@ function Downloadingpartsidebar() {
             localStorage.setItem('CDG_Stats', JSON.stringify(state));
             setIsActiveDownload(true);
     
-    
             if (state.finished) {
                 setIsTorrentDone(true);
-                clearInterval(intervalId); // Stop fetching when torrent is done
+                clearInterval(fetchIntervalId); // Stop fetching when torrent is done
                 console.log('Torrent completed, stopping interval.');
                 console.log("Starting the Automated Process Setup Install");
                 await invoke('api_automate_setup_install', globalTorrentInfo)
@@ -83,28 +86,22 @@ function Downloadingpartsidebar() {
             
             if (error.message === 'Fetching of torrent stats has been stopped.') {
                 shouldStopFetching = true;
-                clearInterval(intervalId); // Stop interval in case of error
+                clearInterval(fetchIntervalId); // Stop interval in case of error
             }
         }
     };
     
-    const startDownloadListener = () => {
+    function startStatsFetching() {
+        console.log("startStatsFetching")
         fetchTorrentStats();
-        intervalId = setInterval(fetchTorrentStats, 500);
-        onCleanup(() => clearInterval(intervalId));
+        fetchIntervalId = setInterval(fetchTorrentStats, 500);
     };
-    window.addEventListener('start-download', startDownloadListener)
-
-    onCleanup(() => {
-        window.removeEventListener('start-download', startDownloadListener)
-    })
-
+    
     createEffect(async () => {
         
-        const actTorrentInfo = torrentInfo();
-
-        window.addEventListener('start-download', startDownloadListener)
-        const firstCdg = cdgObject()[0]
+        console.log(cdgObject())
+        const firstCdg = cdgObject()?.[0]
+        
         if (firstCdg) {
             setCurrentImage(firstCdg.gameImage)
             setCurrentTitle(firstCdg.gameTitle)
@@ -189,16 +186,11 @@ function Downloadingpartsidebar() {
             );
             
 
-        }
-
-        const hihiChut = JSON.parse(localStorage.getItem('CDG_Stats'));
-        
-
-        console.log(isActiveDownload(), torrentInfo())
+        }    
         if (torrentInfo() && isActiveDownload()) {
             console.log("donwl")
 
-            if (actTorrentInfo.state === 'initializing') {
+            if (torrentInfo()?.state === 'initializing') {
                 setIsInitializing(true);
                 setDownloadingSpeed('Initializing...');
                 setRemainingTime('');
@@ -206,7 +198,7 @@ function Downloadingpartsidebar() {
                 setIsInitializing(false)
             }
 
-            const progress = (actTorrentInfo.progress_bytes / actTorrentInfo.total_bytes) * 100;
+            const progress = (torrentInfo()?.progress_bytes / torrentInfo()?.total_bytes) * 100;
 
             setOldPercentage(progress);
             const element = document.querySelector(
@@ -221,14 +213,14 @@ function Downloadingpartsidebar() {
             }
 
 
-            setIsTorrentDone(actTorrentInfo.finished);
+            setIsTorrentDone(torrentInfo()?.finished);
             
-            console.log("actotrentnngo :", actTorrentInfo.state)
+            console.log("actotrentnngo :", torrentInfo().state)
 
-            const liveStats = actTorrentInfo.live || {};
+            const liveStats = torrentInfo()?.live || {};
             setDownloadingSpeed(liveStats?.download_speed?.human_readable || '0 MB/s');
             setRemainingTime(liveStats?.time_remaining?.human_readable || '0H 0M');
-            setIsTorrentDone(actTorrentInfo?.finished);
+            setIsTorrentDone(torrentInfo()?.finished);
             
 
 
@@ -267,13 +259,9 @@ function Downloadingpartsidebar() {
             setCurrentImage('')
         };
     
-        window.addEventListener('start-download', handler)
-    
-    
         return () => {
             if (!handler) return;
     
-            window.removeEventListener('start-download', handler)
             handler = undefined;
         };
     }
@@ -282,10 +270,10 @@ function Downloadingpartsidebar() {
     let gameObjectProduced = from(objectProducer);
 
     createEffect(() => {
-        console.log(torrentTrigger());
         if(torrentTrigger()) {
             console.log("Setting data")
             setTorrentTrigger(false)
+            startStatsFetching();
             gameObjectProduced = from(objectProducer);
             let CDG_Info = JSON.parse(localStorage.getItem('CDG'));
             setCdgObject(CDG_Info);
@@ -310,22 +298,21 @@ function Downloadingpartsidebar() {
                     {/* My heart told me to write weird-circle but my brain force me to write action-circle :( */}
                     <div className="action-circle">
                         <div className="action-circle-logo">
-                            { isInitializing() ? (
+                        { isInitializing() ? (
 
-                                <svg className="action-circle-loading" width="10" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <g stroke-width="0"/>
-                                    <g stroke-linecap="round" stroke-linejoin="round"/>
-                                    <path d="M20 12a8 8 0 0 1-11.76 7.061" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-                                </svg>
+                            <svg className="action-circle-loading" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-circle">
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                            </svg>
+
 
                             ) : (
+                            
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause">
+                                <rect x="14" y="4" width="4" height="16" rx="1"/>
+                                <rect x="6" y="4" width="4" height="16" rx="1"/>
+                            </svg>
 
-                                <svg width="10" height="11" viewBox="0 0 10 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect width="3.92857" height="11" rx="0.785714" fill="white"/>
-                                    <rect x="5.92857" width="3.92857" height="11" rx="0.785714" fill="white"/>
-                                </svg>
-
-                            )}
+                        )}
 
                         </div>
                     </div>
@@ -352,23 +339,27 @@ function Downloadingpartsidebar() {
 
                         <img className="current-image" src={currentImage()} alt="Game Image"></img>
                         
-                        {/* My heart told me to write weird-circle but my brain force me to write action-circle :( */}
-                        { isInitializing() ? (
+                        <div className="action-circle">
+                            <div className="action-circle-logo">
+                                { isInitializing() ? (
 
-                        <svg className="action-circle-loading" width="10" height="11" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <g stroke-width="0"/>
-                            <g stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M20 12a8 8 0 0 1-11.76 7.061" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-                        </svg>
+                                    <svg className="action-circle-loading" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-circle">
+                                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                                    </svg>
 
-                        ) : (
 
-                        <svg width="10" height="11" viewBox="0 0 10 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="3.92857" height="11" rx="0.785714" fill="white"/>
-                            <rect x="5.92857" width="3.92857" height="11" rx="0.785714" fill="white"/>
-                        </svg>
+                                ) : (
 
-                        )}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause">
+                                        <rect x="14" y="4" width="4" height="16" rx="1"/>
+                                        <rect x="6" y="4" width="4" height="16" rx="1"/>
+                                    </svg>
+
+
+                                )}
+
+                            </div>
+                        </div>
                         
                     </div>
                     <div className="current-text-container">
