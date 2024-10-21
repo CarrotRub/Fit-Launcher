@@ -295,16 +295,16 @@ function Mylibrary() {
             blurOverlay.style.backgroundImage = `url(${selectedImageSrc})`;
             blurOverlay.style.filter = 'blur(15px)';
             blurOverlay.style.top = `-${scrollPosition}px`;
-            let brightnessResult = await invoke('analyze_image_lightness', {imageUrl : selectedImageSrc} );
-            if (brightnessResult === 'light') {
-                setBackgroundMainBrightness('light')
-                console.log("light")
-            } else if (brightnessResult === 'dark') {
-                setBackgroundMainBrightness("dark")
-                console.log("dark")
-            } else {
-                console.log("weirdo")
-            }
+            // let brightnessResult = await invoke('analyze_image_lightness', {imageUrl : selectedImageSrc} );
+            // if (brightnessResult === 'light') {
+            //     setBackgroundMainBrightness('light')
+            //     console.log("light")
+            // } else if (brightnessResult === 'dark') {
+            //     setBackgroundMainBrightness("dark")
+            //     console.log("dark")
+            // } else {
+            //     console.log("weirdo")
+            // }
           }
 
     }
