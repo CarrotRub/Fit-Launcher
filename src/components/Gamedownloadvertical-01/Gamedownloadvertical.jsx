@@ -59,6 +59,22 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
         })
     }
 
+    const unexpectedGameStopError = () => {
+        Swal.fire({
+            title: 'Unexpected Error',
+            text: 'An unexpected error happened while stopping the game, please try to restart the download by searching the game and clicking on the Download button again, this will resume it you can then stop it. If that doesn\'t work please contact us on Discord available in the Settings page.',
+            icon: 'error',
+        })
+    }
+
+    const unexpectedGameDeleteError = () => {
+        Swal.fire({
+            title: 'Unexpected Error',
+            text: 'An unexpected error happened while deleting the files of the game, please check if you aren\'t running the game or if there isn\'t any processes creeping on any files (It can be anything that has opened a file of the game, even notepad). If that doesn\'t work please contact us on Discord available in the Settings page.',
+            icon: 'error',
+        })
+    }
+
     const handleButtonClick = async () => {
         const currentState = gameInfo().state
         const isFinishedState = gameInfo().finished
@@ -322,18 +338,64 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
                             document.getElementById('delete-files-btn')
                         deleteFilesBtn.addEventListener('click', async () => {
                             try {
-                                await invoke('api_delete_torrent', {
-                                    torrentIdx: hash,
-                                })
-                                Swal.fire({
-                                    title: 'Deleted',
-                                    text: 'The files of the current download have been deleted.',
-                                    icon: 'success',
-                                }).then(() => {
+
+                                try {
+                                    await invoke('api_delete_torrent', {
+                                        torrentIdx: hash,
+                                    })
+                                    Swal.fire({
+                                        title: 'Deleted',
+                                        text: 'The files of the current download have been deleted.',
+                                        icon: 'success',
+                                    })
                                     localStorage.removeItem('CDG')
                                     localStorage.removeItem('CTG')
                                     window.dispatchEvent(new Event('storage'))
-                                })
+                                } catch(error) {
+                                    console.error('Error Resuming Torrent :', error)
+                                    if (
+                                        error.AnyhowError === 'TorrentManager is not initialized.'
+                                    ) {
+                                        const lastInputPath = localStorage.getItem('LUP')
+                                        console.log(
+                                            'TorrentManager is not initialized. Initializing it...'
+                                        )
+                
+                                        // Initialize Torrent.
+                                        try {
+                                            console.log('Initializing')
+                                            await invoke('api_initialize_torrent_manager', {
+                                                downloadPath: lastInputPath,
+                                                appCachePath: cacheDirPath,
+                                                appSettingsPath: dirPath,
+                                            })
+                                            console.log('Done Init')
+                                            try {
+                                                console.log('Stopping')
+            
+                                                await invoke('api_stop_torrent', { torrentIdx: hash })
+                                                localStorage.removeItem('CDG')
+                                                window.dispatchEvent(new Event('storage'))
+                                                Swal.fire({
+                                                    title: 'Deleted',
+                                                    text: 'The current download has been deleted.',
+                                                    icon: 'success',
+                                                })
+                                            } catch (error) {
+                                                console.error(
+                                                    'Error Deleting Torrent Again:',
+                                                    error
+                                                )
+                                                unexpectedGameResumeError()
+                                            }
+                                        } catch (err) {
+                                            unexpectedGameDeleteError
+                                        }
+                                    }
+                                }
+                                
+
+
                             } catch (error) {
                                 Swal.fire({
                                     title: 'Error Deleting Files',
@@ -352,14 +414,59 @@ function Gameverticaldownloadslide({ isActive, setIsActive }) {
                 },
             }).then(async (result) => {
                 if (result.isConfirmed) {
-                    await invoke('api_stop_torrent', { torrentIdx: hash })
-                    localStorage.removeItem('CDG')
-                    window.dispatchEvent(new Event('storage'))
-                    Swal.fire({
-                        title: 'Deleted',
-                        text: 'The current download has been deleted.',
-                        icon: 'success',
-                    })
+                    // lmao forgot error handling here, added it with also Swal alert :D - carrotrub
+                    try {
+                        await invoke('api_stop_torrent', { torrentIdx: hash })
+                        localStorage.removeItem('CDG')
+                        window.dispatchEvent(new Event('storage'))
+                        Swal.fire({
+                            title: 'Deleted',
+                            text: 'The current download has been deleted.',
+                            icon: 'success',
+                        })
+                    } catch(error) {
+                        console.error('Error Resuming Torrent :', error)
+                        if (
+                            error.AnyhowError === 'TorrentManager is not initialized.'
+                        ) {
+                            const lastInputPath = localStorage.getItem('LUP')
+                            console.log(
+                                'TorrentManager is not initialized. Initializing it...'
+                            )
+    
+                            // Initialize Torrent.
+                            try {
+                                console.log('Initializing')
+                                await invoke('api_initialize_torrent_manager', {
+                                    downloadPath: lastInputPath,
+                                    appCachePath: cacheDirPath,
+                                    appSettingsPath: dirPath,
+                                })
+                                console.log('Done Init')
+                                try {
+                                    console.log('Stopping')
+
+                                    await invoke('api_stop_torrent', { torrentIdx: hash })
+                                    localStorage.removeItem('CDG')
+                                    window.dispatchEvent(new Event('storage'))
+                                    Swal.fire({
+                                        title: 'Deleted',
+                                        text: 'The current download has been deleted.',
+                                        icon: 'success',
+                                    })
+                                } catch (error) {
+                                    console.error(
+                                        'Error Stopping Torrent Again:',
+                                        error
+                                    )
+                                    unexpectedGameResumeError()
+                                }
+                            } catch (err) {
+                                unexpectedGameStopError()
+                            }
+                        }
+                    }
+
                 }
             })
         } else {
