@@ -512,6 +512,14 @@ const SettingsPage = () => {
                 <div class="form-group">
                     <p>Application Version: {version()}</p>
                 </div>
+                <div class="form-group">
+                    <button 
+                        class="check-update-btn"
+                        onClick={handleCheckForUpdates}
+                        >
+                        Check for Updates
+                    </button>
+                </div>
             </section>
 
             {/* Social Links */}

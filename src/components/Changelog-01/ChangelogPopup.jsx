@@ -31,6 +31,52 @@ const ChangelogPopup = () => {
             <p class="subheading">Discover the latest features, improvements, and fixes.</p>
 
             <div class="changelog-item">
+              <div class="date">Oct 21, 2024 - v1.0.4</div>
+              <ul class="bullet-list">
+                <li><span class="label new">New Features:</span>
+                  <ul>
+                    <li>Added auto-updater functionality</li>
+                    <li>Introduced StopTorrent feature to delete downloaded files alongside stopping torrents</li>
+                    <li>Implemented a dropdown filter for game genres selection</li>
+                    <li>Designed a function in Rust to check image brightness, dynamically changing category titles based on brightness</li>
+                    <li>Added secrets to environment variables for better security</li>
+                    <li>Enhanced slider design with a new filtering icon allowing the user to filter games by genres</li>
+                    <li>Added better torrent configuration options in TOML format</li>
+                    <li>Added Peers Information part in vertical slide (@simplystoned)</li>
+                  </ul>
+                </li>
+                <li><span class="label bugfix">Bug Fixes:</span>
+                  <ul>
+                    <li>Fixed issue with stopping game from vertical slide without initializing the torrent.</li>
+                    <li>Fixed hardcoded sizing issues, especially for the sidebar</li>
+                    <li>Resolved clipping issues with long game titles that didn't fit properly</li>
+                    <li>Corrected Z-index overlap issues with the sidebar</li>
+                    <li>Fixed library reactivity to improve performance</li>
+                    <li>Addressed random box shadow inconsistencies across elements</li>
+                    <li>Fixed hovering issues for game images in the slider</li>
+                    <li>Improved CSS readability and functionality</li>
+                    <li>Improved social media icon hovering (Discord & GitHub)</li>
+                    <li>Fixed sidebar useful-links navigation for better maintainability</li>
+                  </ul>
+                </li>
+                <li><span class="label improvement">Improvements:</span>
+                  <ul>
+                    <li>Removed most event listeners for better optimization</li>
+                    <li>Made reload quicker to prevent issues from users spamming the "Save Settings" button</li>
+                    <li>Replaced regular checkboxes with switches for a more modern look and fixed the settings design (@simplystoned)</li>
+                    <li>Hid the sidebar scrollbar for a cleaner design</li>
+                    <li>Improved download progress bar with better icon alignment</li>
+                    <li>Unified the app's icon set to Lucid Icons for a consistent appearance</li>
+                    <li>Enforced NPM fontsource usage for fonts, prohibiting direct changes to the app’s font-family</li>
+                    <li>Reorganized slider CSS into a dedicated file for better maintainability</li>
+                    <li>Optimized UI automation and improved logic for smoother interactions</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+
+
+            <div class="changelog-item">
               <div class="date">Oct 11, 2024 - v1.0.3</div>
               <ul class="bullet-list">
                 <li><span class="label new">New Features:</span>

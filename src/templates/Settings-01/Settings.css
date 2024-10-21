@@ -97,9 +97,8 @@ body {
 }
 
 
-
 /* Smaller Button Styling */
-.upload-btn, .boton-elegante {
+.upload-btn, .check-update-btn, .boton-elegante {
   border: 1px solid #2c2c2c;
   background-color: #1a1a1a;
   color: #ffffff;
@@ -115,7 +114,7 @@ body {
 
 
 
-.upload-btn:hover, .boton-elegante:hover {
+.upload-btn:hover,.check-update-btn:hover, .boton-elegante:hover {
   background-color: #333;
   border-color: #656464;
   box-shadow: 0 0px 10px rgb(101 107 115 / 64%);
