@@ -130,16 +130,21 @@ function Gamehub() {
             blurOverlay.style.filter = 'blur(15px)';
             blurOverlay.style.top = `-${scrollPosition}px`;
 
-            let brightnessResult = await invoke('analyze_image_lightness', {imageUrl : selectedImageSrc} );
-            if (brightnessResult === 'light') {
-                setBackgroundMainBrightness('light')
-                console.log("light")
-            } else if (brightnessResult === 'dark') {
-                setBackgroundMainBrightness("dark")
-                console.log("dark")
-            } else {
-                console.log("weird")
-            }
+            try {
+
+                // let brightnessResult = await invoke('analyze_image_lightness', {imageUrl : selectedImageSrc} );
+                // if (brightnessResult === 'light') {
+                //     setBackgroundMainBrightness('light')
+                //     console.log("light")
+                // } else if (brightnessResult === 'dark') {
+                //     setBackgroundMainBrightness("dark")
+                //     console.log("dark")
+                // } else {
+                //     console.log("weird")
+                // }
+            } catch (error) {
+
+}
 
         }
     }
@@ -170,18 +175,30 @@ function Gamehub() {
 
         if (!settings().background_image_path_64) {
             console.log('Gamehub: No custom background image found. Running randomImageFinder.');
-            randomImageFinder();
+            try {
+                randomImageFinder();
+            } catch (error) {
+
+            }
             const timeOut = setTimeout(() => {
                 const fitgirlLauncher = document.querySelector('.gamehub-container');
                 if (!fitgirlLauncher.querySelector('.blur-overlay')) {
-                    randomImageFinder(); // Only apply background if it's not already applied
+                try {
+                    randomImageFinder();
+                } catch (error) {
+
+                }
                 }
             }, 500);
 
             const interval = setInterval(() => {
                 const fitgirlLauncher = document.querySelector('.gamehub-container');
                 if (!fitgirlLauncher.querySelector('.blur-overlay')) {
-                    randomImageFinder();
+                    try {
+                        randomImageFinder();
+                    } catch (error) {
+                        
+                    }
                 }
             }, 5000);
 
