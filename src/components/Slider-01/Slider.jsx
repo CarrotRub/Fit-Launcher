@@ -130,11 +130,6 @@ const Slider = (props) => {
     setMousePosition({ y: event.clientY });
   };
 
-  const handleMouseLeave = () => {
-    const selec_title_game = document.querySelector(".hover-title");
-    selec_title_game.remove();
-  }
-
   return (
     <>
       <div className={containerClassName}>
@@ -156,22 +151,20 @@ const Slider = (props) => {
               };
 
             return (
-              <div class="slide" key={index} style={{ position: 'relative' }}
-              onMouseEnter={(e) => {
-                const hoverDiv = document.createElement('div');
-                hoverDiv.className = 'hover-title';
-                hoverDiv.innerHTML = `
-                  <div class="title">${slide.title}</div>
-                  <div class="detail"><strong>Genres/Tags:</strong> ${details['Genre/Tags:']}</div>
-                  <div class="detail"><strong>Company:</strong> ${details.Companies}</div>
-                  <div class="detail"><strong>Language:</strong> ${details.Language}</div>
-                  <div class="detail"><strong>Original Size:</strong> ${details.OriginalSize}</div>
-                  <div class="detail"><strong>Repack Size:</strong> ${details.RepackSize}</div>
-                `;
-                e.currentTarget.appendChild(hoverDiv);
-              }}
-            
-              >
+              <div class="slide" key={index} style={{ position: 'relative' }} onMouseEnter={
+                (
+                    <div
+                      class="hover-title"
+                    >
+                      <div class="title">{slide.title}</div>
+                      <div class="detail"><strong>Genres/Tags:</strong> {details['Genre/Tags:']}</div>
+                      <div class="detail"><strong>Company:</strong> {details.Companies}</div>
+                      <div class="detail"><strong>Language:</strong> {details.Language}</div>
+                      <div class="detail"><strong>Original Size:</strong> {details.OriginalSize}</div>
+                      <div class="detail"><strong>Repack Size:</strong> {details.RepackSize}</div>
+                    </div>
+                  )
+              }>
                 <img
                   src={slide.img}
                   alt={slide.title}
@@ -189,7 +182,7 @@ const Slider = (props) => {
                     ), mainContentDiv);
                   }}
                   onMouseEnter={() => setHoveredTitle(slide.title)}
-                  onMouseLeave={() => handleMouseLeave()}
+                  onMouseLeave={() => setHoveredTitle('')}
                   onMouseMove={handleMouseMove}
                 />
 
