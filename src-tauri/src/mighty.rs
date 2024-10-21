@@ -129,7 +129,8 @@ pub mod windows_controls_processes {
             );
         }
 
-        // Don't use clippy here, I need to check null_pointer not necessarily null. Confusion might happen on some edge-cases.
+        // Don't use clippy here, I need to check null_pointer not null constant and target_hwnd is a ref to a mut pointer, confusion might happen.
+        #[allow(clippy::cmp_null)]
         if target_hwnd.0 != std::ptr::null_mut() {
             Some(target_hwnd)
         } else {

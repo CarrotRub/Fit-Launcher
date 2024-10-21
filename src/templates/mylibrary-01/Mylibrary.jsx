@@ -18,6 +18,7 @@ function Mylibrary() {
     const [gameContextMenuVisible, setGameContextMenuVisible] = createSignal(false);
     const [gameContextMenuPosition, setGameContextMenuPosition] = createSignal({ x: 0, y: 0 });
     const [selectedGame, setSelectedGame] = createSignal(null);
+    const [backgroundMainBrightness, setBackgroundMainBrightness] = createSignal("dark");
 
     const [searchTerm, setSearchTerm] = createSignal('');
     const [searchResults, setSearchResults] = createSignal([]);
@@ -262,7 +263,7 @@ function Mylibrary() {
     }
 
     
-    function randomImageFinder() {
+    async function randomImageFinder() {
         const imageElements = document.querySelectorAll(".launcher-container img");
         if (imageElements.length > 0) {
             const randomIndex = Math.floor(Math.random() * imageElements.length);
@@ -277,14 +278,14 @@ function Mylibrary() {
                 docBlurOverlay.remove()
             }
             
-            const docColorFilterOverlay = document.querySelector('.color-blur-overlay')
-            if (docColorFilterOverlay === null){
-                const colorFilterOverlay = document.createElement('div');
-                colorFilterOverlay.className = 'color-blur-overlay';
-                fitgirlLauncher.appendChild(colorFilterOverlay)
-                console.log("colroe")
+            // const docColorFilterOverlay = document.querySelector('.color-blur-overlay')
+            // if (docColorFilterOverlay === null){
+            //     const colorFilterOverlay = document.createElement('div');
+            //     colorFilterOverlay.className = 'color-blur-overlay';
+            //     fitgirlLauncher.appendChild(colorFilterOverlay)
+            //     console.log("colroe")
 
-            } 
+            // } 
 
             const blurOverlay = document.createElement('div');
             blurOverlay.className = 'blur-overlay';
@@ -294,7 +295,16 @@ function Mylibrary() {
             blurOverlay.style.backgroundImage = `url(${selectedImageSrc})`;
             blurOverlay.style.filter = 'blur(15px)';
             blurOverlay.style.top = `-${scrollPosition}px`;
-            
+            let brightnessResult = await invoke('analyze_image_lightness', {imageUrl : selectedImageSrc} );
+            if (brightnessResult === 'light') {
+                setBackgroundMainBrightness('light')
+                console.log("light")
+            } else if (brightnessResult === 'dark') {
+                setBackgroundMainBrightness("dark")
+                console.log("dark")
+            } else {
+                console.log("weirdo")
+            }
           }
 
     }
@@ -343,7 +353,8 @@ function Mylibrary() {
         }
     }
 
-    createEffect( () => {
+    createEffect( async () => {
+        await randomImageFinder()
         const timeOut = setTimeout(randomImageFinder, 500);
         const interval = setInterval(randomImageFinder, 5000); 
         onCleanup(() => {
@@ -418,9 +429,17 @@ function Mylibrary() {
         <>
              <div class="launcher-container">
                 <div class="game-container">
-                    <div class="game-container-title">
-                        <h1>My Library</h1>
-                    </div>
+
+                    {backgroundMainBrightness() === "dark" ? (
+                            <div class="game-container-title">
+                                <h1 className="title-category-element light">My Library</h1>
+                            </div>
+                        ) : (
+                            <div class="game-container-title">
+                              <h1 className="title-category-element dark">My Library</h1>
+                            </div>
+                        )
+                    }
                     
                     <div class="game-grid">
                         {/* Iterate over gameData to dynamically create game elements */}

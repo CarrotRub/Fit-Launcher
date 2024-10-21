@@ -11,7 +11,7 @@ edition = "2021"
 tauri-build = { version = "1.5.4", features = [] }
 
 [dependencies]
-tauri = { version = "1.8.0", features = ["api-all"] }
+tauri = { version = "1.8.0", features = [ "updater", "api-all"] }
 serde = { version = "1.0.209", features = ["derive"] }
 serde_json = "1.0.127"
 reqwest = { version = "0.12.7", features = ["blocking", "rustls-tls", "gzip", "brotli", "deflate"] }
@@ -34,6 +34,8 @@ tracing-appender = "0.2.3"
 select = "0.6"
 toml = "0.8.19"
 sysinfo = "0.32.0"
+image = "0.25.4"
+palette = "0.7.6" 
 
 [target.'cfg(windows)'.dependencies]
 uiautomation = "0.12.2"

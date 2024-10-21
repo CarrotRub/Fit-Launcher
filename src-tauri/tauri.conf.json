@@ -27,6 +27,18 @@
                 "./icons/icon.ico"
             ]
         },
+        "updater": {
+            "active": true,
+            "endpoints": [
+              "https://gist.githubusercontent.com/CarrotRub/495fb3cd9e893a19b3d961309e299fc7/raw/"
+            ],
+            "dialog": true,
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ2OUMxMDA5RTMzOTk2MUIKUldRYmxqbmpDUkNjMWwxR1ZDbUg2dVFrclVlWmxoaG8ybXUvQituS3AwWEpxT1BxckViN2o2RTMK",
+            "windows": {
+                "installMode": "basicUi"
+            }
+            
+        },
         "allowlist": {
             "all": true,
             "path": {

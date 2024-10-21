@@ -130,6 +130,11 @@ const Slider = (props) => {
     setMousePosition({ y: event.clientY });
   };
 
+  const handleMouseLeave = () => {
+    const selec_title_game = document.querySelector(".hover-title");
+    selec_title_game.remove();
+  }
+
   return (
     <>
       <div className={containerClassName}>
@@ -165,12 +170,7 @@ const Slider = (props) => {
                 `;
                 e.currentTarget.appendChild(hoverDiv);
               }}
-              onMouseLeave={(e) => {
-                const hoverDiv = e.currentTarget.querySelector('.hover-title');
-                if (hoverDiv) {
-                  e.currentTarget.removeChild(hoverDiv);
-                }
-              }}
+            
               >
                 <img
                   src={slide.img}
@@ -189,7 +189,7 @@ const Slider = (props) => {
                     ), mainContentDiv);
                   }}
                   onMouseEnter={() => setHoveredTitle(slide.title)}
-                  onMouseLeave={() => setHoveredTitle('')}
+                  onMouseLeave={() => handleMouseLeave()}
                   onMouseMove={handleMouseMove}
                 />
 

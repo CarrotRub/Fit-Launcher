@@ -24,6 +24,7 @@ function Gamehub() {
     };
 
     const [settings, setSettings] = createSignal(defaultSettings); 
+    const [backgroundMainBrightness, setBackgroundMainBrightness] = createSignal("dark");
 
     onMount(() => {
         console.log('Gamehub component mounted');
@@ -100,7 +101,7 @@ function Gamehub() {
     });
 
     // Function to apply random image background
-    function randomImageFinder() {
+    async function randomImageFinder() {
         const imageElements = document.querySelectorAll(".gamehub-container img");
         if (imageElements.length > 0) {
             const randomIndex = Math.floor(Math.random() * imageElements.length);
@@ -114,12 +115,12 @@ function Gamehub() {
                 docBlurOverlay.remove();
             }
 
-            const docColorFilterOverlay = document.querySelector('.color-blur-overlay');
-            if (docColorFilterOverlay === null) {
-                const colorFilterOverlay = document.createElement('div');
-                colorFilterOverlay.className = 'color-blur-overlay';
-                fitgirlLauncher.appendChild(colorFilterOverlay);
-            }
+            // const docColorFilterOverlay = document.querySelector('.color-blur-overlay');
+            // if (docColorFilterOverlay === null) {
+            //     const colorFilterOverlay = document.createElement('div');
+            //     colorFilterOverlay.className = 'color-blur-overlay';
+            //     fitgirlLauncher.appendChild(colorFilterOverlay);
+            // }
 
             const blurOverlay = document.createElement('div');
             blurOverlay.className = 'blur-overlay';
@@ -128,8 +129,40 @@ function Gamehub() {
             blurOverlay.style.backgroundImage = `url(${selectedImageSrc})`;
             blurOverlay.style.filter = 'blur(15px)';
             blurOverlay.style.top = `-${scrollPosition}px`;
+
+            let brightnessResult = await invoke('analyze_image_lightness', {imageUrl : selectedImageSrc} );
+            if (brightnessResult === 'light') {
+                setBackgroundMainBrightness('light')
+                console.log("light")
+            } else if (brightnessResult === 'dark') {
+                setBackgroundMainBrightness("dark")
+                console.log("dark")
+            } else {
+                console.log("weird")
+            }
+
         }
     }
+
+    createEffect(() => {
+        const title_category = document.querySelectorAll(".title-category h2");
+        const title_category_svg = document.querySelectorAll(".filter-box svg")
+        if (backgroundMainBrightness() === "dark") {
+            title_category.forEach((el) => {
+                el.setAttribute("text-color-theme", "light");
+            });
+            title_category_svg.forEach((el) => {
+                el.setAttribute("text-color-theme", "light");
+            })
+        } else if (backgroundMainBrightness() === "light") {
+            title_category.forEach((el) => {
+                el.setAttribute("text-color-theme", "dark");
+            })
+            title_category_svg.forEach((el) => {
+                el.setAttribute("text-color-theme", "dark");
+            })
+        }
+    })
 
     // Effect to manage the random background based on background_image_path_64
     createEffect(() => {
@@ -137,7 +170,7 @@ function Gamehub() {
 
         if (!settings().background_image_path_64) {
             console.log('Gamehub: No custom background image found. Running randomImageFinder.');
-
+            randomImageFinder();
             const timeOut = setTimeout(() => {
                 const fitgirlLauncher = document.querySelector('.gamehub-container');
                 if (!fitgirlLauncher.querySelector('.blur-overlay')) {

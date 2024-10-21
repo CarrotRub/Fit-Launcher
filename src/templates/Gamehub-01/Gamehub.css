@@ -4,7 +4,6 @@
     grid-template-columns: 2.1fr;
     grid-template-rows: 1fr 1fr 1fr;
     gap: 20px 0px;
-    padding-left: 4vh;
     padding-bottom: 4vh;
     grid-template-areas:
         "Popular-repacks"
@@ -49,10 +48,31 @@
     z-index: -1;
 }
 
-.Popular-repacks { grid-row: 1; } /* First row */
-.New-Games { grid-row: 2; } /* Second row */
-.Recently-Updated { grid-row: 3; } /* Third row */
+
+/* Third row */
 
 .gamehub-container::-webkit-scrollbar {
     display: none
+}
+
+@keyframes animation-white-to-gray {
+    0% { color: inherit; }
+    100% { color: #333; }
+  }
+
+  
+  @keyframes animation-gray-to-white {
+    0% { color: inherit; }
+    100% { color: #fff; }
+  }
+
+
+.title-category h2[text-color-theme="light"] {
+    animation: 1s animation-gray-to-white ease-in-out;
+    color: #fff;
+}
+
+.title-category h2[text-color-theme="dark"] {
+    animation: 1s animation-white-to-gray ease-in-out;
+    color: #333;
 }
