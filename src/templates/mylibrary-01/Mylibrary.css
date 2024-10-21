@@ -257,3 +257,25 @@ display:none;
     align-items: center;
     margin-left: 5vw;
   }
+
+
+  @keyframes animation-white-to-gray {
+    0% { color: inherit; } /*have original color*/
+    100% { color: #535353; }
+  }
+
+  
+  @keyframes animation-gray-to-white {
+    0% { color: inherit; } /*have original color*/
+    100% { color: #fff; }
+  }
+
+  .title-category-element.dark {
+    animation: 1s animation-white-to-gray ease-in-out;
+    color: #535353;
+  }
+
+  .title-category-element.light {
+    animation: 1s animation-gray-to-white ease-in-out;
+    color: #fff;
+  }
