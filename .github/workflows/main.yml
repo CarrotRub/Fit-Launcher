@@ -13,8 +13,6 @@ jobs:
   publish-tauri:
     permissions:
       contents: write
-      packages: write
-      deployments: write
 
     runs-on: windows-latest
 
