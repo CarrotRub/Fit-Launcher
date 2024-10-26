@@ -18,6 +18,7 @@ mod mighty;
 use std::collections::HashMap;
 use std::fs;
 
+use scraper::{Html, Selector};
 use serde_json::Value;
 use std::error::Error;
 use tracing::error;
@@ -50,7 +51,6 @@ use reqwest::blocking::get;
 use std::path::Path;
 // crates for requests
 use anyhow::Result;
-use kuchiki::traits::*;
 // stop threads
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -62,6 +62,9 @@ use lru::LruCache;
 use std::num::NonZeroUsize;
 use tauri::State;
 use tokio::sync::Mutex;
+
+use futures::stream::{self, StreamExt};
+use tokio::task;
 
 use chrono::Utc;
 
@@ -93,57 +96,68 @@ struct GameImages {
     my_all_images: Vec<String>,
 }
 
-fn extract_hrefs_from_body(body: &str) -> Result<Vec<String>> {
-    let document = kuchiki::parse_html().one(body);
-    let mut hrefs = Vec::new();
-
-    // Only process relevant paragraphs
-    for p_index in 3..10 {
-        let href_selector_str = format!(".entry-content > p:nth-of-type({}) a[href]", p_index);
-
-        for anchor_elem in document
-            .select(&href_selector_str)
-            .map_err(|_| anyhow::anyhow!("Failed to select anchor element"))?
-        {
-            if let Some(href_link) = anchor_elem.attributes.borrow().get("href") {
-                hrefs.push(href_link.to_string());
-            }
-        }
-    }
-    Ok(hrefs)
+/// Helper function.
+async fn check_url_status(client: &Client, url: &str) -> Result<bool> {
+    let response = client.head(url).send().await?;
+    Ok(response.status().is_success())
 }
 
-async fn fetch_and_process_href(client: &Client, href: &str) -> Result<Vec<String>> {
-    if STOP_FLAG.load(Ordering::Relaxed) {
-        return Err(anyhow::anyhow!("Cancelled the Event..."));
-    }
+fn parse_image_links(body: &str) -> Result<Vec<String>> {
+    let document = Html::parse_document(body);
+    let mut images = Vec::new();
 
-    let href_res = client.get(href).send().await?;
-    if !href_res.status().is_success() {
-        return Ok(vec![]);
-    }
+    // Iterate over relevant paragraphs
+    for p_index in 3..10 {
+        let href_selector_str = format!(".entry-content > p:nth-of-type({}) img[src]", p_index);
+        let href_selector = Selector::parse(&href_selector_str)
+            .map_err(|_| anyhow::anyhow!("Failed to parse selector"))?;
 
-    let href_body = href_res.text().await?;
-    let href_document = kuchiki::parse_html().one(href_body);
-    let mut image_srcs = Vec::new();
-
-    for noscript in href_document
-        .select("noscript")
-        .map_err(|_| anyhow::anyhow!("Failed to select noscript element"))?
-    {
-        let inner_noscript_html = noscript.text_contents();
-        let inner_noscript_document = kuchiki::parse_html().one(inner_noscript_html);
-
-        for img_elem in inner_noscript_document
-            .select("div.big-image > a > img")
-            .map_err(|_| anyhow::anyhow!("Failed to select image element"))?
-        {
-            if let Some(src) = img_elem.attributes.borrow().get("src") {
-                image_srcs.push(src.to_string());
+        for element in document.select(&href_selector) {
+            if let Some(src_link) = element.value().attr("src") {
+                images.push(src_link.to_string());
             }
         }
     }
-    Ok(image_srcs)
+    Ok(images)
+}
+
+async fn fetch_image_links(client: Arc<Client>, body: &str) -> Result<Vec<String>> {
+    let initial_images = parse_image_links(body)?;
+    let client = Arc::clone(&client);
+
+    let images = stream::iter(initial_images)
+        .map(|src_link| {
+            let client = Arc::clone(&client);
+            task::spawn(async move {
+                if src_link.contains("jpg.240p.") {
+                    let primary_image = src_link.replace("240p", "1080p");
+                    if check_url_status(&client, &primary_image).await? {
+                        Ok::<Option<String>, anyhow::Error>(Some(primary_image))
+                    } else {
+                        let fallback_image = primary_image.replace("jpg.1080p.", "jpg.");
+                        if check_url_status(&client, &fallback_image).await? {
+                            Ok(Some(fallback_image))
+                        } else {
+                            Ok(None)
+                        }
+                    }
+                } else {
+                    Ok(None)
+                }
+            })
+        })
+        .buffer_unordered(10)
+        .map(|result| match result {
+            Ok(Ok(Some(image))) => Ok(image),
+            Ok(Ok(None)) => Err(anyhow::anyhow!("Image not found")),
+            Ok(Err(e)) => Err(anyhow::anyhow!("Error fetching image: {}", e)),
+            Err(join_err) => Err(anyhow::anyhow!("Join error: {}", join_err)),
+        })
+        .filter_map(|result| async move { result.ok() }) // Collects only the successful results
+        .collect::<Vec<_>>() // Collects into Vec<String>
+        .await;
+
+    Ok(images)
 }
 
 async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
@@ -151,40 +165,11 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
 
-    let client = Client::new();
+    let client = Arc::new(Client::new());
     let body = client.get(url).send().await?.text().await?;
-    let hrefs = extract_hrefs_from_body(&body)?;
+    let images = fetch_image_links(client, &body).await?;
 
-    let fetches: Vec<_> = hrefs
-        .iter() // Use `iter()` to borrow `hrefs`
-        .map(|href| {
-            timeout(
-                Duration::new(4, 0),
-                fetch_and_process_href(&client, href.as_ref()),
-            )
-        }) // Use `as_ref()` to get `&str`
-        .collect();
-
-    let results: Vec<Result<Vec<String>, anyhow::Error>> = futures::future::join_all(fetches)
-        .await
-        .into_iter()
-        .map(|res| match res {
-            Ok(Ok(images)) => Ok(images), // Successful fetch within timeout
-            Ok(Err(e)) => Err(e),         // Fetch failed but within the timeout
-            Err(_) => Err(anyhow::anyhow!("Timeout occurred")), // Timeout error
-        })
-        .collect();
-
-    // Flatten the results: collect all successful Vec<String> into a single Vec<String>
-    let mut image_srcs = Vec::new();
-    for result in results {
-        match result {
-            Ok(images) => image_srcs.extend(images), // Add images if successful
-            Err(e) => tracing::error!("Error fetching images: {:?}", e), // Log the error, but continue
-        }
-    }
-
-    Ok(image_srcs)
+    Ok(images)
 }
 
 // Cache with a capacity of 100
