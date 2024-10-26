@@ -49,6 +49,19 @@ function Recentlydownloadedgames() {
 
             sidebarGamesContainer.appendChild(uniqueGameDiv);
             gameCount += 1;
+
+            // Show placeholder if image is not loaded
+            imgElement.addEventListener('error', () => {
+                console.log(`Error loading image: ${imgElement.src}`);
+                imgElement.src = 'https://via.placeholder.com/54x72';
+            });
+
+            // Set onclick event to MyLibrary
+            //TODO: Add onclick event to open games
+            uniqueGameDiv.addEventListener('click', () => {
+                console.log(`RecentlyDownloaded: Clicked on ${title}`);    
+            }
+            );
         });
     })
 
