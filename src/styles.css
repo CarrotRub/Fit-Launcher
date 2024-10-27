@@ -1,5 +1,5 @@
-:root {
-    background-color: #2f2f2f;
+:root[data-theme="default-dark-purple"] {
+    background-color: var(--background-color);
 }
 
 body {

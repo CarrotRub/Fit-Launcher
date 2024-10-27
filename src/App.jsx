@@ -4,16 +4,14 @@ import { listen, emit } from '@tauri-apps/api/event';
 import { Router, useLocation } from '@solidjs/router';
 import { lazy } from 'solid-js';
 
-import Sidebar from './components/Sidebar-01/Sidebar';
-import Searchbar from './components/Searchbar-01/Searchbar';
 import Notification from './components/Notification-01/Notification';
 import ChangelogPopup from './components/Changelog-01/ChangelogPopup';
 
-// Supports weights 100-900
-import '@fontsource-variable/overpass';
+import '@fontsource-variable/mulish';
 
 import './App.css';
-import './templates/titlebar-01/titlebar.css';
+import './pages/Titlebar-01/titlebar.css';
+import Topbar from './pages/Topbar-01/Topbar';
 
 function App() {
     const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -27,18 +25,8 @@ function App() {
         emit('frontend-ready');
 
         // Get the image path from localStorage and set the background image accordingly
-        const backgroundImagePath = localStorage.getItem("LBIP_PATH_64");
-       // console.log('Retrieved background_image_path from localStorage:', backgroundImagePath); // It's hella long output
-        
-        try {
-            setBackgroundImage(backgroundImagePath);
-            // console.log('Background image set to:', backgroundImagePath); //It's hella long output
-        } catch (error) {
-            console.error('Error setting background image:', error);
-            setNotificationMessage('Error setting background image.');
-            setIsDialogOpen(true);
-        }
-            
+        // TODO: Add it later
+          
         // Add event listeners for Tauri app window controls
         document
             .getElementById('titlebar-minimize')
@@ -63,22 +51,6 @@ function App() {
         });
     });
 
-    function setBackgroundImage(imagePath) {
-        //console.log('setBackgroundImage function called. Image path:', imagePath); // Uncomment if needed for debugging
-        if (imagePath) {
-            // Set background image on body directly
-            document.body.style.backgroundImage = `url(${imagePath})`;
-            document.body.style.backgroundSize = 'cover';
-            document.body.style.backgroundPosition = 'center';
-            document.body.style.backgroundRepeat = 'no-repeat';
-            document.body.style.backgroundAttachment = 'fixed';
-           // console.log('Background image set to:', imagePath); //It's hella long output
-        } else {
-            // Remove background if no image is set
-            document.body.style.backgroundImage = '';
-            console.log('No background image set.');
-        }
-    }
 
     function handleWindowClose() {
         let cdgStats = localStorage.getItem('CDG_Stats');
@@ -105,98 +77,79 @@ function App() {
     const sidebarRoutes = [
         {
             path: '/',
-            component: lazy(() => import('./templates/Gamehub-01/Gamehub')),
+            component: lazy(() => import('./pages/Gamehub-01/Gamehub')),
         },
-        {
-            path: '/my-library',
-            component: lazy(() => import('./templates/mylibrary-01/Mylibrary')),
-        },
-        {
-            path: '/settings',
-            component: lazy(() => import('./templates/Settings-01/Settings')),
-        },
+        // {
+        //     path: '/my-library',
+        //     component: lazy(() => import('./templates/mylibrary-01/Mylibrary')),
+        // },
+        // {
+        //     path: '/settings',
+        //     component: lazy(() => import('./templates/Settings-01/Settings')),
+        // },
     ];
 
     return (
-        <div>
-        <div>
-            <div data-tauri-drag-region class="titlebar">
-                <div class="titlebar-button" id="titlebar-minimize">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="1em"
-                        height="1em"
-                        viewBox="0 0 16 16"
-                    >
-                        <path
-                            fill="currentColor"
-                            d="M14 8v1H3V8z"
-                        ></path>
-                    </svg>
-                </div>
-                <div class="titlebar-button" id="titlebar-maximize">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="1em"
-                        height="1em"
-                        viewBox="0 0 16 16"
-                    >
-                        <g fill="currentColor">
-                            <path d="M3 5v9h9V5zm8 8H4V6h7z"></path>
+        <div id='router-page'>
+            <div>
+                <div data-tauri-drag-region class="titlebar">
+                    <div class="titlebar-button" id="titlebar-minimize">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="1em"
+                            height="1em"
+                            viewBox="0 0 16 16"
+                        >
                             <path
+                                fill="currentColor"
+                                d="M14 8v1H3V8z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <div class="titlebar-button" id="titlebar-maximize">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="1em"
+                            height="1em"
+                            viewBox="0 0 16 16"
+                        >
+                            <g fill="currentColor">
+                                <path d="M3 5v9h9V5zm8 8H4V6h7z"></path>
+                                <path
+                                    fillRule="evenodd"
+                                    d="M5 5h1V4h7v7h-1v1h2V3H5z"
+                                    clipRule="evenodd"
+                                ></path>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="titlebar-button" id="titlebar-close">
+                        <svg
+                            className="icon-id"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="1em"
+                            height="1em"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                fill="currentColor"
                                 fillRule="evenodd"
-                                d="M5 5h1V4h7v7h-1v1h2V3H5z"
+                                d="m7.116 8-4.558 4.558.884.884L8 8.884l4.558 4.558.884-.884L8.884 8l4.558-4.558-.884-.884L8 7.116 3.442 2.558l-.884.884z"
                                 clipRule="evenodd"
                             ></path>
-                        </g>
-                    </svg>
-                </div>
-                <div class="titlebar-button" id="titlebar-close">
-                    <svg
-                        className="icon-id"
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="1em"
-                        height="1em"
-                        viewBox="0 0 16 16"
-                    >
-                        <path
-                            fill="currentColor"
-                            fillRule="evenodd"
-                            d="m7.116 8-4.558 4.558.884.884L8 8.884l4.558 4.558.884-.884L8.884 8l4.558-4.558-.884-.884L8 7.116 3.442 2.558l-.884.884z"
-                            clipRule="evenodd"
-                        ></path>
-                    </svg>
+                        </svg>
+                    </div>
                 </div>
             </div>
-        </div>
-
+           
             <Router root={(props) => {
                 const location = useLocation();
                 return (
                     <>
-                        <div className="sidebar">
-                            <Sidebar />
+                        <div className='main-layout'>
+                            <Topbar/>
                         </div>
-                        <div className="app-container">
-                            <ChangelogPopup />
-                            <div className="main-content">
-                                {location.pathname !== '/settings' && (
-                                    <div className="searchbar">
-                                        <Searchbar />
-                                    </div>
-                                )}
-                                <div className={`notification-wrapper ${!isDialogOpen() ? 'hidden' : ''}`}>
-                                    {isDialogOpen() && (
-                                        <Notification
-                                            message={notificationMessage()}
-                                            type="error"
-                                            onClose={closeDialog}
-                                        />
-                                    )}
-                                </div>
-                                {props.children}
-                            </div>
-                        </div>
+                        {props.children}
                     </>
                 );
             }}>
