@@ -3,6 +3,7 @@ pub mod basic_scraping {
     use core::str;
     use lazy_static::lazy_static;
     use librqbit::Session;
+    use reqwest::Client;
     use serde::{Deserialize, Serialize};
     use std::path::Path;
     use std::time::Instant;
@@ -25,19 +26,21 @@ pub mod basic_scraping {
         href: String,
         tag: String,
     }
-
-    #[derive(Debug, thiserror::Error)]
+    #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
     pub enum ScrapingError {
         #[error("Request Error: {0}")]
+        #[serde(skip)]
         ReqwestError(#[from] reqwest::Error),
 
         #[error("Selector Parsing Error: {0}")]
         SelectorError(String),
 
         #[error("Modifying JSON Error: {0}")]
+        #[serde(skip)]
         FileJSONError(#[from] serde_json::Error),
 
         #[error("Creating File Error in `{fn_name}`: {source}")]
+        #[serde(skip)]
         CreatingFileError {
             source: std::io::Error,
             fn_name: String,
@@ -75,6 +78,12 @@ pub mod basic_scraping {
         }
 
         Ok(())
+    }
+
+    /// Helper function.
+    async fn check_url_status(client: &Client, url: &str) -> bool {
+        let response = client.head(url).send().await.unwrap();
+        response.status().is_success()
     }
 
     #[tokio::main]
@@ -459,10 +468,10 @@ pub mod basic_scraping {
 
             let game_doc = scraper::Html::parse_document(&game_body);
 
-            // Extract description, magnet link, and tag from the new document
+            // Extract description, magnet link, and tag
             let description_elem = game_doc.select(&description_selector).next();
             let magnetlink_elem = game_doc.select(&magnetlink_selector).next();
-            let tag_elem = game_doc.select(&tag_selector).next(); // Extracting the tag
+            let tag_elem = game_doc.select(&tag_selector).next();
 
             let description = description_elem
                 .map(|elem| elem.text().collect::<String>())
@@ -472,75 +481,59 @@ pub mod basic_scraping {
                 .unwrap_or_default();
             let tag = tag_elem
                 .map(|elem| elem.text().collect::<String>())
-                .unwrap_or_default(); // Collecting the tag
+                .unwrap_or_default();
 
-            let long_image_selector = match scraper::Selector::parse(
-                ".entry-content > p:nth-of-type(3) a[href] > img[src]:nth-child(1)",
-            ) {
-                Ok(selector) => selector,
-                Err(err) => {
-                    eprintln!("Error parsing long_image_selector: {:#?}", err);
-                    return Err(Box::new(ScrapingError::SelectorError(err.to_string())));
-                }
-            };
+            let long_image_selector =
+                scraper::Selector::parse(".entry-content > p:nth-of-type(3) img[src]")
+                    .map_err(|e| ScrapingError::SelectorError(e.to_string()))?;
 
-            let mut images: Vec<String> = Vec::new();
+            let long_image_src = game_doc
+                .select(&long_image_selector)
+                .next()
+                .and_then(|elem| elem.value().attr("src"))
+                .unwrap_or("Error, no image found!")
+                .to_string();
 
-            let image_src = if game_count == 0 {
-                let mut p_index = 3;
-                let mut long_image_elem = game_doc.select(&long_image_selector).next();
-                while long_image_elem.is_none() && p_index < 10 {
-                    p_index += 1;
-                    let updated_selector = scraper::Selector::parse(&format!(
-                        ".entry-content > p:nth-of-type({}) a[href] > img[src]:nth-child(1)",
-                        p_index
-                    ))
-                    .expect("Invalid selector");
-                    long_image_elem = game_doc.select(&updated_selector).next();
-                    if long_image_elem.is_some() {
-                        break;
+            // Use long image as primary image if available, fallback to default image
+            let images = if !long_image_src.is_empty() {
+                if long_image_src.contains("jpg.240p.") {
+                    let primary_image = long_image_src.replace("240p", "1080p");
+                    if check_url_status(&client, &primary_image).await {
+                        Some(primary_image)
+                    } else {
+                        let fallback_image = primary_image.replace("jpg.1080p.", "jpg.");
+                        if check_url_status(&client, &fallback_image).await {
+                            Some(fallback_image)
+                        } else {
+                            None
+                        }
                     }
-                }
-                if let Some(elem) = long_image_elem {
-                    elem.value().attr("src").unwrap_or_default()
                 } else {
-                    "Error, no image found!"
+                    println!("empty selector image");
+                    None
                 }
             } else {
-                image_elem.value().attr("src").unwrap_or_default()
+                Some(
+                    image_elem
+                        .value()
+                        .attr("src")
+                        .unwrap_or_default()
+                        .to_string(),
+                )
             };
-
-            // Add both long image and image src to the images Vec if game_count is 0 or 1
-            if game_count == 0 {
-                if let Some(long_image_elem) = game_doc.select(&long_image_selector).next() {
-                    let long_image_src = long_image_elem.value().attr("src").unwrap_or_default();
-                    images.push(long_image_src.to_string());
-                }
-                images.push(image_src.to_string());
-            } else if game_count == 1 {
-                if let Some(long_image_elem) = game_doc.select(&long_image_selector).next() {
-                    let long_image_src = long_image_elem.value().attr("src").unwrap_or_default();
-                    images.push(long_image_src.to_string());
-                }
-                images.push(image_src.to_string());
-            } else {
-                // Otherwise, just add the regular image src
-                images.push(image_src.to_string());
-            }
 
             game_count += 1;
-            let concatenated_string = images.join(", ");
             let popular_game = Game {
                 title: title.to_string(),
-                img: concatenated_string, // Now store the Vec of images here
+                img: images.unwrap(),
                 desc: description,
                 magnetlink: magnetlink.to_string(),
                 href: href.to_string(),
-                tag: tag.to_string(), // Store the extracted tag
+                tag: tag.to_string(),
             };
             popular_games.push(popular_game);
 
-            if game_count >= 20 {
+            if game_count >= 8 {
                 break;
             }
         }

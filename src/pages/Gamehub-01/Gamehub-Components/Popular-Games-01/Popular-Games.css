@@ -1,0 +1,6 @@
+.popular-games-grid {
+    grid-area: popular-games;
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: 80% 1fr;
+}

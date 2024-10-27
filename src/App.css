@@ -1,63 +1,85 @@
 html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  font-family: 'Overpass Variable', sans-serif;
-  overflow: hidden;
+    font-family: "Mulish Variable";
+    width: 100vw;
+    min-height: 100vh;
+    overflow: hidden;
 }
 
-h2 {
-  color: white;
-  font-weight: 450;
+
+/* COLORS CSS VARIABLES*/
+:root[data-theme="default-dark-purple"] {
+    --accent-color: rgba(187, 114, 160, 1); /* #bb72a0 */
+    --secondary-color: rgba(110, 53, 103, 1); /* #6e3567 */
+    --secondary-30-selected-color: rgba(110, 53, 103, 0.3); /* #6e3567 */
+    --non-selected-text-color: rgba(236, 224, 240, 0.5); /* #ece0f0 */
+    --primary-color: rgba(194, 158, 209, 1); /* #c29ed1 */
+    --secondary-20-color: rgba(110, 53, 103, 0.2); /* #6e3567 */
+    --text-color: rgba(236, 224, 240, 1); /* #ece0f0 */
+    --background-color: rgba(11, 7, 14, 1); /* #0b070e */
 }
 
-.app-container {
-  display: grid;
-  grid-template-columns: 17vw 1fr;
-  height: 100vh; /* Ensure the app container fills the entire viewport */
-  overflow: hidden;
+/* TYPOGRAPHIES CSS VARIABLES */
+:root {
+    --mulish-regular-font-family: "Mulish";
+    --mulish-regular-font-size: 36px;
+    --mulish-regular-font-weight: 600;
+    --mulish-regular-font-style: normal;
+    --mulish-regular-line-height: 1;
+    --mulish-regular-letter-spacing: 1px;
+    --mulish-regular-text-transform: capitalize;
+  
+    --title-text-font-family: "Mulish";
+    --title-text-font-size: 36px;
+    --title-text-font-weight: 600;
+    --title-text-font-style: normal;
+    --title-text-line-height: 1;
+    --title-text-letter-spacing: 0px;
+    --title-text-text-transform: capitalize;
+  
+    --mulish-600-font-family: "Mulish";
+    --mulish-600-font-size: 26px;
+    --mulish-600-font-weight: 600;
+    --mulish-600-font-style: normal;
+    --mulish-600-line-height: 1;
+    --mulish-600-letter-spacing: 0px;
+    --mulish-600-text-transform: capitalize;
+  
+    --non-selected-secondary-font-family: "Mulish";
+    --non-selected-secondary-font-size: 12px;
+    --non-selected-secondary-font-weight: 300;
+    --non-selected-secondary-font-style: normal;
+    --non-selected-secondary-line-height: 1;
+    --non-selected-secondary-letter-spacing: 0px;
+    --non-selected-secondary-text-transform: capitalize;
 }
+  
 
-.sidebar {
-  position: fixed;
-  width: 17vw;
-  height: 100%; /* Sidebar takes full height */
-  overflow-x: hidden;
-  z-index: 10;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  color: white;
-}
+.main-layout {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    align-items: start;
+    align-content: stretch;
+    justify-items: start;
+    justify-content: stretch;
 
-.main-content {
-  display: inline-grid;
-  user-select: none;
-  grid-column-start: 2;
-  grid-auto-columns: 1fr;
-  grid-template-columns: 2.1fr;
-  grid-template-rows: 0.2fr 3.3fr;
-  gap: 20px 0px;
-  /* position: absolute; */
-  left: 30vh;
-  z-index: 1;
-  overflow-y: auto;
-  grid-template-areas:
-      "searchbar"
-      "rest-content";
+ 
+    grid-template-rows: 16% 1fr;
+    grid-template-columns: 1fr;
     
+
+    grid-template-areas:
+        "topbar"
+        "content-page";
 }
+
+.content-page {
+    grid-area: content-page;
+    height: 100%;
+}
+
 
 .notification-wrapper {
-  position: fixed; /* Makes sure it stays in a specific spot */
-  top: 16px;       /* Adjust the position to your preference */
-  right: 16px;     /* Aligns it to the right corner */
-  max-width: 450px; /* Keeps it from stretching too wide */
-  z-index: 1000;   /* Ensures it's on top of other components */
-  display: flex;
-  flex-direction: column;
-  gap: 8px;        /* Adds space between multiple notifications */
-}
-
-.refreshcontent {
   position: fixed; /* Makes sure it stays in a specific spot */
   top: 16px;       /* Adjust the position to your preference */
   right: 16px;     /* Aligns it to the right corner */
@@ -112,10 +134,6 @@ html::-webkit-scrollbar-thumb {
   padding-right: 10px; /* Add space on the right to ensure scrollbar fits well */
   box-sizing: border-box;
   overflow-y: auto;
-}
-
-.hidden {
-  display: none;
 }
 
 .main-content::-webkit-scrollbar {
