@@ -4,6 +4,7 @@ pub mod basic_scraping {
     use lazy_static::lazy_static;
     use librqbit::Session;
     use reqwest::Client;
+    use scraper::Selector;
     use serde::{Deserialize, Serialize};
     use std::path::Path;
     use std::time::Instant;
@@ -483,49 +484,58 @@ pub mod basic_scraping {
                 .map(|elem| elem.text().collect::<String>())
                 .unwrap_or_default();
 
-            let long_image_selector =
-                scraper::Selector::parse(".entry-content > p:nth-of-type(3) img[src]")
-                    .map_err(|e| ScrapingError::SelectorError(e.to_string()))?;
+            let long_image_selector = match scraper::Selector::parse(
+                ".entry-content > p:nth-of-type(3) a[href] > img[src]:nth-child(1)",
+            ) {
+                Ok(selector) => selector,
+                Err(err) => {
+                    eprintln!("Error parsing long_image_selector: {:#?}", err);
+                    return Err(Box::new(ScrapingError::SelectorError(err.to_string())));
+                }
+            };
 
-            let long_image_src = game_doc
-                .select(&long_image_selector)
-                .next()
-                .and_then(|elem| elem.value().attr("src"))
-                .unwrap_or("Error, no image found!")
-                .to_string();
-
-            // Use long image as primary image if available, fallback to default image
-            let images = if !long_image_src.is_empty() {
-                if long_image_src.contains("jpg.240p.") {
-                    let primary_image = long_image_src.replace("240p", "1080p");
-                    if check_url_status(&client, &primary_image).await {
-                        Some(primary_image)
-                    } else {
-                        let fallback_image = primary_image.replace("jpg.1080p.", "jpg.");
-                        if check_url_status(&client, &fallback_image).await {
-                            Some(fallback_image)
+            let image_src = {
+                let mut p_index = 3;
+                let mut long_image_elem = game_doc.select(&long_image_selector).next();
+                while long_image_elem.is_none() && p_index < 10 {
+                    p_index += 1;
+                    let updated_selector = scraper::Selector::parse(&format!(
+                        ".entry-content > p:nth-of-type({}) a[href] > img[src]:nth-child(1)",
+                        p_index
+                    ))
+                    .expect("Invalid selector");
+                    long_image_elem = game_doc.select(&updated_selector).next();
+                    if long_image_elem.is_some() {
+                        break;
+                    }
+                }
+                if let Some(elem) = long_image_elem {
+                    let image_src = elem.value().attr("src").unwrap_or_default();
+                    if image_src.contains("jpg.240p.") {
+                        let primary_image = image_src.replace("240p", "1080p");
+                        if check_url_status(&client, &primary_image).await {
+                            primary_image.to_string()
                         } else {
-                            None
+                            let fallback_image = primary_image.replace("jpg.1080p.", "jpg.");
+                            if check_url_status(&client, &fallback_image).await {
+                                fallback_image
+                            } else {
+                                image_src.to_string()
+                            }
                         }
+                    } else {
+                        image_src.to_string()
                     }
                 } else {
-                    println!("empty selector image");
-                    None
+                    error!("Error Popular Games Scraping Func : long_image_elem is None");
+                    "".to_string()
                 }
-            } else {
-                Some(
-                    image_elem
-                        .value()
-                        .attr("src")
-                        .unwrap_or_default()
-                        .to_string(),
-                )
             };
 
             game_count += 1;
             let popular_game = Game {
                 title: title.to_string(),
-                img: images.unwrap(),
+                img: image_src.to_string(),
                 desc: description,
                 magnetlink: magnetlink.to_string(),
                 href: href.to_string(),
