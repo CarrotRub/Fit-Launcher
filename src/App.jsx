@@ -8,6 +8,7 @@ import Notification from './components/Notification-01/Notification';
 import ChangelogPopup from './components/Changelog-01/ChangelogPopup';
 
 import '@fontsource-variable/mulish';
+import '@fontsource-variable/lexend'
 
 import './App.css';
 import './pages/Titlebar-01/titlebar.css';

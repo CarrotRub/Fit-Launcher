@@ -511,12 +511,12 @@ pub mod basic_scraping {
                 }
                 if let Some(elem) = long_image_elem {
                     let image_src = elem.value().attr("src").unwrap_or_default();
-                    if image_src.contains("jpg.240p.") {
+                    if image_src.contains("240p") {
                         let primary_image = image_src.replace("240p", "1080p");
                         if check_url_status(&client, &primary_image).await {
                             primary_image.to_string()
                         } else {
-                            let fallback_image = primary_image.replace("jpg.1080p.", "jpg.");
+                            let fallback_image = primary_image.replace("jpg.1080p.", "");
                             if check_url_status(&client, &fallback_image).await {
                                 fallback_image
                             } else {

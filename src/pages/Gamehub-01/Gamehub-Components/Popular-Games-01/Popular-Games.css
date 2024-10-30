@@ -3,4 +3,130 @@
     display: grid;
     grid-template-columns: auto;
     grid-template-rows: 80% 1fr;
+    grid-template-areas: 
+        "game-presentation"
+        "game-skipper";
+}
+
+.game-presentation {
+    position: relative; 
+    width: auto;
+    height: auto;
+
+    display: flex;
+    flex-direction: row;
+    align-items: start;
+    align-content: stretch;
+    justify-content: start;
+
+    grid-area: game-presentation;
+    grid-column: 1;
+    grid-row: 1;
+
+    overflow: hidden; 
+}
+.game-presentation::before {
+    content: ''; /* Required for pseudo-element */
+    position: absolute; /* Position it on top of the image */
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: linear-gradient(0deg, var(--background-color) 0%, rgba(0, 0, 0, 0) 150%);
+    pointer-events: none; /* Allow clicks to pass through */
+}
+
+.game-image-background {
+    align-self: center;
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    
+}
+
+.main-game-container {
+    
+    position: absolute;
+
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    padding: 24px 0px 0px 0px;
+    gap: 72px;
+
+    width: 100vw;
+    height: auto;
+}
+
+.main-game-image-zoomed-in {
+    height: 36vh;
+    width: 48vw;
+    display: flex;
+    
+    padding-left: 24px;
+    justify-content: flex-end;
+}
+
+.main-game-image-zoomed-in img {
+    border-radius: 36px;
+    opacity: 80%;
+    object-fit: none;
+}
+
+.main-game-info-container {
+    height: 36vh;
+    min-width: 24vw;
+    max-width: fit-content;
+
+    border-radius: 36px;
+
+    display: flex;
+    flex-direction: column;
+    row-gap: 25px;
+
+    padding-left: 24px;
+}
+
+#game-clean-title {
+    font-family: 'Lexend Variable', sans-serif;
+    font-size: 28px;
+
+    margin-bottom: 0;
+    padding-right: 24px;
+}
+
+#long-game-title {
+    max-width: 24vw;
+
+    font-family: 'Mulish Variable';
+    font-size: 16px;
+
+    margin-top: 0;
+
+    color: var(--non-selected-text-color);
+}
+
+.item-skipper {
+    
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: 1em;
+
+    padding-right: 12px;
+    align-self: center;
+    justify-self: end;
+
+    filter: drop-shadow(0px 0px 32px var(--accent-color));
+}
+
+.item-elipse {
+    width: fit-content;
+    height: fit-content;
+
+}
+
+.item-elipse.active {
+    fill: var(--accent-color); 
+    fill-opacity: 1; 
 }

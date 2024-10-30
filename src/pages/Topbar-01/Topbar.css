@@ -1,5 +1,7 @@
 .top-bar-container {
 
+    z-index: 9;
+
     grid-area: topbar;
 
     width: 100%;

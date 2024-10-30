@@ -18,6 +18,9 @@ mod mighty;
 use std::collections::HashMap;
 use std::fs;
 
+mod image_colors;
+pub use crate::image_colors::dominant_colors;
+
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::error::Error;
@@ -37,15 +40,10 @@ use std::io::Read;
 use tauri::{Manager, Window};
 
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tauri::async_runtime::spawn;
 
-use tokio::time::timeout;
 use tracing_appender::non_blocking::WorkerGuard;
-
-use image::GenericImageView;
-use palette::{FromColor, Hsl, Srgb};
-use reqwest::blocking::get;
 
 // use serde_json::json;
 use std::path::Path;
@@ -134,7 +132,7 @@ async fn fetch_image_links(client: Arc<Client>, body: &str) -> Result<Vec<String
                     if check_url_status(&client, &primary_image).await? {
                         Ok::<Option<String>, anyhow::Error>(Some(primary_image))
                     } else {
-                        let fallback_image = primary_image.replace("jpg.1080p.", "jpg.");
+                        let fallback_image = primary_image.replace("jpg.1080p.", "");
                         if check_url_status(&client, &fallback_image).await? {
                             Ok(Some(fallback_image))
                         } else {
@@ -457,49 +455,6 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
     }
 }
 
-#[tauri::command]
-fn analyze_image_lightness(image_url: String) -> Result<String, String> {
-    let response = get(&image_url).map_err(|err| format!("Failed to fetch image: {}", err))?;
-    let bytes = response
-        .bytes()
-        .map_err(|err| format!("Failed to read image bytes: {}", err))?;
-
-    // Load image from bytes
-    let img = image::load_from_memory(&bytes)
-        .map_err(|err| format!("Failed to decode image: {}", err))?;
-
-    let (width, height) = img.dimensions();
-
-    let mut color_sum = [0.00, 0.00, 0.00];
-    let total_pixels = (width * height) as f64;
-
-    // Iterate over pixels to calculate average color
-    for pixel in img.pixels() {
-        let rgb = Srgb::new(
-            pixel.2[0] as f32 / 255.00,
-            pixel.2[1] as f32 / 255.00,
-            pixel.2[2] as f32 / 255.00,
-        );
-        let rgb_linear = rgb.into_linear();
-        color_sum[0] += rgb_linear.red;
-        color_sum[1] += rgb_linear.green;
-        color_sum[2] += rgb_linear.blue;
-    }
-
-    let avg_rgb = Srgb::new(
-        color_sum[0] / total_pixels as f32,
-        color_sum[1] / total_pixels as f32,
-        color_sum[2] / total_pixels as f32,
-    );
-
-    let hsl: Hsl = Hsl::from_color(avg_rgb);
-
-    let lightness = hsl.lightness;
-    let result = if lightness > 0.47 { "light" } else { "dark" };
-
-    Ok(result.to_string())
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     info!(
         "{}: Main.rs: Starting the application...",
@@ -662,7 +617,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             clear_file,
             stop_get_games_images,
             check_folder_path,
-            analyze_image_lightness,
+            dominant_colors::check_dominant_color_vec,
             torrent_commands::api_get_torrent_details,
             torrent_commands::api_pause_torrent,
             torrent_commands::api_resume_torrent,
