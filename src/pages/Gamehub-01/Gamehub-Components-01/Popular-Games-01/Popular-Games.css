@@ -23,7 +23,6 @@
     grid-column: 1;
     grid-row: 1;
 
-    overflow: hidden; 
 }
 .game-presentation::before {
     content: ''; /* Required for pseudo-element */
@@ -65,12 +64,16 @@
     
     padding-left: 24px;
     justify-content: flex-end;
+
+    box-sizing: border-box;
 }
 
 .main-game-image-zoomed-in img {
     border-radius: 36px;
     opacity: 80%;
     object-fit: none;
+
+    box-sizing: border-box;
 }
 
 .main-game-info-container {
@@ -82,14 +85,18 @@
 
     display: flex;
     flex-direction: column;
-    row-gap: 25px;
 
     padding-left: 24px;
+
+    box-sizing: border-box;
+    overflow: hidden;
+
 }
 
 #game-clean-title {
     font-family: 'Lexend Variable', sans-serif;
-    font-size: 28px;
+    font-size: 24px;
+    
 
     margin-bottom: 0;
     padding-right: 24px;
@@ -102,8 +109,62 @@
     font-size: 16px;
 
     margin-top: 0;
+    margin-bottom: 0;
 
     color: var(--non-selected-text-color);
+}
+
+#game-details {
+    height: min-content;
+    flex-direction: column;
+    gap: 8px; 
+}
+
+#game-details p {
+    display: -webkit-box;
+    -webkit-line-clamp: 1; 
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow-x: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 24vw; /* Adjust based on your layout needs */
+}
+
+.game-skipper {
+    height: 36vh;
+    width: 8vw;
+    border-radius: 36px;
+    display: grid;
+    grid-template-rows: 50% 2px 50%; 
+    grid-template-areas: 
+        "next-div"
+        "divider"
+        "previous-div";
+    cursor: pointer;
+    margin-right: 24px;
+}
+
+#next-area-skipper {
+    grid-area: next-div;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#previous-area-skipper {
+    grid-area: previous-div;
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+}
+
+#previous-next-divider {
+    height: 2px;
+}
+
+.item-skipper-container {
+    box-shadow: 0 2px 0 0 var(--accent-color);
 }
 
 .item-skipper {
@@ -125,6 +186,8 @@
     height: fit-content;
 
 }
+/*box-shadow: 0 2px 0 0 var(--accent-color);*/
+
 
 .item-elipse.active {
     fill: var(--accent-color); 
