@@ -16,12 +16,19 @@ function Topbar() {
             <A href="/" class="clickable-link active" link="" aria-current="page">
                 <p id="link-gamehub" className="links-texts">GameHub</p>
             </A>
+
             <A href="/library" className="clickable-link active" link="" aria-current="page">
                 <p id="link-library" className="links-texts">Library</p>
             </A>
+            
+            <A href="/downloads" className="clickable-link active" link="" aria-current="page">
+                <p id="link-downloads" className="links-texts">Downloads</p>
+            </A>
+            
             <A href="/settings" className="clickable-link active" link="" aria-current="page">
                 <p id="link-settings" className="links-texts">Settings</p>
             </A>
+
 
         </div>
     )

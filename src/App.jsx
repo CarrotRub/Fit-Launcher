@@ -11,8 +11,8 @@ import '@fontsource-variable/mulish';
 import '@fontsource-variable/lexend'
 
 import './App.css';
-import './pages/Titlebar-01/titlebar.css';
-import Topbar from './pages/Topbar-01/Topbar';
+import './components/Titlebar-01/titlebar.css';
+import Topbar from './components/Topbar-01/Topbar';
 
 function App() {
     const [isDialogOpen, setIsDialogOpen] = createSignal(false);
