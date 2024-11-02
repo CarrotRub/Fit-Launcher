@@ -4,13 +4,17 @@
 
     grid-area: topbar;
 
-    width: 100%;
+    position: sticky;
+    top: 0;
+    background-color: var(--background-color);
+
+    width: 100vw;
     display: flex;
     align-items: center;
     align-content: stretch;
     justify-content: space-between;
     flex-direction: row;
-    margin-top: 24px;
+    padding-top: 16px;
     padding-bottom: 12px;
     /* Border just on the bottom*/
     box-shadow: 0 2px 0 0 var(--accent-color);
@@ -66,3 +70,31 @@
 #fitgirl-logo {
     padding-left: 24px;
 }
+
+.titlebar {
+    height: 30px;
+    background: #ffffff00;
+    user-select: none;
+    display: flex;
+    justify-content: flex-end;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100000;
+}
+  
+.titlebar-button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 30px;
+      height: 30px;
+      color:white;
+}
+.titlebar-button:hover {
+      color: #df508e;
+      cursor: pointer;
+      
+}
+  

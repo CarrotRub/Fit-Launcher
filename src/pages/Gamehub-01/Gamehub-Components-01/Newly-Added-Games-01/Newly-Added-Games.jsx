@@ -12,6 +12,7 @@ import { makePersisted } from '@solid-primitives/storage';
 const appDir = await appDataDir()
 const popularRepacksPath = `${appDir}tempGames/newly_added_games.json`;
 
+import Slider from '../../../../components/Slider-01/Slider';
 
 /**
  * Get newly added games into the GameHub.
@@ -34,7 +35,6 @@ async function parseNewGameData() {
             ? gameData.filter((game) => !game.tag.includes('Adult'))
             : gameData
 
-        console.log(filteredGameData)
         return filteredGameData
     } catch (error) {
         console.error('Error parsing game data:', error)
@@ -44,17 +44,35 @@ async function parseNewGameData() {
 
 function NewlyAddedGames() {
     const [imagesObject, setImagesObject] = createSignal(null)
+    const [imagesList, setImagesList] = createSignal([])
+    const [titlesList, setTitlesList] = createSignal([])
     const [numberOfGames, setNumberOfGames] = createSignal(1);
     const [filteredImages, setFilteredImages] = createSignal([]) 
+
+    const [sliderComponent, setSliderComponent] = createSignal(null)
 
     onMount( async () => {
         try {
             const popularGamesData = await parseNewGameData();
             setImagesObject(popularGamesData);
 
+            const gameObj = popularGamesData;
+            const imageUrls = gameObj.map(game => game.img);
+            const titlesObjList = gameObj.map(game => game.title);
+
+            setImagesList(imageUrls);
+            setTitlesList(titlesObjList);
+
             setNumberOfGames(popularGamesData?.length)
     
             setFilteredImages(popularGamesData);
+            setSliderComponent(
+                filteredImages().length > 0 ? (
+                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()}/>
+                ) : (
+                    null
+                )
+            )
             
         } catch (error) {
             console.error("Error parsing game data : ", error)
@@ -62,7 +80,11 @@ function NewlyAddedGames() {
     });
 
     return (
-        {/* More to be added later... */}
+        <div className="newly-added-games-container">
+            {sliderComponent()}
+        </div>
+        
     )
 }
 
+export default NewlyAddedGames;

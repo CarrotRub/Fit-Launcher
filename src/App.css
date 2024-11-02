@@ -4,9 +4,12 @@ html, body {
     min-height: 100vh;
     overflow: hidden;
     user-select: none;
+    overflow-y: scroll;
 }
 
-
+body::-webkit-scrollbar {
+    display: none;
+}
 /* COLORS CSS VARIABLES*/
 :root[data-theme="default-dark-purple"] {
     --accent-color: rgba(187, 114, 160, 1); /* #bb72a0 */
@@ -65,7 +68,7 @@ html, body {
     justify-content: stretch;
 
  
-    grid-template-rows: 16% 1fr;
+    grid-template-rows: auto 1fr;
     grid-template-columns: 1fr;
     
 
@@ -140,3 +143,31 @@ html::-webkit-scrollbar-thumb {
 .main-content::-webkit-scrollbar {
     display: none;
 }
+
+.titlebar {
+    height: 30px;
+    background: #ffffff00;
+    user-select: none;
+    display: flex;
+    justify-content: flex-end;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100000;
+}
+  
+.titlebar-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  height: 30px;
+  color:white;
+}
+.titlebar-button:hover {
+  color: #df508e;
+  cursor: pointer;
+  
+}
+  
