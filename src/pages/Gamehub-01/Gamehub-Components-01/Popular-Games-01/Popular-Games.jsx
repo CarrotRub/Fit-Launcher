@@ -114,25 +114,56 @@ function PopularGames() {
         }
     }
     
-    /**
-    * Does something nifty.
-    *
-    * @param   rgbString The value of rgb in this format 'rgb(r, g, b)'.
-    * @param   percentage The percentage of how much more light do you want the image to be.
-    * @returns Returns an RGB string similar to the rgbString format but adds an 0.8 (80%) opacity.
-    */
-    async function lightenRgbColor(rgbString, percentage) {
-        const [r, g, b] = rgbString.match(/\d+/g).map(Number);
+/**
+ * Lightens an RGB color and ensures sufficient contrast with a border color.
+ *
+ * @param   rgbString The value of RGB in the format 'rgb(r, g, b)'.
+ * @param   percentage Initial percentage to start lightening the color.
+ * @param   borderColor The border color to ensure readability contrast against.
+ * @returns Returns an RGBA string with 0.8 (80%) opacity.
+ */
+async function lightenRgbColor(rgbString, percentage, borderColor) {
+    const [r, g, b] = rgbString.match(/\d+/g).map(Number);
+    const [borderR, borderG, borderB] = borderColor?.match(/\d+/g).map(Number);
 
-        // Lighten each color channel by blending with white
-        const blendWithWhite = (color) => Math.round(color + (255 - color) * (percentage / 100));
-        const lighterRgb = [blendWithWhite(r), blendWithWhite(g), blendWithWhite(b)];
-        const color = `rgba(${lighterRgb[0]}, ${lighterRgb[1]}, ${lighterRgb[2]}, 0.8)`;
+    // Function to blend color with white
+    const blendWithWhite = (color, percentage) => Math.round(color + (255 - color) * (percentage / 100));
 
-        setInfoContainerColor(color);
+    // Calculate relative luminance for contrast calculation
+    const luminance = (r, g, b) => {
+        const channel = (c) => {
+            const scaled = c / 255;
+            return scaled <= 0.03928 ? scaled / 12.92 : Math.pow((scaled + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    };
 
-        return `rgba(${lighterRgb[0]}, ${lighterRgb[1]}, ${lighterRgb[2]}, 0.8)`;
+    // Calculate contrast ratio between two RGB colors
+    const contrastRatio = (rgb1, rgb2) => {
+        const lum1 = luminance(...rgb1);
+        const lum2 = luminance(...rgb2);
+        const brightest = Math.max(lum1, lum2);
+        const darkest = Math.min(lum1, lum2);
+        return (brightest + 0.05) / (darkest + 0.05);
+    };
+
+    // Ensure sufficient contrast by incrementally lightening the color
+    let lightenedRgb = [blendWithWhite(r, percentage), blendWithWhite(g, percentage), blendWithWhite(b, percentage)];
+    let currentContrast = contrastRatio(lightenedRgb, [borderR, borderG, borderB]);
+
+    while (currentContrast < 2 && percentage <= 100) {
+        percentage += 5; // Increase lightening in small steps
+        console.log("1")
+        lightenedRgb = [blendWithWhite(r, percentage), blendWithWhite(g, percentage), blendWithWhite(b, percentage)];
+        currentContrast = contrastRatio(lightenedRgb, [borderR, borderG, borderB]);
     }
+
+    const color = `rgba(${lightenedRgb[0]}, ${lightenedRgb[1]}, ${lightenedRgb[2]}, 0.8)`;
+    setInfoContainerColor(color);
+
+    return color;
+}
+
 
     // Set the border color for the current game
     createEffect( async () => {
@@ -142,12 +173,13 @@ function PopularGames() {
         if (cachedColor) {
             console.log("already cached here")
             setBorderColor(`rgb${cachedColor}`);
-            lightenRgbColor(borderColor(), 20);
+
 
             setCleanGameTitle(extractMainTitle(imagesObject()?.[selectedGame()]?.title))
             setLongGameTitle(imagesObject()?.[selectedGame()]?.title)
 
             setGameDetails(extractDetails(imagesObject()?.[selectedGame()]?.desc))
+            await lightenRgbColor(borderColor(), 20, borderColor());
         } else {
             fetchDominantColors();
         }
@@ -185,8 +217,8 @@ function PopularGames() {
                         <img src={imagesObject()?.[selectedGame()]?.img} alt="game-background" className="game-image-background" style={{
                         'border-color': borderColor(),
                         'border-style': 'solid',
-                        'border-width': '4px',
-                        'box-shadow'  : `0px 0px 50px 10px ${infoContainerColor()}`,
+                        'border-width': '2px',
+                        'box-shadow'  : `0px 0px 30px 3px ${infoContainerColor()}`,
                     }}/>
                     </div>
                     <div className="main-game-info-container" style={
@@ -194,8 +226,8 @@ function PopularGames() {
                         background-color : ${infoContainerColor()}; 
                         border-color: ${borderColor()};
                         border-style: solid;
-                        border-width: 4px;
-                        box-shadow  : 0px 0px 50px 10px ${infoContainerColor()}
+                        border-width: 2px;
+                        box-shadow  : 0px 0px 30px 3px ${infoContainerColor()}
                         `
                     }>
                         <p id="game-clean-title">
@@ -216,9 +248,9 @@ function PopularGames() {
                         `
                             background-color : ${infoContainerColor()}; 
                             border-style: solid;
-                            border-width: 4px;
+                            border-width: 2px;
                             border-color: ${borderColor()};
-                            box-shadow  : 0px 0px 50px 10px ${infoContainerColor()}
+                            box-shadow  : 0px 0px 50px 3px ${infoContainerColor()}
                         `
                     }>
                         <div id="next-area-skipper" onClick={() => {

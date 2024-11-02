@@ -1,0 +1,6 @@
+.newly-added-games-container {
+    grid-area: newly-added-games;
+
+    display: flex;
+    height: fit-content;
+}
