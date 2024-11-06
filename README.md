@@ -79,3 +79,7 @@ Enjoy your games with Fit Launcher! 🎮🚀
 - 🌄 **Quicker Image Loading**: Optimize the speed at which images are retrieved and displayed.
 - 🎮 **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
 - 📟 **Control CPU Usage**: Allow the user to limit the CPU usage of the setup.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=CarrotRub/Fit-Launcher&type=Date)](https://star-history.com/#CarrotRub/Fit-Launcher&Date)
