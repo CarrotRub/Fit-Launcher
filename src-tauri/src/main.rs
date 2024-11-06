@@ -33,6 +33,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
+use std::io::Write;
+use std::path::Path;
 
 use tauri::{Manager, Window};
 
@@ -47,8 +49,6 @@ use image::GenericImageView;
 use palette::{FromColor, Hsl, Srgb};
 use reqwest::blocking::get;
 
-// use serde_json::json;
-use std::path::Path;
 // crates for requests
 use anyhow::Result;
 // stop threads
@@ -298,6 +298,30 @@ async fn read_file(file_path: String) -> Result<FileContent, CustomError> {
         content: data_content,
     })
 }
+//TODO: REQUIRES FURTHER TESTING ITS 4AM AND I NEED TO SLEEP
+// #[tauri::command]
+// async fn clear_file(file_path: String) -> Result<(), CustomError> {
+//     let path = Path::new(&file_path);
+
+//     // Check if the file exists
+//     if !path.exists() {
+//         return Err(CustomError {
+//             message: format!("File not found: {}", file_path),
+//         });
+//     }
+
+//     // Create or truncate the file, and then write an empty JSON array
+//     let mut file = File::create(path).map_err(|err| CustomError {
+//         message: format!("Failed to clear file: {}. Error: {}", file_path, err),
+//     })?;
+
+//     // Write an empty JSON array ([]) to ensure the file is valid JSON
+//     file.write_all(b"[]").map_err(|err| CustomError {
+//         message: format!("Failed to write to file: {}. Error: {}", file_path, err),
+//     })?;
+
+//     Ok(())
+// }
 
 #[tauri::command]
 async fn clear_file(file_path: String) -> Result<(), CustomError> {

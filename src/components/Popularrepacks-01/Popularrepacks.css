@@ -4,14 +4,14 @@
     display: inline-grid;
     grid-auto-flow: column;
     grid-area: Popular-Repacks;
-    gap: 2em;
+    gap: 1.5em;
     grid-auto-rows: 200px;
     overflow-x: visible;
     position: relative;
     /* background-color: rgb(197 197 197 / 50%);
     backdrop-filter: blur(10px);  */
     padding-top: 1em;
-    padding-left: 1em;
+    /* padding-left: 1em; */
     padding-bottom: 1em;
     /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */
 }
@@ -19,7 +19,7 @@
 .Popular-repacks { 
     grid-row: 1; 
     display: flex;
-    gap: 1em;
+    /* gap: 1em; */
     padding-left: 2em;
     flex-direction: column; 
 } 

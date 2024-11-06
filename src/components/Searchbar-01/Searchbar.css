@@ -11,7 +11,37 @@
     padding-top: 25px;
     z-index: 4;
     align-items: center;
+    position: relative;
 }
+/* Updated Clear button styling */
+#clear-search {
+    position: absolute;
+    right: 10px; 
+    top: 72%;
+    transform: translateY(-50%); 
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    height: 20px;
+    width: 20px;
+    z-index: 5;
+}
+
+#clear-search svg {
+    width: 16px;
+    height: 16px;
+    stroke: rgba(255, 255, 255, 0.6); 
+    transition: stroke 0.3s ease;
+}
+
+#clear-search:hover svg {
+    stroke: rgba(255, 255, 255, 1);
+}
+
 
 
 #searchbar-input {
@@ -25,6 +55,8 @@
     outline: none;
     font-size: 15px;
     padding-left: 2vw;
+    padding-right: 40px; 
+
 }
 
 #dragon-ball-svg {
@@ -47,10 +79,10 @@
 
 /* Styling for search results */
 .search-results {
-    margin-top: 10px;
+    margin-top: 5px;
     margin-left: 25px;
-    width: 100%;
-    max-width: 600px; /* Adjust max-width as needed */
+    width: auto;
+    max-width: auto;
     background-color: rgb(124 124 124 / 22%);
     border-radius: 10px;
     padding: 10px;
@@ -61,16 +93,15 @@
 
 .search-results a {
     display: block;
-    padding: 10px;
+    padding: 5px;
     margin-bottom: 8px;
-    color: #ffffff; /* Text color */
+    color: #ffffff; 
     text-decoration: none;
     transition: background-color 0.3s ease, transform 0.2s ease;
     border-radius: 6px;
 }
 
 .search-results p {
-
     color: white;
 
 }
