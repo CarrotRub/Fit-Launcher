@@ -28,11 +28,9 @@ function App() {
 
         // Get the image path from localStorage and set the background image accordingly
         const backgroundImagePath = localStorage.getItem("LBIP_PATH_64");
-       // console.log('Retrieved background_image_path from localStorage:', backgroundImagePath); // It's hella long output
         
         try {
             setBackgroundImage(backgroundImagePath);
-            // console.log('Background image set to:', backgroundImagePath); //It's hella long output
         } catch (error) {
             console.error('Error setting background image:', error);
             setNotificationMessage('Error setting background image.');

@@ -2,9 +2,9 @@ body {
     margin: 0;
     padding: 0;
     color: #e0e0e0;
+    background-color: #121212; /* Dark mode vibe */
 }
 
-/* Popup container */
 .popup-container {
     font-family: Arial, sans-serif;
     display: flex;
@@ -13,74 +13,82 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
+    width: 50%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    z-index: 1000;
+    background-color: #000000;
+    z-index: 9999;
     overflow: hidden;
     font-size: 0.9rem;
 }
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000000;
+    opacity: 0.95; /* Slight transparency */
+    z-index: 1; /* Make sure it's above other content */
+}
 
-/* Popup content */
 .changelog-content {
-    background-color: #2e2e2e;
-    padding: 30px;
-    max-width: 550px;
+    background-color: #2b2b2b;
+    padding: 15px;
+    max-width: 700px;
     max-height: 80vh;
     border-radius: 20px;
-    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
-    text-align: left;
+    box-shadow: 0px 10px 40px rgba(0, 0, 0, 0.8);
     animation: fadeIn 0.3s ease-in-out;
     overflow-y: auto;
     padding-right: 15px;
     box-sizing: border-box;
+z-index: 10;
 }
 
-/* Center the content more precisely on larger screens */
-@media (min-width: 768px) {
+@media (min-width: 900px) {
     .changelog-content {
-        max-width: 500px;
+        max-width: 80%;
         margin: auto;
     }
 }
 
-/* Scrollbar customization */
 .changelog-content::-webkit-scrollbar {
-    width: 8px;
+    width: 4px;
+
 }
 
 .changelog-content::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: rgb(189, 183, 183);
     border-radius: 10px;
+
 }
 
-/* Heading styles */
 .changelog-content h1 {
-    text-align: center;
+    padding-left: 10px;
     font-size: 28px;
-    margin-bottom: 10px;
-    margin-top: 0;
+    margin-bottom: 5px;
     color: #f5f5f5;
+    font-weight: 400;
+
 }
 
-/* Subheading */
 .subheading {
-    text-align: center;
+    padding-left: 10px;
     color: #b0b0b0;
     margin-top: 5px;
     margin-bottom: 25px;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
+    font-style: italic;
 }
 
-/* Date styles */
 .date {
-    font-weight: bold;
+    font-weight: 600;
     margin-top: 20px;
     margin-bottom: 10px;
     color: #ffffff;
+    font-size: 1.1rem;
 }
 
-/* List styles */
 .bullet-list {
     list-style-type: none;
     padding-left: 10px;
@@ -90,62 +98,101 @@ body {
     list-style-type: disc;
     padding-left: 20px;
     margin-bottom: 15px;
+    margin-right: 10px;
 }
 
 .bullet-list li {
     margin-bottom: 10px;
     color: #d0d0d0;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    margin-right: 10px;
 }
 
-/* Label styles */
 .label {
     display: inline-block;
     font-weight: bold;
-    border-radius: 4px;
-    padding: 2px 8px;
+    border-radius: 6px;
+    padding: 4px 10px;
     color: white;
     margin-bottom: 7px;
-    
 }
 
 .new {
-    background-color: #3dbd40;
+    background-color: #29a745;
 }
 
 .bugfix {
-    background-color: #e74c3c;
+    background-color: #e04c4c;
 }
 
 .improvement {
-    background-color: #5a67d8;
+    background-color: #4a67d8;
 }
 
-/* Button styles */
+.line {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #3d3d3d;
+    margin-top: 15px;
+}
+
+.button-container {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: flex-end;
+    background-color: #2b2b2b;
+    padding: 12px;
+
+}
+
 .close-btn {
-    display: block;
-    margin: 30px auto 0;
-    padding: 12px 25px;
-    background-color: #4a4a4a;
-    color: white;
-    border: none;
-    border-radius: 4px;
+    margin: 0 5px;
+    padding: 10px 16px;
+    background-color: #1899ff; /* Bright blue for a standout look */
+    color: #ffffff;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .close-btn:hover {
-    background-color: #65aa6e;
+    background-color: #0f7edb; /* Slightly darker blue on hover for subtle effect */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
 }
 
-/* Keyframe animation for fade-in */
+.learn-more-btn {
+    margin: 0 5px;
+    padding: 10px 16px;
+    background-color: #2d3e4f; /* Brighter blue-gray color for better visibility */
+    color: #1899ff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.learn-more-btn:hover {
+    background-color: #3a4d61; /* Slightly darker on hover */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2); /* Adds a subtle shadow */
+}
+
+
+
+
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 
-/* Ensure scrollbar respects the rounded corners */
 .changelog-content {
     border-radius: 20px;
     padding-right: 10px;

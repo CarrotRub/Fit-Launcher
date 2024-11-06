@@ -71,15 +71,13 @@
 
 /* TITLE CATEGORY */
 .title-category {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: space-between; /* Ensures title on the left, controls on the right */
     width: 100%;
-    padding: 1em;
-    /* background-color: rgb(197 197 197 / 50%);
-    backdrop-filter: blur(10px); 
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); */
+    padding: 0.2em;
+    color: #fff;
 }
-
 .title-category h2 {
     margin: 0;
     font-size: 1.5em;
