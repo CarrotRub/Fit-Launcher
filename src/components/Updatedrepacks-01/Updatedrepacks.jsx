@@ -16,7 +16,7 @@ import { translate } from '../../translation/translate'
 async function parseNewGameData() {
     try {
         const fileContent = await readFile(recentlyUpdatedGamesPath)
-        const gameData = JSON.parse(fileContent.content)
+        const gameData = JSON.parse(fileContent.content);
 
         // Load the user's settings to check if NSFW content should be hidden
         const settingsPath = `${dirPath}/fitgirlConfig/settings.json`
@@ -79,19 +79,32 @@ function UpdatedGames() {
             setFilteredImages(newFilteredImages)
         }
 
+        //TODO: Add a check to see if the filtered images are empty and show a message
         // Render Slider when filteredImages changes
-        setSliderComponent(
-            filteredImages().length > 0 ? (
-                <Slider
-                    containerClassName="recently-updated"
-                    imageContainerClassName="updated-games-container"
-                    slides={filteredImages()}
-                    filePath={recentlyUpdatedGamesPath}
-                    showPrevNextButtons={true} // Set to false if you don't want to show prev/next buttons
-                />
-            ) : null
-        )
-    })
+    //     setSliderComponent(
+    //         filteredImages() && filteredImages.length > 0 ? (
+    //             <Slider
+    //                 containerClassName="recently-updated"
+    //                 imageContainerClassName="updated-games-container"
+    //                 slides={filteredImages()}
+    //                 filePath={recentlyUpdatedGamesPath}
+    //                 showPrevNextButtons={true} // Set to false if you don't want to show prev/next buttons
+    //             />
+    //         ) : null
+    //     )
+    // })
+    setSliderComponent(
+        filteredImages().length > 0 ? (
+            <Slider
+                containerClassName="recently-updated"
+                imageContainerClassName="updated-games-container"
+                slides={filteredImages()}
+                filePath={recentlyUpdatedGamesPath}
+                showPrevNextButtons={true} // Set to false if you don't want to show prev/next buttons
+            />
+        ) : null
+    )
+})
 
     const toggleTagSelection = (tag) => {
         setSelectedTags((prevTags) => {

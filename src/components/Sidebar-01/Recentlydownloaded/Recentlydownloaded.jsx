@@ -36,7 +36,7 @@ function Recentlydownloadedgames() {
             const imgElement = document.createElement('img');
             imgElement.src = img;
             console.log(title);
-            console.log(img);
+            //console.log(img); Uncomment to see the image link in console for debugging
             imgElement.alt = title;
 
             // Append image to uniqueGameDiv

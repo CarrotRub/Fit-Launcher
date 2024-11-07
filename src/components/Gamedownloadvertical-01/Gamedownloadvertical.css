@@ -25,6 +25,12 @@
     padding: 20px;
     flex-grow: 1;
 }
+.game-download-title {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+    color: rgb(255, 255, 255);
+    text-align: center;
+}
 
 /* Progress Bar CSS */
 .progress-container {
@@ -145,9 +151,30 @@ canvas {
 
 .arrow-container.left {
     left: 90%;
-    transform: rotate(90deg);
-    top: 5%;
+ 
+    top: 6.2%;
+    margin-left: 5px;
 }
+
+.show-download-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    align-content: center;
+}
+.show-download-btn {
+    background-color: #4b4d4e;
+    border: none;
+    color: white;
+    padding: 5px 5px;
+    font-size: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+
 
 /* Peer Information CSS */
 .peer-stats-container {
@@ -172,6 +199,18 @@ canvas {
     line-height: 1.6;
 }
 
+.peer-stats-desc, .issues-with-download-desc{
+    color: #ccc;
+    text-align: center;
+}
+
+.issues-with-download-desc {
+    margin-top: 15px;
+    font-size: 0.8em;
+    cursor: pointer;
+    bottom: 0;
+    position: st;
+}
 /* Scrollbar Styles */
 .sidebar-space::-webkit-scrollbar {
     width: 8px;
