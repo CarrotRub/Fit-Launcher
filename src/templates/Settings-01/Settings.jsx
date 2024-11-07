@@ -16,7 +16,7 @@ import { resolveResource } from "@tauri-apps/api/path";
 import { resourceDir } from "@tauri-apps/api/path"; // Use resourceDir for resolving the assets path
 import { join, sep, appDir, appDataDir } from "@tauri-apps/api/path";
 import { readBinaryFile } from "@tauri-apps/api/fs";
-
+import ChangelogPopup from "../../components/Changelog-01/ChangelogPopup";
 import "./Settings.css";
 import Swal from "sweetalert2";
 
@@ -87,9 +87,16 @@ async function saveSettings(settings) {
 }
 
 const SettingsPage = () => {
+  const [isChangeLogVisible, setIsChangeLogVisible] = createSignal(false);
   const [settings, setSettings] = createSignal(defaultSettings);
   const [loading, setLoading] = createSignal(true);
   const [version, setVersion] = createSignal("");
+  const [newVersion, setNewVersion] = createSignal(
+    localStorage.getItem("newVersion") || "9.9.9"
+  );
+  const [currentVersion, setCurrentVersion] = createSignal(
+    localStorage.getItem("currentVersion") || "0.0.0"
+  );
   const [notificationVisible, setNotificationVisible] = createSignal(false);
   const [notificationMessage, setNotificationMessage] = createSignal("");
   const [selectedDownloadPath, setSelectedDownloadPath] = createSignal(
@@ -105,6 +112,15 @@ const SettingsPage = () => {
   const [selectedBackgroundImagePath_1, setSelectedBackgroundImagePath_1] =
     createSignal(localStorage.getItem("LBIP_PATH_64") || "");
 
+  // Toggle changelog visibility
+  const toggleChangeLog = () => {
+    setIsChangeLogVisible((prev) => !prev);
+  };
+
+  // Show changelog manually
+  const showChangeLog = () => {
+    setIsChangeLogVisible(true);
+  };
   onMount(async () => {
     try {
       let gamehubDiv = document.querySelectorAll(".gamehub-container");
@@ -130,14 +146,17 @@ const SettingsPage = () => {
       const initialSettings = await loadSettings();
       setSettings(initialSettings);
 
-      // Fetch the app version
-      const appVersionValue = await getVersion();
-      setVersion(appVersionValue);
+      // Get the current version of the app
+      const appVersion = await getVersion();
+      setVersion(appVersion);
+      console.log("App version:", appVersion);
     } catch (error) {
       console.error("Error during initialization:", error);
     } finally {
       setLoading(false);
     }
+
+ 
   });
 
   // Save settings and show notification
@@ -217,7 +236,8 @@ const SettingsPage = () => {
     } catch (error) {
       console.error("Settings: Unable to select import path: ", error);
 
-      swalMessages.error.text = "An error occurred while selecting the import path. Please try again.";
+      swalMessages.error.text =
+        "An error occurred while selecting the import path. Please try again.";
     }
   };
 
@@ -246,16 +266,16 @@ const SettingsPage = () => {
       });
 
       if (selectedBackgroundImage) {
-          // Notify the user that the background is being applied
-          Swal.fire({
-            title: "Background image",
-            text: `Applying background image, please wait..`,
-            timerProgressBar: true,
-            didOpen: () => {
-              Swal.showLoading();
-            },
-          });
-  
+        // Notify the user that the background is being applied
+        Swal.fire({
+          title: "Background image",
+          text: `Applying background image, please wait..`,
+          timerProgressBar: true,
+          didOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
         // Read the binary data of the image file
         const imageData = await readBinaryFile(selectedBackgroundImage);
 
@@ -285,8 +305,8 @@ const SettingsPage = () => {
 
         // Delay the reload slightly to allow the notification to appear (Not 1.5sec, too long, the user will click on save settings again and it will break)
         setTimeout(() => {
-            window.location.reload()
-        }, 2000)
+          window.location.reload();
+        }, 2000);
       }
     } catch (error) {
       console.error(
@@ -300,8 +320,7 @@ const SettingsPage = () => {
         timer: 2000,
         didOpen: () => {
           Swal.showLoading();
-        }
-
+        },
       });
     }
   };
@@ -333,11 +352,10 @@ const SettingsPage = () => {
     });
 
     setTimeout(() => {
-        window.location.reload()
+      window.location.reload();
     }, 2000);
-
   };
-  
+
   const swalMessages = {
     error: {
       title: "Error",
@@ -350,7 +368,6 @@ const SettingsPage = () => {
       confirmButtonText: "OK",
     },
   };
-
 
   // Check for updates function
   const handleCheckForUpdates = async () => {
@@ -379,6 +396,8 @@ const SettingsPage = () => {
     }
   };
 
+
+
   return (
     <div class="settings-page">
       <h1>Settings</h1>
@@ -389,6 +408,11 @@ const SettingsPage = () => {
           {notificationMessage()}
         </div>
       )}
+  {/* Conditionally render ChangelogPopup based on isChangeLogVisible */}
+  {/* {isChangeLogVisible() && (
+        <ChangelogPopup onClose={() => setIsChangeLogVisible(false)} />
+      )} */}
+
       {/* Installation Settings start*/}
       <section>
         <h2>Installation Settings</h2>
@@ -557,10 +581,13 @@ const SettingsPage = () => {
         <div class="form-group">
           <p>Application Version: {version()}</p>
         </div>
-        <div class="form-group">
+        <div class="launcher-button-container">
           <button class="check-update-btn" onClick={handleCheckForUpdates}>
             Check for Updates
           </button>
+          {/* <button class="show-changelog-btn" onClick={showChangeLog}>
+            Show Changelog
+          </button> */}
         </div>
       </section>
 
