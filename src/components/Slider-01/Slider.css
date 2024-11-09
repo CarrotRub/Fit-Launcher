@@ -1,69 +1,73 @@
+.slider-wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
 .slider-container {
     display: flex;
-    overflow-x: auto;
-    height: fit-content;
-    gap: 10px;
-    padding: 10px;
-    position: relative;
-    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); /* Add fade effect */
+    gap: 12px;
+    transition: transform 0.4s ease;
+    overflow-x: hidden;
+    padding: 12px;
+    scroll-snap-type: x mandatory;
 }
 
 .slider-image-container {
     flex-shrink: 0;
-    border-radius: 10px;
+    width: calc(375px * 0.5);
+    height: calc(500px * 0.5);
+    border-radius: 12px;
     overflow: hidden;
     border: 2px solid var(--accent-color);
-    width: calc(375px * 0.5); /* 375px is intrinsic size */
-    height: calc(500px * 0.5); /* 500px is intrinsic size */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    scroll-snap-align: center;
 }
 
-/* Skipper icons */
-.skipper {
-    position: fixed;
+.image-slider-gradient {
+
+    position: absolute;
+    left: 0;
+    width: 100vw;
+
+    height: calc((500px* 0.5) + 24px);
+    mask-image: linear-gradient(to right, transparent, black 20%);
+    -webkit-mask-image: linear-gradient(to right, transparent 70%, black 100%);
+
+    background-color: var(--background-color);
+    align-self: flex-end;
+
+    z-index: 9;
+}
+
+.skipper-slider-container {
+    position: absolute;
     top: 50%;
+    width: 100vw;
+    display: flex;
+    justify-content: space-between;
     transform: translateY(-50%);
-    font-size: 24px;
+    z-index: 10;
+    
+}
+
+.skipper {
     color: var(--accent-color);
-    cursor: pointer;
-    z-index: 1;
-    background: rgba(0, 0, 0, 0.5);
     padding: 8px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+    cursor: pointer;
+    pointer-events: all;
 
-/* Positioning left and right skipper icons */
-.skipper.left {
-    left: 10px;
+    display: flex;
 }
 
 .skipper.right {
-    right: 10px;
+    margin-left: auto;
 }
 
-/* Hide skipper if not needed */
+
+
+
 .skipper.hidden {
     display: none;
 }
-.skipper svg {
-    width: 24px;
-    height: 24px;
-    color: var(--accent-color);
-}
 
-/* Optional: Add hover effect */
-.skipper:hover svg {
-    color: var(--hover-color);
-    transform: scale(1.1);
-}
-
-/* Fade the SVG icons when disabled */
-.skipper.hidden svg {
-    opacity: 0.3;
-    pointer-events: none; /* Disable click */
-}
