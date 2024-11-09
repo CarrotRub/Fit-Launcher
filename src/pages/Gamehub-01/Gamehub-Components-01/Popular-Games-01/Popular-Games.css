@@ -49,7 +49,7 @@
     position: absolute;
 
     display: flex;
-    justify-content: start;
+    justify-content: space-between;
     align-items: center;
     padding: 24px 0px 0px 0px;
     gap: 72px;
@@ -79,8 +79,9 @@
 
 .main-game-info-container {
     height: 36vh;
-    min-width: 24vw;
-    max-width: fit-content;
+    /* min-width: 24vw;
+    max-width: fit-content; */
+    width: max-content;
 
     border-radius: 36px;
 
@@ -88,6 +89,7 @@
     flex-direction: column;
 
     padding-left: 24px;
+    padding-right: 24px;
 
     box-sizing: border-box;
     overflow: hidden;
@@ -119,17 +121,15 @@
     height: min-content;
     flex-direction: column;
     gap: 8px; 
+    
 }
 
 #game-details p {
     display: -webkit-box;
-    -webkit-line-clamp: 1; 
-    line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow-x: hidden;
-    white-space: nowrap;
     text-overflow: ellipsis;
-    max-width: 24vw; /* Adjust based on your layout needs */
+    overflow: hidden;
+    white-space: nowrap;
+    width: 32vw;
 }
 
 .game-skipper {
