@@ -81,6 +81,9 @@ function NewlyAddedGames() {
 
     return (
         <div className="newly-added-games-container">
+            <div className="text-category-gamehub">
+                <p>Newly Added Games :</p>
+            </div>
             {sliderComponent()}
         </div>
         

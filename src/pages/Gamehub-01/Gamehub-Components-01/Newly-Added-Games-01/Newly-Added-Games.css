@@ -2,5 +2,21 @@
     grid-area: newly-added-games;
 
     display: flex;
+    flex-direction: column;
     height: fit-content;
+}
+
+.text-category-gamehub {
+    padding-left: 12px;
+    padding-top: 12px;
+
+    width: 100vw;
+    display: inline-flex;
+
+    justify-content: center;
+}
+
+.text-category-gamehub p {
+    font-size: 28px;
+    font-weight: 700;
 }

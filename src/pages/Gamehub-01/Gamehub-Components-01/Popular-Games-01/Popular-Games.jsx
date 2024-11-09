@@ -33,7 +33,6 @@ async function parseNewGameData() {
             ? gameData.filter((game) => !game.tag.includes('Adult'))
             : gameData
 
-        console.log(filteredGameData)
         return filteredGameData
     } catch (error) {
         console.error('Error parsing game data:', error)
@@ -100,12 +99,9 @@ function PopularGames() {
         try {
             const images = imagesObject();
             const imageUrls = images.map(img => img.img);
-            console.log("Fetching colors for images:", imageUrls); // Log image URLs for debugging
-
+            
             // TODO: Fix callback issue when user reload the page, could also prohibit the user completely from reloading the window.
             const colorStrings = await invoke("check_dominant_color_vec", { listImages: imageUrls });
-            
-            console.log(colorStrings)
 
             setColorCache(colorStrings);
  
@@ -153,7 +149,6 @@ async function lightenRgbColor(rgbString, percentage, borderColor) {
 
     while (currentContrast < 2 && percentage <= 100) {
         percentage += 5; // Increase lightening in small steps
-        console.log("1")
         lightenedRgb = [blendWithWhite(r, percentage), blendWithWhite(g, percentage), blendWithWhite(b, percentage)];
         currentContrast = contrastRatio(lightenedRgb, [borderR, borderG, borderB]);
     }
@@ -169,9 +164,8 @@ async function lightenRgbColor(rgbString, percentage, borderColor) {
     createEffect( async () => {
 
         const cachedColor = colorCache[selectedGame()];
-        console.warn("HEEEEEEEEEEEEEEEEEEEEEY : ", cachedColor)
+        
         if (cachedColor) {
-            console.log("already cached here")
             setBorderColor(`rgb${cachedColor}`);
 
 
