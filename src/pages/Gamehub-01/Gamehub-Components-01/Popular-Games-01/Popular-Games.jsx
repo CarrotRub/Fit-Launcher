@@ -204,8 +204,11 @@ async function lightenRgbColor(rgbString, percentage, borderColor) {
 
     return (
         <div className="popular-games-grid">
-            <div className="game-presentation">
-                <img src={imagesObject()?.[selectedGame()]?.img} alt="game-background" className="game-image-background" />
+            <div className="game-presentation" style={{
+                'background-image' : `url(${imagesObject()?.[selectedGame()]?.img})`,
+                'background-size': 'cover',
+                'background-position': 'center',
+            }}>
                 <div className="main-game-container">
                     <div className="main-game-image-zoomed-in">
                         <img src={imagesObject()?.[selectedGame()]?.img} alt="game-background" className="game-image-background" style={{
