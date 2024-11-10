@@ -1,4 +1,4 @@
-html, body {
+body {
     font-family: "Mulish Variable";
     width: 100vw;
     min-height: 100vh;
@@ -21,42 +21,6 @@ body::-webkit-scrollbar {
     --text-color: rgba(236, 224, 240, 1); /* #ece0f0 */
     --background-color: rgba(11, 7, 14, 1); /* #0b070e */
 }
-
-/* TYPOGRAPHIES CSS VARIABLES */
-:root {
-    --mulish-regular-font-family: "Mulish";
-    --mulish-regular-font-size: 36px;
-    --mulish-regular-font-weight: 600;
-    --mulish-regular-font-style: normal;
-    --mulish-regular-line-height: 1;
-    --mulish-regular-letter-spacing: 1px;
-    --mulish-regular-text-transform: capitalize;
-  
-    --title-text-font-family: "Mulish";
-    --title-text-font-size: 36px;
-    --title-text-font-weight: 600;
-    --title-text-font-style: normal;
-    --title-text-line-height: 1;
-    --title-text-letter-spacing: 0px;
-    --title-text-text-transform: capitalize;
-  
-    --mulish-600-font-family: "Mulish";
-    --mulish-600-font-size: 26px;
-    --mulish-600-font-weight: 600;
-    --mulish-600-font-style: normal;
-    --mulish-600-line-height: 1;
-    --mulish-600-letter-spacing: 0px;
-    --mulish-600-text-transform: capitalize;
-  
-    --non-selected-secondary-font-family: "Mulish";
-    --non-selected-secondary-font-size: 12px;
-    --non-selected-secondary-font-weight: 300;
-    --non-selected-secondary-font-style: normal;
-    --non-selected-secondary-line-height: 1;
-    --non-selected-secondary-letter-spacing: 0px;
-    --non-selected-secondary-text-transform: capitalize;
-}
-  
 
 .main-layout {
     width: 100%;

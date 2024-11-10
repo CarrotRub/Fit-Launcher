@@ -4,11 +4,15 @@
     display: flex;
     flex-direction: column;
     height: fit-content;
+    padding-bottom: 40px;
+
+    box-shadow: 0 2px 0 0 var(--accent-color);
 }
 
 .text-category-gamehub {
     padding-left: 12px;
     padding-top: 12px;
+
 
     width: 100vw;
     display: inline-flex;
