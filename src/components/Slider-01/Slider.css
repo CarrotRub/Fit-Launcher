@@ -2,6 +2,7 @@
     position: relative;
     width: 100%;
     overflow: hidden;
+
 }
 
 .slider-container {
@@ -21,7 +22,9 @@
     overflow: hidden;
     border: 2px solid var(--accent-color);
     scroll-snap-align: center;
+    z-index: 8;
 }
+
 
 .image-slider-gradient {
 
@@ -36,6 +39,7 @@
     background-color: var(--background-color);
     align-self: flex-end;
 
+    pointer-events: none; /* If this isn't none then it will be clickable and that's no no good*/
     z-index: 9;
 }
 
@@ -46,6 +50,7 @@
     display: flex;
     justify-content: space-between;
     transform: translateY(-50%);
+    pointer-events: none; /* If this isn't none then it will be clickable and that's no no good*/
     z-index: 10;
     
 }
@@ -63,9 +68,6 @@
 .skipper.right {
     margin-left: auto;
 }
-
-
-
 
 .skipper.hidden {
     display: none;

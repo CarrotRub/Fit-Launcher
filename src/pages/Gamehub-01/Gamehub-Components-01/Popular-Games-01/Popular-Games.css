@@ -2,7 +2,8 @@
     grid-area: popular-games;
     display: grid;
     grid-template-columns: auto;
-    grid-template-rows: 80% 1fr;
+    grid-template-rows: auto auto;
+    height: 100%; 
     gap: 2em;
     grid-template-areas: 
         "game-presentation"
@@ -24,7 +25,11 @@
     grid-column: 1;
     grid-row: 1;
 
+    padding-bottom: 24px;
+
 }
+
+
 .game-presentation::before {
     content: ''; /* Required for pseudo-element */
     position: absolute; /* Position it on top of the image */
@@ -34,6 +39,12 @@
     height: 100%;
     background: linear-gradient(0deg, var(--background-color) 0%, rgba(0, 0, 0, 0) 150%);
     pointer-events: none; /* Allow clicks to pass through */
+    z-index: 1; /* To keep the background behind */
+}
+
+.game-presentation > * {
+    position: relative;
+    z-index: 2; /* Content inside stays above the gradient */
 }
 
 .game-image-background {
@@ -41,12 +52,12 @@
     object-fit: cover;
     width: 100%;
     height: 100%;
-    
+   
 }
 
 .main-game-container {
     
-    position: absolute;
+    /* position: absolute; */
 
     display: flex;
     justify-content: space-between;
@@ -199,6 +210,8 @@
 .item-elipse {
     width: fit-content;
     height: fit-content;
+
+    padding-bottom: 12px;
 
 }
 /*box-shadow: 0 2px 0 0 var(--accent-color);*/

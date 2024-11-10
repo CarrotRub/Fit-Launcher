@@ -1,7 +1,8 @@
 .gamehub {
+    grid-area: content-page;
     display: grid;
     grid-template-columns: 1fr;
-    grid-template-rows: 18% auto 1fr;
+    grid-template-rows: auto min-content min-content;
     grid-template-areas: 
         "popular-games"
         "newly-added-games"
