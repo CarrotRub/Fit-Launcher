@@ -77,15 +77,13 @@ pub mod basic_scraping {
         Ok(())
     }
 
+    // Waaay cleaner and better fix, will do the same for the other scraping func soon :) CarrotRub
     #[tokio::main]
     pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
         let start_time = Instant::now();
         let client = reqwest::Client::new();
         let mut recently_up_games: Vec<Game> = Vec::new();
 
-        // let mut scraping_success = true; // Track scraping boolean
-
-        // Change the number of pages it will scrape, knowing that there are 10 games per page.
         for page_number in 1..=2 {
             let url = format!(
                 "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
@@ -107,147 +105,99 @@ pub mod basic_scraping {
                 ScrapingError::ReqwestError(e)
             })?;
 
-            //     // Handle network errors gracefully
-            //     let res = match client.get(&url).send().await {
-            //         Ok(response) => response,
-            //         Err(e) => {
-            //             eprintln!("Network error while requesting {}: {}", &url, e);
-            //             // Emit failure event to notify frontend
-            //             app_handle.emit_all("scraping_failed", format!("Failed to scrape data from {}. Network error: {}", &url, e)).unwrap();
-            //             continue; // Continue without stopping the app
-            //         }
-            //     };
-
-            //   // Check for successful response
-            //   if !res.status().is_success() {
-            //     eprintln!("Error: Failed to connect to the website or the website is down.");
-            //     app_handle.emit_all("scraping_failed", format!("Failed to connect to {}. Website might be down.", &url)).unwrap();
-            //     continue;
-            // }
-
-            // let body = match res.text().await {
-            //     Ok(body) => body,
-            //     Err(e) => {
-            //         eprintln!("Failed to read response body from {}: {}", &url, e);
-            //         app_handle.emit_all("scraping_failed", format!("Failed to read response body from {}.", &url)).unwrap();
-            //         continue;
-            //     }
-            // };
-
             let document = scraper::Html::parse_document(&body);
 
-            let titles_selector = scraper::Selector::parse(".entry-title a").map_err(|err| {
-                eprintln!("Error parsing titles selector: {:#?}", err);
-                ScrapingError::SelectorError(err.to_string())
-            })?;
+            // Selector to get each game container (article)
+            let article_selector = scraper::Selector::parse("article")
+                .map_err(|err| ScrapingError::SelectorError(err.to_string()))?;
 
-            let pics_selector = scraper::Selector::parse(".alignleft").map_err(|err| {
-                eprintln!("Error parsing images selector: {:#?}", err);
+            // Loop through each article element
+            for article_elem in document.select(&article_selector) {
+                let title_elem = article_elem
+                    .select(&scraper::Selector::parse(".entry-title a").unwrap())
+                    .next();
+                let pic_elem = article_elem
+                    .select(&scraper::Selector::parse(".entry-content .alignleft").unwrap())
+                    .next();
+                let desc_elem = article_elem
+                    .select(&scraper::Selector::parse("div.entry-content").unwrap())
+                    .next();
+                let hreflink_elem = article_elem
+                    .select(&scraper::Selector::parse(".entry-title > a").unwrap())
+                    .next();
+                let tag_elem = article_elem
+                    .select(
+                        &scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap(),
+                    )
+                    .next();
 
-                ScrapingError::SelectorError(err.to_string())
-            })?;
+                if let (Some(title_elem), Some(pic_elem), Some(desc_elem), Some(hreflink_elem)) =
+                    (title_elem, pic_elem, desc_elem, hreflink_elem)
+                {
+                    let title = title_elem.text().collect::<String>();
+                    let img = pic_elem.value().attr("src").unwrap_or_default();
+                    let desc = desc_elem.text().collect::<String>();
+                    let href = hreflink_elem.value().attr("href").unwrap_or_default();
+                    let tag = tag_elem
+                        .map_or_else(|| "Unknown".to_string(), |e| e.text().collect::<String>());
 
-            let desc_selector = scraper::Selector::parse("div.entry-content").map_err(|err| {
-                eprintln!("Error parsing description selector: {:#?}", err);
-                ScrapingError::SelectorError(err.to_string())
-            })?;
+                    let magnet_link = desc_elem
+                        .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
+                        .next()
+                        .and_then(|elem| elem.value().attr("href"))
+                        .unwrap_or_default();
 
-            let hreflink_selector =
-                scraper::Selector::parse(".entry-title > a").map_err(|err| {
-                    eprintln!("Error parsing hreflink selector: {:#?}", err);
-                    ScrapingError::SelectorError(err.to_string())
-                })?;
-
-            let tag_selector = scraper::Selector::parse(".entry-content p strong:first-of-type")
-                .map_err(|err| {
-                    eprintln!("Error parsing tag selector: {:#?}", err);
-                    ScrapingError::SelectorError(err.to_string())
-                })?;
-
-            for (((title_elem, pic_elem), desc_elem), hreflink_elem) in document
-                .select(&titles_selector)
-                .zip(document.select(&pics_selector))
-                .zip(document.select(&desc_selector))
-                .zip(document.select(&hreflink_selector))
-            {
-                let title = title_elem.text().collect::<String>();
-                let img = pic_elem.value().attr("src").unwrap_or_default();
-                let desc = desc_elem.text().collect::<String>();
-                let href = hreflink_elem.value().attr("href").unwrap_or_default();
-                let tag = desc_elem
-                    .select(&tag_selector)
-                    .next()
-                    .map(|elem| elem.text().collect::<String>())
-                    .unwrap_or_else(|| "Unknown".to_string()); // Extracting the tag
-
-                // Get the first magnet link for this entry-content
-                let magnet_link = desc_elem
-                    .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
-                    .next()
-                    .and_then(|elem| elem.value().attr("href"))
-                    .unwrap_or_default();
-
-                // Check if the image link contains "imageban"
-                if img.contains("imageban") {
-                    let game = Game {
-                        title,
-                        img: img.to_string(),
-                        desc,
-                        magnetlink: magnet_link.to_string(),
-                        href: href.to_string(),
-                        tag: tag.to_string(), // Store the extracted tag
-                    };
-                    recently_up_games.push(game);
+                    if img.contains("imageban") {
+                        recently_up_games.push(Game {
+                            title,
+                            img: img.to_string(),
+                            desc,
+                            magnetlink: magnet_link.to_string(),
+                            href: href.to_string(),
+                            tag: tag.to_string(),
+                        });
+                    }
                 }
             }
         }
 
-        // Prepare file path
+        // Saving data to newly_added_games.json
         let mut binding = app_handle.path_resolver().app_data_dir().unwrap();
         binding.push("tempGames");
 
-        // Ensure the directory exists
-        if let Err(e) = tokio::fs::create_dir_all(&binding).await {
+        tokio::fs::create_dir_all(&binding).await.map_err(|e| {
             eprintln!("Failed to create directories: {:#?}", e);
-            return Err(Box::new(ScrapingError::CreatingFileError {
+            ScrapingError::CreatingFileError {
                 source: e,
                 fn_name: "scraping_func()".to_string(),
-            }));
-        }
+            }
+        })?;
 
         binding.push("newly_added_games.json");
 
-        // Check if file exists
         let mut existing_games: Vec<Game> = Vec::new();
         if Path::new(&binding).exists() {
-            // If file exists, read and compare
-            let mut file = match tokio::fs::File::open(&binding).await {
-                Ok(file) => file,
-                Err(e) => {
-                    eprintln!("Error opening the file: {:#?}", e);
-                    return Err(Box::new(ScrapingError::CreatingFileError {
-                        source: e,
-                        fn_name: "scraping_func()".to_string(),
-                    }));
-                }
-            };
-
-            let mut file_content = String::new();
-            if let Err(e) = file.read_to_string(&mut file_content).await {
-                eprintln!("Error reading file content: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError {
+            let mut file = tokio::fs::File::open(&binding).await.map_err(|e| {
+                eprintln!("Error opening the file: {:#?}", e);
+                ScrapingError::CreatingFileError {
                     source: e,
                     fn_name: "scraping_func()".to_string(),
-                }));
-            }
-
-            existing_games = match serde_json::from_str(&file_content) {
-                Ok(games) => games,
-                Err(e) => {
-                    eprintln!("Failed to parse existing JSON data: {:#?}", e);
-                    return Err(Box::new(ScrapingError::FileJSONError(e)));
                 }
-            };
+            })?;
+
+            let mut file_content = String::new();
+            file.read_to_string(&mut file_content).await.map_err(|e| {
+                eprintln!("Error reading file content: {:#?}", e);
+                ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "scraping_func()".to_string(),
+                }
+            })?;
+
+            existing_games = serde_json::from_str(&file_content).map_err(|e| {
+                eprintln!("Failed to parse existing JSON data: {:#?}", e);
+                ScrapingError::FileJSONError(e)
+            })?;
 
             for (i, scraped_game) in recently_up_games.iter().enumerate() {
                 if i < existing_games.len() && scraped_game.title == existing_games[i].title {
@@ -255,54 +205,41 @@ pub mod basic_scraping {
                         "Game '{}' matches with the existing file. Stopping...",
                         scraped_game.title
                     );
-                    return Ok(()); // Stop the process if the game matches
+                    return Ok(());
                 }
             }
         }
 
-        // Serialize the data with pretty formatting
-        let json_data = match serde_json::to_string_pretty(&recently_up_games) {
-            Ok(json_d) => json_d,
-            Err(e) => {
-                eprintln!("Error serializing recently_up_games: {:#?}", e);
-                return Err(Box::new(ScrapingError::FileJSONError(e)));
-            }
-        };
+        let json_data = serde_json::to_string_pretty(&recently_up_games).map_err(|e| {
+            eprintln!("Error serializing recently_up_games: {:#?}", e);
+            ScrapingError::FileJSONError(e)
+        })?;
 
-        let mut file = match tokio::fs::File::create(&binding).await {
-            Ok(file) => file,
-            Err(e) => {
-                eprintln!("File could not be created: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError {
-                    source: e,
-                    fn_name: "scraping_func()".to_string(),
-                }));
-            }
-        };
-
-        if let Err(e) = file.write_all(json_data.as_bytes()).await {
-            eprintln!("Error writing to the file newly_added_games.json: {:#?}", e);
-            return Err(Box::new(ScrapingError::CreatingFileError {
+        let mut file = tokio::fs::File::create(&binding).await.map_err(|e| {
+            eprintln!("File could not be created: {:#?}", e);
+            ScrapingError::CreatingFileError {
                 source: e,
                 fn_name: "scraping_func()".to_string(),
-            }));
-        }
+            }
+        })?;
 
-        // 2024-09-05 - Placeholder for next update to handle alerts on network issues
-        // if !scraping_success {
-        //     // Emit an event that scraping failed
-        //     app_handle.emit_all("scraping_failed", "Unable to scrape data.").unwrap();
-        // }
+        file.write_all(json_data.as_bytes()).await.map_err(|e| {
+            eprintln!("Error writing to the file newly_added_games.json: {:#?}", e);
+            ScrapingError::CreatingFileError {
+                source: e,
+                fn_name: "scraping_func()".to_string(),
+            }
+        })?;
 
-        let end_time = Instant::now();
-        let duration_time_process = end_time - start_time;
+        let duration_time_process = Instant::now() - start_time;
         info!(
-            "Data has been written to newly_added_games.json. Time was : {:#?}",
+            "Data has been written to newly_added_games.json. Time was: {:#?}",
             duration_time_process
         );
 
         Ok(())
     }
+
 
     #[tokio::main]
     pub async fn popular_games_scraping_func(
