@@ -198,7 +198,7 @@ function Mylibrary() {
                     placeholder="Search for a game..."
                     autocomplete="off"
                 />
-                <div id="search-results-box" class="swal2-results-box"></div>
+                <div id="search-results-box" class="swal2-results-box" display: flex;></div>
             `,
       showCancelButton: true,
       confirmButtonText: "Select",
@@ -316,6 +316,8 @@ function Mylibrary() {
     }
   }
   async function favouriteGame() {
+        // close the context menu
+    setGameContextMenuVisible(false);
     const game = selectedGame();
     if (game) {
       const filePath = await downloadedGamePath();
@@ -328,6 +330,21 @@ function Mylibrary() {
           gameData[gameIndex].favourite = !gameData[gameIndex].favourite;
           await writeFile(filePath, JSON.stringify(gameData, null, 2));
           console.log(`Game ${game.title} favourited`);
+
+          Swal.fire({
+            title: "Game favourited!",
+            text: ` has been favourited successfully.`,
+            timer: 100,
+            timerProgressBar: true,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+            willClose: () => {
+              window.location.reload();
+            },
+          })
+
+
         } else {
           console.error("Game not found in the list");
         }
@@ -340,18 +357,100 @@ function Mylibrary() {
         });
       }
     }
-    // close the context menu
+
+  }
+
+  
+async function setCollection() {
+  // Close the context menu
+  setGameContextMenuVisible(false);
+  const game = selectedGame();
+  if (game) {
+    const filePath = await downloadedGamePath();
+    const collectionsFilePath = `${(await appDataDir()).replace(/\\/g, "/")}data/game_collections.json`;
+    
+    try {
+      // Read the collections file
+      const collectionsFileContent = await readFile(collectionsFilePath);
+      const collections = JSON.parse(collectionsFileContent.content);
+
+      console.log(collections)
+      console.log(collectionsFileContent)
+      
+      // Prepare collection options
+      const collectionOptions = collections.reduce((acc, collection) => {
+        acc[collection.name] = collection.name;
+        return acc;
+      }, {});
+
+      // Prompt user to select a collection
+      const { value: collectionName } = await Swal.fire({
+        title: "Add to Collection",
+        input: "select",
+        inputOptions: {
+          "": "Select a collection",
+          ...collectionOptions,
+        },
+        showCancelButton: true,
+        confirmButtonText: "Add",
+        cancelButtonText: "Cancel",
+      });
+
+      if (collectionName) {
+        const gameDataFileContent = await readFile(filePath);
+        const gameData = JSON.parse(gameDataFileContent.content);
+        const gameIndex = gameData.findIndex((g) => g.title === game.title);
+
+        if (gameIndex !== -1) {
+          gameData[gameIndex].collection = collectionName;
+          await writeFile(filePath, JSON.stringify(gameData, null, 2));
+          console.log(`Game ${game.title} added to collection ${collectionName}`);
+        } else {
+          console.error("Game not found in the list");
+        }
+      }
+    } catch (error) {
+      console.error("Error during game collection setting:", error);
+      Swal.fire({
+        title: "Error",
+        text: "Failed to add the game to the collection. Please try again.",
+        icon: "error",
+      });
+    }
+  }
+}
+
+
+  async function setGamePath() {
     setGameContextMenuVisible(false);
+    const game = selectedGame();
+    if (game) {
+      const { value: gamePath } = await Swal.fire({
+        title: "Set Game Path",
+        input: "file",
+        inputAttributes: {
+          "accept": ".exe"
+        },
+        inputValue: game.path,
+        showCancelButton: true,
+        confirmButtonText: "Save",
+        cancelButtonText: "Cancel",
+      }); // close the context menu
+
+      if (gamePath) {
+        updateGamePathInFile(game.title, gamePath, downloadedGamePath());
+      }
+    }
+
   }
 
   async function handleRemoveGame() {
     const game = selectedGame();
     if (game) {
-
       setGameContextMenuVisible(false); // close the context menu
 
       const result = await Swal.fire({
-        title: `Remove ${game.title}?`,
+        title: `Remove game from library?`,
         html: "This action cannot be undone!<br><strong>THIS WILL NOT DELETE THE FILES!</strong>",
         icon: "warning",
         showCancelButton: true,
@@ -376,6 +475,45 @@ function Mylibrary() {
     }
   }
 
+  async function removeFromCollection() {
+    setGameContextMenuVisible(false);
+
+    // Read file path
+    const game = selectedGame();
+    
+   if (game) {
+    const filePath = await downloadedGamePath();
+    try {
+      const fileContentObj = await readFile(filePath);  
+      let gameData = JSON.parse(fileContentObj.content);
+
+      // Find the game in the list
+      const gameIndex = gameData.findIndex((g) => g.title === game.title);
+      if (gameIndex !== -1) {
+        // Remove collection
+        gameData[gameIndex].collection = "";
+
+
+        // Write the updated list back to the file
+        await writeFile(filePath, JSON.stringify(gameData, null, 2));
+
+        console.log(`Game ${game.title} removed from collection`);
+      } else {
+        console.error("Game not found in the list");
+      }
+    } catch (error) {
+      console.error("Error during game removal:", error);
+      Swal.fire({
+        title: "Error",
+        text: "Failed to remove the game. Please try again.",
+        icon: "error",
+      });
+
+
+    }
+   }
+  }
+
   async function removeGameFromFile(game) {
     const filePath = await downloadedGamePath();
     try {
@@ -394,14 +532,16 @@ function Mylibrary() {
   }
 
   createEffect(async () => {
-    await randomImageFinder();
-    const timeOut = setTimeout(randomImageFinder, 500);
-    const interval = setInterval(randomImageFinder, 5000);
-    onCleanup(() => {
-      clearInterval(interval);
-      clearTimeout(timeOut);
-    });
+    // await randomImageFinder();TODO
+    // const timeOut = setTimeout(randomImageFinder, 500);
+    // const interval = setInterval(randomImageFinder, 5000);
+    // onCleanup(() => {
+    //   clearInterval(interval);
+    //   clearTimeout(timeOut);
+    // });
   });
+
+  //TODO CORRECT IMAGE BACKGROUND 
 
   createEffect(async () => {
     console.log(addedGame());
@@ -465,6 +605,7 @@ function Mylibrary() {
   });
 
   async function createGameCollectionFolder() {
+    let collections = []; // Initialize collections correctly
     const { value: folderName } = await Swal.fire({
       title: "Create a new collection",
       input: "text",
@@ -473,20 +614,48 @@ function Mylibrary() {
       confirmButtonText: "Create",
       cancelButtonText: "Cancel",
     });
-
+  
     if (folderName) {
+      console.log("folder", folderName);
       const appDir = await appDataDir();
-      const dirPath = appDir.replace(/\\/g, "/");
-      const filePath = `${dirPath}/data/game_collections.json`;
-
+      const dirPath = `${appDir.replace(/\\/g, "/")}/data`;
+      const filePath = `${dirPath}/game_collections.json`;
+  
       try {
-        const fileContent = await readFile(filePath);
-        const collections = JSON.parse(fileContent.content);
-
-        collections.push({
-          name: folderName,
-          games: [],
-        });
+        const dirExists = await exists(dirPath);
+        if (!dirExists) {
+          await createDir(dirPath, { recursive: true });
+          console.log("Directory created:", dirPath);
+        }
+  
+        const fileExists = await exists(filePath);
+        if (!fileExists) {
+          await writeTextFile(filePath, JSON.stringify(collections, null, 2));
+          console.log("Collections file created with default settings.");
+        } else {
+          console.log("Collections file already exists");
+        }
+  
+        // Read the collections file
+        const fileContentObj = await readFile(filePath);
+        collections = JSON.parse(fileContentObj.content);
+  
+        // Check if the collection already exists
+        const collectionExists = collections.some(
+          (collection) => collection.name === folderName
+        );
+  
+        if (collectionExists) {
+          Swal.fire({
+            title: "Collection already exists",
+            text: `The collection "${folderName}" already exists.`,
+            icon: "warning",
+          });
+          return;
+        }
+  
+        // Add the new collection
+        collections.push({ name: folderName, games: [] });
 
         await writeFile(filePath, JSON.stringify(collections, null, 2));
         Swal.fire({
@@ -524,13 +693,10 @@ function Mylibrary() {
             timer: 3000,
             timerProgressBar: true,
             didOpen: () => {
-                Swal.showLoading();
-            }
-
-            });
+              Swal.showLoading();
+            },
+          });
           console.log(`Game ${game.title} favourited`);
-
-         
         } else {
           console.error("Game not found in the list");
         }
@@ -541,16 +707,121 @@ function Mylibrary() {
           text: "Failed to favourite the game. Please try again.",
           icon: "error",
         });
-      } 
-
+      }
     }
   }
 
-async function filterSelectionTitle() {
-  // show selected
 
-}
 
+  async function filterSelectionTitle() {
+    const appDir = await appDataDir();
+    const dirPath = appDir.replace(/\\/g, "/");
+    const filePath = `${dirPath}data/downloaded_games.json`;
+    const fileContent = await readFile(filePath);
+    const gameData = JSON.parse(fileContent.content);
+    setDownloadedGamesList(gameData);
+
+    const filterSelection = document.querySelector(".filter-selection-option");
+    filterSelection.addEventListener("click", (e) => {
+      const filterSelectionOptions = document.querySelectorAll(
+        ".filter-selection-option"
+      );
+      filterSelectionOptions.forEach((option) => {
+        option.classList.remove("selected");
+      });
+      e.target.classList.add("selected");
+    });
+
+    const filterSelectionOptions = document.querySelectorAll(
+      ".filter-selection-option"
+    );
+    filterSelectionOptions.forEach((option) => {
+      option.addEventListener("click", async (e) => {
+        const optionText = e.target.textContent;
+        if (optionText === "Title") {
+          const sortedGames = gameData.sort((a, b) =>
+            a.title.localeCompare(b.title)
+          );
+          setDownloadedGamesList(sortedGames);
+
+        } else if (optionText === "Collection") {
+          console.log("Collection");
+          const { value: collectionName } = await Swal.fire({
+            title: "Filter By Collection",
+            input: "select",
+            // inputAttributes: {
+            //   autocomplete: "false"
+            // },
+            inputOptions: {
+              "": "Select a collection",
+              ...gameData.reduce((acc, game) => {
+                if (game.collection) {
+                  acc[game.collection] = game.collection;
+                }
+                return acc;
+              }, {}),
+            },
+            showCancelButton: true,
+            confirmButtonText: "Select",
+            cancelButtonText: "Cancel",
+          });
+
+          if (collectionName) {
+            const sortedGames = gameData.filter(
+              (game) => game.collection === collectionName
+            );
+            setDownloadedGamesList(sortedGames);
+            console.log(sortedGames);
+          }
+
+        } else if (optionText === "Favourite") {
+          const sortedGames = gameData.filter((game) => game.favourite);
+          setDownloadedGamesList(sortedGames);
+          console.log(sortedGames);
+        }
+      });
+    });
+
+    const filterSelectionDisplay = document.querySelector(
+      ".filter-selection-display"
+    );
+
+    // Open the filter selection options when clicking the display
+    filterSelectionDisplay.addEventListener("click", (e) => {
+      const filterSelectionOptions = document.querySelector(
+        ".filter-selection-options"
+      );
+
+      filterSelectionOptions.classList.toggle("show");
+    });
+
+    // Close the filter selection options when clicking outside
+    document.addEventListener("click", (e) => {
+      const filterSelectionOptions = document.querySelector(
+        ".filter-selection-options"
+      );
+      if (!filterSelectionOptions.contains(e.target)) {
+        filterSelectionOptions.classList.remove("show");
+      }
+    });
+
+    // Clear selections
+    document.addEventListener("click", (e) => {
+      const clearSelections = document.querySelector(".clear-selections");
+      if (clearSelections.contains(e.target)) {
+        setDownloadedGamesList(gameData);
+        const filterSelectionOptions = document.querySelectorAll(
+          ".filter-selection-option"
+        );
+        filterSelectionOptions.forEach((option) => {
+          option.classList.remove("selected");
+        });
+
+        clearSelections.style.display = "none";
+      }
+
+    })
+  }
 
   return (
     <>
@@ -558,46 +829,8 @@ async function filterSelectionTitle() {
         <div class="game-container">
           {backgroundMainBrightness() === "dark" ? (
             // <div class="game-container-heading">
-              <div class="game-container-title">
-                <h1 className="title-category-element light">My Library</h1>
-              {/* </div> */}
-              {/* <div class="icon-container">
-                <svg
-                  className="icon-heart"
-                  onClick={handleGameFavourite}
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="lucide lucide-book-heart"
-                >
-                  <path d="M16 8.2A2.22 2.22 0 0 0 13.8 6c-.8 0-1.4.3-1.8.9-.4-.6-1-.9-1.8-.9A2.22 2.22 0 0 0 8 8.2c0 .6.3 1.2.7 1.6A226.652 226.652 0 0 0 12 13a404 404 0 0 0 3.3-3.1 2.413 2.413 0 0 0 .7-1.7" />
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-                </svg>
-                <svg
-                  className="icon-create"
-                  onClick={createGameCollectionFolder}
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  class="lucide lucide-circle-plus"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M8 12h8" />
-                  <path d="M12 8v8" />
-                </svg>
-              </div> */}
+            <div class="game-container-title">
+              <h1 className="title-category-element light">My Library</h1>
             </div>
           ) : (
             <div class="game-container-title">
@@ -605,26 +838,67 @@ async function filterSelectionTitle() {
             </div>
           )}
 
-          {/* <div class="filter-selection-display">
-            <div class="filter-selection">
-                <div class="filter-selection-text">`Filter by: ${filterSelectionTitle}`</div>
-                <div class="filter-selection-icon">
-                    <svg
-                        class="svgIcon"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <g stroke-width="0"/>
-                        <g stroke-linecap="round" stroke-linejoin="round"/>
-                        <path fill="none" d="M0 0h24v24H0z"/>
-                        <path d="M12 21.35l-1.45-1.32C5.4 16.45 2 13.25 2 9.5 2 7.5 3.5 6 5.5 6c1.34 0 2.61.99 3.5 2 .89-1.01 2.16-2 3.5-2 2 0 3.5 1.5 3.5 3.5 0 3.75-3.4 6.95-8.55 10.54L12 21.35z"/>
-                    </svg>
-                    </div>  
-                    </div>
-
-          </div> */}
-
+          <div className="filter-selection-display">
+            <div className="filter-selection">
+              <div className="filter-selection-options">
+                <svg
+                  className="icon-create lucide lucide-circle-plus"
+                  onClick={createGameCollectionFolder}
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M8 12h8" />
+                  <path d="M12 8v8" />
+                </svg>
+                <div
+                  className="filter-selection-option option-all-games"
+                  onClick={filterSelectionTitle}
+                >
+                  <p>All Games</p>
+                </div>
+                <div className="filter-selection-option option-collection">
+                  <p>Collection</p>
+                  <p></p>
+                </div>
+                <div className="filter-selection-option option-favourite">
+                  <p>Favourite</p>
+                </div>
+                <div className="test">
+                <div className="clear-selections option-clear-selections" >
+                  <p>[Clear Selections]</p>
+                  </div>
+              </div>
+                  <div class="add-game-container">
+              <button class="button" onClick={handleAddDownloadedGames}>
+                <svg
+                  class="svgIcon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g stroke-width="0" />
+                  <g stroke-linecap="round" stroke-linejoin="round" />
+                  <path
+                    d="M4 12h16m-8-8v16"
+                    stroke="#ccc"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+              </div>
+            </div>
+          </div>
 
           <div class="game-grid">
             {/* Iterate over gameData to dynamically create game elements */}
@@ -654,11 +928,11 @@ async function filterSelectionTitle() {
                   } else {
                     let correctTitle = game.title.replace(/\s*\+.*$/, "");
                     Swal.fire({
-                      title: `Launch ${correctTitle}`,
+                      title: `Launch this game?`,
                       text: `Do you want to launch the game ${correctTitle}?`,
                       icon: "info",
                       showCancelButton: true,
-                      confirmButtonText: "Yes, launch it!",
+                      confirmButtonText: "Launch",
                       cancelButtonText: "Cancel",
                     }).then(async (result) => {
                       if (result.isConfirmed) {
@@ -677,18 +951,40 @@ async function filterSelectionTitle() {
                 }}
               >
                 <img src={game.img} alt={game.title} />
-
-                {/* {game.favourite && (
-                                    <div class="favourite-icon">
-                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#de4005">
-                                            <g stroke-width="0"/>
-                                            <g stroke-linecap="round" stroke-linejoin="round"/>
-                                            <path fill="none" d="M0 0h24v24H0z"/>
-                                            <path d="M12 21.35l-1.45-1.32C5.4 16.45 2 13.25 2 9.5 2 7.5 3.5 6 5.5 6c1.34 0 2.61.99 3.5 2 .89-1.01 2.16-2 3.5-2 2 0 3.5 1.5 3.5 3.5 0 3.75-3.4 6.95-8.55 10.54L12 21.35z"/>
-                                        </svg>
-                                    </div>
-                                )} */}
-
+                {game.favourite ? (
+                  <div class="favourite-icon">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="#de4005"
+                      stroke="#de4005"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </div>
+                ):(
+              <div class="favourite-icon">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#de4005"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </div>
+                )}
+          
                 {!game.path && (
                   <div class="warning-icon">
                     <svg
@@ -706,26 +1002,7 @@ async function filterSelectionTitle() {
               </div>
             ))}
 
-            <div class="add-game-container">
-              <button class="button" onClick={handleAddDownloadedGames}>
-                <svg
-                  class="svgIcon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g stroke-width="0" />
-                  <g stroke-linecap="round" stroke-linejoin="round" />
-                  <path
-                    d="M4 12h16m-8-8v16"
-                    stroke="#ccc"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
+        
           </div>
         </div>
       </div>
@@ -745,12 +1022,34 @@ async function filterSelectionTitle() {
             zIndex: "1010",
           }}
         >
-          {/* <div class="context-menu-item" onClick={favouriteGame}>
+         
+  
+          {selectedGame() ? (
+          <div class="context-menu-item" onClick={favouriteGame}>
             Favourite Game
-          </div> */}
+          </div>
+          ):( 
+            <div class="context-menu-item" onClick={favouriteGame}>
+            Unfavourite Game
+          </div>
+          )}
+          <div class="context-menu-item" onClick={setGamePath}>
+            Set Game Path
+          </div>
           <div class="context-menu-item" onClick={handleRemoveGame}>
             Remove Game
           </div>
+          {selectedGame()?.collection ? (
+          <div class="context-menu-item" onClick={removeFromCollection}> 
+            Remove From Collection
+          </div>
+          ): (
+            <div class="context-menu-item" onClick={setCollection}> 
+            Set Collection
+          </div>
+          )
+
+          }
         </div>
       )}
     </>
@@ -758,3 +1057,9 @@ async function filterSelectionTitle() {
 }
 
 export default Mylibrary;
+
+
+// UPDATE UI AFTER ADDING TO FAVOURITES OR REMOVING
+// UPDATE UI AFTER ADDING TO COLLECTION
+// UPDATE UI AFTER REMOVING FROM COLLECTION
+// UPDATE FROM FAVOURITE TO UNFAVOURITE DEPENDING ON STATE

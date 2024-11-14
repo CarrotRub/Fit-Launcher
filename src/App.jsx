@@ -14,6 +14,7 @@ import '@fontsource-variable/overpass';
 
 import './App.css';
 import './templates/titlebar-01/titlebar.css';
+import Swal from 'sweetalert2';
 
 function App() {
     const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -47,6 +48,8 @@ function App() {
         document
             .getElementById('titlebar-close')
             ?.addEventListener('click', () => handleWindowClose());
+
+    
 
         // Listen for network failure event and handle it
         listen('network-failure', (event) => {
@@ -93,7 +96,19 @@ function App() {
             console.error('Error parsing CDG_Stats:', error);
         }
         
-        appWindow.close();
+        Swal.fire({
+            title: 'Are you sure?',
+            text: 'You are about to close the app.',
+            showCancelButton: true,
+            confirmButtonColor: '#FF0000',
+            cancelButtonColor: '#2778c4',
+            confirmButtonText: 'Close',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                appWindow.close();
+            }
+        });
+        
     }
 
     function closeDialog() {
@@ -112,6 +127,8 @@ function App() {
         {
             path: '/settings',
             component: lazy(() => import('./templates/Settings-01/Settings')),
+            // Ensure search bar is cleared 
+            
         },
     ];
 
