@@ -12,6 +12,7 @@ import { makePersisted } from '@solid-primitives/storage';
 const appDir = await appDataDir()
 const popularRepacksPath = `${appDir}tempGames/newly_added_games.json`;
 
+
 import Slider from '../../../../components/Slider-01/Slider';
 
 /**
@@ -28,7 +29,7 @@ async function parseNewGameData() {
         const settingsPath = `${appDir}/fitgirlConfig/settings.json`
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
-        const hideNSFW = true; // settings.hide_nsfw_content
+        const hideNSFW = settings.hide_nsfw_content;
 
         // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
@@ -46,6 +47,7 @@ function NewlyAddedGames() {
     const [imagesObject, setImagesObject] = createSignal(null)
     const [imagesList, setImagesList] = createSignal([])
     const [titlesList, setTitlesList] = createSignal([])
+    const [hrefsList, setHrefsList] = createSignal([])
     const [numberOfGames, setNumberOfGames] = createSignal(1);
     const [filteredImages, setFilteredImages] = createSignal([]) 
 
@@ -53,26 +55,21 @@ function NewlyAddedGames() {
 
     onMount( async () => {
         try {
-            const popularGamesData = await parseNewGameData();
-            setImagesObject(popularGamesData);
+            const newlyAddedGamesData = await parseNewGameData();
+            setImagesObject(newlyAddedGamesData);
 
-            const gameObj = popularGamesData;
+            const gameObj = newlyAddedGamesData;
             const imageUrls = gameObj.map(game => game.img);
             const titlesObjList = gameObj.map(game => game.title);
+            const hrefsObjsList = gameObj.map(game => game.href);
 
             setImagesList(imageUrls);
             setTitlesList(titlesObjList);
+            setHrefsList(hrefsObjsList);
 
-            setNumberOfGames(popularGamesData?.length)
+            setNumberOfGames(newlyAddedGamesData?.length)
     
-            setFilteredImages(popularGamesData);
-            setSliderComponent(
-                filteredImages().length > 0 ? (
-                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()}/>
-                ) : (
-                    null
-                )
-            )
+            setFilteredImages(newlyAddedGamesData);
             
         } catch (error) {
             console.error("Error parsing game data : ", error)
@@ -84,7 +81,13 @@ function NewlyAddedGames() {
             <div className="text-category-gamehub">
                 <p>Newly Added Games :</p>
             </div>
-            {sliderComponent()}
+            {
+                filteredImages().length > 0 ? (
+                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()} hrefs={hrefsList()}/>
+                ) : (
+                    null
+                )
+            }
         </div>
         
     )

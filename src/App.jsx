@@ -21,6 +21,10 @@ function App() {
             path: '/',
             component: lazy(() => import('./pages/Gamehub-01/Gamehub')),
         },
+        {
+            path: '/game/:uuid', 
+            component: lazy(() => import('./pages/Download-Game-01/Download-Game')),
+        },
         // {
         //     path: '/my-library',
         //     component: lazy(() => import('./templates/mylibrary-01/Mylibrary')),

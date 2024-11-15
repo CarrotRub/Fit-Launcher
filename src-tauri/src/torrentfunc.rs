@@ -9,6 +9,7 @@ pub mod torrent_calls {
         SessionPersistenceConfig, TorrentStats,
     };
     use serde::{Deserialize, Serialize, Serializer};
+    use std::collections::HashSet;
     use std::fs;
     use std::str::FromStr;
     use std::sync::Arc;
@@ -102,6 +103,7 @@ pub mod torrent_calls {
         pub torrenting_config: TorrentTorrentingConfig,
     }
 
+    //TODO: Better error handling for functions
     impl TorrentConfig {
         // Provide default values for TorrentConfig
         pub fn default() -> Self {
@@ -508,8 +510,7 @@ pub mod torrent_calls {
         }
 
         pub async fn delete_torrent(&self, torrent_idx: String) -> Result<(), Box<TorrentError>> {
-            let torrent_hash: TorrentIdOrHash =
-                TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+            let torrent_hash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
 
             match Api::api_torrent_action_delete(&self.api_session, torrent_hash).await {
                 Ok(_) => {
@@ -520,6 +521,32 @@ pub mod torrent_calls {
                 }
             }
 
+            Ok(())
+        }
+
+        pub async fn update_only_files(
+            &self,
+            torrent_idx: String,
+            file_list: Vec<usize>,
+        ) -> Result<(), Box<TorrentError>> {
+            let torrent_hash = TorrentIdOrHash::Hash(Id20::from_str(&torrent_idx).unwrap());
+
+            let hashset_file_list: HashSet<usize> = file_list.into_iter().collect();
+
+            match Api::api_torrent_action_update_only_files(
+                &self.api_session,
+                torrent_hash,
+                &hashset_file_list,
+            )
+            .await
+            {
+                Ok(_) => {
+                    info!("Torrent Successfully Resumed");
+                }
+                Err(err) => {
+                    error!("Torrent Couldn't Resume : {}", err)
+                }
+            }
             Ok(())
         }
     }
@@ -709,6 +736,25 @@ pub mod torrent_commands {
         if let Some(manager) = &*torrent_manager {
             let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
             manager.delete_torrent(torrent_idx).await?;
+
+            Ok(())
+        } else {
+            Err(Box::new(TorrentError::AnyhowError(
+                "TorrentManager is not initialized.".to_string(),
+            )))
+        }
+    }
+
+    #[tauri::command]
+    pub async fn api_update_only_files(
+        state: tauri::State<'_, TorrentState>,
+        torrent_idx: String,
+        file_list: Vec<usize>,
+    ) -> Result<(), Box<TorrentError>> {
+        let torrent_manager = state.torrent_manager.lock().await;
+        if let Some(manager) = &*torrent_manager {
+            let manager: tokio::sync::MutexGuard<'_, TorrentManager> = manager.lock().await; // Lock the manager for use
+            manager.update_only_files(torrent_idx, file_list).await?;
 
             Ok(())
         } else {
