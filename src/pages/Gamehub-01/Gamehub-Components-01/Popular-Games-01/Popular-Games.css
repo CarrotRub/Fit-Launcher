@@ -55,6 +55,21 @@
    
 }
 
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+.loading-icon-pop-games {
+    position: relative;
+    display: flex;
+    width: 100vw;
+    justify-content: center;
+}
+.loading-icon-pop-games svg {
+    animation: spin 500ms linear infinite;
+}
+
 .main-game-container {
     
     /* position: absolute; */
@@ -78,7 +93,10 @@
     justify-content: flex-end;
 
     box-sizing: border-box;
+    transition: transform 0.2s ease;
 }
+
+
 
 .main-game-image-zoomed-in img {
     border-radius: 36px;
@@ -104,7 +122,12 @@
 
     box-sizing: border-box;
     overflow: hidden;
+    transition: transform 0.2s ease;
 
+}
+
+.main-game-image-zoomed-in:active, .main-game-info-container:active {
+    transform: scale(0.9);
 }
 
 #game-clean-title {

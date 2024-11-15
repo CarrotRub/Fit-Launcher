@@ -191,7 +191,7 @@ async fn get_games_images(
     app_handle: tauri::AppHandle,
     game_link: String,
     image_cache: State<'_, ImageCache>,
-) -> Result<GameImages, CustomError> {
+) -> Result<(), CustomError> {
     let now = Instant::now();
     STOP_FLAG.store(false, Ordering::Relaxed);
 
@@ -210,9 +210,7 @@ async fn get_games_images(
     }
 
     if let Some(cached_images) = cache.get(&game_link) {
-        return Ok(GameImages {
-            my_all_images: cached_images.clone(),
-        });
+        return Ok(());
     }
 
     drop(cache); // Release lock before network operation
@@ -233,9 +231,7 @@ async fn get_games_images(
 
     info!("Time elapsed to find images : {:#?}", now.elapsed());
 
-    Ok(GameImages {
-        my_all_images: image_srcs,
-    })
+    Ok(())
 }
 
 //Always serialize returns...

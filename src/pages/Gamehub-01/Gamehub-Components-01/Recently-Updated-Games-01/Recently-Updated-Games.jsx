@@ -22,7 +22,7 @@ async function parseNewGameData() {
         const settingsPath = `${appDir}/fitgirlConfig/settings.json`
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
-        const hideNSFW = true; // settings.hide_nsfw_content
+        const hideNSFW = settings.hide_nsfw_content; // settings.hide_nsfw_content
 
         // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
@@ -40,6 +40,7 @@ function RecentlyUpdatedGames() {
     const [imagesObject, setImagesObject] = createSignal(null)
     const [imagesList, setImagesList] = createSignal([])
     const [titlesList, setTitlesList] = createSignal([])
+    const [hrefsList, setHrefsList] = createSignal([])
     const [numberOfGames, setNumberOfGames] = createSignal(1);
     const [filteredImages, setFilteredImages] = createSignal([]) 
 
@@ -47,26 +48,21 @@ function RecentlyUpdatedGames() {
 
     onMount( async () => {
         try {
-            const popularGamesData = await parseNewGameData();
-            setImagesObject(popularGamesData);
+            const recentlyUpdatedGamesData = await parseNewGameData();
+            setImagesObject(recentlyUpdatedGamesData);
 
-            const gameObj = popularGamesData;
+            const gameObj = recentlyUpdatedGamesData;
             const imageUrls = gameObj.map(game => game.img);
             const titlesObjList = gameObj.map(game => game.title);
+            const hrefsObjsList = gameObj.map(game => game.href);
 
             setImagesList(imageUrls);
             setTitlesList(titlesObjList);
+            setHrefsList(hrefsObjsList);
 
-            setNumberOfGames(popularGamesData?.length)
+            setNumberOfGames(recentlyUpdatedGamesData?.length)
     
-            setFilteredImages(popularGamesData);
-            setSliderComponent(
-                filteredImages().length > 0 ? (
-                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()}/>
-                ) : (
-                    null
-                )
-            )
+            setFilteredImages(recentlyUpdatedGamesData);
             
         } catch (error) {
             console.error("Error parsing game data : ", error)
@@ -78,7 +74,13 @@ function RecentlyUpdatedGames() {
             <div className="text-category-gamehub">
                 <p>Recently Updated Games :</p>
             </div>
-            {sliderComponent()}
+            {
+                filteredImages().length > 0 ? (
+                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()} hrefs={hrefsList()}/>
+                ) : (
+                    null
+                )
+            }
         </div>
         
     )

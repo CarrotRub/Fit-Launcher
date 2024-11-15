@@ -6,6 +6,7 @@ import RecentlyUpdatedGames from "./Gamehub-Components-01/Recently-Updated-Games
 
 function Gamehub() {
 
+    //TODO: For all components of Gamehub, add fallback color to a game and add game color searching in rust backend during startup.
 
     return (
         <div className="gamehub content-page">

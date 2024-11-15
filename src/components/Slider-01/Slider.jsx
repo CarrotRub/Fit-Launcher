@@ -1,8 +1,28 @@
 import { createSignal, createEffect } from 'solid-js';
 import './Slider.css';
+import { useNavigate } from '@solidjs/router';
+import { setDownloadGamePageInfo } from '../functions/dataStoreGlobal';
+
 
 const Slider = (props) => {
-    const { images = [], filePath = '', titles = [] } = props;
+    const navigate = useNavigate();
+    const { images = [], filePath = '', titles = [], hrefs = [] } = props;
+    const [clicked, setClicked] = createSignal(false);
+
+    const handleImageClick = (title, filePath, href) => {
+        if (!clicked()) {
+            console.log(href)
+            setClicked(true);
+            const uuid = crypto.randomUUID();
+            //TODO: Here use createStore
+            setDownloadGamePageInfo({
+                gameTitle: title,
+                gameHref: href,
+                filePath: filePath
+            })
+            navigate(`/game/${uuid}`);
+        }
+    };
     const [currentIndex, setCurrentIndex] = createSignal(0);
 
     // Generate a unique ID for each slider instance.
@@ -81,7 +101,9 @@ const Slider = (props) => {
             <div className="slider-container">
                 {images.length > 0 ? (
                     images.map((image, index) => (
-                        <div className="slider-image-container" key={index}>
+                        <div className="slider-image-container" key={index} onClick={() => {
+                            handleImageClick(titles[index], filePath, hrefs[index])
+                        }}>
                             <img
                                 src={image}
                                 alt={Array.isArray(titles) ? titles[index] : titles}
