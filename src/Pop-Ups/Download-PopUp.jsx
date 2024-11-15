@@ -15,7 +15,7 @@ const cacheDirPath = cacheDir;
 const appDir =  await appDataDir();
 const dirPath = appDir;
 
-const DownloadPopup = ({closePopup, gameTitle, gameMagnet}) => {
+const DownloadPopup = ({closePopup, gameTitle, gameMagnet, gameImg}) => {
     const [downloadPath, setDownloadPath] = createSignal('')
     const [isPathValid, setIsPathValid] = createSignal(false);
     const [isFinalStep, setIsFinalStep] = createSignal(false);
@@ -254,7 +254,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
                     formattedFile += " VO";
                 }
                 categorizedFiles.Languages[file] = formattedFile; // Key is original name, value is the new name
-            } else if (lowerFile.includes("optional")) {
+            } else if (lowerFile.includes("optional") || lowerFile.includes("selective")) {
                 // Create a human-readable label for optional files
                 const fileLabel = file
                     .replace(/fg-optional-/i, "")
@@ -288,17 +288,15 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
     //This function is there because of some issues in librqbit that create a placeholder for the files that aren't selected but doesn't download anything inside of it.
     async function deleteUselessFiles(fileList) {
         const torrentOutputFolder = mainTorrentDetails().torrent_output_folder; // Get the folder path
-        const missingFileList = handleUnselectedFiles(fileList); // Get the list of missing files
+        const missingFileList = handleUnselectedFiles(fileList);
     
         for (const file of missingFileList) {
             const filePath = `${torrentOutputFolder}\\${file}`; // Construct the full path
     
             try {
-                // Check if the file exists before attempting deletion
                 const fileExists = await fs.exists(filePath);
     
                 if (fileExists) {
-                    // Delete the file
                     await fs.removeFile(filePath);
                     console.log(`Deleted file: ${filePath}`);
                 } else {
@@ -366,6 +364,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
         setLoading(true);
         await invoke("api_download_with_args", {magnetLink: gameMagnet, downloadFileList: completeIDFileList() });
         deleteUselessFiles(completeFileList());
+        addGlobalTorrentInfo()
         setLoading(false)
 
         const popupMainTitle = document.querySelector(".popup-main-title");
@@ -376,9 +375,9 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
         const popupAdditionalFiles = document.querySelector(".torrent-additional-files-details");
         popupAdditionalFiles.style.display = 'none'
 
-            const confirmButton = document.querySelector("#popup-confirm-button");
-            confirmButton.textContent = 'Done'
-            confirmButton.onclick = closePopup;
+        const confirmButton = document.querySelector("#popup-confirm-button");
+        confirmButton.textContent = 'Done'
+        confirmButton.onclick = closePopup;
     }
 
     return (
@@ -438,7 +437,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
                             <ul className="popup-category-list-options" key={originalName}>
                                 <li className="popup-category-list-item">
                                 <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="-1536 2089 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="-1536" y="2089" width="24" height="24" class="frame-background"/></g><g class="frame-children"><circle cx="-1524" cy="2101" style="fill:none" class="fills" r="1"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="-1524" cy="2101" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--primary-color);stroke-opacity:1" class="stroke-shape" r="1"/></g><path d="M-1515.8 2109.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M-1515.8 2109.2c2.04-2.03.02-7.36-4.5-11.9-4.54-4.52-9.87-6.54-11.9-4.5-2.04 2.03-.02 7.36 4.5 11.9 4.54 4.52 9.87 6.54 11.9 4.5" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--primary-color);stroke-opacity:1" class="stroke-shape"/></g><path d="M-1520.3 2104.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M-1520.3 2104.7c4.52-4.54 6.54-9.87 4.5-11.9-2.03-2.04-7.36-.02-11.9 4.5-4.52 4.54-6.54 9.87-4.5 11.9 2.03 2.04 7.36.02 11.9-4.5" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--primary-color);stroke-opacity:1" class="stroke-shape"/></g></g></svg>
-                                    {friendlyName}
+                                    {toUpperFirstLetters(friendlyName)}
                                     <label className="switch">
                                         <input
                                             type="checkbox"
