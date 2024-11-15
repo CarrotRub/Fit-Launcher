@@ -20,6 +20,13 @@ body::-webkit-scrollbar {
     --secondary-20-color: rgba(110, 53, 103, 0.2); /* #6e3567 */
     --text-color: rgba(236, 224, 240, 1); /* #ece0f0 */
     --background-color: rgba(11, 7, 14, 1); /* #0b070e */
+    --70-background-color: rgba(11, 7, 14, 0.7);
+    --popup-background-color: rgba(15, 9, 18, 1);
+}
+
+#router-page {
+    height: 100%;
+    width: 100%;
 }
 
 .main-layout {
@@ -44,6 +51,7 @@ body::-webkit-scrollbar {
 .content-page {
     grid-area: content-page;
     height: 100%;
+    width: 100%;
 }
 
 

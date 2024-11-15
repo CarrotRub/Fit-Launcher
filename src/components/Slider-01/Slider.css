@@ -58,10 +58,8 @@
 .skipper {
     color: var(--accent-color);
     padding: 8px;
-    border-radius: 50%;
     cursor: pointer;
     pointer-events: all;
-
     display: flex;
 }
 

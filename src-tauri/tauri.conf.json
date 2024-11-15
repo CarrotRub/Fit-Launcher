@@ -47,6 +47,9 @@
             "fs": {
                 "all": true,
                 "scope": [
+                    "*/**",
+                    "$CACHE/**",
+                    "$CACHE/*",
                     "$APPDATA/**",
                     "$APPCACHE/**",
                     "$APPCONFIG/**",

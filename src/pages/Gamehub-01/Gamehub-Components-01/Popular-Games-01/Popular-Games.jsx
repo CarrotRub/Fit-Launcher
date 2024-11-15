@@ -1,4 +1,4 @@
-import { createEffect, onMount, createSignal, onCleanup } from 'solid-js';
+import { createEffect, onMount, createSignal, onCleanup, createResource } from 'solid-js';
 import { readTextFile } from '@tauri-apps/api/fs';
 import { invoke } from '@tauri-apps/api';
 import { createWorker } from '@solid-primitives/workers';
@@ -8,6 +8,8 @@ import './Popular-Games.css'
 
 import { colorCache, setColorCache } from '../../../../components/functions/dataStoreGlobal';
 import { makePersisted } from '@solid-primitives/storage';
+import { useNavigate } from '@solidjs/router';
+import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
 
 const appDir = await appDataDir()
 const popularRepacksPath = `${appDir}tempGames/popular_games.json`
@@ -26,7 +28,8 @@ async function parseNewGameData() {
         const settingsPath = `${appDir}/fitgirlConfig/settings.json`
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
-        const hideNSFW = true; // settings.hide_nsfw_content
+        // console.log(settings.hide_nsfw_content)
+        const hideNSFW = settings.hide_nsfw_content; 
 
         // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
@@ -48,6 +51,7 @@ function extractMainTitle(title) {
 }
 
 function PopularGames() {
+    const [isLoading, setIsLoading] = createSignal(true);
     const [imagesObject, setImagesObject] = createSignal(null)
     const [numberOfGames, setNumberOfGames] = createSignal(1);
     const [filteredImages, setFilteredImages] = createSignal([]) // Images after filtering
@@ -58,6 +62,8 @@ function PopularGames() {
     const [longGameTitle, setLongGameTitle] = createSignal("");
     const [gameDescription, setGameDescription] = createSignal("");
     const [gameDetails, setGameDetails] = createSignal("");
+    const [clicked, setClicked] = createSignal(false);
+    const navigate = useNavigate();
 
     onMount( async () => {
         try {
@@ -65,10 +71,7 @@ function PopularGames() {
             setImagesObject(popularGamesData);
 
             setNumberOfGames(popularGamesData?.length)
-            if (Object.keys(colorCache).length !== numberOfGames()) {
-                console.warn(Object.keys(colorCache).length, numberOfGames())
-                await fetchDominantColors();
-            }
+
     
             setFilteredImages(popularGamesData);
             
@@ -76,6 +79,50 @@ function PopularGames() {
             console.error("Error parsing game data : ", error)
         }
     })
+
+    const [fetchColors] = createResource(numberOfGames, async (gamesCount) => {
+        setIsLoading(true);
+    
+        // Create a timeout promise
+        const timeout = new Promise((resolve) => 
+            setTimeout(() => resolve("timeout"), 5000)
+        );
+    
+        // Fetch dominant colors or resolve timeout
+        const result = await Promise.race([
+            (async () => {
+                if (Object.keys(colorCache).length !== gamesCount) {
+                    console.warn(Object.keys(colorCache).length, gamesCount);
+                    await fetchDominantColors();
+                }
+                return "success";
+            })(),
+            timeout
+        ]);
+    
+        // Handle timeout or success
+        if (result === "timeout") {
+            console.warn("Fetching dominant colors timed out");
+        }
+    
+        setIsLoading(false);
+    });
+    
+
+    const handleImageClick = (title, filePath, href) => {
+        if (!clicked()) {
+            console.log(href)
+            setClicked(true);
+            const uuid = crypto.randomUUID();
+            //TODO: Here use createStore
+            setDownloadGamePageInfo({
+                gameTitle: title,
+                gameHref: href,
+                filePath: filePath
+            })
+            navigate(`/game/${uuid}`);
+        }
+    };
 
     // Auto-update selected game every 10 seconds
     createEffect(async () => {
@@ -203,70 +250,88 @@ async function lightenRgbColor(rgbString, percentage, borderColor) {
 
 
     return (
+        <>
         <div className="popular-games-grid">
             <div className="game-presentation" style={{
                 'background-image' : `url(${imagesObject()?.[selectedGame()]?.img})`,
                 'background-size': 'cover',
                 'background-position': 'center',
             }}>
-                <div className="main-game-container">
-                    <div className="main-game-image-zoomed-in">
-                        <img src={imagesObject()?.[selectedGame()]?.img} alt="game-background" className="game-image-background" style={{
-                        'border-color': borderColor(),
-                        'border-style': 'solid',
-                        'border-width': '2px',
-                        'box-shadow'  : `0px 0px 30px 3px ${infoContainerColor()}`,
-                    }}/>
-                    </div>
-                    <div className="main-game-info-container" style={
-                        `
-                        background-color : ${infoContainerColor()}; 
-                        border-color: ${borderColor()};
-                        border-style: solid;
-                        border-width: 2px;
-                        box-shadow  : 0px 0px 30px 3px ${infoContainerColor()}
-                        `
-                    }>
-                        <p id="game-clean-title">
-                            {cleanGameTitle()}
-                        </p>
-                        <p id="long-game-title">
-                            {longGameTitle()}
-                        </p>
-                        <div id="game-details">
-                            <p><strong>Genre/Tags:</strong> {gameDetails().GenreTags}</p>
-                            <p><strong>Companies:</strong> {gameDetails().Companies}</p>
-                            <p><strong>Languages:</strong> {gameDetails().Language}</p>
-                            <p><strong>Original Size:</strong> {gameDetails().OriginalSize}</p>
-                            <p><strong>Repack Size:</strong> {gameDetails().RepackSize}</p>
+                {isLoading() ? (
+                        <div className="loading-icon-pop-games">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--secondary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-circle"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                         </div>
-                    </div>
-                    <div className="game-skipper" style={
-                        `
+                ) : (
+                    <div className="main-game-container">
+                        <div className="main-game-image-zoomed-in">
+                            <img src={imagesObject()?.[selectedGame()]?.img} alt="game-background" className="game-image-background" style={{
+                            'border-color': borderColor(),
+                            'border-style': 'solid',
+                            'border-width': '2px',
+                            'box-shadow'  : `0px 0px 30px 3px ${infoContainerColor()}`,
+                            'cursor': 'pointer'
+                        }}
+                        onClick={() => {
+                            handleImageClick(imagesObject()?.[selectedGame()]?.title, popularRepacksPath, imagesObject()?.[selectedGame()]?.href)
+                        }}
+                        />
+                        </div>
+                        <div className="main-game-info-container" style={
+                            `
                             background-color : ${infoContainerColor()}; 
+                            border-color: ${borderColor()};
                             border-style: solid;
                             border-width: 2px;
-                            border-color: ${borderColor()};
-                            box-shadow  : 0px 0px 50px 3px ${infoContainerColor()}
-                        `
-                    }>
-                        <div id="next-area-skipper" onClick={() => {
-                            setSelectedGame((prev) => (prev + 1) % numberOfGames());
-                        }}>
-                            <svg width="32" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="894 629.25 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="894" y="629.25" width="24" height="24" class="frame-background"/></g><g class="frame-children"><path d="M897 634.25v14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M897 634.25v14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="M915 641.25h-14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M915 641.25h-14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="m909 647.25 6-6-6-6" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m909 647.25 6-6-6-6" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g></g></svg>
+                            box-shadow  : 0px 0px 30px 3px ${infoContainerColor()};
+                            cursor: pointer;
+                            `
+                        }
+                        onClick={() => {
+                            handleImageClick(imagesObject()?.[selectedGame()]?.title, popularRepacksPath, imagesObject()?.[selectedGame()]?.href)
+                        }}
+                        >
+                            <p id="game-clean-title">
+                                {cleanGameTitle()}
+                            </p>
+                            <p id="long-game-title">
+                                {longGameTitle()}
+                            </p>
+                            <div id="game-details">
+                                <p><strong>Genre/Tags:</strong> {gameDetails().GenreTags}</p>
+                                <p><strong>Companies:</strong> {gameDetails().Companies}</p>
+                                <p><strong>Languages:</strong> {gameDetails().Language}</p>
+                                <p><strong>Original Size:</strong> {gameDetails().OriginalSize}</p>
+                                <p><strong>Repack Size:</strong> {gameDetails().RepackSize}</p>
+                            </div>
                         </div>
-                        <div id="previous-next-divider" style={
+                        <div className="game-skipper" style={
                             `
-                                background-color: ${borderColor()}
+                                background-color : ${infoContainerColor()}; 
+                                border-style: solid;
+                                border-width: 2px;
+                                border-color: ${borderColor()};
+                                box-shadow  : 0px 0px 50px 3px ${infoContainerColor()}
                             `
-                        }></div>
-                        <div id="previous-area-skipper" onClick={() => {
-                            setSelectedGame((prev) => (prev - 1 + numberOfGames()) % numberOfGames());
-                        }}>
-                            <svg width="32" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="894 444.75 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="894" y="444.75" width="24" height="24" class="frame-background"/></g><g class="frame-children"><path d="m903 450.75-6 6 6 6" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m903 450.75-6 6 6 6" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="M897 456.75h14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M897 456.75h14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="M915 463.75v-14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M915 463.75v-14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g></g></svg>
+                        }>
+                            <div id="next-area-skipper" onClick={() => {
+                                setSelectedGame((prev) => (prev + 1) % numberOfGames());
+                            }}>
+                                <svg width="32" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="894 629.25 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="894" y="629.25" width="24" height="24" class="frame-background"/></g><g class="frame-children"><path d="M897 634.25v14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M897 634.25v14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="M915 641.25h-14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M915 641.25h-14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="m909 647.25 6-6-6-6" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m909 647.25 6-6-6-6" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g></g></svg>
+                            </div>
+                            <div id="previous-next-divider" style={
+                                `
+                                    background-color: ${borderColor()}
+                                `
+                            }></div>
+                            <div id="previous-area-skipper" onClick={() => {
+                                setSelectedGame((prev) => (prev - 1 + numberOfGames()) % numberOfGames());
+                            }}>
+                                <svg width="32" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="894 444.75 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="894" y="444.75" width="24" height="24" class="frame-background"/></g><g class="frame-children"><path d="m903 450.75-6 6 6 6" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m903 450.75-6 6 6 6" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="M897 456.75h14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M897 456.75h14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g><path d="M915 463.75v-14" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M915 463.75v-14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape"/></g></g></svg>
+                            </div>
                         </div>
                     </div>
-                </div>
+                    )
+                }
             </div>
             <div className="item-skipper-container">
                 <div className="item-skipper" style={
@@ -302,6 +367,7 @@ async function lightenRgbColor(rgbString, percentage, borderColor) {
                 </div>
             </div>
         </div>
+        </>
     )
 }
 
