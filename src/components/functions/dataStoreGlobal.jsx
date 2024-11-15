@@ -11,6 +11,7 @@ const [installationConfigurations, setInstallationConfigurations] = makePersiste
 const [globalTorrentInfo, setGlobalTorrentInfo] = makePersisted(createStore({
     torrents: [
         {
+            torrentExternInfo: {},
             torrentIdx: '',
             torrentOutputFolder: '',
             torrentFileList: [],
@@ -20,10 +21,11 @@ const [globalTorrentInfo, setGlobalTorrentInfo] = makePersisted(createStore({
     ]
 }));
 
-function addGlobalTorrentInfo(torrentIdx, torrentOutputFolder, checkboxesList, twoGbLimit) {
+function addGlobalTorrentInfo(torrentIdx, torrentOutputFolder, checkboxesList, twoGbLimit, torrentExternInfo) {
     setGlobalTorrentInfo("torrents", [
         ...globalTorrentInfo.torrents,
         {
+            torrentExternInfo: torrentExternInfo,
             torrentIdx: torrentIdx,
             torrentOutputFolder: torrentOutputFolder,
             checkboxesList: checkboxesList,

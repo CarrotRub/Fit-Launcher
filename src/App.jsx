@@ -23,8 +23,12 @@ function App() {
         },
         {
             path: '/game/:uuid', 
-            component: lazy(() => import('./pages/Download-Game-01/Download-Game')),
+            component: lazy(() => import('./pages/Download-Game-UUID-01/Download-Game-UUID')),
         },
+        {
+            path: '/downloads-page',
+            component: lazy(() => import('./pages/Downloads-01/Downloads-Page'))
+        }
         // {
         //     path: '/my-library',
         //     component: lazy(() => import('./templates/mylibrary-01/Mylibrary')),
