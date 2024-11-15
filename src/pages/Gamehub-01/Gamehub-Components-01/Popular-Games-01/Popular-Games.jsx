@@ -145,7 +145,7 @@ function PopularGames() {
     async function fetchDominantColors() {
         try {
             const images = imagesObject();
-            const imageUrls = images.map(img => img.img);
+            const imageUrls = images?.map(img => img.img);
             
             // TODO: Fix callback issue when user reload the page, could also prohibit the user completely from reloading the window.
             const colorStrings = await invoke("check_dominant_color_vec", { listImages: imageUrls });

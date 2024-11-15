@@ -132,7 +132,7 @@ function Topbar() {
                 <p id="link-library" className="links-texts">Library</p>
             </A>
             
-            <A href="/downloads" className="clickable-link" link="" aria-current="page">
+            <A href="/downloads-page" className="clickable-link" link="" aria-current="page">
                 <p id="link-downloads" className="links-texts">Downloads</p>
             </A>
 

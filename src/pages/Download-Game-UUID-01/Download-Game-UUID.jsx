@@ -1,6 +1,6 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { invoke } from '@tauri-apps/api/tauri';
-import './Download-Game.css';
+import './Download-Game-UUID.css';
 import { readTextFile } from "@tauri-apps/api/fs";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
@@ -18,7 +18,7 @@ const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
 const ftgConfigPath = `${dirPath}fitgirlConfig/settings.json`;
 const gameImagesCache = `${cacheDirPath}image_cache.json`;
 
-const DownloadGamePage = () => {
+const DownloadGameUUIDPage = () => {
     const [gameInfo, setGameInfo] = createSignal({});
     
     const gameHref = downloadGamePageInfo.gameHref;
@@ -150,6 +150,7 @@ const DownloadGamePage = () => {
             }
         }
     
+        console.log("gmInf",gameInfo())
         // Start the cache load with retry logic
         await retryLoadFromCache();
     });
@@ -309,4 +310,4 @@ const DownloadGamePage = () => {
     );
 };
 
-export default DownloadGamePage;
+export default DownloadGameUUIDPage;
