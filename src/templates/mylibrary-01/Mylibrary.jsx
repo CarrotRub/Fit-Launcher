@@ -315,111 +315,101 @@ function Mylibrary() {
       // }
     }
   }
-  async function favouriteGame() {
-        // close the context menu
-    setGameContextMenuVisible(false);
-    const game = selectedGame();
-    if (game) {
-      const filePath = await downloadedGamePath();
-      try {
-        const fileContentObj = await readFile(filePath);
-        let gameData = JSON.parse(fileContentObj.content);
-
-        const gameIndex = gameData.findIndex((g) => g.title === game.title);
-        if (gameIndex !== -1) {
-          gameData[gameIndex].favourite = !gameData[gameIndex].favourite;
-          await writeFile(filePath, JSON.stringify(gameData, null, 2));
-          console.log(`Game ${game.title} favourited`);
-
-          Swal.fire({
-            title: "Game favourited!",
-            text: ` has been favourited successfully.`,
-            timer: 100,
-            timerProgressBar: true,
-            didOpen: () => {
-              Swal.showLoading();
-            },
-            willClose: () => {
-              window.location.reload();
-            },
-          })
-
-
-        } else {
-          console.error("Game not found in the list");
-        }
-      } catch (error) {
-        console.error("Error during game favouriting:", error);
-        Swal.fire({
-          title: "Error",
-          text: "Failed to favourite the game. Please try again.",
-          icon: "error",
-        });
-      }
-    }
-
-  }
-
-  
-async function setCollection() {
-  // Close the context menu
-  setGameContextMenuVisible(false);
-  const game = selectedGame();
-  if (game) {
+  async function favouriteGame(gameTitle) {
     const filePath = await downloadedGamePath();
-    const collectionsFilePath = `${(await appDataDir()).replace(/\\/g, "/")}data/game_collections.json`;
-    
     try {
-      // Read the collections file
-      const collectionsFileContent = await readFile(collectionsFilePath);
-      const collections = JSON.parse(collectionsFileContent.content);
+      const fileContentObj = await readFile(filePath);
+      let gameData = JSON.parse(fileContentObj.content);
 
-      console.log(collections)
-      console.log(collectionsFileContent)
-      
-      // Prepare collection options
-      const collectionOptions = collections.reduce((acc, collection) => {
-        acc[collection.name] = collection.name;
-        return acc;
-      }, {});
+      const gameIndex = gameData.findIndex((g) => g.title === gameTitle);
+      if (gameIndex !== -1) {
+        // Toggle the favorite status
+        gameData[gameIndex].favourite = !gameData[gameIndex].favourite;
 
-      // Prompt user to select a collection
-      const { value: collectionName } = await Swal.fire({
-        title: "Add to Collection",
-        input: "select",
-        inputOptions: {
-          "": "Select a collection",
-          ...collectionOptions,
-        },
-        showCancelButton: true,
-        confirmButtonText: "Add",
-        cancelButtonText: "Cancel",
-      });
+        // Update the state
+        await writeFile(filePath, JSON.stringify(gameData, null, 2));
+        setDownloadedGamesList(gameData);
 
-      if (collectionName) {
-        const gameDataFileContent = await readFile(filePath);
-        const gameData = JSON.parse(gameDataFileContent.content);
-        const gameIndex = gameData.findIndex((g) => g.title === game.title);
-
-        if (gameIndex !== -1) {
-          gameData[gameIndex].collection = collectionName;
-          await writeFile(filePath, JSON.stringify(gameData, null, 2));
-          console.log(`Game ${game.title} added to collection ${collectionName}`);
-        } else {
-          console.error("Game not found in the list");
-        }
+        console.log(`Game ${gameTitle} favourited status toggled.`);
+      } else {
+        console.error("Game not found in the list.");
       }
     } catch (error) {
-      console.error("Error during game collection setting:", error);
+      console.error("Error during game favouriting:", error);
       Swal.fire({
         title: "Error",
-        text: "Failed to add the game to the collection. Please try again.",
+        text: "Failed to favourite the game. Please try again.",
         icon: "error",
       });
     }
   }
-}
 
+  async function setCollection() {
+    // Close the context menu
+    setGameContextMenuVisible(false);
+    const game = selectedGame();
+    if (game) {
+      const filePath = await downloadedGamePath();
+      const collectionsFilePath = `${(await appDataDir()).replace(
+        /\\/g,
+        "/"
+      )}data/game_collections.json`;
+
+      try {
+        // Read the collections file
+        const collectionsFileContent = await readFile(collectionsFilePath);
+        const collections = JSON.parse(collectionsFileContent.content);
+
+        console.log(collections);
+        console.log(collectionsFileContent);
+
+        // Prepare collection options
+        const collectionOptions = collections.reduce((acc, collection) => {
+          acc[collection.name] = collection.name;
+          return acc;
+        }, {});
+
+        // Prompt user to select a collection
+        const { value: collectionName } = await Swal.fire({
+          title: "Add to Collection",
+          input: "select",
+          inputOptions: {
+            "": "Select a collection",
+            ...collectionOptions,
+          },
+          showCancelButton: true,
+          confirmButtonText: "Add",
+          cancelButtonText: "Cancel",
+        });
+
+        if (collectionName) {
+          const gameDataFileContent = await readFile(filePath);
+          const gameData = JSON.parse(gameDataFileContent.content);
+          const gameIndex = gameData.findIndex((g) => g.title === game.title);
+
+          if (gameIndex !== -1) {
+            gameData[gameIndex].collection = collectionName;
+            await writeFile(filePath, JSON.stringify(gameData, null, 2));
+            console.log(
+              `Game ${game.title} added to collection ${collectionName}`
+            );
+
+            // Update the state
+            setDownloadedGamesList(gameData);
+          } else {
+            console.error("Game not found in the list");
+          }
+        }
+      } catch (error) {
+        console.error("Error during game collection setting:", error);
+        Swal.fire({
+          title: "Error",
+          text: "Failed to add the game to the collection. Please try again.",
+          icon: "error",
+        });
+      }
+    }
+  }
 
   async function setGamePath() {
     setGameContextMenuVisible(false);
@@ -429,7 +419,7 @@ async function setCollection() {
         title: "Set Game Path",
         input: "file",
         inputAttributes: {
-          "accept": ".exe"
+          accept: ".exe",
         },
         inputValue: game.path,
         showCancelButton: true,
@@ -441,7 +431,6 @@ async function setCollection() {
         updateGamePathInFile(game.title, gamePath, downloadedGamePath());
       }
     }
-
   }
 
   async function handleRemoveGame() {
@@ -480,38 +469,38 @@ async function setCollection() {
 
     // Read file path
     const game = selectedGame();
-    
-   if (game) {
-    const filePath = await downloadedGamePath();
-    try {
-      const fileContentObj = await readFile(filePath);  
-      let gameData = JSON.parse(fileContentObj.content);
 
-      // Find the game in the list
-      const gameIndex = gameData.findIndex((g) => g.title === game.title);
-      if (gameIndex !== -1) {
-        // Remove collection
-        gameData[gameIndex].collection = "";
+    if (game) {
+      const filePath = await downloadedGamePath();
+      try {
+        const fileContentObj = await readFile(filePath);
+        let gameData = JSON.parse(fileContentObj.content);
 
+        // Find the game in the list
+        const gameIndex = gameData.findIndex((g) => g.title === game.title);
+        if (gameIndex !== -1) {
+          // Remove collection
+          gameData[gameIndex].collection = "";
 
-        // Write the updated list back to the file
-        await writeFile(filePath, JSON.stringify(gameData, null, 2));
+          // Write the updated list back to the file
+          await writeFile(filePath, JSON.stringify(gameData, null, 2));
 
-        console.log(`Game ${game.title} removed from collection`);
-      } else {
-        console.error("Game not found in the list");
+          console.log(`Game ${game.title} removed from collection`);
+
+            // Update the state
+            setDownloadedGamesList(gameData);
+        } else {
+          console.error("Game not found in the list");
+        }
+      } catch (error) {
+        console.error("Error during game removal:", error);
+        Swal.fire({
+          title: "Error",
+          text: "Failed to remove the game. Please try again.",
+          icon: "error",
+        });
       }
-    } catch (error) {
-      console.error("Error during game removal:", error);
-      Swal.fire({
-        title: "Error",
-        text: "Failed to remove the game. Please try again.",
-        icon: "error",
-      });
-
-
     }
-   }
   }
 
   async function removeGameFromFile(game) {
@@ -541,7 +530,7 @@ async function setCollection() {
     // });
   });
 
-  //TODO CORRECT IMAGE BACKGROUND 
+  //TODO CORRECT IMAGE BACKGROUND
 
   createEffect(async () => {
     console.log(addedGame());
@@ -614,20 +603,20 @@ async function setCollection() {
       confirmButtonText: "Create",
       cancelButtonText: "Cancel",
     });
-  
+
     if (folderName) {
       console.log("folder", folderName);
       const appDir = await appDataDir();
       const dirPath = `${appDir.replace(/\\/g, "/")}/data`;
       const filePath = `${dirPath}/game_collections.json`;
-  
+
       try {
         const dirExists = await exists(dirPath);
         if (!dirExists) {
           await createDir(dirPath, { recursive: true });
           console.log("Directory created:", dirPath);
         }
-  
+
         const fileExists = await exists(filePath);
         if (!fileExists) {
           await writeTextFile(filePath, JSON.stringify(collections, null, 2));
@@ -635,16 +624,16 @@ async function setCollection() {
         } else {
           console.log("Collections file already exists");
         }
-  
+
         // Read the collections file
         const fileContentObj = await readFile(filePath);
         collections = JSON.parse(fileContentObj.content);
-  
+
         // Check if the collection already exists
         const collectionExists = collections.some(
           (collection) => collection.name === folderName
         );
-  
+
         if (collectionExists) {
           Swal.fire({
             title: "Collection already exists",
@@ -653,7 +642,7 @@ async function setCollection() {
           });
           return;
         }
-  
+
         // Add the new collection
         collections.push({ name: folderName, games: [] });
 
@@ -711,116 +700,44 @@ async function setCollection() {
     }
   }
 
-
-
-  async function filterSelectionTitle() {
+  async function filterSelectionTitle(optionText) {
     const appDir = await appDataDir();
     const dirPath = appDir.replace(/\\/g, "/");
     const filePath = `${dirPath}data/downloaded_games.json`;
     const fileContent = await readFile(filePath);
     const gameData = JSON.parse(fileContent.content);
-    setDownloadedGamesList(gameData);
 
-    const filterSelection = document.querySelector(".filter-selection-option");
-    filterSelection.addEventListener("click", (e) => {
-      const filterSelectionOptions = document.querySelectorAll(
-        ".filter-selection-option"
-      );
-      filterSelectionOptions.forEach((option) => {
-        option.classList.remove("selected");
+    let filteredGames = gameData;
+
+    if (optionText === "Favourite") {
+      filteredGames = gameData.filter((game) => game.favourite);
+    } else if (optionText === "Collection") {
+      const { value: collectionName } = await Swal.fire({
+        title: "Filter By Collection",
+        input: "select",
+        inputOptions: {
+          "": "Select a collection",
+          ...gameData.reduce((acc, game) => {
+            if (game.collection) {
+              acc[game.collection] = game.collection;
+            }
+            return acc;
+          }, {}),
+        },
+        showCancelButton: true,
+        confirmButtonText: "Select",
+        cancelButtonText: "Cancel",
       });
-      e.target.classList.add("selected");
-    });
 
-    const filterSelectionOptions = document.querySelectorAll(
-      ".filter-selection-option"
-    );
-    filterSelectionOptions.forEach((option) => {
-      option.addEventListener("click", async (e) => {
-        const optionText = e.target.textContent;
-        if (optionText === "Title") {
-          const sortedGames = gameData.sort((a, b) =>
-            a.title.localeCompare(b.title)
-          );
-          setDownloadedGamesList(sortedGames);
-
-        } else if (optionText === "Collection") {
-          console.log("Collection");
-          const { value: collectionName } = await Swal.fire({
-            title: "Filter By Collection",
-            input: "select",
-            // inputAttributes: {
-            //   autocomplete: "false"
-            // },
-            inputOptions: {
-              "": "Select a collection",
-              ...gameData.reduce((acc, game) => {
-                if (game.collection) {
-                  acc[game.collection] = game.collection;
-                }
-                return acc;
-              }, {}),
-            },
-            showCancelButton: true,
-            confirmButtonText: "Select",
-            cancelButtonText: "Cancel",
-          });
-
-          if (collectionName) {
-            const sortedGames = gameData.filter(
-              (game) => game.collection === collectionName
-            );
-            setDownloadedGamesList(sortedGames);
-            console.log(sortedGames);
-          }
-
-        } else if (optionText === "Favourite") {
-          const sortedGames = gameData.filter((game) => game.favourite);
-          setDownloadedGamesList(sortedGames);
-          console.log(sortedGames);
-        }
-      });
-    });
-
-    const filterSelectionDisplay = document.querySelector(
-      ".filter-selection-display"
-    );
-
-    // Open the filter selection options when clicking the display
-    filterSelectionDisplay.addEventListener("click", (e) => {
-      const filterSelectionOptions = document.querySelector(
-        ".filter-selection-options"
-      );
-
-      filterSelectionOptions.classList.toggle("show");
-    });
-
-    // Close the filter selection options when clicking outside
-    document.addEventListener("click", (e) => {
-      const filterSelectionOptions = document.querySelector(
-        ".filter-selection-options"
-      );
-      if (!filterSelectionOptions.contains(e.target)) {
-        filterSelectionOptions.classList.remove("show");
-      }
-    });
-
-    // Clear selections
-    document.addEventListener("click", (e) => {
-      const clearSelections = document.querySelector(".clear-selections");
-      if (clearSelections.contains(e.target)) {
-        setDownloadedGamesList(gameData);
-        const filterSelectionOptions = document.querySelectorAll(
-          ".filter-selection-option"
+      if (collectionName) {
+        filteredGames = gameData.filter(
+          (game) => game.collection === collectionName
         );
-        filterSelectionOptions.forEach((option) => {
-          option.classList.remove("selected");
-        });
-
-        clearSelections.style.display = "none";
       }
+    }
 
-    })
+    // Reset the downloadedGamesList state to display the filtered games
+    setDownloadedGamesList(filteredGames);
   }
 
   return (
@@ -841,6 +758,7 @@ async function setCollection() {
           <div className="filter-selection-display">
             <div className="filter-selection">
               <div className="filter-selection-options">
+                {/* Create drop down button to import game or create game collection */}
                 <svg
                   className="icon-create lucide lucide-circle-plus"
                   onClick={createGameCollectionFolder}
@@ -860,42 +778,42 @@ async function setCollection() {
                 </svg>
                 <div
                   className="filter-selection-option option-all-games"
-                  onClick={filterSelectionTitle}
+                  onClick={() => filterSelectionTitle("All Games")}
                 >
                   <p>All Games</p>
                 </div>
-                <div className="filter-selection-option option-collection">
+                <div
+                  className="filter-selection-option option-collection"
+                  onClick={() => filterSelectionTitle("Collection")}
+                >
                   <p>Collection</p>
-                  <p></p>
                 </div>
-                <div className="filter-selection-option option-favourite">
+                <div
+                  className="filter-selection-option option-favourite"
+                  onClick={() => filterSelectionTitle("Favourite")}
+                >
                   <p>Favourite</p>
                 </div>
-                <div className="test">
-                <div className="clear-selections option-clear-selections" >
-                  <p>[Clear Selections]</p>
-                  </div>
-              </div>
-                  <div class="add-game-container">
-              <button class="button" onClick={handleAddDownloadedGames}>
-                <svg
-                  class="svgIcon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g stroke-width="0" />
-                  <g stroke-linecap="round" stroke-linejoin="round" />
-                  <path
-                    d="M4 12h16m-8-8v16"
-                    stroke="#ccc"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
+                <div class="add-game-container">
+                  <button class="button" onClick={handleAddDownloadedGames}>
+                    <svg
+                      class="svgIcon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g stroke-width="0" />
+                      <g stroke-linecap="round" stroke-linejoin="round" />
+                      <path
+                        d="M4 12h16m-8-8v16"
+                        stroke="#ccc"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -954,6 +872,10 @@ async function setCollection() {
                 {game.favourite ? (
                   <div class="favourite-icon">
                     <svg
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        favouriteGame(game.title);
+                      }}
                       xmlns="http://www.w3.org/2000/svg"
                       width="24"
                       height="24"
@@ -967,9 +889,13 @@ async function setCollection() {
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                     </svg>
                   </div>
-                ):(
-              <div class="favourite-icon">
+                ) : (
+                  <div class="favourite-icon">
                     <svg
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        favouriteGame(game.title);
+                      }}
                       xmlns="http://www.w3.org/2000/svg"
                       width="24"
                       height="24"
@@ -984,7 +910,7 @@ async function setCollection() {
                     </svg>
                   </div>
                 )}
-          
+
                 {!game.path && (
                   <div class="warning-icon">
                     <svg
@@ -1001,8 +927,6 @@ async function setCollection() {
                 )}
               </div>
             ))}
-
-        
           </div>
         </div>
       </div>
@@ -1022,16 +946,14 @@ async function setCollection() {
             zIndex: "1010",
           }}
         >
-         
-  
           {selectedGame() ? (
-          <div class="context-menu-item" onClick={favouriteGame}>
-            Favourite Game
-          </div>
-          ):( 
             <div class="context-menu-item" onClick={favouriteGame}>
-            Unfavourite Game
-          </div>
+              Favourite Game
+            </div>
+          ) : (
+            <div class="context-menu-item" onClick={favouriteGame}>
+              Unfavourite Game
+            </div>
           )}
           <div class="context-menu-item" onClick={setGamePath}>
             Set Game Path
@@ -1040,16 +962,15 @@ async function setCollection() {
             Remove Game
           </div>
           {selectedGame()?.collection ? (
-          <div class="context-menu-item" onClick={removeFromCollection}> 
-            Remove From Collection
-          </div>
-          ): (
-            <div class="context-menu-item" onClick={setCollection}> 
-            Set Collection
-          </div>
-          )
-
-          }
+            <div class="context-menu-item" onClick={removeFromCollection}>
+              Remove From Collection
+            </div>
+          ) : (
+            <div class="context-menu-item" onClick={setCollection}>
+              Set Collection
+            </div>
+          )}
+          <div class="context-menu-item">Manage (Coming Soon)</div>
         </div>
       )}
     </>
@@ -1057,7 +978,6 @@ async function setCollection() {
 }
 
 export default Mylibrary;
-
 
 // UPDATE UI AFTER ADDING TO FAVOURITES OR REMOVING
 // UPDATE UI AFTER ADDING TO COLLECTION
