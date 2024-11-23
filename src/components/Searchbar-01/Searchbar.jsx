@@ -209,7 +209,7 @@ function Searchbar() {
         <input
           id="searchbar-input"
           type="text"
-          placeholder="Search here..."
+          placeholder="Search for a game..."
           onInput={handleInputChange}
           value={searchTerm()} // Ensure the input value is controlled
           autocomplete="off" // Prevents the saved data box from appearing

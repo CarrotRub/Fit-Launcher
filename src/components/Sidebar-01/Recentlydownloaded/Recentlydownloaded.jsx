@@ -59,7 +59,7 @@ function Recentlydownloadedgames() {
             // Set onclick event to MyLibrary
             //TODO: Add onclick event to open games
             uniqueGameDiv.addEventListener('click', () => {
-                console.log(`RecentlyDownloaded: Clicked on ${title}`);    
+               //TODO open mylibrary
             }
             );
         });

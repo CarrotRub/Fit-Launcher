@@ -82,6 +82,7 @@
                 "fullscreen": false,
                 "decorations": false,
                 "visible": false
+                
             },
             {
                 "label": "splashscreen",

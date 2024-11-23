@@ -83,6 +83,7 @@ display:none;
   /* Hide scrollbar for WebKit browsers */
   scrollbar-width: none; /* For other OSes*/
   -ms-overflow-style: none;  /* Internet Explorer and Edge */
+
 }
 
 .swal2-results-box::-webkit-scrollbar {
@@ -93,7 +94,7 @@ display:none;
   padding: 8px 12px;
   cursor: pointer;
   color: aliceblue;
-  border-radius: 3px;
+  border-radius: 8px;
 }
 
 /* Highlight selected result */
@@ -106,17 +107,20 @@ display:none;
 .search-result-item:hover {
   color: #19191a;
   background-color: #f0f0f0; 
+  border-radius: 12px;
 }
 
 .game-grid {
     display: flex;
     flex-wrap: wrap; /* Enable wrapping */
-    gap: 2em; 
+    gap: 1.2em; 
     overflow-x: unset;
     overflow-y: hidden;
     position: relative;
-    padding-left: 15px;
+    padding: 15px 5px 15px 15px;
+
 }
+
 
 /* Container outside of game-grid styles */
 .game-container {
@@ -185,7 +189,9 @@ display:none;
     max-height: 100%; 
     border-radius: 18px;
     cursor: pointer; 
+  
 }
+
 
 .color-blur-overlay,
 .blur-overlay {
@@ -201,6 +207,14 @@ display:none;
   z-index: -1;
 }
 
+/* Favourite Icon style */
+.favourite-icon {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
+  cursor: pointer;
+}
 
 /* Warning icon style */
 .image-option {
@@ -239,6 +253,7 @@ display:none;
     transition-duration: 0.3s;
     overflow: hidden;
     position: relative;
+    
   }
   
   .svgIcon {
@@ -282,7 +297,7 @@ display:none;
 
   .add-game-container {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     margin-left: 5vw;
   }
 
@@ -307,3 +322,49 @@ display:none;
     animation: 1s animation-gray-to-white ease-in-out;
     color: #fff;
   }
+
+/* Collection - Favourite sections */
+.filter-selection-options {
+  display: flex;
+  align-items: center;  /* Center items vertically */
+  gap: 20px;
+  padding: 10px;
+  margin-left: 15px;
+  border-radius: 2px;
+  max-width: 100%;
+
+}
+
+.filter-selection-option {
+  display: flex;
+  align-items: center;  /* Center SVG and text within each option */
+  gap: 8px;  /* Space between icon and text */
+  color: white;  /* Adjust color for visibility on background */
+  cursor: pointer;
+  padding: 5px;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;  /* Space between SVG and text */
+  cursor: pointer;
+}
+.icon-create {
+  cursor: pointer;
+}
+.clear-selections {
+  color: white;
+  cursor: pointer;
+  align-self: flex-end;
+  display: none;
+
+}
+
+/* .option-all-games, .option-clear-selections, .option-collection, .option-favourite :hover {
+
+} */
+.test:hover {
+  /* background-color: rgba(238, 0, 0, 0.05) */
+  background-color: red;
+}
