@@ -171,8 +171,6 @@ function Gamehub() {
 
     // Effect to manage the random background based on background_image_path_64
     createEffect(() => {
-        console.log("Gamehub: Checking if background_image_path_64 is set...");
-
         if (!settings().background_image_path_64) {
             console.log('Gamehub: No custom background image found. Running randomImageFinder.');
             try {
