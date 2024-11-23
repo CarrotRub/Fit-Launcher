@@ -69,34 +69,40 @@ const ChangelogPopup = () => {
             <h1>What's New in Version {newVersion()}</h1>
             <p class="subheading">Released on October 21, 2024.</p>
 
-            <div class="changelog-item">
-              <ul class="bullet-list">
-                <li>
-                  <span class="label new">New Features:</span>
-                  <ul>
-                    <li>Auto-updater functionality added</li>
-                    <li>StopTorrent deletes downloaded files when stopping torrents</li>
-                    <li>Dropdown filter for game genres selection</li>
-                    <li>Rust function to check image brightness</li>
-                  </ul>
-                </li>
-                <li>
-                  <span class="label bugfix">Bug Fixes:</span>
-                  <ul>
-                    <li>Resolved torrent stopping issue</li>
-                    <li>Fixed sidebar clipping with long game titles</li>
-                    <li>Improved CSS readability</li>
-                  </ul>
-                </li>
-                <li>
-                  <span class="label improvement">Improvements:</span>
-                  <ul>
-                    <li>Removed most event listeners</li>
-                    <li>Unified icon set to Lucid Icons</li>
-                  </ul>
-                </li>
-              </ul>
-            </div>
+<div class="changelog-item">
+  <ul class="bullet-list">
+    <li>
+      <span class="label new">New Features:</span>
+      <ul>
+        <li>Added the ability to favorite and unfavorite games for easy access. (SimplyStoned)</li>
+        <li>Introduced the "Collections" feature, allowing users to create and organize games into collections. (SimplyStoned)</li>
+        <li>Enhanced filtering options to display All Games, Favorites, or specific Collections. (SimplyStoned)</li>
+        <li>Added clear button for the search bar to quickly reset queries. (SimplyStoned)</li>
+        <li>Prepared codebase to support future features such as favoriting and collections. (SimplyStoned)</li>
+      </ul>
+    </li>
+    <li>
+      <span class="label bugfix">Bug Fixes:</span>
+      <ul>
+        <li>Fixed a scraping issue with the new GTA V "4Barbra Streisand” Edition. (CarrotRub)</li>
+        <li>Improved error handling to display placeholders for images that fail to load in "Recently Downloaded Games." (SimplyStoned)</li>
+        <li>Corrected alert messaging in Settings for clearer feedback. (SimplyStoned)</li>
+      </ul>
+    </li>
+    <li>
+      <span class="label improvement">Improvements:</span>
+      <ul>
+        <li>Removed default auto-fill in search results for better accuracy. (SimplyStoned)</li>
+        <li>Refined and improved UI components for a smoother experience. (SimplyStoned)</li>
+        <li>Cleaned up code for better maintainability. (SimplyStoned)</li>
+        <li>Updated changelog and search results UI for improved readability. (SimplyStoned)</li>
+        <li>Hidden download data by default, with an option to unhide as needed. (SimplyStoned)</li>
+        <li>Enhanced game image loading speeds by an order of magnitude. (CarrotRub)</li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
 
             <div class="line"></div>
             <div class="button-container">
