@@ -521,13 +521,13 @@ function Mylibrary() {
   }
 
   createEffect(async () => {
-    // await randomImageFinder();TODO
-    // const timeOut = setTimeout(randomImageFinder, 500);
-    // const interval = setInterval(randomImageFinder, 5000);
-    // onCleanup(() => {
-    //   clearInterval(interval);
-    //   clearTimeout(timeOut);
-    // });
+    await randomImageFinder();TODO
+    const timeOut = setTimeout(randomImageFinder, 500);
+    const interval = setInterval(randomImageFinder, 5000);
+    onCleanup(() => {
+      clearInterval(interval);
+      clearTimeout(timeOut);
+    });
   });
 
   //TODO CORRECT IMAGE BACKGROUND
@@ -946,7 +946,7 @@ function Mylibrary() {
             zIndex: "1010",
           }}
         >
-          {selectedGame() ? (
+        {/*   {selectedGame() ? (
             <div class="context-menu-item" onClick={favouriteGame}>
               Favourite Game
             </div>
@@ -954,7 +954,7 @@ function Mylibrary() {
             <div class="context-menu-item" onClick={favouriteGame}>
               Unfavourite Game
             </div>
-          )}
+          )} */}
           <div class="context-menu-item" onClick={setGamePath}>
             Set Game Path
           </div>
