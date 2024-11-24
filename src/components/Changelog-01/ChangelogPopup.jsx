@@ -87,6 +87,7 @@ const ChangelogPopup = () => {
         <li>Fixed a scraping issue with the new GTA V "4Barbra Streisand” Edition. (CarrotRub)</li>
         <li>Improved error handling to display placeholders for images that fail to load in "Recently Downloaded Games." (SimplyStoned)</li>
         <li>Corrected alert messaging in Settings for clearer feedback. (SimplyStoned)</li>
+        <li>Corrected bug fix by reversing to the older version of the vertical slide bar (CarrotRub)</li>
       </ul>
     </li>
     <li>
