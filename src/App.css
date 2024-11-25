@@ -22,6 +22,7 @@ body::-webkit-scrollbar {
     --background-color: rgba(11, 7, 14, 1); /* #0b070e */
     --70-background-color: rgba(11, 7, 14, 0.7);
     --popup-background-color: rgba(15, 9, 18, 1);
+    --resume-button-accent-color: #64A3A8;
 }
 
 #router-page {

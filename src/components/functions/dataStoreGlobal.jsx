@@ -8,32 +8,24 @@ const [installationConfigurations, setInstallationConfigurations] = makePersiste
     microsoftcpp_install: false
 }))
 
-const [globalTorrentInfo, setGlobalTorrentInfo] = makePersisted(createStore({
-    torrents: [
-        {
-            torrentExternInfo: {},
-            torrentIdx: '',
-            torrentOutputFolder: '',
-            torrentFileList: [],
-            checkboxesList: [],
-            twoGbLimit: false
-        }
-    ]
+const [globalTorrentsInfo, setGlobalTorrentsInfo] = makePersisted(createStore({
+    torrents: []
 }));
 
-function addGlobalTorrentInfo(torrentIdx, torrentOutputFolder, checkboxesList, twoGbLimit, torrentExternInfo) {
-    setGlobalTorrentInfo("torrents", [
-        ...globalTorrentInfo.torrents,
+function addGlobalTorrentsInfo(torrentExternInfo, torrentIdx, torrentOutputFolder,torrentDownloadFolder, torrentFileList, checkboxesList, twoGbLimit) {
+    setGlobalTorrentsInfo("torrents", [
+        ...globalTorrentsInfo.torrents,
         {
             torrentExternInfo: torrentExternInfo,
             torrentIdx: torrentIdx,
             torrentOutputFolder: torrentOutputFolder,
+            torrentDownloadFolder: torrentDownloadFolder,
+            torrentFileList: torrentFileList,
             checkboxesList: checkboxesList,
             twoGbLimit: twoGbLimit
         }
     ]);
 }
-
 
 /// Object containing informations about the current downloading game (CDG), necessary to restart game.
 const [restartTorrentInfo, setRestartTorrentInfo] = createStore({
@@ -53,8 +45,9 @@ const [torrentTrigger, setTorrentTrigger] = createSignal(false);
 
 
 export { 
-    globalTorrentInfo,
-    addGlobalTorrentInfo,
+    globalTorrentsInfo,
+    setGlobalTorrentsInfo,
+    addGlobalTorrentsInfo ,
     torrentTrigger, 
     setTorrentTrigger, 
     restartTorrentInfo, 
