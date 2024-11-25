@@ -14,6 +14,8 @@ tauri-build = { version = "1.5.4", features = [] }
 tauri = { version = "1.8.0", features = ["api-all", "updater"] }
 serde = { version = "1.0.209", features = ["derive"] }
 serde_json = "1.0.127"
+serde_with = "3.4.0"
+directories = "5.0.1"
 reqwest = { version = "0.12.7", features = ["blocking", "rustls-tls", "gzip", "brotli", "deflate"] }
 scraper = "0.20.0"
 tokio = { version = "1.40.0", features = ["full"] }
@@ -21,10 +23,11 @@ futures-util = "0.3"
 kuchiki = "0.8.1"
 anyhow = "1.0.86"
 lru = "0.12.4"
-futures = "0.3.30"
-librqbit = { git = "https://github.com/ikatson/rqbit", tag = "v7.1.0-beta.1" }
+futures = "0.3.31"
+librqbit = { git = "https://github.com/ikatson/rqbit", branch = "main"}
 regex = "1.10.6"
 thiserror = "1.0.63"
+parking_lot = "0.12.1"
 lazy_static = "1.5.0"
 devtools = "0.3.3"
 chrono = "0.4.38"
@@ -53,3 +56,4 @@ fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+disable-upload = ["librqbit/disable-upload"]

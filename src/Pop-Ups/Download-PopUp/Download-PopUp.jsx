@@ -6,8 +6,8 @@ import { readDir } from "@tauri-apps/api/fs";
 import { render } from "solid-js/web";
 import { fs, invoke } from "@tauri-apps/api";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
-import { addGlobalTorrentInfo, globalTorrentInfo } from "../components/functions/dataStoreGlobal";
-import { setInstallationConfigurations, installationConfigurations } from "../components/functions/dataStoreGlobal";
+import { addGlobalTorrentsInfo, globalTorrentsInfo } from "../../components/functions/dataStoreGlobal";
+import { setInstallationConfigurations, installationConfigurations } from "../../components/functions/dataStoreGlobal";
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir;
@@ -15,7 +15,7 @@ const cacheDirPath = cacheDir;
 const appDir =  await appDataDir();
 const dirPath = appDir;
 
-const DownloadPopup = ({closePopup, gameTitle, gameMagnet, gameImg}) => {
+const DownloadPopup = ({closePopup, gameTitle, gameMagnet, externFullGameInfo}) => {
     const [downloadPath, setDownloadPath] = createSignal('')
     const [isPathValid, setIsPathValid] = createSignal(false);
     const [isFinalStep, setIsFinalStep] = createSignal(false);
@@ -160,7 +160,7 @@ const DownloadPopup = ({closePopup, gameTitle, gameMagnet, gameImg}) => {
                 </div>
                 </>
                 : (
-                    <LastStep closePopup={closePopup} gameMagnet={gameMagnet} downloadGamePath={downloadPath()} downloadPath={downloadPath()}/>
+                    <LastStep closePopup={closePopup} gameMagnet={gameMagnet} downloadGamePath={downloadPath()} externFullGameInfo={externFullGameInfo}/>
                 )
             }
 
@@ -170,7 +170,7 @@ const DownloadPopup = ({closePopup, gameTitle, gameMagnet, gameImg}) => {
     );
 };
 
-const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) => {
+const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo }) => {
     const [isLoading, setLoading] = createSignal(true);
     const [mainTorrentDetails, setMainTorrentDetails] = createSignal({});
     const [categorizedFilesList, setCategorizedFilesList] = createSignal({})
@@ -179,7 +179,9 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
     const [rawIdFileList, setRawIdFileList] = createSignal([])
     const [completeFileList, setCompleteFileList] = createSignal([])
     const [completeIDFileList, setCompleteIDFileList] = createSignal([]);
-    const [toBeDeletedFiles, setToBeDeletedFiles] = createSignal([])
+    const [toBeDeletedFiles, setToBeDeletedFiles] = createSignal([]);
+    const [checkboxesListComponents, setCheckboxesListComponents] = createSignal([])
+    const [gameStartedDownload, setGameStartedDownload] = createSignal(false)
     
     function toUpperFirstLetters(str) {
         return str
@@ -363,8 +365,28 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
     async function handleStartDownloadingTorrent() {
         setLoading(true);
         await invoke("api_download_with_args", {magnetLink: gameMagnet, downloadFileList: completeIDFileList() });
+        if (installationConfigurations) {
+            const checkedOptions = [];
+
+            if (installationConfigurations.directx_install) {
+                // becuz due to how I made the auto install, it needs to be lowercase directx and/or lowercase microsoft as components needed to be sent. - CarrotRub
+                checkedOptions.push("directx")
+            } else {
+                checkedOptions.push("")
+            }
+
+            if (installationConfigurations.microsoftcpp_install) {
+                // Same here but no need to worry becuz even if the microsoft components sometimes doesn't exist in the setup installer source code it won't cause any issues. - CarrotRub
+                checkedOptions.push("microsoft")
+            } else {
+                checkedOptions.push("")
+            }
+
+            setCheckboxesListComponents(checkedOptions);
+        }
         deleteUselessFiles(completeFileList());
-        addGlobalTorrentInfo()
+        addGlobalTorrentsInfo(externFullGameInfo, mainTorrentDetails().torrent_idx, mainTorrentDetails().torrent_output_folder, downloadGamePath, checkboxesListComponents(), installationConfigurations.two_gb_limit)
+        setGameStartedDownload(true)
         setLoading(false)
 
         const popupMainTitle = document.querySelector(".popup-main-title");
@@ -374,10 +396,6 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
 
         const popupAdditionalFiles = document.querySelector(".torrent-additional-files-details");
         popupAdditionalFiles.style.display = 'none'
-
-        const confirmButton = document.querySelector("#popup-confirm-button");
-        confirmButton.textContent = 'Done'
-        confirmButton.onclick = closePopup;
     }
 
     return (
@@ -466,7 +484,18 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, downloadPath }) =>
 
         <div className="popup-buttons">
                     <button id="popup-cancel-button" onClick={closePopup}>Cancel</button>
-                    <button id="popup-confirm-button" onClick={handleStartDownloadingTorrent}>Next</button>
+                    <button
+                      id="popup-confirm-button"
+                      onClick={() => {
+                        if (!gameStartedDownload()) {
+                          handleStartDownloadingTorrent();
+                        } else {
+                          closePopup();
+                        }
+                      }}
+                    >
+                      {!gameStartedDownload() ? 'Next' : 'Done'}
+                    </button>
         </div>
         </>
     );

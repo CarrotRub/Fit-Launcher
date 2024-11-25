@@ -8,7 +8,6 @@ pub use crate::scrapingfunc::basic_scraping;
 pub use crate::scrapingfunc::commands_scraping;
 
 mod torrentfunc;
-pub use crate::torrentfunc::torrent_calls;
 pub use crate::torrentfunc::torrent_commands;
 
 mod custom_ui_automation;
