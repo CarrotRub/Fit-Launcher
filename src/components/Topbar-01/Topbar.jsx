@@ -2,8 +2,9 @@ import { createEffect, onMount, createSignal } from "solid-js";
 import { appWindow } from '@tauri-apps/api/window';
 import { listen, emit } from '@tauri-apps/api/event';
 import { A } from "@solidjs/router";
-
+import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../functions/dataStoreGlobal";
 import './Topbar.css'
+import { invoke } from "@tauri-apps/api";
 
 // TODO: ADD TITLE BAR HERE.
 
@@ -12,20 +13,20 @@ function Topbar() {
     const [notificationMessage, setNotificationMessage] = createSignal('');
     
     function handleWindowClose() {
-        let cdgStats = localStorage.getItem('CDG_Stats');
-        console.log('Current CDG_Stats from localStorage:', cdgStats);
-
-        try {
-            cdgStats = JSON.parse(cdgStats);
-            if (cdgStats) {
-                cdgStats.state = 'paused';
-                localStorage.setItem('CDG_Stats', JSON.stringify(cdgStats));
-                console.log('Updated CDG_Stats saved in localStorage:', cdgStats);
-            }
-        } catch (error) {
-            console.error('Error parsing CDG_Stats:', error);
-        }
-        
+        // Iterate through all torrents and pause them
+        const { torrents } = globalTorrentsInfo;
+        torrents.forEach((torrent) => {
+            const { idx } = torrent;
+            invoke('api_pause_torrent', { torrentIdx: idx })
+                .then(() => {
+                    console.log(`Paused torrent with idx: ${idx}`);
+                })
+                .catch((error) => {
+                    console.error(`Failed to pause torrent with idx: ${idx}`, error);
+                });
+        });
+    
+        // Close the app window
         appWindow.close();
     }
 

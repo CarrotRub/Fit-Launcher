@@ -6,7 +6,8 @@ import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
 import { useNavigate } from "@solidjs/router";
 import { render } from "solid-js/web";
-import DownloadPopup from "../../pop-ups/Download-PopUp";
+import DownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
+import BasicErrorPopup from "../../Pop-Ups/Basic-Error-PopUp/Basic-Error-PopUp";
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir;
@@ -211,10 +212,21 @@ const DownloadGameUUIDPage = () => {
         setShowPopup(false);
     };
 
+    function testFav() {
+        const pageContent = document.querySelector(".download-game")
+        render(
+            () =>   <BasicErrorPopup 
+                        errorTitle={"AN ERROR PUTTING YOUR GAME INTO FAVORITES HAPPENED"}
+                        errorMessage={"This is a placeholder message error to test so it will be kinda the long"} 
+                        errorFooter={''}
+                    />
+            ,pageContent
+        )
+    }
 
     return (
         <div className="download-game content-page">
-                {showPopup() && <DownloadPopup closePopup={closePopup} gameTitle={extractMainTitle(gameTitle)} gameMagnet={gameInfo().magnetlink}/>}
+                {showPopup() && <DownloadPopup closePopup={closePopup} gameTitle={extractMainTitle(gameTitle)} gameMagnet={gameInfo().magnetlink} externFullGameInfo={gameInfo()}/>}
                 {loading() ? (
                     <div className="loading-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-circle"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -233,6 +245,11 @@ const DownloadGameUUIDPage = () => {
                                     
                                     <div id="download-game-return-button" onClick={handleReturnToGamehub}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-forward" transform="scale(1 -1)"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
+                                    </div>
+
+                                    {/* TODO: Currently does nothing, add some real things later. */}
+                                    <div id="download-game-favorite-button" onClick={testFav}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="yellow" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
                                     </div>
                                 </div>
                                 <div className="download-game-info">

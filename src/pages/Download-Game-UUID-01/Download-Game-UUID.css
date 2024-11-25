@@ -47,6 +47,21 @@
     justify-content: center;
 }
 
+#download-game-favorite-button {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    right: 0;
+    /* background-color: var(--secondary-color); */
+    margin-top: 24px;
+    margin-left: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .download-game-info {
     margin-top: 1px; /* This is extremely important to not get the small cut becuz the image is centered*/
     grid-area: game-info;

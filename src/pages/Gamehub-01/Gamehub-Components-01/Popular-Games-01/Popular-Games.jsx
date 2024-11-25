@@ -44,11 +44,16 @@ async function parseNewGameData() {
 }
 
 function extractMainTitle(title) {
-    const regex = /^(.*?)(?=| -| Edition)/i;
-    const simplifiedTitle = title?.replace(/(?: - |, | )?(Digital Deluxe|Ultimate Edition)\s*[:\-]?.*|(?: - |, ).*/, '')?.replace(/\s*[:\-]\s*$/, '');
+    const simplifiedTitle = title
+    ?.replace(/(?: - |, | )?(Digital Deluxe|Ultimate Edition|Deluxe Edition)\s*[:\-]?.*|(?: - |, ).*/, '')
+    ?.replace(/\s*[:\-]\s*$/, '')
+    ?.replace(/\(.*?\)/g, '')
+    ?.replace(/\s*[:\–]\s*$/, '') // Clean up any trailing colons or hyphens THIS IS A FKCNG EN DASH AND NOT A HYPHEN WTF
+    ?.replace(/[\–].*$/, '')
 
     return simplifiedTitle
 }
+
 
 function PopularGames() {
     const [isLoading, setIsLoading] = createSignal(true);
