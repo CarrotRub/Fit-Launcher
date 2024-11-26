@@ -8,45 +8,36 @@ use std::{
 };
 
 use anyhow::Context;
-use config::RqbitDesktopConfig;
 use http::StatusCode;
 use librqbit::{
-    api::{
-        ApiAddTorrentResponse, EmptyJsonResponse, TorrentDetailsResponse, TorrentIdOrHash,
-        TorrentListResponse, TorrentStats,
-    },
-    dht::PersistentDhtConfig,
-    session_stats::snapshot::SessionStatsSnapshot,
-    tracing_subscriber_config_utils::{init_logging, InitLoggingOptions, InitLoggingResult},
-    AddTorrent, AddTorrentOptions, Api, ApiError, PeerConnectionOptions, Session, SessionOptions,
+    dht::PersistentDhtConfig, Api, ApiError, PeerConnectionOptions, Session, SessionOptions,
     SessionPersistenceConfig,
 };
 use parking_lot::RwLock;
-use serde::Serialize;
-use tracing::{error, error_span, info, warn};
+use torrent_config::FitLauncherConfig;
+use tracing::{error, info, warn};
 
 const ERR_NOT_CONFIGURED: ApiError =
     ApiError::new_from_text(StatusCode::FAILED_DEPENDENCY, "not configured");
 
 struct StateShared {
-    config: config::RqbitDesktopConfig,
+    config: torrent_config::FitLauncherConfig,
     api: Option<Api>,
 }
 
-struct State {
+pub struct State {
     config_filename: String,
     shared: Arc<RwLock<Option<StateShared>>>,
-    init_logging: InitLoggingResult,
 }
 
-fn read_config(path: &str) -> anyhow::Result<RqbitDesktopConfig> {
+fn read_config(path: &str) -> anyhow::Result<FitLauncherConfig> {
     let rdr = BufReader::new(File::open(path)?);
-    let mut config: RqbitDesktopConfig = serde_json::from_reader(rdr)?;
+    let mut config: FitLauncherConfig = serde_json::from_reader(rdr)?;
     config.persistence.fix_backwards_compat();
     Ok(config)
 }
 
-fn write_config(path: &str, config: &RqbitDesktopConfig) -> anyhow::Result<()> {
+fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
     std::fs::create_dir_all(Path::new(path).parent().context("no parent")?)
         .context("error creating dirs")?;
     let tmp = format!("{}.tmp", path);
@@ -58,14 +49,12 @@ fn write_config(path: &str, config: &RqbitDesktopConfig) -> anyhow::Result<()> {
             .open(&tmp)?,
     );
     serde_json::to_writer(&mut tmp_file, config)?;
+    println!("{}", path);
     std::fs::rename(tmp, path)?;
     Ok(())
 }
 
-async fn api_from_config(
-    init_logging: &InitLoggingResult,
-    config: &RqbitDesktopConfig,
-) -> anyhow::Result<Api> {
+async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
     config
         .validate()
         .context("error validating configuration")?;
@@ -102,84 +91,49 @@ async fn api_from_config(
             },
             enable_upnp_port_forwarding: !config.upnp.disable_tcp_port_forward,
             fastresume: config.persistence.fastresume,
-            ratelimits: config.ratelimits,
-            #[cfg(feature = "disable-upload")]
-            disable_upload: config.disable_upload,
             ..Default::default()
         },
     )
     .await
     .context("couldn't set up librqbit session")?;
 
-    let api = Api::new(
-        session.clone(),
-        Some(init_logging.rust_log_reload_tx.clone()),
-        Some(init_logging.line_broadcast.clone()),
-    );
+    let api = Api::new(session.clone(), None, None);
 
-    if !config.http_api.disable {
-        let listen_addr = config.http_api.listen_addr;
-        let api = api.clone();
-        let read_only = config.http_api.read_only;
-        let upnp_router = if config.upnp.enable_server {
-            let friendly_name = config
-                .upnp
-                .server_friendly_name
-                .as_ref()
-                .map(|f| f.trim())
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_owned())
-                .unwrap_or_else(|| {
-                    format!(
-                        "rqbit-desktop@{}",
-                        gethostname::gethostname().to_string_lossy()
-                    )
-                });
-
-            let mut upnp_adapter = session
-                .make_upnp_adapter(friendly_name, config.http_api.listen_addr.port())
-                .await
-                .context("error starting UPnP server")?;
-            let router = upnp_adapter.take_router()?;
-            session.spawn(error_span!("ssdp"), async move {
-                upnp_adapter.run_ssdp_forever().await
-            });
-            Some(router)
-        } else {
-            None
-        };
-        let http_api_task = async move {
-            let listener = tokio::net::TcpListener::bind(listen_addr)
-                .await
-                .with_context(|| format!("error listening on {}", listen_addr))?;
-            librqbit::http_api::HttpApi::new(
-                api.clone(),
-                Some(librqbit::http_api::HttpApiOptions {
-                    read_only,
-                    basic_auth: None,
-                }),
-            )
-            .make_http_api_and_run(listener, upnp_router)
-            .await
-        };
-
-        session.spawn(error_span!("http_api"), http_api_task);
-    }
     Ok(api)
 }
 
 impl State {
-    async fn new(init_logging: InitLoggingResult) -> Self {
-        let config_filename = directories::ProjectDirs::from("com", "rqbit", "desktop")
-            .expect("directories::ProjectDirs::from")
-            .config_dir()
+    pub async fn new() -> Self {
+        warn!("Starting Initialization");
+        let config_filename = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub")
+            .join("torrentConfig")
             .join("config.json")
             .to_str()
-            .expect("to_str()")
+            .unwrap_or("ERROR")
             .to_owned();
-
+        if !Path::new(&config_filename).exists() {
+            // If it doesn't exist, write the default config
+            match write_config(&config_filename, &FitLauncherConfig::default()) {
+                Ok(_) => info!(
+                    "Default config written successfully to: {}",
+                    &config_filename
+                ),
+                Err(e) => error!("Error writing default config: {}", e),
+            }
+        }
+        warn!("Config Path: {}", &config_filename);
         if let Ok(config) = read_config(&config_filename) {
-            let api = api_from_config(&init_logging, &config)
+            match write_config(&config_filename, &config) {
+                Ok(_) => info!(
+                    "Default config written successfully to: {}",
+                    &config_filename
+                ),
+                Err(e) => error!("Error writing default config: {}", e),
+            }
+            let api = api_from_config(&config)
                 .await
                 .map_err(|e| {
                     warn!(error=?e, "error reading configuration");
@@ -191,26 +145,27 @@ impl State {
             return Self {
                 config_filename,
                 shared,
-                init_logging,
             };
         }
 
         Self {
             config_filename,
-            init_logging,
             shared: Arc::new(RwLock::new(None)),
         }
     }
 
     fn api(&self) -> Result<Api, ApiError> {
         let g = self.shared.read();
+        if g.is_none() {
+            warn!("Shared state is uninitialized");
+        }
         match g.as_ref().and_then(|s| s.api.as_ref()) {
             Some(api) => Ok(api.clone()),
             None => Err(ERR_NOT_CONFIGURED),
         }
     }
 
-    async fn configure(&self, config: RqbitDesktopConfig) -> Result<(), ApiError> {
+    async fn configure(&self, config: FitLauncherConfig) -> Result<(), ApiError> {
         {
             let g = self.shared.read();
             if let Some(shared) = g.as_ref() {
@@ -227,7 +182,7 @@ impl State {
             api.session().stop().await;
         }
 
-        let api = api_from_config(&self.init_logging, &config).await?;
+        let api = api_from_config(&config).await?;
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }
@@ -239,29 +194,32 @@ impl State {
         });
         Ok(())
     }
+
+    async fn get_config(&self) -> FitLauncherConfig {
+        // Attempt to acquire the read lock
+        let g = self.shared.read();
+        if let Some(shared) = g.as_ref() {
+            shared.config.clone()
+        } else {
+            warn!("Tried to somehow get config before any initialization, has returned default config");
+            FitLauncherConfig::default()
+        }
+    }
 }
 
 pub mod torrent_commands {
 
+    use std::path::PathBuf;
+
     use super::*;
 
-    use std::{
-        fs::{File, OpenOptions},
-        io::{BufReader, BufWriter},
-        path::Path,
-        sync::Arc,
-    };
-
-    use anyhow::Context;
     use librqbit::{
         api::{
             ApiAddTorrentResponse, EmptyJsonResponse, TorrentDetailsResponse, TorrentIdOrHash,
             TorrentListResponse, TorrentStats,
         },
-        AddTorrent, AddTorrentOptions, Api, ApiError, Session,
+        AddTorrent, AddTorrentOptions, ApiError,
     };
-    use serde::Serialize;
-    use tracing::{error, warn};
 
     #[tauri::command]
     pub fn torrents_list(state: tauri::State<State>) -> Result<TorrentListResponse, ApiError> {
@@ -326,5 +284,30 @@ pub mod torrent_commands {
         id: TorrentIdOrHash,
     ) -> Result<EmptyJsonResponse, ApiError> {
         state.api()?.api_torrent_action_start(id).await
+    }
+
+    #[tauri::command]
+    pub async fn config_change_full_config(
+        state: tauri::State<'_, State>,
+        config: FitLauncherConfig,
+    ) -> Result<EmptyJsonResponse, ApiError> {
+        state.configure(config).await.map(|_| EmptyJsonResponse {})
+    }
+
+    #[tauri::command]
+    pub async fn config_change_only_path(
+        state: tauri::State<'_, State>,
+        download_path: String,
+    ) -> Result<EmptyJsonResponse, ApiError> {
+        // Get the current config
+        let mut current_config = state.get_config().await;
+        // Convert the string path to a PathBuf and update the default_download_location
+        current_config.default_download_location = PathBuf::from(download_path);
+
+        // Save the updated config
+        state
+            .configure(current_config)
+            .await
+            .map(|_| EmptyJsonResponse {})
     }
 }
