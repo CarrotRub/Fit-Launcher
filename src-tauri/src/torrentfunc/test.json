@@ -1,0 +1,33 @@
+{
+    "default_download_location": "D:\\TorrentGames",
+    "dht": {
+        "disable": false,
+        "disable_persistence": false,
+        "persistence_filename": "C:\\Users\\Username\\AppData\\Local\\com.fitlauncher.carrotrub\\torrentConfig\\dht\\cache\\dht.json"
+    },
+    "tcp_listen": {
+        "disable": false,
+        "min_port": 4240,
+        "max_port": 4260
+    },
+    "upnp": {
+        "disable": false,
+        "enable_server": false,
+        "server_friendly_name": null
+    },
+    "persistence": {
+        "disable": false,
+        "folder": "C:\\Users\\Username\\AppData\\Local\\com.fitlauncher.carrotrub\\torrentConfig\\session\\data",
+        "fastresume": true,
+        "filename": ""
+    },
+    "peer_opts": {
+        "connect_timeout": 2,
+        "read_write_timeout": 10
+    },
+    "http_api": {
+        "disable": false,
+        "listen_addr": "127.0.0.1:3030",
+        "read_only": false
+    }
+}
