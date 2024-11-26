@@ -4,37 +4,45 @@ use std::{
     time::Duration,
 };
 
-use librqbit::{dht::PersistentDht, limits::LimitsConfig};
+use librqbit::dht::PersistentDht;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
-pub struct RqbitDesktopConfigDht {
+pub struct FitLauncherConfigDht {
     pub disable: bool,
     pub disable_persistence: bool,
     pub persistence_filename: PathBuf,
 }
 
-impl Default for RqbitDesktopConfigDht {
+impl Default for FitLauncherConfigDht {
     fn default() -> Self {
+        let persistnce_dht_path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_local_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub")
+            .join("torrentConfig")
+            .join("dht")
+            .join("cache")
+            .join("dht.json");
         Self {
             disable: false,
             disable_persistence: false,
-            persistence_filename: PersistentDht::default_persistence_filename().unwrap(),
+            persistence_filename: persistnce_dht_path,
         }
     }
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
-pub struct RqbitDesktopConfigTcpListen {
+pub struct FitLauncherConfigTcpListen {
     pub disable: bool,
     pub min_port: u16,
     pub max_port: u16,
 }
 
-impl Default for RqbitDesktopConfigTcpListen {
+impl Default for FitLauncherConfigTcpListen {
     fn default() -> Self {
         Self {
             disable: false,
@@ -47,7 +55,7 @@ impl Default for RqbitDesktopConfigTcpListen {
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
-pub struct RqbitDesktopConfigPersistence {
+pub struct FitLauncherConfigPersistence {
     pub disable: bool,
 
     #[serde(default)]
@@ -61,7 +69,7 @@ pub struct RqbitDesktopConfigPersistence {
     pub filename: PathBuf,
 }
 
-impl RqbitDesktopConfigPersistence {
+impl FitLauncherConfigPersistence {
     pub(crate) fn fix_backwards_compat(&mut self) {
         if self.folder != Path::new("") {
             return;
@@ -74,13 +82,20 @@ impl RqbitDesktopConfigPersistence {
     }
 }
 
-impl Default for RqbitDesktopConfigPersistence {
+impl Default for FitLauncherConfigPersistence {
     fn default() -> Self {
-        let folder = librqbit::SessionPersistenceConfig::default_json_persistence_folder().unwrap();
+        let persistence_session_path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_local_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub")
+            .join("torrentConfig")
+            .join("session")
+            .join("data");
+        let folder = persistence_session_path;
         Self {
             disable: false,
             folder,
-            fastresume: false,
+            fastresume: true,
             filename: PathBuf::new(),
         }
     }
@@ -89,7 +104,7 @@ impl Default for RqbitDesktopConfigPersistence {
 #[serde_as]
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
-pub struct RqbitDesktopConfigPeerOpts {
+pub struct FitLauncherConfigPeerOpts {
     #[serde_as(as = "serde_with::DurationSeconds")]
     pub connect_timeout: Duration,
 
@@ -97,7 +112,7 @@ pub struct RqbitDesktopConfigPeerOpts {
     pub read_write_timeout: Duration,
 }
 
-impl Default for RqbitDesktopConfigPeerOpts {
+impl Default for FitLauncherConfigPeerOpts {
     fn default() -> Self {
         Self {
             connect_timeout: Duration::from_secs(2),
@@ -109,13 +124,13 @@ impl Default for RqbitDesktopConfigPeerOpts {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
-pub struct RqbitDesktopConfigHttpApi {
+pub struct FitLauncherConfigHttpApi {
     pub disable: bool,
     pub listen_addr: SocketAddr,
     pub read_only: bool,
 }
 
-impl Default for RqbitDesktopConfigHttpApi {
+impl Default for FitLauncherConfigHttpApi {
     fn default() -> Self {
         Self {
             disable: Default::default(),
@@ -127,7 +142,7 @@ impl Default for RqbitDesktopConfigHttpApi {
 
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
 #[serde(default)]
-pub struct RqbitDesktopConfigUpnp {
+pub struct FitLauncherConfigUpnp {
     // rename for backwards compat
     #[serde(rename = "disable")]
     pub disable_tcp_port_forward: bool,
@@ -141,25 +156,22 @@ pub struct RqbitDesktopConfigUpnp {
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
-pub struct RqbitDesktopConfig {
+pub struct FitLauncherConfig {
     pub default_download_location: PathBuf,
 
     #[cfg(feature = "disable-upload")]
     #[serde(default)]
     pub disable_upload: bool,
 
-    pub dht: RqbitDesktopConfigDht,
-    pub tcp_listen: RqbitDesktopConfigTcpListen,
-    pub upnp: RqbitDesktopConfigUpnp,
-    pub persistence: RqbitDesktopConfigPersistence,
-    pub peer_opts: RqbitDesktopConfigPeerOpts,
-    pub http_api: RqbitDesktopConfigHttpApi,
-
-    #[serde(default)]
-    pub ratelimits: LimitsConfig,
+    pub dht: FitLauncherConfigDht,
+    pub tcp_listen: FitLauncherConfigTcpListen,
+    pub upnp: FitLauncherConfigUpnp,
+    pub persistence: FitLauncherConfigPersistence,
+    pub peer_opts: FitLauncherConfigPeerOpts,
+    pub http_api: FitLauncherConfigHttpApi,
 }
 
-impl Default for RqbitDesktopConfig {
+impl Default for FitLauncherConfig {
     fn default() -> Self {
         let userdirs = directories::UserDirs::new().expect("directories::UserDirs::new()");
         let download_folder = userdirs
@@ -175,14 +187,11 @@ impl Default for RqbitDesktopConfig {
             persistence: Default::default(),
             peer_opts: Default::default(),
             http_api: Default::default(),
-            ratelimits: Default::default(),
-            #[cfg(feature = "disable-upload")]
-            disable_upload: false,
         }
     }
 }
 
-impl RqbitDesktopConfig {
+impl FitLauncherConfig {
     pub fn validate(&self) -> anyhow::Result<()> {
         if self.upnp.enable_server {
             if self.http_api.disable {

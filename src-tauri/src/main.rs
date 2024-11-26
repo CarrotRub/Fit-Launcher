@@ -450,7 +450,8 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+async fn start() {
+    tauri::async_runtime::set(tokio::runtime::Handle::current());
     info!(
         "{}: Main.rs: Starting the application...",
         Utc::now().format("%a,%b,%e,%T,%Y")
@@ -459,10 +460,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         NonZeroUsize::new(30).unwrap(),
     )));
     let context = tauri::generate_context!();
-
-    let logs_dir = app_log_dir(context.config()).unwrap();
-    info!("path to logs : {:#?}", &logs_dir);
-    let _log_guard = setup_logging(logs_dir);
 
     tauri::Builder
         ::default()
@@ -613,20 +610,21 @@ fn main() -> Result<(), Box<dyn Error>> {
             stop_get_games_images,
             check_folder_path,
             dominant_colors::check_dominant_color_vec,
-            torrent_commands::api_get_torrent_details,
-            torrent_commands::api_pause_torrent,
-            torrent_commands::api_resume_torrent,
-            torrent_commands::api_stop_torrent,
-            torrent_commands::api_download_with_args,
-            torrent_commands::api_automate_setup_install,
-            torrent_commands::api_get_torrent_stats,
-            torrent_commands::api_initialize_torrent_manager,
-            torrent_commands::api_delete_torrent,
+            torrent_commands::torrents_list,
+            torrent_commands::torrent_details,
+            torrent_commands::torrent_stats,
+            torrent_commands::torrent_create_from_url,
+            torrent_commands::torrent_action_delete,
+            torrent_commands::torrent_action_pause,
+            torrent_commands::torrent_action_forget,
+            torrent_commands::torrent_action_start,
+            torrent_commands::config_change_only_path,
+            torrent_commands::config_change_full_config,
             commands_scraping::get_singular_game_info,
             executable_custom_commands::start_executable
         ])
         .manage(image_cache) // Make the cache available to commands
-        .manage(torrent_calls::TorrentState::default()) // Make the torrent state session available to commands
+        .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
@@ -634,7 +632,31 @@ fn main() -> Result<(), Box<dyn Error>> {
                 PAUSE_FLAG.store(true, Ordering::Relaxed);
             }
         });
+}
 
-    // Keep the guard in scope to ensure proper log flushing
-    Ok(())
+fn main() {
+    let logs_dir = directories::BaseDirs::new()
+        .expect("Could not determine base directories")
+        .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+        .join("com.fitlauncher.carrotrub")
+        .join("logs");
+
+    // Ensure the logs directory exists
+    std::fs::create_dir_all(&logs_dir).expect("Failed to create logs directory");
+
+    // Set up the file-based logger
+    let file_appender = tracing_appender::rolling::never(&logs_dir, "app.log");
+    let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::fmt()
+        .with_writer(file_writer) // Write logs to file
+        .with_ansi(false) // Disable ANSI colors for log file
+        .with_max_level(tracing::Level::INFO) // Log level set to INFO
+        .init();
+    warn!("Trying the logs_dir : {}", &logs_dir.display());
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("couldn't set up tokio runtime")
+        .block_on(start())
 }

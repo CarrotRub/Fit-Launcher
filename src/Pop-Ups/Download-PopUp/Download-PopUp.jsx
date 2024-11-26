@@ -82,6 +82,11 @@ const DownloadPopup = ({closePopup, gameTitle, gameMagnet, externFullGameInfo}) 
         }
     }, downloadPath());
 
+    createEffect(async() => {
+        if (isPathValid()) {
+
+        }
+    }, isPathValid())
 
     onCleanup(() => {
         const downloadPageContent = document.querySelector(".download-game.content-page");
@@ -90,7 +95,15 @@ const DownloadPopup = ({closePopup, gameTitle, gameMagnet, externFullGameInfo}) 
         }
     })
 
-
+    async function placePathIntoConfig() {
+        try {
+            await invoke('config_change_only_path', {downloadPath: downloadPath()});
+            console.log("placed into config file")
+        } catch(error) {
+            console.error("error placing into config file")
+        }
+        
+    }
     return (
         <div className="popup-overlay">
             <div className="download-popup">
@@ -155,8 +168,15 @@ const DownloadPopup = ({closePopup, gameTitle, gameMagnet, externFullGameInfo}) 
                 </div>
                 <div className="popup-buttons">
                     <button id="popup-cancel-button" onClick={closePopup}>Cancel</button>
-                    <button id="popup-confirm-button" onClick={() => setIsFinalStep(true)} 
-                        disabled={!isPathValid()}>Next</button>
+                    <button id="popup-confirm-button" 
+                            onClick={async () => {
+                              setIsFinalStep(true);
+                              await placePathIntoConfig();
+                            }} 
+                            disabled={!isPathValid()}
+                    >
+                    Next
+                    </button>
                 </div>
                 </>
                 : (
@@ -347,24 +367,33 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
 
     onMount(async () => {
         setLoading(true);
-        await invoke('api_initialize_torrent_manager', {downloadPath: downloadGamePath, appCachePath: cacheDirPath, appSettingsPath: dirPath})
-        const torrentDetails = await invoke('api_get_torrent_details', {
-            magnetLink: gameMagnet,
+        const torrentDetails = await invoke('torrent_create_from_url', {
+            url: gameMagnet,
+            opts: { list_only: true },
         });
+        console.log(torrentDetails)
+        // Extract the file names from the files array
+        const torrentFilesNames = torrentDetails.details.files.map(file => file.name);
 
-        const rawID = torrentDetails.torrent_files_names.map((_, index) => index)
+        // Create raw IDs based on file indices
+        const rawID = torrentFilesNames.map((_, index) => index);
+
+        // Use extracted data in the functions
         setMainTorrentDetails(torrentDetails);
-        const categorizedFiles = classifyFiles(torrentDetails.torrent_files_names);
-        console.log(torrentDetails.torrent_files_names)
+        const categorizedFiles = classifyFiles(torrentFilesNames);
+        console.log(torrentFilesNames);
         setCategorizedFilesList(categorizedFiles);
-        setRawFileList(torrentDetails.torrent_files_names);
-        setRawIdFileList(rawID)
+        setRawFileList(torrentFilesNames);
+        setRawIdFileList(rawID);
         setLoading(false);
     });
 
     async function handleStartDownloadingTorrent() {
         setLoading(true);
-        await invoke("api_download_with_args", {magnetLink: gameMagnet, downloadFileList: completeIDFileList() });
+        await invoke("torrent_create_from_url", {
+            url: gameMagnet, 
+            opts: {only_files: completeIDFileList()} 
+        });
         if (installationConfigurations) {
             const checkedOptions = [];
 
