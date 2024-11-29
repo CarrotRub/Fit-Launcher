@@ -34,6 +34,12 @@ const DownloadPopup = ({closePopup, gameTitle, gameMagnet, externFullGameInfo}) 
         setMicrosoftCPPInstall(installationConfigurations.microsoftcpp_install)
     })
 
+    onMount(async () => {
+        let fullTorrentConfig = await invoke('get_torrent_full_config');
+
+        setDownloadPath(fullTorrentConfig.default_download_location);
+        console.warn(fullTorrentConfig.default_download_location)
+    })
 
     onMount(() => {
         const downloadPageContent = document.querySelector(".download-game.content-page");
@@ -309,7 +315,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
 
     //This function is there because of some issues in librqbit that create a placeholder for the files that aren't selected but doesn't download anything inside of it.
     async function deleteUselessFiles(fileList) {
-        const torrentOutputFolder = mainTorrentDetails().torrent_output_folder; // Get the folder path
+        const torrentOutputFolder = mainTorrentDetails().output_folder; // Get the folder path
         const missingFileList = handleUnselectedFiles(fileList);
     
         for (const file of missingFileList) {
@@ -332,15 +338,21 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
 
     async function handleChangeFileList(originalFileName){
         setCompleteFileList((prevList) => {
-            const isAlreadyIncluded = prevList.includes(originalFileName);
-            const updatedList = isAlreadyIncluded
-                ? prevList.filter(file => file !== originalFileName)
-                : [...prevList, originalFileName];
-    
-            updateCompleteIDFileList(updatedList);
-    
-            // Call to handle unselected files whenever the file list changes
-            return updatedList;
+            if(originalFileName != null) {
+                const isAlreadyIncluded = prevList.includes(originalFileName);
+                let updatedList = isAlreadyIncluded
+                    ? prevList.filter(file => file !== originalFileName)
+                    : [...prevList, originalFileName];
+        
+                updateCompleteIDFileList(updatedList);
+                console.log(updatedList)
+                // Call to handle unselected files whenever the file list changes
+                return updatedList;
+            } else {
+                updateCompleteIDFileList(completeFileList());
+                return completeFileList(); 
+            }
+
         });
     };
 
@@ -385,14 +397,17 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
         setCategorizedFilesList(categorizedFiles);
         setRawFileList(torrentFilesNames);
         setRawIdFileList(rawID);
+        setCompleteFileList(torrentFilesNames)
         setLoading(false);
     });
 
     async function handleStartDownloadingTorrent() {
         setLoading(true);
+        
+        console.log(completeIDFileList())
         await invoke("torrent_create_from_url", {
             url: gameMagnet, 
-            opts: {only_files: completeIDFileList()} 
+            opts: {only_files: completeIDFileList(), overwrite: true} 
         });
         if (installationConfigurations) {
             const checkedOptions = [];
@@ -414,7 +429,8 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
             setCheckboxesListComponents(checkedOptions);
         }
         deleteUselessFiles(completeFileList());
-        addGlobalTorrentsInfo(externFullGameInfo, mainTorrentDetails().torrent_idx, mainTorrentDetails().torrent_output_folder, downloadGamePath, checkboxesListComponents(), installationConfigurations.two_gb_limit)
+        console.log(mainTorrentDetails().details)
+        addGlobalTorrentsInfo(externFullGameInfo, mainTorrentDetails().details.info_hash, mainTorrentDetails().output_folder, downloadGamePath, checkboxesListComponents(), installationConfigurations.two_gb_limit)
         setGameStartedDownload(true)
         setLoading(false)
 
@@ -458,7 +474,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
                                     <label className="switch">
                                         <input
                                             type="checkbox"
-                                            onChange={async () => await handleChangeFileList(originalName)}
+                                            onChange={() => handleChangeFileList(originalName)}
                                         />
                                         <span className="switch-slider round"></span>
                                     </label>
@@ -488,7 +504,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
                                     <label className="switch">
                                         <input
                                             type="checkbox"
-                                            onChange={async () => {await handleChangeFileList(originalName)}}
+                                            onChange={() => handleChangeFileList(originalName)}
                                         />
                                         <span className="switch-slider round"></span>
                                     </label>
@@ -515,9 +531,10 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
                     <button id="popup-cancel-button" onClick={closePopup}>Cancel</button>
                     <button
                       id="popup-confirm-button"
-                      onClick={() => {
+                      onClick={async() => {
                         if (!gameStartedDownload()) {
-                          handleStartDownloadingTorrent();
+                            await handleChangeFileList(null)
+                            handleStartDownloadingTorrent();
                         } else {
                           closePopup();
                         }

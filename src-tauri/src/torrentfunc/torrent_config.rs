@@ -133,7 +133,7 @@ pub struct FitLauncherConfigHttpApi {
 impl Default for FitLauncherConfigHttpApi {
     fn default() -> Self {
         Self {
-            disable: Default::default(),
+            disable: true,
             listen_addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 3030)),
             read_only: false,
         }
