@@ -287,6 +287,13 @@ pub mod torrent_commands {
     }
 
     #[tauri::command]
+    pub async fn get_torrent_full_config(
+        state: tauri::State<'_, State>,
+    ) -> Result<FitLauncherConfig, ApiError> {
+        Ok(state.get_config().await)
+    }
+
+    #[tauri::command]
     pub async fn config_change_full_config(
         state: tauri::State<'_, State>,
         config: FitLauncherConfig,
