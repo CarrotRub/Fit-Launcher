@@ -16,7 +16,6 @@ const sessionJSON = `${cacheDir}.persistence\\session.json`
 function DownloadPage() {
     const [downloadingTorrents, setDownloadingTorrents] = createSignal([]);
     const [torrentStats, setTorrentStats] = createSignal({});
-    const [initializedTorrentManager, setInitializedTorrentManager] = makePersisted(createSignal(false), {storage: sessionStorage})
 
     async function handleTorrentAction(torrentIdx, action) {
         try {
@@ -93,33 +92,19 @@ function DownloadPage() {
 
     onMount(async () => {
         const intervals = new Map(); // Map to keep track of intervals for each torrentIdx
-
+    
         // Iterate over downloading torrents
         downloadingTorrents().forEach((torrent) => {
-            const { torrentIdx, torrentDownloadFolder } = torrent;
-            console.log(torrentIdx)
+            const { torrentIdx } = torrent;
+    
             // Avoid creating multiple intervals for the same torrentIdx
             if (!intervals.has(torrentIdx)) {
                 const intervalId = setInterval(async () => {
                     try {
-                        // Initialize torrent manager if needed
-
-                        if(!initializedTorrentManager()) {
-                            try {
-                                console.log(torrentDownloadFolder, cacheDir, appDir)
-                                await invoke('api_initialize_torrent_manager', {
-                                    downloadPath: torrentDownloadFolder,
-                                    appCachePath: cacheDir,
-                                    appSettingsPath: appDir,
-                                });
-                                setInitializedTorrentManager(true)
-                            } catch(error) {
-                                console.error("ERROR INITIALIZING THE TORRENT MANAGER: ", error)
-                            }
-                        }
-
-                        if(torrentIdx !== '') {
-                            const stats = await invoke('api_get_torrent_stats', { torrentIdx });
+                        // Fetch stats and update reactively
+                        if (torrentIdx !== '') {
+                            const stats = await invoke('torrent_stats', { id: torrentIdx });
+    
                             // Update stats reactively
                             setTorrentStats((prevStats) => {
                                 return {
@@ -130,6 +115,15 @@ function DownloadPage() {
                                     },
                                 };
                             });
+    
+                            if (stats.finished) {
+                                // Clear the interval for the finished torrent
+                                clearInterval(intervalId);
+                                intervals.delete(torrentIdx);
+
+                                console.log("This torrent is done :", torrentIdx)
+                                
+                            }
                         }
                     } catch (error) {
                         console.error(`Error fetching stats for torrent ${torrentIdx}:`, error);

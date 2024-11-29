@@ -618,6 +618,7 @@ async fn start() {
             torrent_commands::torrent_action_pause,
             torrent_commands::torrent_action_forget,
             torrent_commands::torrent_action_start,
+            torrent_commands::get_torrent_full_config,
             torrent_commands::config_change_only_path,
             torrent_commands::config_change_full_config,
             commands_scraping::get_singular_game_info,
