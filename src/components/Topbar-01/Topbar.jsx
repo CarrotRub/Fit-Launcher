@@ -1,12 +1,11 @@
 import { createEffect, onMount, createSignal } from "solid-js";
-import { appWindow } from '@tauri-apps/api/window';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen, emit } from '@tauri-apps/api/event';
 import { A } from "@solidjs/router";
 import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../functions/dataStoreGlobal";
 import './Topbar.css'
-import { invoke } from "@tauri-apps/api";
-
-// TODO: ADD TITLE BAR HERE.
+import { invoke } from "@tauri-apps/api/core";
+const appWindow = getCurrentWebviewWindow()
 
 function Topbar() {
     const [isDialogOpen, setIsDialogOpen] = createSignal(false);

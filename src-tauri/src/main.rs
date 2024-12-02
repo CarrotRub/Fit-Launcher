@@ -22,13 +22,14 @@ pub use crate::image_colors::dominant_colors;
 
 use scraper::{Html, Selector};
 use serde_json::Value;
+use tauri::Emitter;
+use tauri::Listener;
 use std::error::Error;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
 
 use core::str;
-use tauri::api::path::app_log_dir;
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -99,63 +100,55 @@ async fn check_url_status(client: &Client, url: &str) -> Result<bool> {
     Ok(response.status().is_success())
 }
 
-fn parse_image_links(body: &str) -> Result<Vec<String>> {
+fn parse_image_links(body: &str, start: usize, end: usize) -> Result<Vec<String>> {
     let document = Html::parse_document(body);
     let mut images = Vec::new();
 
-    // Iterate over relevant paragraphs
-    for p_index in 3..10 {
-        let href_selector_str = format!(".entry-content > p:nth-of-type({}) img[src]", p_index);
-        let href_selector = Selector::parse(&href_selector_str)
-            .map_err(|_| anyhow::anyhow!("Failed to parse selector"))?;
+    for p_index in start..=end {
+        let selector = Selector::parse(&format!(".entry-content > p:nth-of-type({}) img[src]", p_index))
+            .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
 
-        for element in document.select(&href_selector) {
-            if let Some(src_link) = element.value().attr("src") {
-                images.push(src_link.to_string());
-            }
-        }
+        images.extend(
+            document
+                .select(&selector)
+                .filter_map(|element| element.value().attr("src").map(|src| src.to_string())),
+        );
     }
+
     Ok(images)
 }
 
 async fn fetch_image_links(client: Arc<Client>, body: &str) -> Result<Vec<String>> {
-    let initial_images = parse_image_links(body)?;
+    let initial_images = parse_image_links(body, 3, 10)?;
     let client = Arc::clone(&client);
 
-    let images = stream::iter(initial_images)
-        .map(|src_link| {
-            let client = Arc::clone(&client);
-            task::spawn(async move {
-                if src_link.contains("jpg.240p.") {
-                    let primary_image = src_link.replace("240p", "1080p");
-                    if check_url_status(&client, &primary_image).await? {
-                        Ok::<Option<String>, anyhow::Error>(Some(primary_image))
-                    } else {
-                        let fallback_image = primary_image.replace("jpg.1080p.", "");
-                        if check_url_status(&client, &fallback_image).await? {
-                            Ok(Some(fallback_image))
-                        } else {
-                            Ok(None)
-                        }
-                    }
-                } else {
-                    Ok(None)
-                }
-            })
-        })
+    let processed_images = stream::iter(initial_images)
+        .map(|src| process_image_link(Arc::clone(&client), src))
         .buffer_unordered(10)
-        .map(|result| match result {
-            Ok(Ok(Some(image))) => Ok(image),
-            Ok(Ok(None)) => Err(anyhow::anyhow!("Image not found")),
-            Ok(Err(e)) => Err(anyhow::anyhow!("Error fetching image: {}", e)),
-            Err(join_err) => Err(anyhow::anyhow!("Join error: {}", join_err)),
-        })
-        .filter_map(|result| async move { result.ok() }) // Collects only the successful results
-        .collect::<Vec<_>>() // Collects into Vec<String>
+        .filter_map(|result| async move { result.ok() })
+        .collect::<Vec<_>>()
         .await;
 
-    Ok(images)
+    Ok(processed_images)
 }
+
+async fn process_image_link(client: Arc<Client>, src_link: String) -> Result<String> {
+    if src_link.contains("jpg.240p.") {
+        let primary_image = src_link.replace("240p", "1080p");
+        if check_url_status(&client, &primary_image).await? {
+            return Ok(primary_image);
+        }
+
+        let fallback_image = primary_image.replace("jpg.1080p.", "");
+        if check_url_status(&client, &fallback_image).await? {
+            return Ok(fallback_image);
+        }
+    }
+
+    Err(anyhow::anyhow!("No valid image found for {}", src_link))
+}
+
+
 
 async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     if STOP_FLAG.load(Ordering::Relaxed) {
@@ -194,45 +187,63 @@ async fn get_games_images(
     let now = Instant::now();
     STOP_FLAG.store(false, Ordering::Relaxed);
 
-    let mut cache_file_path = app_handle.path_resolver().app_cache_dir().unwrap();
-    cache_file_path.push("image_cache.json");
+    let cache_file_path = app_handle
+        .path()
+        .app_cache_dir()
+        .unwrap_or_default()
+        .join("image_cache.json");
 
+    // Acquire the lock and merge cache from file
     let mut cache = image_cache.lock().await;
+    merge_cache_from_file(&cache_file_path, &mut cache).await?;
 
-    // Load and merge cache if exists
-    if let Ok(data) = tokio::fs::read_to_string(&cache_file_path).await {
+    // Check if the game link is already cached
+    if cache.get(&game_link).is_some() {
+        return Ok(());
+    }
+
+    drop(cache); // Release lock before performing network operations
+
+    // Fetch image sources
+    let image_srcs = scrape_image_srcs(&game_link).await?;
+
+    // Save fetched data back to the cache
+    let mut cache = image_cache.lock().await;
+    cache.put(game_link.clone(), image_srcs.clone());
+    save_cache_to_file(&cache_file_path, &*cache).await?;
+
+    info!("Time elapsed to find images: {:?}", now.elapsed());
+
+    Ok(())
+}
+async fn merge_cache_from_file(
+    cache_file_path: &Path,
+    cache: &mut LruCache<String, Vec<String>>,
+) -> Result<()> {
+    if let Ok(data) = tokio::fs::read_to_string(cache_file_path).await {
         if let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
             for (key, value) in loaded_cache {
                 cache.put(key, value);
             }
         }
     }
-
-    if let Some(cached_images) = cache.get(&game_link) {
-        return Ok(());
-    }
-
-    drop(cache); // Release lock before network operation
-
-    let image_srcs = scrape_image_srcs(&game_link).await?;
-
-    let mut cache = image_cache.lock().await;
-    cache.put(game_link.clone(), image_srcs.clone());
-
-    // Save cache to file
-    let cache_as_hashmap: HashMap<String, Vec<String>> =
+    Ok(())
+}
+async fn save_cache_to_file(
+    cache_file_path: &Path,
+    cache: &LruCache<String, Vec<String>>,
+) -> Result<()> {
+    let cache_as_hashmap: HashMap<String, Vec<String>> = 
         cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-    let updated_cache_data =
-        serde_json::to_string_pretty(&cache_as_hashmap).map_err(|e| CustomError {
-            message: e.to_string(),
-        })?;
-    tokio::fs::write(&cache_file_path, updated_cache_data).await?;
 
-    info!("Time elapsed to find images : {:#?}", now.elapsed());
+    let cache_data = serde_json::to_string_pretty(&cache_as_hashmap)
+        .map_err(|e| anyhow::anyhow!("Failed to serialize cache: {}", e))?;
+
+    tokio::fs::write(cache_file_path, cache_data).await
+        .map_err(|e| anyhow::anyhow!("Failed to write cache to file: {}", e))?;
 
     Ok(())
 }
-
 //Always serialize returns...
 #[derive(Debug, Serialize, Deserialize)]
 struct FileContent {
@@ -308,13 +319,13 @@ async fn clear_file(file_path: String) -> Result<(), CustomError> {
 async fn close_splashscreen(window: Window) {
     // Close splashscreen
     window
-        .get_window("splashscreen")
+        .get_webview_window("splashscreen")
         .expect("no window labeled 'splashscreen' found")
         .close()
         .unwrap();
     // Show main window
     window
-        .get_window("main")
+        .get_webview_window("main")
         .expect("no window labeled 'main' found")
         .show()
         .unwrap();
@@ -340,7 +351,7 @@ fn check_folder_path(path: String) -> Result<bool, bool> {
 }
 
 fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
-    let mut dir_path = app_handle.path_resolver().app_data_dir().unwrap();
+    let mut dir_path = app_handle.path().app_data_dir().unwrap();
     dir_path.push("tempGames");
 
     if !dir_path.exists() {
@@ -409,7 +420,7 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
     );
 
     // Get the main window to listen for 'frontend-ready'
-    if let Some(main_window) = app_handle.get_window("main") {
+    if let Some(main_window) = app_handle.get_webview_window("main") {
         // Clone `app_handle` so it can be moved into both closures
         let app_handle_clone = app_handle.clone();
 
@@ -441,7 +452,7 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
                             message: "There was a network issue, unable to retrieve latest game data. (E01)".to_string(),
                         };
                         app_handle_inner_clone
-                            .emit_all("network-failure", failure_message)
+                            .emit("network-failure", failure_message)
                             .unwrap();
                     }
                 }
@@ -459,13 +470,13 @@ async fn start() {
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
         NonZeroUsize::new(30).unwrap(),
     )));
-    let context = tauri::generate_context!();
+
 
     tauri::Builder
         ::default()
         .setup(|app| {
-            let splashscreen_window = app.get_window("splashscreen").unwrap();
-            let main_window = app.get_window("main").unwrap();
+            let splashscreen_window = app.get_webview_window("splashscreen").unwrap();
+            let main_window = app.get_webview_window("main").unwrap();
             let current_app_handle = app.app_handle().clone();
 
             let app_handle = app.handle().clone();
@@ -508,7 +519,7 @@ async fn start() {
                         );
                         //TODO: This will be used to emit a signal to the frontend that the scraping is complete and for all other app_handle.
                         // when the main reload window code is removed
-                        first_app_handle_clone.emit_all("new-games-ready", {}).unwrap();
+                        first_app_handle_clone.emit("new-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -526,7 +537,7 @@ async fn start() {
                             "[popular_games_scraping_func] has been completed. No errors are reported."
                         );
                         // when the main reload window code is removed
-                        second_app_handle_clone.emit_all("popular-games-ready", {}).unwrap();
+                        second_app_handle_clone.emit("popular-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -544,7 +555,7 @@ async fn start() {
                             "[recently_updated_games_scraping_func] has been completed. No errors are reported."
                         );
                         // when the main reload window code is removed
-                        third_app_handle_clone.emit_all("recent-updated-games-ready", {}).unwrap();
+                        third_app_handle_clone.emit("recent-updated-games-ready", {}).unwrap();
                     }
 
                     // Clone before emitting to avoid moving the handle
@@ -562,7 +573,7 @@ async fn start() {
                             "[get_sitemaps_website] has been completed. No errors are reported."
                         );
                         // when the main reload window code is removed
-                        fourth_app_handle_clone.emit_all("sitemaps-ready", {}).unwrap();
+                        fourth_app_handle_clone.emit("sitemaps-ready", {}).unwrap();
                     }
                 });
 
@@ -570,7 +581,7 @@ async fn start() {
                 if let Err(e) = mandatory_tasks_online.await {
                     eprintln!("An error occurred during scraping tasks: {:?}", e);
                     tracing::info!("An error occurred during scraping tasks: {:?}", e);
-                    match scraping_failed_event.emit_all("scraping_failed_event", "Test") {
+                    match scraping_failed_event.emit("scraping_failed_event", "Test") {
                         Ok(()) => (),
                         Err(e) => {
                             error!("Error During Scraping Event, Test Payload : {}", e)
@@ -588,12 +599,12 @@ async fn start() {
                 main_window.show().unwrap();
 
                 current_app_handle
-                    .emit_all("scraping-complete", {})
+                    .emit("scraping-complete", {})
                     .unwrap();
 
                 //TODO : we need to remove this as it causes a reload of the page and the emits dont get sent properly
                 current_app_handle
-                    .get_window("main")
+                    .get_webview_window("main")
                     .unwrap()
                     .eval("window.location.reload();") 
                     .unwrap();
@@ -602,6 +613,8 @@ async fn start() {
 
             Ok(())
         })
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             read_file,
             close_splashscreen,
@@ -642,8 +655,16 @@ fn main() {
         .join("com.fitlauncher.carrotrub")
         .join("logs");
 
+    let settings_dir = directories::BaseDirs::new()
+    .expect("Could not determine base directories")
+    .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+    .join("com.fitlauncher.carrotrub")
+    .join("fitgirlConfig");
+
     // Ensure the logs directory exists
     std::fs::create_dir_all(&logs_dir).expect("Failed to create logs directory");
+    std::fs::create_dir_all(&settings_dir).expect("Failed to create logs directory");
+
 
     // Set up the file-based logger
     let file_appender = tracing_appender::rolling::never(&logs_dir, "app.log");
