@@ -1,0 +1,101 @@
+.library {
+    display: grid;
+    grid-template-columns: 18vw 1fr;
+    grid-template-areas: 
+    "sidebar library-content";
+    justify-content: stretch;
+    align-content: stretch;
+}
+
+.library-sidebar {
+    grid-area: sidebar;
+    border: solid var(--accent-color);
+    border-width:0 2px 0 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 24px;
+}
+
+.library-create-collection-button {
+    background-color: var(--secondary-20-color);
+    min-height: fit-content;
+    height: 6vh;
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    display: flex;
+    
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1em;
+    gap: 1em;
+    cursor: pointer;
+}
+
+.library-create-collection-button p {
+    color: var(--text-color);
+    font-size: 1.5em;
+    font-family: "Mulish Variable";
+    margin: 0;
+    padding: 0;
+}
+
+.library-collection-list {
+    background-color: var(--secondary-20-color);
+    height: fit-content;
+    width: 100%;
+    border-radius: 12px;
+}
+
+.library-collection-list-title {
+    margin: 0;
+    font-family: "Mulish Variable";
+    padding: 1em 1em 0 1em;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1em;
+}
+
+.library-collection-list-title p {
+    margin: 0;
+    padding: 0;
+    
+}
+
+.library-collection-list-title svg {
+    cursor: pointer;
+}
+
+.library-collection-list-item {
+    display: flex;
+    flex-direction: column;
+    list-style-type: none;
+    padding: 1em;
+    gap: 1em;
+    margin: 0;
+}
+
+.library-collection-list-game-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.library-collection-list-game-item img {
+    height: 3em;
+    border-radius: 4px;
+}
+
+.library-collection-list-game-item span {
+    font-size: 1rem;
+}
+
+.library-collection-list-game-item li {
+    list-style-type: none;
+}

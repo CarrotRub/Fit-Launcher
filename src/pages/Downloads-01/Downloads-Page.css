@@ -54,7 +54,50 @@
     width: 100%;
     align-items: center;
     justify-content: flex-end;
-    gap: 24px;
+    gap: 32px;
+}
+
+.downloading-download-info {
+    display: flex;
+    flex-direction: row;
+    gap: 2em;
+}
+
+.custom-checkbox-download input[type="checkbox"] {
+    display: none;
+}
+
+.custom-checkbox-download .checkbox-mark-download {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--accent-color);
+    display: inline-block;
+    position: relative;
+    margin-right: 10px;
+    vertical-align: middle;
+    background-color: transparent;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: border-color 0.3s, background-color 0.3s;
+}
+
+.custom-checkbox-download .checkbox-mark-download::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    background-color: var(--secondary-30-selected-color);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: background-color 0.3s, transform 0.3s, width 0.3s, height 0.3s;
+}
+
+.custom-checkbox-download input[type="checkbox"]:checked + .checkbox-mark-download::after {
+    background-color: var(--primary-color); 
+    width: 8px;
+    height: 8px;
+    transform: translate(-50%, -50%) scale(1); 
 }
 
 .downloading-action-button {
@@ -69,6 +112,7 @@
     border-radius: 8px;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
 }
 
 .downloading-action-button p {
@@ -78,14 +122,32 @@
 
 .downloading-download-bar-container {
     display: flex;
+    flex-direction: column;
     width: 21vw;
     height: 4vh;
     align-items: center;
+    gap: 2px;
+}
+
+.downloading-download-bar-info-container {
+    display: flex;
+    width: 90%; /* Not 100% just so that it won't stick to the end due to border-radius of the download bar*/
+    justify-content: space-between;
+}
+
+.downloading-download-bar-info-container p {
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+}
+
+.downloading-download-bar-download-percentage {
+    color: var(--non-selected-text-color);
 }
 
 .downloading-download-bar {
     flex: 1;
-    height: 1vh;
+    height: 1em;
     width: 100%;
 
     border-radius: 50px;
@@ -97,9 +159,9 @@
 
 .downloading-download-bar-active {
     position: absolute;
-    height: 1vh;
+    height: inherit;
     width: 1%;
-    border-radius: 50px;
+    border-radius: inherit;
     background-color: var(--accent-color);
 }
 
