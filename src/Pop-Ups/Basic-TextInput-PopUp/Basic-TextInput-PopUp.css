@@ -1,4 +1,4 @@
-.popup-error-overlay {
+.popup-textinput-overlay {
     z-index: 14;
 
     position: fixed;
@@ -14,7 +14,7 @@
 
 }
 
-.basic-error-popup {
+.basic-textinput-popup {
     z-index: 15; /* More than 13 so that if it appears in any other popups it will be higher*/
     position: absolute;
     transform: translateY(-5%);
@@ -22,7 +22,7 @@
     min-height: 50vh;
     max-height: fit-content;
     width: 50vw;
-    /* max-width: fit-content; */
+    max-width: fit-content;
     border-radius: 32px;
     display: flex;
     flex-direction: column;
@@ -37,4 +37,38 @@
     position: absolute;
     bottom: 20%;
     display: flex;
+}
+
+.popup-path-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.popup-path-input-div {
+    display: flex;
+    width: auto;
+}
+
+.popup-path-input {
+    background-size: 20px;
+
+    height: 5vh;
+    width: 16vw;
+
+    min-width: fit-content;
+    padding-left: 1rem;
+    padding-right: 6px;
+
+    border-radius: 12px;
+    border: none;
+
+    background-color: var(--secondary-30-selected-color);
+    color: var(--text-color);
+}
+
+.popup-path-input::placeholder {
+    color: var(--non-selected-text-color);
+    font-style: normal;
 }

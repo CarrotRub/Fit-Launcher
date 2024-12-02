@@ -7,6 +7,7 @@ import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../../components/func
 import { makePersisted } from "@solid-primitives/storage";
 import { Dynamic, render } from "solid-js/web";
 import BasicErrorPopup from "../../Pop-Ups/Basic-Error-PopUp/Basic-Error-PopUp";
+import BasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 
 const cacheDir = await appCacheDir();
 const appDir = await appDataDir();
@@ -16,20 +17,40 @@ const sessionJSON = `${cacheDir}.persistence\\session.json`
 function DownloadPage() {
     const [downloadingTorrents, setDownloadingTorrents] = createSignal([]);
     const [torrentStats, setTorrentStats] = createSignal({});
+    const [toDeleteTorrentIdxList, setToDeleteTorrentIdxList] = createSignal([]);
 
-    async function handleTorrentAction(torrentIdx, action) {
-        try {
-            if (action === 'pause') {
-                await invoke('api_pause_torrent', { torrentIdx });
-            } else if (action === 'resume') {
-                await invoke('api_resume_torrent', { torrentIdx });
-            }
-            // Update stats reactively after the action
-            const updatedStats = await invoke('api_get_torrent_stats', { torrentIdx });
-            setTorrentStats((prevStats) => ({ ...prevStats, [torrentIdx]: updatedStats }));
-        } catch (error) {
-            console.error(`Failed to ${action} torrent ${torrentIdx}:`, error);
+    function handleCheckboxChange(torrentIdx, isChecked) {
+        setToDeleteTorrentIdxList((prevList) =>
+            isChecked ? [...prevList, torrentIdx] : prevList.filter((idx) => idx !== torrentIdx)
+        );
+
+        console.warn(toDeleteTorrentIdxList(), torrentIdx)
+    }
+
+    function deleteSelectedGames() {
+        const torrentIdxList = toDeleteTorrentIdxList();
+        if (torrentIdxList.length === 0) {
+            console.log("No torrents selected for deletion.");
+            return;
         }
+
+        const { torrents } = globalTorrentsInfo;
+
+        torrents.forEach(async (torrent) => {
+            const { torrentIdx } = torrent;
+            if (torrentIdxList.includes(torrentIdx)) {
+                await invoke('torrent_action_delete', { id: torrentIdx })
+                    .then(() => {
+                        console.log(`Deleted torrent with idx: ${torrentIdx}`);
+                    })
+                    .catch((error) => {
+                        console.error(`Failed to delete torrent with idx: ${torrentIdx}`, error);
+                    });
+            }
+        });
+
+        setGlobalTorrentsInfo("torrents", torrents.filter(torrent => !torrentIdxList.includes(torrent.torrentIdx)));
+        setToDeleteTorrentIdxList([]);
     }
 
     function extractMainTitle(title) {
@@ -41,24 +62,54 @@ function DownloadPage() {
             ?.replace(/[\–].*$/, '');
     }
 
-    function deleteAllFull() {
-        setGlobalTorrentsInfo("torrents", []);
-        setTorrentStats({})
-            // Iterate through all torrents and pause them
-            const { torrents } = globalTorrentsInfo;
-            torrents.forEach((torrent) => {
-                const { idx } = torrent;
-                invoke('api_delete_torrent', { torrentIdx: idx })
-                    .then(() => {
-                        console.log(`Paused torrent with idx: ${idx}`);
-                    })
-                    .catch((error) => {
-                        console.error(`Failed to pause torrent with idx: ${idx}`, error);
-                    });
-            });
-        
+function handleDeleteTorrents() {
+    const torrentIdxList = toDeleteTorrentIdxList();
+    const pageContent = document.querySelector(".downloads-page");
 
+    if (torrentIdxList.length === 0) {
+        render(
+            () => (
+                <BasicChoicePopup 
+                    infoTitle={"Nothing to download"}
+                    infoMessage={"Nothing there"} // Pass the generated message
+                    infoFooter={''}
+                    action={null}
+                />
+            ),
+            pageContent
+        );
+        return;
     }
+
+    const gameTitles = [];
+
+    downloadingTorrents().forEach((torrent) => {
+        const {torrentIdx} = torrent;
+        if(torrentIdxList.includes(torrentIdx)) {
+            gameTitles.push(torrent.torrentExternInfo?.title || `Unknown Title \n(idx: ${torrentIdx})`);
+        }
+    })
+
+        // const torrent = torrents.find((t) => t.torrentIdx === torrentIdx);
+        // if (torrent) {
+        //     gameTitles.push(torrent.torrentExternInfo?.gameTitle || `Unknown Title \n(idx: ${torrentIdx})`);
+        // }
+
+    // Create the message string
+    const infoMessage = `The following games will be deleted:<br />${gameTitles.join("<br />- ")}`;
+
+    render(
+        () => (
+            <BasicChoicePopup 
+                infoTitle={"Are you sure about that?"}
+                infoMessage={infoMessage} // Pass the generated message
+                infoFooter={''}
+                action={deleteSelectedGames}
+            />
+        ),
+        pageContent
+    );
+}
 
     onMount(async () => {
         // try {
@@ -122,6 +173,7 @@ function DownloadPage() {
                                 intervals.delete(torrentIdx);
 
                                 console.log("This torrent is done :", torrentIdx)
+                                await invoke('torrent_action_forget', {id: torrentIdx})
                                 
                             }
                         }
@@ -145,14 +197,14 @@ function DownloadPage() {
     return (
         <div className="downloads-page content-page">
             <div className="downloads-page-action-bar">
-                <button className="downloads-page-delete-all" onClick={deleteAllFull}>
+                <button className="downloads-page-delete-all" onClick={handleDeleteTorrents}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m-6 5v6m4-6v6"/></svg>
                 </button>
             </div>
             {downloadingTorrents().length > 0 && Object.keys(torrentStats()).length > 0 ? (
                 <For each={downloadingTorrents()}>
                     {(torrent) => (
-                        <Dynamic component={DownloadingGameItem} torrent={torrent} stats={torrentStats}/>
+                        <Dynamic component={DownloadingGameItem} torrent={torrent} stats={torrentStats} onCheckboxChange={handleCheckboxChange}/>
                     )}
                 </For>
             ) : (
@@ -162,10 +214,11 @@ function DownloadPage() {
     );
 }
 
-function DownloadingGameItem({ torrent, stats }) {
-    const torrentStat = () => stats()[torrent.torrentIdx] || {};
+function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
+    const torrentStats = () => stats()[torrent.torrentIdx] || {};
     const [gamePercentage, setGamePercentage] = makePersisted(createSignal('0.5%'));
     const [torrentState, setTorrentState] = createSignal('initializing')
+    const [numberPercentage, setNumberPercentage] = createSignal(1)
 
     function callError(errorMessage) {
         const pageContent = document.querySelector(".download-game")
@@ -180,16 +233,16 @@ function DownloadingGameItem({ torrent, stats }) {
     }
 
     createEffect(() => {
-        console.log(torrentStat())
-        let percentage100 = (torrentStat().progress_bytes / torrentStat().total_bytes) * 100;
+        let percentage100 = (torrentStats().progress_bytes / torrentStats().total_bytes) * 100;
 
+        setNumberPercentage(percentage100.toFixed(0))
         setGamePercentage(percentage100 + '%')
-        setTorrentState(torrentStat().state)
+        setTorrentState(torrentStats().state)
 
-        if(torrentStat().error) {
-            callError(torrentStat().error)
+        if(torrentStats().error) {
+            callError(torrentStats().error)
         }
-    }, torrentStat())
+    }, torrentStats())
 
     return (
         <div className="downloading-game-item" key={torrent.torrentIdx}>
@@ -200,28 +253,110 @@ function DownloadingGameItem({ torrent, stats }) {
                     alt={torrent.torrentExternInfo.title}
                 />
                 <div className="downloading-game-title">
-                    <p>{torrent.torrentExternInfo.title}</p>
+                    <p style={`max-width: 30ch;`}>{torrent.torrentExternInfo.title}</p>
                 </div>
             </div>
             <div className="downloading-secondary-info-game">
+                <div className="downloading-download-info">
+                    <div className="downloading-download-info-upload-speed">  
+                        <p style={`
+                            color: var(--non-selected-text-color);
+                            font-size: 14px
+                            `}
+                        >
+                            UPLOAD
+                        </p>
+                        <p style={`font-size: 18px`}>
+                            <b>{torrentStats()?.live?.upload_speed?.human_readable}</b>
+                        </p>
+                    </div>
+                    <div className="downloading-download-info-download-speed">
+                        <p style={`
+                            color: var(--non-selected-text-color);
+                            font-size: 14px
+                            `}
+                        >
+                            DOWNLOAD
+                        </p>
+                        <p style={`font-size: 18px`}>
+                            <b>{torrentStats()?.live?.download_speed?.human_readable}</b>
+                        </p>
+                    </div>
+
+                </div>
                 <div className="downloading-download-bar-container">
+                <div className="downloading-download-bar-info-container">
+                    <p>
+                        { torrentStats()?.finished ? (
+                            'Done'
+                            ) : torrentStats()?.live?.time_remaining ? (
+                                <>
+                                    <b>{torrentStats().live.time_remaining.human_readable}</b>
+                                    <span style={{ color: 'var(--non-selected-text-color)' }}> remaining</span>
+                                </>
+                            ) : (
+                                'Nothing'
+                            )
+                        }
+                    </p>
+                    <p className="downloading-download-bar-download-percentage">
+                        DOWNLOADED {numberPercentage()}%
+                    </p>
+                </div>
                     <div className="downloading-download-bar">
                         <div className="downloading-download-bar-active" style={{
                             'width' : gamePercentage()
-                        }}>
+                        }}>  
 
                         </div>
                     </div>
                 </div>
-                <Dynamic component={ActionButtonDownload} gameState={torrentState}/>
+                <Dynamic component={ActionButtonDownload} gameState={torrentState} torrentStats={torrentStats} torrentIdx={torrent.torrentIdx}/>
+                <label className="custom-checkbox-download">
+                    <input type="checkbox" onChange={(e) => onCheckboxChange(torrent.torrentIdx, e.target.checked)}/>
+                    <span className="checkbox-mark-download"></span>
+                </label>
+
             </div>
         </div>
     );
 }
 
-function ActionButtonDownload({ gameState }) {
+function ActionButtonDownload({ gameState, torrentStats, torrentIdx }) {
     const [buttonColor, setButtonColor] = createSignal('var(--secondary-color)');
     const [globalState, setGlobalState] = createSignal(gameState())
+    const [gameDone, setGameDone] = createSignal(false);
+
+    function callError(errorMessage) {
+        const pageContent = document.querySelector(".download-game")
+        render(
+            () =>   <BasicErrorPopup 
+                        errorTitle={"AN ERROR PUTTING DOWNLOADING YOUR GAME HAPPENED"}
+                        errorMessage={errorMessage} 
+                        errorFooter={''}
+                    />
+            ,pageContent
+        )
+    };
+
+    async function handleTorrentAction() {
+        try {
+            if (globalState() === 'live' && !gameDone()) {
+                await invoke('torrent_action_pause', { id: torrentIdx })
+            } else if (globalState() === 'paused' && !gameDone()) {
+                await invoke('torrent_action_start', { id: torrentIdx })
+            } else if (globalState() === 'initializing' && !gameDone()) {
+                console.log("nothing")
+            } else if (gameDone()) {
+                console.log('already done')
+            } else {
+                callError(torrentStats()?.error)
+            }
+        } catch (error) {
+            console.error(`Failed to pause/resume torrent ${torrentIdx()}:`, error);
+        }
+    }
+
     // React to changes in gameState
     createEffect(() => {
         const state = gameState();
@@ -241,27 +376,38 @@ function ActionButtonDownload({ gameState }) {
         }
     });
 
+    createEffect(() => {
+        const gameStats = torrentStats();
+        setGameDone(gameStats.finished)
+        if(gameStats.finished) {
+            console.log("done")
+            setButtonColor('var(--primary-color)')
+        }
+    })
+
 
     return (
         <button
             className="downloading-action-button"
-            onClick={() => console.log("pause")}
+            onClick={() => handleTorrentAction()}
             style={{
                 'background-color': buttonColor()
             }}
         >
-            {globalState() === 'paused' ? (
+            {globalState() === 'paused' && !gameDone() ? (
                 <>
                     <svg width="21" xmlns="http://www.w3.org/2000/svg" height="21" viewBox="1874.318 773.464 24.364 24.364" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1874.5" y="773.646" width="24" height="24" transform="rotate(90.875 1886.5 785.646)" class="frame-background"/></g><g class="frame-children"><g class="fills"><rect rx="0" ry="0" x="1874.5" y="773.646" width="24" height="24" transform="rotate(90.875 1886.5 785.646)" class="frame-background"/></g><g class="frame-children"><path d="m1894.606 778.769-8.152 9.877-7.846-10.121z" style="fill:#ece0f0;fill-opacity:1" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1894.606 778.769-8.152 9.877-7.846-10.121z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape"/></g><path d="m1893.392 792.752-13.998-.214" style="fill:none" class="fills"/><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="m1893.392 792.752-13.998-.214" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape"/></g></g></g></svg>
                     <p>RESUME</p>
                 </>
-            ) : globalState() === 'live' ? (
+            ) : globalState() === 'live' && !gameDone() ? (
                 <>
                     <svg width="21" xmlns="http://www.w3.org/2000/svg" height="21" viewBox="1885 553.52 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1885" y="553.52" width="24" height="24" class="frame-background"/></g><g class="frame-children"><rect rx="0" ry="0" x="1891" y="557.52" width="4" height="16" style="fill:#ece0f0;fill-opacity:1" class="fills"/><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><rect rx="0" ry="0" x="1891" y="557.52" width="4" height="16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape"/></g><rect rx="0" ry="0" x="1899" y="557.52" width="4" height="16" style="fill:#ece0f0;fill-opacity:1" class="fills"/><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><rect rx="0" ry="0" x="1899" y="557.52" width="4" height="16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape"/></g></g></svg>
                     <p>PAUSE</p>
                 </>
-            ) : globalState() === 'initializing' ? (
+            ) : globalState() === 'initializing' && !gameDone() ? (
                 'INITIALIZING...'
+            ) : gameDone() ? (
+                'DONE'
             ) : (
                 'ERROR'
             )}

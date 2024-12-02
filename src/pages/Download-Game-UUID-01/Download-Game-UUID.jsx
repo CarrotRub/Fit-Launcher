@@ -1,13 +1,14 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { invoke } from '@tauri-apps/api/tauri';
 import './Download-Game-UUID.css';
-import { readTextFile } from "@tauri-apps/api/fs";
+import { createDir, readTextFile, writeTextFile } from "@tauri-apps/api/fs";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
 import { useNavigate } from "@solidjs/router";
 import { render } from "solid-js/web";
 import DownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import BasicErrorPopup from "../../Pop-Ups/Basic-Error-PopUp/Basic-Error-PopUp";
+import { path } from "@tauri-apps/api";
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir;
@@ -17,6 +18,7 @@ const dirPath = appDir;
 
 const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
 const ftgConfigPath = `${dirPath}fitgirlConfig/settings.json`;
+const userToDownloadGamesPath = await path.join(dirPath, 'library', 'games_to_download.json');
 const gameImagesCache = `${cacheDirPath}image_cache.json`;
 
 const DownloadGameUUIDPage = () => {
@@ -39,6 +41,8 @@ const DownloadGameUUIDPage = () => {
     const [repackSize, setRepackSize] = createSignal('N/A');
 
     const [showPopup, setShowPopup] = createSignal(false);
+    const [isToDownloadLater, setToDownloadLater] = createSignal(false);
+
 
     let imagesCheckingTimeoutID;
     let backgroundCycleIntervalID;
@@ -59,7 +63,6 @@ const DownloadGameUUIDPage = () => {
 
             if (imagesCache[url]) {
                 setAdditionalImages(imagesCache[url]);
-                console.log(additionalImages())
                 setLoading(false)
             } else {
                 console.log("Not found in persistent cache, going to start the function.");
@@ -150,8 +153,7 @@ const DownloadGameUUIDPage = () => {
                 }, 50);
             }
         }
-    
-        console.log("gmInf",gameInfo())
+
         // Start the cache load with retry logic
         await retryLoadFromCache();
     });
@@ -176,6 +178,30 @@ const DownloadGameUUIDPage = () => {
                 }
             }
             setGameInfo(game);
+
+            try {
+                // Read the existing file content
+                const fileContent = await readTextFile(userToDownloadGamesPath);
+                // Parse the JSON content from the file
+                let currentData = JSON.parse(fileContent);
+                console.log("tt", currentData, gameInfo().title)
+                // Check if the game already exists in the file
+                const gameExists = currentData.games.some(game => game.title === gameInfo().title);
+                
+                if (gameExists) {
+                  setToDownloadLater(true);
+                  console.log("Game exists");
+                } else {
+                  setToDownloadLater(false);
+                  console.log("Game does not exist");
+                }
+            } catch (error) {
+                // Handle case where the file does not exist yet (initialize with an empty array)
+                console.log('No existing file found, starting fresh...');
+                // Initialize with empty games list if needed
+                setToDownloadLater(false); // You can set this to a default state
+            }
+
         } catch (error) {
             console.error('Error fetching game info:', error);
         } finally {
@@ -201,7 +227,7 @@ const DownloadGameUUIDPage = () => {
     }
 
     function handleReturnToGamehub() {
-        navigate('/')
+        navigate(-1)
     }
 
    const handleDownloadClick = () => {
@@ -223,6 +249,59 @@ const DownloadGameUUIDPage = () => {
             ,pageContent
         )
     }
+    
+    async function handleAddToDownloadLater(gameData, isChecked) {
+        let currentData = { games: [] };
+    
+        // Ensure the directory exists
+    
+        try {
+            let toDownloadDirPath = await path.join(appDir, 'library');
+            await createDir(toDownloadDirPath, { recursive: true }); // Create the directory
+        } catch (error) {
+            console.error('Error creating directory:', error);
+        }
+    
+        // Read the current data from the file if it exists, or initialize it
+        try {
+          const fileContent = await readTextFile(userToDownloadGamesPath);
+          currentData = JSON.parse(fileContent);
+        } catch (error) {
+          // Handle case where the file does not exist yet (initialize with an empty array)
+          console.log('No existing file found, starting fresh...');
+        }
+    
+        // Check if the game is already in the list
+        const gameExists = currentData.games.some(game => game.title === gameData.title);
+        
+        if (isChecked && !gameExists) {
+          // Add the new game to the games array if it's not already added
+          gameData.filePath = gameFilePath;
+          console.log(gameData.filePath)
+          currentData.games.push(gameData);
+
+        } else if (!isChecked && gameExists) {
+          // Remove the game if unchecked
+          currentData.games = currentData.games.filter(game => game.title !== gameData.title);
+        }
+    
+        // Write the updated data back to the file
+        try {
+          await writeTextFile(userToDownloadGamesPath, JSON.stringify(currentData, null, 2));  // Pretty-print with indentation
+          console.log(isChecked ? 'Game added successfully' : 'Game removed successfully');
+        } catch (error) {
+          console.error('Error writing to file', error);
+        }
+      }
+    
+      // Checkbox change handler
+      const handleCheckboxChange = async (e) => {
+        const isChecked = e.target.checked;
+        setToDownloadLater(isChecked);
+    
+        // Call the function to add or remove game when checkbox state changes
+        await handleAddToDownloadLater(gameInfo(), isChecked);
+      };
 
     return (
         <div className="download-game content-page">
@@ -248,8 +327,16 @@ const DownloadGameUUIDPage = () => {
                                     </div>
 
                                     {/* TODO: Currently does nothing, add some real things later. */}
-                                    <div id="download-game-favorite-button" onClick={testFav}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="yellow" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+                                    <div id="download-game-favorite-button">
+                                        <label class="container">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={isToDownloadLater()} 
+                                          onChange={handleCheckboxChange} 
+                                        />
+                                          <svg class="save-regular" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="0 0 384 512"><path d="M0 48C0 21.5 21.5 0 48 0v441.4l130.1-92.9c8.3-6 19.6-6 27.9 0l130 92.9V48H48V0h288c26.5 0 48 21.5 48 48v440c0 9-5 17.2-13 21.3s-17.6 3.4-24.9-1.8L192 397.5l-154.1 110c-7.3 5.2-16.9 5.9-24.9 1.8S0 497 0 488z"/></svg>
+                                          <svg class="save-solid" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="0 0 384 512"><path d="M0 48v439.7C0 501.1 10.9 512 24.3 512c5 0 9.9-1.5 14-4.4L192 400l153.7 107.6c4.1 2.9 9 4.4 14 4.4 13.4 0 24.3-10.9 24.3-24.3V48c0-26.5-21.5-48-48-48H48C21.5 0 0 21.5 0 48"/></svg>
+                                        </label>
                                     </div>
                                 </div>
                                 <div className="download-game-info">

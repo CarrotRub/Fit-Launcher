@@ -15,14 +15,14 @@ function Topbar() {
     function handleWindowClose() {
         // Iterate through all torrents and pause them
         const { torrents } = globalTorrentsInfo;
-        torrents.forEach((torrent) => {
-            const { idx } = torrent;
-            invoke('api_pause_torrent', { torrentIdx: idx })
+        torrents.forEach(async (torrent) => {
+            const { torrentIdx } = torrent;
+            await invoke('torrent_action_pause', { id: torrentIdx })
                 .then(() => {
-                    console.log(`Paused torrent with idx: ${idx}`);
+                    console.log(`Paused torrent with idx: ${torrentIdx}`);
                 })
                 .catch((error) => {
-                    console.error(`Failed to pause torrent with idx: ${idx}`, error);
+                    console.error(`Failed to pause torrent with idx: ${torrentIdx}`, error);
                 });
         });
     
