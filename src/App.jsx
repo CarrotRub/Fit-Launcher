@@ -28,11 +28,11 @@ function App() {
         {
             path: '/downloads-page',
             component: lazy(() => import('./pages/Downloads-01/Downloads-Page'))
-        }
-        // {
-        //     path: '/my-library',
-        //     component: lazy(() => import('./templates/mylibrary-01/Mylibrary')),
-        // },
+        },
+        {
+            path: '/library',
+            component: lazy(() => import('./pages/Library-01/Library')),
+        },
         // {
         //     path: '/settings',
         //     component: lazy(() => import('./templates/Settings-01/Settings')),

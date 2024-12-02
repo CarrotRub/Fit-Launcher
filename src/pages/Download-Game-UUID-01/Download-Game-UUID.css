@@ -47,21 +47,6 @@
     justify-content: center;
 }
 
-#download-game-favorite-button {
-    position: absolute;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    right: 0;
-    /* background-color: var(--secondary-color); */
-    margin-top: 24px;
-    margin-left: 24px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .download-game-info {
     margin-top: 1px; /* This is extremely important to not get the small cut becuz the image is centered*/
     grid-area: game-info;
@@ -280,3 +265,79 @@
 .download-game-miscellaneous-info {
     grid-area: miscellaneous;
 }
+
+
+/* ICON HEART FAV*/
+/* From Uiverse.io by catraco */ 
+
+#download-game-favorite-button {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    right: 2%;
+    /* background-color: var(--secondary-color); */
+    margin-top: 24px;
+    margin-left: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* From Uiverse.io by Omar-Molotov */ 
+/*------ Settings ------*/
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    font-size: 32px;
+    user-select: none;
+    fill: var(--primary-color)
+  }
+  
+  .container .save-regular {
+    position: absolute;
+    animation: keyframes-fill 1s;
+    transform-origin: top;
+  }
+  
+  .container .save-solid {
+    position: absolute;
+    animation: keyframes-fill 1s;
+    display: none;
+    transform-origin: top;
+  }
+  
+  /* ------ On check event ------ */
+  .container input:checked ~ .save-regular {
+    display: none;
+  }
+  
+  .container input:checked ~ .save-solid {
+    display: block;
+  }
+  
+  /* ------ Hide the default checkbox ------ */
+  .container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+  
+  /* ------ Animation ------ */
+  @keyframes keyframes-fill {
+    0% {
+      transform: scale(0.8);
+      opacity: 80%;
+    }
+  
+    50% {
+      transform: scaleY(1);
+    }
+  }
+  
