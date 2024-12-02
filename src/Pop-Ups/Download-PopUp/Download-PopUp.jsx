@@ -1,13 +1,14 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import "./Download-PopUp.css";
-import { open } from "@tauri-apps/api/dialog";
+import { open } from "@tauri-apps/plugin-dialog";
 import { makePersisted } from "@solid-primitives/storage";
-import { readDir } from "@tauri-apps/api/fs";
+import { readDir } from "@tauri-apps/plugin-fs";
 import { render } from "solid-js/web";
-import { fs, invoke } from "@tauri-apps/api";
+import { invoke } from "@tauri-apps/api/core";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { addGlobalTorrentsInfo, globalTorrentsInfo } from "../../components/functions/dataStoreGlobal";
 import { setInstallationConfigurations, installationConfigurations } from "../../components/functions/dataStoreGlobal";
+import * as fs from "@tauri-apps/plugin-fs"
 
 const cacheDir = await appCacheDir();
 const cacheDirPath = cacheDir;

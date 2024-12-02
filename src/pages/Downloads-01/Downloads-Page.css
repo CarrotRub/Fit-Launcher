@@ -123,7 +123,7 @@
 .downloading-download-bar-container {
     display: flex;
     flex-direction: column;
-    width: 21vw;
+    width: 24vw;
     height: 4vh;
     align-items: center;
     gap: 2px;
@@ -139,6 +139,9 @@
     margin: 0;
     padding: 0;
     font-size: 14px;
+    white-space: nowrap;      
+    overflow: hidden;         
+    text-overflow: ellipsis;
 }
 
 .downloading-download-bar-download-percentage {
@@ -147,7 +150,7 @@
 
 .downloading-download-bar {
     flex: 1;
-    height: 1em;
+    height: 1vh;
     width: 100%;
 
     border-radius: 50px;
@@ -159,7 +162,7 @@
 
 .downloading-download-bar-active {
     position: absolute;
-    height: inherit;
+    height: 100%;
     width: 1%;
     border-radius: inherit;
     background-color: var(--accent-color);

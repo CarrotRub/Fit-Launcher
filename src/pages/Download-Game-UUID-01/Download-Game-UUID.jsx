@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from "@tauri-apps/api/core";
 import './Download-Game-UUID.css';
-import { createDir, readTextFile, writeTextFile } from "@tauri-apps/api/fs";
+import { mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
 import { useNavigate } from "@solidjs/router";
@@ -16,10 +16,11 @@ const cacheDirPath = cacheDir;
 const appDir =  await appDataDir();
 const dirPath = appDir;
 
-const singularGamePath = `${dirPath}tempGames/single_game_images.json`;
-const ftgConfigPath = `${dirPath}fitgirlConfig/settings.json`;
+
+const singularGamePath = await path.join(dirPath, 'tempGames', 'single_game_images.json');
+const ftgConfigPath = `${dirPath}\\fitgirlConfig\\settings.json`;
 const userToDownloadGamesPath = await path.join(dirPath, 'library', 'games_to_download.json');
-const gameImagesCache = `${cacheDirPath}image_cache.json`;
+const gameImagesCache = `${cacheDirPath}\\image_cache.json`;
 
 const DownloadGameUUIDPage = () => {
     const [gameInfo, setGameInfo] = createSignal({});
@@ -257,7 +258,7 @@ const DownloadGameUUIDPage = () => {
     
         try {
             let toDownloadDirPath = await path.join(appDir, 'library');
-            await createDir(toDownloadDirPath, { recursive: true }); // Create the directory
+            await mkdir(toDownloadDirPath, { recursive: true }); // Create the directory
         } catch (error) {
             console.error('Error creating directory:', error);
         }

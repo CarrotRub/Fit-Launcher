@@ -1,12 +1,15 @@
 import { onMount, createSignal } from 'solid-js';
-import { readTextFile } from '@tauri-apps/api/fs';
+import { readTextFile } from '@tauri-apps/plugin-fs';
 import { appDataDir } from '@tauri-apps/api/path';
 import './Recently-Updated-Games.css'
+import Slider from '../../../../components/Slider-01/Slider';
+import { path } from '@tauri-apps/api';
 
 const appDir = await appDataDir()
-const popularRepacksPath = `${appDir}tempGames/recently_updated_games.json`;
 
-import Slider from '../../../../components/Slider-01/Slider';
+const popularRepacksPath = await path.join(appDir, 'tempGames', 'recently_updated_games.json');
+
+
 
 /**
  * Get newly added games into the GameHub.
@@ -19,7 +22,7 @@ async function parseNewGameData() {
         const gameData = JSON.parse(fileContent)
 
         // Load the user's settings to check if NSFW content should be hidden
-        const settingsPath = `${appDir}/fitgirlConfig/settings.json`
+        const settingsPath = await path.join(appDir, 'fitgirlConfig', 'settings.json');
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
         const hideNSFW = settings.hide_nsfw_content; // settings.hide_nsfw_content
