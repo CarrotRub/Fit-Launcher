@@ -1,13 +1,14 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import { createSignal, onMount, createEffect } from "solid-js";
 import './Library.css'
-import { fs } from '@tauri-apps/api';
+import {  } from '@tauri-apps/api';
 import { join } from '@tauri-apps/api/path';
 import { render } from "solid-js/web";
 import BasicTextInputPopup from "../../Pop-Ups/Basic-TextInput-PopUp/Basic-TextInput-PopUp";
-import { createDir, writeTextFile } from "@tauri-apps/api/fs";
+import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { setDownloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
 import { useNavigate } from "@solidjs/router";
+import * as fs from "@tauri-apps/plugin-fs"
 
 const appDir =  await appDataDir();
 const dirPath = appDir;
@@ -39,9 +40,10 @@ function Library() {
             const contents = {};
 
             for (const file of files) {
-                if (file.children === undefined) {
+                if (file.isFile) {
                     // Read the file content if it's a file
-                    const fileContent = await fs.readTextFile(file.path);
+                    const filePathToFile = await join(libraryPath, file.name);
+                    const fileContent = await fs.readTextFile(filePathToFile);
                     const fileName = file.name.split('.')[0]; // Remove file extension
                     contents[fileName] = JSON.parse(fileContent);
                 }
@@ -62,7 +64,7 @@ function Library() {
 
     onMount(async() => {
         const collectionPath = await userCollectionPath();
-
+        const libraryPath = await userCollectionPath();
         const files = await fs.readDir(collectionPath);
 
         // Create an object to store file contents
@@ -71,7 +73,8 @@ function Library() {
         for (const file of files) {
             if (file.children === undefined) {
                 // Read the file content if it's a file
-                const fileContent = await fs.readTextFile(file.path);
+                const filePathToFile = await join(libraryPath, file.name);
+                const fileContent = await fs.readTextFile(filePathToFile);
                 const fileName = file.name.split('.')[0]; // Remove file extension
                 console.log(fileName)
                 contents[fileName] = JSON.parse(fileContent);
@@ -102,7 +105,7 @@ function Library() {
         let cleanCollectioNameOnList = collectionName.toLowerCase().replace(/\s+/g, '_')
         const collectionFilePath = `${libraryPath}/${cleanCollectionName}`;
         try {
-            await createDir(libraryPath, { recursive: true }); // Create the directory
+            await mkdir(libraryPath, { recursive: true }); // Create the directory
             await writeTextFile(collectionFilePath, '[]');
             setCollectionList(prevList => ({
                 ...prevList,

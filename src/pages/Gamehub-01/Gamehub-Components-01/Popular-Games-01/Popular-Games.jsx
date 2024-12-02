@@ -1,6 +1,6 @@
 import { createEffect, onMount, createSignal, onCleanup, createResource } from 'solid-js';
-import { readTextFile } from '@tauri-apps/api/fs';
-import { invoke } from '@tauri-apps/api';
+import { readTextFile } from '@tauri-apps/plugin-fs';
+import { invoke } from "@tauri-apps/api/core";
 import { createWorker } from '@solid-primitives/workers';
 import { appDataDir } from '@tauri-apps/api/path';
 import './Popular-Games.css'
@@ -10,9 +10,11 @@ import { colorCache, setColorCache } from '../../../../components/functions/data
 import { makePersisted } from '@solid-primitives/storage';
 import { useNavigate } from '@solidjs/router';
 import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
+import { path } from '@tauri-apps/api';
 
 const appDir = await appDataDir()
-const popularRepacksPath = `${appDir}tempGames/popular_games.json`
+
+const popularRepacksPath = await path.join(appDir, 'tempGames', 'popular_games.json');
 
 /**
  * Get newly added games into the GameHub.
@@ -25,11 +27,11 @@ async function parseNewGameData() {
         const gameData = JSON.parse(fileContent)
 
         // Load the user's settings to check if NSFW content should be hidden
-        const settingsPath = `${appDir}/fitgirlConfig/settings.json`
+        const settingsPath = await path.join(appDir, 'fitgirlConfig', 'settings.json');
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
         // console.log(settings.hide_nsfw_content)
-        const hideNSFW = settings.hide_nsfw_content; 
+        const hideNSFW = true; 
 
         // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
