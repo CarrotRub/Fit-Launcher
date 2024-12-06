@@ -252,7 +252,7 @@ const DownloadGameUUIDPage = () => {
     }
     
     async function handleAddToDownloadLater(gameData, isChecked) {
-        let currentData = { games: [] };
+        let currentData = [];
     
         // Ensure the directory exists
     
@@ -273,17 +273,17 @@ const DownloadGameUUIDPage = () => {
         }
     
         // Check if the game is already in the list
-        const gameExists = currentData.games.some(game => game.title === gameData.title);
+        const gameExists = currentData.some(game => game.title === gameData.title);
         
         if (isChecked && !gameExists) {
           // Add the new game to the games array if it's not already added
           gameData.filePath = gameFilePath;
           console.log(gameData.filePath)
-          currentData.games.push(gameData);
+          currentData.push(gameData);
 
         } else if (!isChecked && gameExists) {
           // Remove the game if unchecked
-          currentData.games = currentData.games.filter(game => game.title !== gameData.title);
+          currentData = currentData.filter(game => game.title !== gameData.title);
         }
     
         // Write the updated data back to the file
@@ -324,10 +324,9 @@ const DownloadGameUUIDPage = () => {
                                 }}>
                                     
                                     <div id="download-game-return-button" onClick={handleReturnToGamehub}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-forward" transform="scale(1 -1)"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-forward"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
                                     </div>
-
-                                    {/* TODO: Currently does nothing, add some real things later. */}
+                                    
                                     <div id="download-game-favorite-button">
                                         <label class="container">
                                         <input 

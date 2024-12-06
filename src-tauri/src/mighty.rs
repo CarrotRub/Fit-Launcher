@@ -382,7 +382,6 @@ pub mod windows_controls_processes {
                 let percentage =
                     (((current_value - min) as f64 / (max - min) as f64) * 100.0) + 0.1;
 
-                // Print the percentage value and limit it to 2 numbers after the decimal point
                 println!("Progress: {:.2}%", percentage);
                 final_percentage = percentage;
             }

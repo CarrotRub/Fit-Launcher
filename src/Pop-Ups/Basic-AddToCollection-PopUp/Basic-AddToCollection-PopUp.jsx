@@ -1,11 +1,11 @@
 import { createSignal, onMount } from "solid-js";
-import './Basic-Choice-PopUp.css'
+import './Basic-AddToCollection-PopUp.css'
 import '../Download-PopUp/Download-PopUp.css'
 
-const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
+const BasicAddToCollectioPopup = ({ infoTitle, infoMessage, infoFooter, collectionList, action }) => {
 
     function closePopup() {
-        const fullPopup = document.querySelector('.popup-choice-overlay')
+        const fullPopup = document.querySelector('.popup-addtocollection-overlay')
 
         if (fullPopup) {
             fullPopup.remove()
@@ -16,8 +16,8 @@ const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
         console.log(infoMessage)
     })
     return (
-        <div className="popup-choice-overlay">
-            <div className="basic-choice-popup">
+        <div className="popup-addtocollection-overlay">
+            <div className="basic-addtocollection-popup">
                 <div className="popup-content">
                     <div className="popup-text-title">
                         <p className="popup-main-title">{infoTitle ? infoTitle : 'Please choose :)'}</p>
@@ -46,4 +46,4 @@ const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
     );
 };
 
-export default BasicChoicePopup;
+export default BasicAddToCollectioPopup;

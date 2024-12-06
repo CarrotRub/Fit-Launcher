@@ -7,14 +7,19 @@
     grid-template-columns: 1fr;
     align-items: start;
     align-content: stretch;
-    grid-template-areas: 
+    grid-template-areas:
         "game-background"
         "game-info";
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .loading-icon {
@@ -23,6 +28,7 @@
     justify-self: center;
     animation: spin 500ms linear infinite;
 }
+
 .loading-icon svg {
     color: var(--secondary-color);
 }
@@ -47,13 +53,25 @@
     justify-content: center;
 }
 
+#download-game-return-button svg {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transform: scale(1, -1);
+}
+
+#download-game-return-button svg:hover {
+    transform: scale(1.2, -1.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
 .download-game-info {
-    margin-top: 1px; /* This is extremely important to not get the small cut becuz the image is centered*/
+    margin-top: 1px;
+    /* This is extremely important to not get the small cut becuz the image is centered*/
     grid-area: game-info;
     height: 100%;
     display: grid;
     grid-template-rows: min-content auto;
-    grid-template-areas: 
+    grid-template-areas:
         "main-info"
         "secondary-info";
 }
@@ -73,26 +91,33 @@
 }
 
 .download-game-main-info::-webkit-scrollbar {
-    width: 12px; /* Width of the scrollbar */
-    height: 12px; /* Height for horizontal scrollbar */
+    width: 12px;
+    /* Width of the scrollbar */
+    height: 12px;
+    /* Height for horizontal scrollbar */
     cursor: pointer;
 }
 
 /* Scrollbar track */
 .download-game-main-info::-webkit-scrollbar-track {
-    background-color: var(--background-color); /* Background color of the track */
-    border-radius: 10px; /* Optional: for rounded corners */
+    background-color: var(--background-color);
+    /* Background color of the track */
+    border-radius: 10px;
+    /* Optional: for rounded corners */
 }
 
 /* Scrollbar thumb */
 .download-game-main-info::-webkit-scrollbar-thumb {
-    background-color: var(--secondary-color); /* Color for the thumb */
-    border-radius: 10px; /* Optional: for rounded corners */
+    background-color: var(--secondary-color);
+    /* Color for the thumb */
+    border-radius: 10px;
+    /* Optional: for rounded corners */
 }
 
 /* Scrollbar thumb when hovered */
 .download-game-main-info::-webkit-scrollbar-thumb:hover {
-    background-color: var(--accent-color); /* Color for the thumb when hovered */
+    background-color: var(--accent-color);
+    /* Color for the thumb when hovered */
 }
 
 .download-game-title {
@@ -209,10 +234,13 @@
 
 .download-game-secondary-info {
     grid-area: secondary-info;
-    display: grid; /* Changed to grid for full grid functionality */
-    grid-template-columns: 1fr 1fr; /* Two columns, each taking 50% width */
-    grid-template-rows: 1fr; /* Single row to align both columns */
-    grid-template-areas: 
+    display: grid;
+    /* Changed to grid for full grid functionality */
+    grid-template-columns: 1fr 1fr;
+    /* Two columns, each taking 50% width */
+    grid-template-rows: 1fr;
+    /* Single row to align both columns */
+    grid-template-areas:
         "description miscellaneous";
 
     height: 100%;
@@ -237,22 +265,22 @@
 .download-game-description-container p::-webkit-scrollbar {
 
     width: 12px;
-    height: 12px; 
+    height: 12px;
     cursor: pointer;
 }
 
 
 .download-game-description-container p::-webkit-scrollbar-track {
-    background-color: var(--background-color); 
-    border-radius: 10px; 
-    
+    background-color: var(--background-color);
+    border-radius: 10px;
+
 }
 
 
 .download-game-description-container p::-webkit-scrollbar-thumb {
     background-color: var(--secondary-color);
     max-height: 1px;
-    border-radius: 10px; 
+    border-radius: 10px;
     cursor: pointer;
 }
 
@@ -268,7 +296,7 @@
 
 
 /* ICON HEART FAV*/
-/* From Uiverse.io by catraco */ 
+/* From Uiverse.io by catraco */
 
 #download-game-favorite-button {
     position: absolute;
@@ -285,7 +313,18 @@
     justify-content: center;
 }
 
-/* From Uiverse.io by Omar-Molotov */ 
+#download-game-favorite-button svg {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+#download-game-favorite-button svg:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+
+/* From Uiverse.io by Omar-Molotov */
 /*------ Settings ------*/
 .container {
     display: flex;
@@ -296,48 +335,49 @@
     font-size: 32px;
     user-select: none;
     fill: var(--primary-color)
-  }
-  
-  .container .save-regular {
+}
+
+.container .save-regular {
     position: absolute;
     animation: keyframes-fill 1s;
     transform-origin: top;
-  }
-  
-  .container .save-solid {
+}
+
+.container .save-solid {
     position: absolute;
     animation: keyframes-fill 1s;
     display: none;
     transform-origin: top;
-  }
-  
-  /* ------ On check event ------ */
-  .container input:checked ~ .save-regular {
+}
+
+/* Hover effect */
+
+/* ------ On check event ------ */
+.container input:checked~.save-regular {
     display: none;
-  }
-  
-  .container input:checked ~ .save-solid {
+}
+
+.container input:checked~.save-solid {
     display: block;
-  }
-  
-  /* ------ Hide the default checkbox ------ */
-  .container input {
+}
+
+/* ------ Hide the default checkbox ------ */
+.container input {
     position: absolute;
     opacity: 0;
     cursor: pointer;
     height: 0;
     width: 0;
-  }
-  
-  /* ------ Animation ------ */
-  @keyframes keyframes-fill {
+}
+
+/* ------ Animation ------ */
+@keyframes keyframes-fill {
     0% {
-      transform: scale(0.8);
-      opacity: 80%;
+        transform: scale(0.8);
+        opacity: 80%;
     }
-  
+
     50% {
-      transform: scaleY(1);
+        transform: scaleY(1);
     }
-  }
-  
+}

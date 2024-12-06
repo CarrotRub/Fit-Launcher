@@ -35,13 +35,6 @@ function Topbar() {
 
     onMount(() => {
         console.log('App mounted. Setting up event listeners...');
-        
-        // Emit that the frontend is ready
-        //TODO: This will be used to trigger reloading the UI components when the frontend is ready
-        emit('frontend-ready');
-
-        // Get the image path from localStorage and set the background image accordingly
-        // TODO: Add it later
           
         // Add event listeners for Tauri app window controls
         document

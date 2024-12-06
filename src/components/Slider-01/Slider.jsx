@@ -14,7 +14,6 @@ const Slider = (props) => {
             console.log(href)
             setClicked(true);
             const uuid = crypto.randomUUID();
-            //TODO: Here use createStore
             setDownloadGamePageInfo({
                 gameTitle: title,
                 gameHref: href,

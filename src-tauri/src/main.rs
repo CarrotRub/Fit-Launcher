@@ -20,11 +20,14 @@ use std::fs;
 mod image_colors;
 pub use crate::image_colors::dominant_colors;
 
+mod game_info;
+pub use crate::game_info::games_informations;
+
 use scraper::{Html, Selector};
 use serde_json::Value;
+use std::error::Error;
 use tauri::Emitter;
 use tauri::Listener;
-use std::error::Error;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
@@ -105,8 +108,11 @@ fn parse_image_links(body: &str, start: usize, end: usize) -> Result<Vec<String>
     let mut images = Vec::new();
 
     for p_index in start..=end {
-        let selector = Selector::parse(&format!(".entry-content > p:nth-of-type({}) img[src]", p_index))
-            .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
+        let selector = Selector::parse(&format!(
+            ".entry-content > p:nth-of-type({}) img[src]",
+            p_index
+        ))
+        .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
 
         images.extend(
             document
@@ -147,8 +153,6 @@ async fn process_image_link(client: Arc<Client>, src_link: String) -> Result<Str
 
     Err(anyhow::anyhow!("No valid image found for {}", src_link))
 }
-
-
 
 async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     if STOP_FLAG.load(Ordering::Relaxed) {
@@ -233,13 +237,14 @@ async fn save_cache_to_file(
     cache_file_path: &Path,
     cache: &LruCache<String, Vec<String>>,
 ) -> Result<()> {
-    let cache_as_hashmap: HashMap<String, Vec<String>> = 
+    let cache_as_hashmap: HashMap<String, Vec<String>> =
         cache.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
 
     let cache_data = serde_json::to_string_pretty(&cache_as_hashmap)
         .map_err(|e| anyhow::anyhow!("Failed to serialize cache: {}", e))?;
 
-    tokio::fs::write(cache_file_path, cache_data).await
+    tokio::fs::write(cache_file_path, cache_data)
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to write cache to file: {}", e))?;
 
     Ok(())
@@ -461,6 +466,15 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
     }
 }
 
+#[tauri::command]
+fn allow_dir(app: tauri::AppHandle, path: std::path::PathBuf) -> Result<(), String> {
+    use tauri_plugin_fs::FsExt;
+
+    app.fs_scope()
+        .allow_directory(path.parent().unwrap_or(&path), true)
+        .map_err(|err| err.to_string())
+}
+
 async fn start() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
     info!(
@@ -470,7 +484,6 @@ async fn start() {
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
         NonZeroUsize::new(30).unwrap(),
     )));
-
 
     tauri::Builder
         ::default()
@@ -622,6 +635,7 @@ async fn start() {
             clear_file,
             stop_get_games_images,
             check_folder_path,
+            allow_dir,
             dominant_colors::check_dominant_color_vec,
             torrent_commands::torrents_list,
             torrent_commands::torrent_details,
@@ -635,7 +649,8 @@ async fn start() {
             torrent_commands::config_change_only_path,
             torrent_commands::config_change_full_config,
             commands_scraping::get_singular_game_info,
-            executable_custom_commands::start_executable
+            executable_custom_commands::start_executable,
+            games_informations::executable_info_discovery
         ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands
@@ -656,15 +671,14 @@ fn main() {
         .join("logs");
 
     let settings_dir = directories::BaseDirs::new()
-    .expect("Could not determine base directories")
-    .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
-    .join("com.fitlauncher.carrotrub")
-    .join("fitgirlConfig");
+        .expect("Could not determine base directories")
+        .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig");
 
     // Ensure the logs directory exists
     std::fs::create_dir_all(&logs_dir).expect("Failed to create logs directory");
     std::fs::create_dir_all(&settings_dir).expect("Failed to create logs directory");
-
 
     // Set up the file-based logger
     let file_appender = tracing_appender::rolling::never(&logs_dir, "app.log");
