@@ -1,70 +1,86 @@
 body {
-    font-family: "Mulish Variable";
-    width: 100vw;
-    min-height: 100vh;
-    overflow: hidden;
-    user-select: none;
-    overflow-y: scroll;
+  font-family: "Mulish Variable";
+  width: 100vw;
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+  overflow-y: scroll;
 }
 
 body::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
+
 /* COLORS CSS VARIABLES*/
 :root[data-theme="default-dark-purple"] {
-    --accent-color: rgba(187, 114, 160, 1); /* #bb72a0 */
-    --secondary-color: rgba(110, 53, 103, 1); /* #6e3567 */
-    --secondary-30-selected-color: rgba(110, 53, 103, 0.3); /* #6e3567 */
-    --non-selected-text-color: rgba(236, 224, 240, 0.5); /* #ece0f0 */
-    --primary-color: rgba(194, 158, 209, 1); /* #c29ed1 */
-    --secondary-20-color: rgba(110, 53, 103, 0.2); /* #6e3567 */
-    --text-color: rgba(236, 224, 240, 1); /* #ece0f0 */
-    --background-color: rgba(11, 7, 14, 1); /* #0b070e */
-    --70-background-color: rgba(11, 7, 14, 0.7);
-    --popup-background-color: rgba(15, 9, 18, 1);
-    --resume-button-accent-color: #64A3A8;
+  --accent-color: rgba(187, 114, 160, 1);
+  /* #bb72a0 */
+  --secondary-color: rgba(110, 53, 103, 1);
+  /* #6e3567 */
+  --secondary-30-selected-color: rgba(110, 53, 103, 0.3);
+  /* #6e3567 */
+  --non-selected-text-color: rgba(236, 224, 240, 0.5);
+  /* #ece0f0 */
+  --primary-color: rgba(194, 158, 209, 1);
+  /* #c29ed1 */
+  --secondary-20-color: rgba(110, 53, 103, 0.2);
+  /* #6e3567 */
+  --text-color: rgba(236, 224, 240, 1);
+  /* #ece0f0 */
+  --background-color: rgba(11, 7, 14, 1);
+  /* #0b070e */
+  --70-background-color: rgba(11, 7, 14, 0.7);
+  --popup-background-color: rgba(15, 9, 18, 1);
+  --resume-button-accent-color: #64A3A8;
+  --warning-orange: #e65d00;
 }
 
 #router-page {
-    height: 100%;
-    width: 100%;
+  height: 100%;
+  width: 100%;
 }
 
 .main-layout {
-    width: 100%;
-    height: 100%;
-    display: grid;
-    align-items: start;
-    align-content: stretch;
-    justify-items: start;
-    justify-content: stretch;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  align-items: start;
+  align-content: stretch;
+  justify-items: start;
+  justify-content: stretch;
 
- 
-    grid-template-rows: auto 1fr;
-    grid-template-columns: 1fr;
-    
 
-    grid-template-areas:
-        "topbar"
-        "content-page";
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 1fr;
+
+
+  grid-template-areas:
+    "topbar"
+    "content-page";
 }
 
 .content-page {
-    grid-area: content-page;
-    height: 100%;
-    width: 100%;
+  grid-area: content-page;
+  height: 100%;
+  width: 100%;
 }
 
 
 .notification-wrapper {
-  position: fixed; /* Makes sure it stays in a specific spot */
-  top: 16px;       /* Adjust the position to your preference */
-  right: 16px;     /* Aligns it to the right corner */
-  max-width: 450px; /* Keeps it from stretching too wide */
-  z-index: 1000;   /* Ensures it's on top of other components */
+  position: fixed;
+  /* Makes sure it stays in a specific spot */
+  top: 16px;
+  /* Adjust the position to your preference */
+  right: 16px;
+  /* Aligns it to the right corner */
+  max-width: 450px;
+  /* Keeps it from stretching too wide */
+  z-index: 1000;
+  /* Ensures it's on top of other components */
   display: flex;
   flex-direction: column;
-  gap: 8px;        /* Adds space between multiple notifications */
+  gap: 8px;
+  /* Adds space between multiple notifications */
 }
 
 /* Scrollbar customization */
@@ -88,7 +104,8 @@ html::-webkit-scrollbar-thumb {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%; /* Ensure the popup takes full screen */
+  height: 100%;
+  /* Ensure the popup takes full screen */
   background-color: rgba(0, 0, 0, 0.6);
   z-index: 1000;
   overflow: hidden;
@@ -108,39 +125,40 @@ html::-webkit-scrollbar-thumb {
 /* Ensure scrollbar respects the rounded corners */
 .popup-container {
   border-radius: 20px;
-  padding-right: 10px; /* Add space on the right to ensure scrollbar fits well */
+  padding-right: 10px;
+  /* Add space on the right to ensure scrollbar fits well */
   box-sizing: border-box;
   overflow-y: auto;
 }
 
 .main-content::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 .titlebar {
-    height: 30px;
-    background: #ffffff00;
-    user-select: none;
-    display: flex;
-    justify-content: flex-end;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100000;
+  height: 30px;
+  background: #ffffff00;
+  user-select: none;
+  display: flex;
+  justify-content: flex-end;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100000;
 }
-  
+
 .titlebar-button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   width: 30px;
   height: 30px;
-  color:white;
+  color: white;
 }
+
 .titlebar-button:hover {
   color: #df508e;
   cursor: pointer;
-  
+
 }
-  
