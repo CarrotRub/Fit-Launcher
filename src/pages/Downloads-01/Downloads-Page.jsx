@@ -165,26 +165,26 @@ function DownloadPage() {
 
         try {
             let fileContent = [];
-        
+
             try {
                 const existingData = await readTextFile(userDownloadedGames);
                 fileContent = JSON.parse(existingData); // Parse JSON content
             } catch (error) {
                 console.warn('File does not exist or is empty. Creating a new one.');
             }
-        
+
             // Ensure the content is an array
             if (!Array.isArray(fileContent)) {
                 throw new Error('File content is not an array, cannot append.');
             }
-        
+
             // Clean and append the new game data
             let cleanGameData = JSON.stringify(gameData, null, 2);  // Make sure it's a stringified JSON object
             fileContent.push(JSON.parse(cleanGameData)); // Push parsed JSON object, not string
-        
+
             // Write the updated array back to the file
             await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2)); // Write as pretty JSON array
-        
+
             console.log('New data appended successfully!');
         } catch (error) {
             console.error('Error appending to file:', error);
@@ -218,20 +218,31 @@ function DownloadPage() {
                             });
 
                             if (stats.finished) {
-                                // Clear the interval for the finished torrent
-                                clearInterval(intervalId);
-                                intervals.delete(torrentIdx);
 
-                                console.log("This torrent is done :", torrentIdx)
-                                await invoke('torrent_action_forget', { id: torrentIdx });
-                                setGlobalTorrentsInfo("torrents", torrents.filter(torrent => !torrent.torrentIdx));
-                                setDownloadingTorrents(torrents.filter(torrent => !torrent.torrentIdx))
                                 try {
                                     await addGameToDownloadedGames(torrent)
                                 } catch (error) {
                                     console.error('Error adding games to downloaded games :', error);
                                 }
 
+
+                                // Clear the interval for the finished torrent
+                                clearInterval(intervalId);
+                                intervals.delete(torrentIdx);
+
+                                console.log("This torrent is done:", torrentIdx);
+                                await invoke('torrent_action_forget', { id: torrentIdx });
+
+                                // Remove the finished torrent
+                                setGlobalTorrentsInfo("torrents", (prevTorrents) =>
+                                    prevTorrents.filter((torrent) => torrent.torrentIdx !== torrentIdx)
+                                );
+                                setDownloadingTorrents((prevTorrents) =>
+                                    prevTorrents.filter((torrent) => torrent.torrentIdx !== torrentIdx)
+                                );
+
+                                console.log(globalTorrentsInfo(), downloadingTorrents());
+                                console.log(globalTorrentsInfo(), downloadingTorrents())
 
                             }
                         }
@@ -251,7 +262,9 @@ function DownloadPage() {
         });
     });
 
-
+    createEffect(() => {
+        console.warn(downloadingTorrents())
+    })
     return (
         <div className="downloads-page content-page">
             <div className="downloads-page-action-bar">

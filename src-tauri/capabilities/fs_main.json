@@ -1,0 +1,81 @@
+{
+    "identifier": "fs_perms",
+    "description": "permissions that were migrated from v1",
+    "local": true,
+    "windows": [
+        "main"
+    ],
+    "permissions": [
+        "fs:default",
+        {
+            "identifier": "fs:scope",
+            "allow": [
+                {
+                    "path": "$APPDATA"
+                },
+                {
+                    "path": "$APPDATA/**"
+                },
+                {
+                    "path": "$APPCONFIG"
+                },
+                {
+                    "path": "$APPCONFIG/**"
+                },
+                {
+                    "path": "$APPCACHE/**"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-write-text-file",
+            "allow": [
+                {
+                    "path": "$APPDATA"
+                },
+                {
+                    "path": "$APPDATA/**"
+                },
+                {
+                    "path": "$APPCONFIG"
+                },
+                {
+                    "path": "$APPCONFIG/**"
+                },
+                {
+                    "path": "$APPCACHE/**"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-appdata-write",
+            "allow": [
+                {
+                    "path": "$APPDATA"
+                },
+                {
+                    "path": "$APPDATA/**"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-exists",
+            "allow": [
+                {
+                    "path": "**"
+                }
+            ]
+        },
+        {
+            "identifier": "fs:allow-appdata-write-recursive",
+            "allow": [
+                {
+                    "path": "$APPDATA"
+                },
+                {
+                    "path": "$APPDATA/**"
+                }
+            ]
+        }
+    ]
+}

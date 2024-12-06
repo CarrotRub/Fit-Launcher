@@ -25,7 +25,7 @@
     grid-column: 1;
     grid-row: 1;
 
-    padding-bottom: 24px;
+    margin-bottom: 24px;
 
 }
 
@@ -89,13 +89,13 @@
     width: 48vw;
     display: flex;
     
-    padding-left: 24px;
+    margin-left: 24px;
     justify-content: flex-end;
 
     box-sizing: border-box;
-    transition: transform 0.2s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 36px;
 }
-
 
 
 .main-game-image-zoomed-in img {
@@ -104,6 +104,7 @@
     object-fit: none;
 
     box-sizing: border-box;
+
 }
 
 .main-game-info-container {
@@ -122,8 +123,16 @@
 
     box-sizing: border-box;
     overflow: hidden;
-    transition: transform 0.2s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 
+}
+
+.main-game-image-zoomed-in:hover, .main-game-info-container:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5); 
+    z-index: 9;
+    border-radius: 36px;
+    
 }
 
 .main-game-image-zoomed-in:active, .main-game-info-container:active {
@@ -180,31 +189,27 @@
     margin-right: 24px;
 }
 
-#next-area-skipper:active {
-    transform: scale(0.7); /* Scale down slightly on click */
-    border-top-left-radius: 36px;
-    border-top-right-radius: 36px;
+#next-area-skipper:hover, #previous-area-skipper:hover {
+    transform: scale(0.8)
 }
-#previous-area-skipper:active {
-    transform: scale(0.8); /* Scale down slightly on click */
-    border-bottom-left-radius: 36px;
-    border-bottom-right-radius: 36px;
-}
+
 #next-area-skipper {
     grid-area: next-div;
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: transform 0.2s ease;
-    
+    transition: transform 0.3s ease;
+    border-radius: 36px;
 }
+
 
 #previous-area-skipper {
     grid-area: previous-div;
     display: flex; 
     justify-content: center; 
     align-items: center; 
-    transition: transform 0.2s ease;
+    transition: transform 0.3s ease;
+    border-radius: 36px;
 }
 
 #previous-next-divider {
