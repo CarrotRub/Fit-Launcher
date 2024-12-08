@@ -10,23 +10,27 @@
     align-items: center;
     align-content: center;
     justify-content: center;
-    
+
 
 }
 
 .basic-textinput-popup {
-    z-index: 15; /* More than 13 so that if it appears in any other popups it will be higher*/
-    position: absolute;
+    z-index: 15;
     transform: translateY(-5%);
-    background-color: var(--popup-background-color);
-    min-height: 50vh;
-    max-height: fit-content;
-    width: 50vw;
-    max-width: fit-content;
-    border-radius: 32px;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    position: relative;
+    padding: 16px;
+    box-sizing: border-box;
+    min-height: 50vh;
+    height: 50vh;
+    max-height: fit-content;
+    width: 50vw;
+    max-width: fit-content;
+    background-color: var(--popup-background-color);
+    border-radius: 32px;
 }
 
 .popup-footer-container {
@@ -35,7 +39,7 @@
     font-size: 12px;
     font-style: italic;
     position: absolute;
-    bottom: 20%;
+    bottom: 1%;
     display: flex;
 }
 
