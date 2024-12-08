@@ -1,23 +1,16 @@
 pub mod basic_scraping {
     use anyhow::Result;
-    use directories::ProjectDirs;
     use core::str;
-    use lazy_static::lazy_static;
-    use librqbit::Session;
-    use reqwest::Client;
-    use scraper::Selector;
     use serde::{Deserialize, Serialize};
-    use std::path::{Path, PathBuf};
+
+    use std::path::Path;
     use std::time::Instant;
-    use std::{fs, sync::Arc};
+
     use tauri::{Emitter, Manager};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::sync::Mutex;
-    use tracing::{error, info, warn};
+    use tracing::{error, info};
 
-    lazy_static! {
-        static ref SESSION: Mutex<Option<Arc<Session>>> = Mutex::new(None);
-    }
+    use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
 
     #[derive(Debug, Serialize, Deserialize)]
     struct Game {
@@ -59,8 +52,7 @@ pub mod basic_scraping {
         url: &str,
         filename: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let client = reqwest::Client::new();
-        let mut response = client.get(url).send().await?;
+        let mut response = CUSTOM_DNS_CLIENT.get(url).send().await?;
 
         let mut binding = app_handle.path().app_data_dir().unwrap();
         binding.push("sitemaps");
@@ -76,47 +68,45 @@ pub mod basic_scraping {
     }
 
     /// Helper function.
-    async fn check_url_status(client: &Client, url: &str) -> bool {
-        let response = client.head(url).send().await.unwrap();
+    async fn check_url_status(url: &str) -> bool {
+        let response = CUSTOM_DNS_CLIENT.head(url).send().await.unwrap();
         response.status().is_success()
     }
 
     #[tokio::main]
     pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
-        use std::path::Path;
         use tokio::fs;
-    
+
         let start_time = Instant::now();
-        let client = reqwest::Client::new();
         let mut recently_up_games: Vec<Game> = Vec::new();
-    
+
         for page_number in 1..=2 {
             let url = format!(
                 "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
                 page_number
             );
-    
-            let res = client.get(&url).send().await.map_err(|e| {
+
+            let res = CUSTOM_DNS_CLIENT.get(&url).send().await.map_err(|e| {
                 eprintln!("Failed to get a response from URL: {}", &url);
                 ScrapingError::ReqwestError(e)
             })?;
-    
+
             if !res.status().is_success() {
                 eprintln!("Error: Failed to connect to the website or the website is down. Status is : {:#?}", res.status());
                 return Ok(());
             }
-    
+
             let body = res.text().await.map_err(|e| {
                 eprintln!("Failed to get a body from URL: {}", &url);
                 ScrapingError::ReqwestError(e)
             })?;
-    
+
             let document = scraper::Html::parse_document(&body);
-    
+
             // Selector to get each game container (article)
             let article_selector = scraper::Selector::parse("article")
                 .map_err(|err| ScrapingError::SelectorError(err.to_string()))?;
-    
+
             for article_elem in document.select(&article_selector) {
                 let title_elem = article_elem
                     .select(&scraper::Selector::parse(".entry-title a").unwrap())
@@ -135,7 +125,7 @@ pub mod basic_scraping {
                         &scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap(),
                     )
                     .next();
-    
+
                 if let (Some(title_elem), Some(pic_elem), Some(desc_elem), Some(hreflink_elem)) =
                     (title_elem, pic_elem, desc_elem, hreflink_elem)
                 {
@@ -145,13 +135,13 @@ pub mod basic_scraping {
                     let href = hreflink_elem.value().attr("href").unwrap_or_default();
                     let tag = tag_elem
                         .map_or_else(|| "Unknown".to_string(), |e| e.text().collect::<String>());
-    
+
                     let magnet_link = desc_elem
                         .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
                         .next()
                         .and_then(|elem| elem.value().attr("href"))
                         .unwrap_or_default();
-    
+
                     if img.contains("imageban") {
                         recently_up_games.push(Game {
                             title,
@@ -165,10 +155,10 @@ pub mod basic_scraping {
                 }
             }
         }
-    
+
         let mut binding = app_handle.path().app_data_dir().unwrap();
         binding.push("tempGames");
-    
+
         fs::create_dir_all(&binding).await.map_err(|e| {
             eprintln!("Failed to create directories: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -176,10 +166,10 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-    
+
         let json_path = binding.join("newly_added_games.json");
         let temp_json_path = binding.join("newly_added_games.tmp.json");
-    
+
         let mut existing_games: Vec<Game> = Vec::new();
         if json_path.exists() {
             let mut file = fs::File::open(&json_path).await.map_err(|e| {
@@ -189,7 +179,7 @@ pub mod basic_scraping {
                     fn_name: "scraping_func()".to_string(),
                 }
             })?;
-    
+
             let mut file_content = String::new();
             file.read_to_string(&mut file_content).await.map_err(|e| {
                 eprintln!("Error reading file content: {:#?}", e);
@@ -198,13 +188,13 @@ pub mod basic_scraping {
                     fn_name: "scraping_func()".to_string(),
                 }
             })?;
-    
+
             existing_games = serde_json::from_str(&file_content).map_err(|e| {
                 eprintln!("Failed to parse existing JSON data: {:#?}", e);
                 ScrapingError::FileJSONError(e)
             })?;
         }
-    
+
         for (i, scraped_game) in recently_up_games.iter().enumerate() {
             if i < existing_games.len() && scraped_game.title == existing_games[i].title {
                 println!(
@@ -214,12 +204,12 @@ pub mod basic_scraping {
                 return Ok(());
             }
         }
-    
+
         let json_data = serde_json::to_string_pretty(&recently_up_games).map_err(|e| {
             eprintln!("Error serializing recently_up_games: {:#?}", e);
             ScrapingError::FileJSONError(e)
         })?;
-    
+
         let mut temp_file = fs::File::create(&temp_json_path).await.map_err(|e| {
             eprintln!("Temp file could not be created: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -227,15 +217,18 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-    
-        temp_file.write_all(json_data.as_bytes()).await.map_err(|e| {
-            eprintln!("Error writing to the temp file: {:#?}", e);
-            ScrapingError::CreatingFileError {
-                source: e,
-                fn_name: "scraping_func()".to_string(),
-            }
-        })?;
-    
+
+        temp_file
+            .write_all(json_data.as_bytes())
+            .await
+            .map_err(|e| {
+                eprintln!("Error writing to the temp file: {:#?}", e);
+                ScrapingError::CreatingFileError {
+                    source: e,
+                    fn_name: "scraping_func()".to_string(),
+                }
+            })?;
+
         fs::rename(&temp_json_path, &json_path).await.map_err(|e| {
             eprintln!("Error renaming temp file: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -243,16 +236,16 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-    
+
         let duration_time_process = Instant::now() - start_time;
         info!(
             "Data has been written to newly_added_games.json. Time was: {:#?}",
             duration_time_process
         );
-    
+
         Ok(())
     }
-    
+
     #[tokio::main]
     pub async fn popular_games_scraping_func(
         app_handle: tauri::AppHandle,
@@ -260,12 +253,10 @@ pub mod basic_scraping {
         let start_time = Instant::now();
         let mut popular_games: Vec<Game> = Vec::new();
 
-        let client = reqwest::Client::new();
-
         //TODO: Add selection for either of the month or of the year (default will be month from now on.) Through the settings front end.
         let url = "https://fitgirl-repacks.site/popular-repacks/";
 
-        let res = match client.get(url).send().await {
+        let res = match CUSTOM_DNS_CLIENT.get(url).send().await {
             Ok(response) => response,
             Err(e) => {
                 eprintln!("Failed to get a response from URL: {}", url);
@@ -390,7 +381,7 @@ pub mod basic_scraping {
             let href = hreflink_elem.value().attr("href").unwrap_or_default();
 
             // Make a new request to get the description, magnet link, and tag
-            let game_res = match client.get(href).send().await {
+            let game_res = match CUSTOM_DNS_CLIENT.get(href).send().await {
                 Ok(game_res) => game_res,
                 Err(e) => {
                     eprintln!("Error getting game response: {:#?}", e);
@@ -452,11 +443,11 @@ pub mod basic_scraping {
                     let image_src = elem.value().attr("src").unwrap_or_default();
                     if image_src.contains("240p") {
                         let primary_image = image_src.replace("240p", "1080p");
-                        if check_url_status(&client, &primary_image).await {
+                        if check_url_status(&primary_image).await {
                             primary_image.to_string()
                         } else {
                             let fallback_image = primary_image.replace("jpg.1080p.", "");
-                            if check_url_status(&client, &fallback_image).await {
+                            if check_url_status(&fallback_image).await {
                                 fallback_image
                             } else {
                                 image_src.to_string()
@@ -530,93 +521,106 @@ pub mod basic_scraping {
         app_handle: tauri::AppHandle,
     ) -> Result<(), Box<ScrapingError>> {
         info!("Starting recently_updated_games_scraping_func...");
-    
+
         let start_time = Instant::now();
         let mut recent_games: Vec<Game> = Vec::new();
-        let client = reqwest::Client::new();
         let url = "https://fitgirl-repacks.site/category/updates-digest/";
-    
-        let res = match client.get(url).send().await {
+
+        let res = match CUSTOM_DNS_CLIENT.get(url).send().await {
             Ok(response) => response,
             Err(e) => {
                 eprintln!("Network error while requesting {}: {}", &url, e);
-                app_handle.emit(
-                    "scraping_failed",
-                    format!(
-                        "Failed to scrape recently updated games. Network error: {}",
-                        e
-                    ),
-                ).unwrap();
+                app_handle
+                    .emit(
+                        "scraping_failed",
+                        format!(
+                            "Failed to scrape recently updated games. Network error: {}",
+                            e
+                        ),
+                    )
+                    .unwrap();
                 return Err(Box::new(ScrapingError::ReqwestError(e)));
             }
         };
-    
+
         if !res.status().is_success() {
-            eprintln!("Error: Failed to connect to the website or the website is down. Status is : {:#?}", res.status());
-            app_handle.emit(
-                "scraping_failed",
-                format!("Failed to connect to {}. Website might be down.", &url),
-            ).unwrap();
+            eprintln!(
+                "Error: Failed to connect to the website or the website is down. Status is : {:#?}",
+                res.status()
+            );
+            app_handle
+                .emit(
+                    "scraping_failed",
+                    format!("Failed to connect to {}. Website might be down.", &url),
+                )
+                .unwrap();
             return Ok(());
         }
-    
+
         let body = match res.text().await {
             Ok(body) => body,
             Err(e) => {
                 eprintln!("Failed to read response body from {}: {}", &url, e);
-                app_handle.emit(
-                    "scraping_failed",
-                    format!("Failed to read response body from {}.", &url),
-                ).unwrap();
+                app_handle
+                    .emit(
+                        "scraping_failed",
+                        format!("Failed to read response body from {}.", &url),
+                    )
+                    .unwrap();
                 return Ok(());
             }
         };
-    
+
         let document = scraper::Html::parse_document(&body);
-        let hreflink_selector = scraper::Selector::parse(".su-spoiler-content > a:first-child").unwrap();
-    
+        let hreflink_selector =
+            scraper::Selector::parse(".su-spoiler-content > a:first-child").unwrap();
+
         let hreflinks = document.select(&hreflink_selector);
         let mut game_count = 0;
-    
+
         // Prepare paths for file operations
         let mut binding = app_handle.path().app_data_dir().unwrap();
         binding.push("tempGames");
         let json_path = binding.join("recently_updated_games.json");
         let temp_json_path = binding.join("recently_updated_games.tmp.json");
-    
+
         for hreflink_elem in hreflinks {
             let href = match hreflink_elem.value().attr("href") {
                 Some(href) => href,
                 None => continue,
             };
-    
-            let game_res = match client.get(href).send().await {
+
+            let game_res = match CUSTOM_DNS_CLIENT.get(href).send().await {
                 Ok(game_res) => game_res,
                 Err(e) => {
                     eprintln!(
                         "Network error while requesting game data from {}: {}",
                         href, e
                     );
-                    app_handle.emit(
-                        "scraping_failed",
-                        format!("Failed to fetch game data from {}.", href),
-                    ).unwrap();
+                    app_handle
+                        .emit(
+                            "scraping_failed",
+                            format!("Failed to fetch game data from {}.", href),
+                        )
+                        .unwrap();
                     continue;
                 }
             };
-    
+
             let game_body = match game_res.text().await {
                 Ok(game_body) => game_body,
                 Err(e) => {
                     eprintln!("Failed to read game response body from {}: {}", href, e);
-                    app_handle.emit(
-                        "scraping_failed",
-                        format!("Failed to read game response body from {}.", href),
-                    ).unwrap();
+                    app_handle
+                        .emit(
+                            "scraping_failed",
+                            format!("Failed to read game response body from {}.", href),
+                        )
+                        .unwrap();
                     continue;
                 }
             };
-    
+
             let game_doc = scraper::Html::parse_document(&game_body);
             let title_selector = scraper::Selector::parse(".entry-title").unwrap();
             let images_selector = scraper::Selector::parse(".entry-content > p > a > img").unwrap();
@@ -624,7 +628,7 @@ pub mod basic_scraping {
             let magnetlink_selector = scraper::Selector::parse("a[href*='magnet']").unwrap();
             let tag_selector =
                 scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap();
-    
+
             let title = game_doc
                 .select(&title_selector)
                 .next()
@@ -650,7 +654,7 @@ pub mod basic_scraping {
                 .next()
                 .map(|elem| elem.text().collect::<String>())
                 .unwrap_or_else(|| "Unknown".to_string());
-    
+
             game_count += 1;
             recent_games.push(Game {
                 title,
@@ -660,39 +664,43 @@ pub mod basic_scraping {
                 href: href.to_string(),
                 tag: tag.to_string(),
             });
-    
+
             if game_count >= 20 {
                 break;
             }
         }
-    
+
         let json_data = match serde_json::to_string_pretty(&recent_games) {
             Ok(json_d) => json_d,
             Err(e) => {
                 eprintln!("Error serializing recent_games: {:#?}", e);
-                app_handle.emit(
-                    "scraping_failed",
-                    "Failed to serialize recently updated games.",
-                ).unwrap();
+                app_handle
+                    .emit(
+                        "scraping_failed",
+                        "Failed to serialize recently updated games.",
+                    )
+                    .unwrap();
                 return Err(Box::new(ScrapingError::FileJSONError(e)));
             }
         };
-    
+
         let mut temp_file = match tokio::fs::File::create(&temp_json_path).await {
             Ok(file) => file,
             Err(e) => {
                 eprintln!("Temp file could not be created: {:#?}", e);
-                app_handle.emit(
-                    "scraping_failed",
-                    "Failed to create temporary file for recently updated games.",
-                ).unwrap();
+                app_handle
+                    .emit(
+                        "scraping_failed",
+                        "Failed to create temporary file for recently updated games.",
+                    )
+                    .unwrap();
                 return Err(Box::new(ScrapingError::CreatingFileError {
                     source: e,
                     fn_name: "recently_updated_games_scraping_func()".to_string(),
                 }));
             }
         };
-    
+
         if let Err(e) = temp_file.write_all(json_data.as_bytes()).await {
             eprintln!("Error writing to the temporary file: {:#?}", e);
             return Err(Box::new(ScrapingError::CreatingFileError {
@@ -700,7 +708,7 @@ pub mod basic_scraping {
                 fn_name: "recently_updated_games_scraping_func()".to_string(),
             }));
         }
-    
+
         if let Err(e) = tokio::fs::rename(&temp_json_path, &json_path).await {
             eprintln!("Error renaming temp file: {:#?}", e);
             return Err(Box::new(ScrapingError::CreatingFileError {
@@ -708,21 +716,22 @@ pub mod basic_scraping {
                 fn_name: "recently_updated_games_scraping_func()".to_string(),
             }));
         }
-    
+
         let duration_time_process = start_time.elapsed();
         info!(
             "Data has been written to recently_updated_games.json. Time taken: {:#?}",
             duration_time_process
         );
-    
-        app_handle.emit(
-            "scraping_complete",
-            "Recently updated games scraping completed.",
-        ).unwrap();
-    
+
+        app_handle
+            .emit(
+                "scraping_complete",
+                "Recently updated games scraping completed.",
+            )
+            .unwrap();
+
         Ok(())
     }
-    
 }
 
 pub mod commands_scraping {
@@ -730,8 +739,8 @@ pub mod commands_scraping {
     use core::str;
     use scraper::Selector;
     use serde::{Deserialize, Serialize};
-    use tauri::Manager;
     use std::fs;
+    use tauri::Manager;
     use tracing::info;
 
     use anyhow::Result;
@@ -742,6 +751,7 @@ pub mod commands_scraping {
     use std::time::Instant;
 
     use crate::basic_scraping;
+    use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
 
     #[derive(Debug, Serialize, Deserialize)]
     struct SingularGame {
@@ -844,10 +854,9 @@ pub mod commands_scraping {
         let start_time = Instant::now();
 
         let mut searched_game: Vec<SingularGame> = Vec::new();
-        let client = reqwest::Client::new();
 
         let url = game_link.as_str();
-        let game_res = client.get(url).send().await?;
+        let game_res = CUSTOM_DNS_CLIENT.get(url).send().await?;
 
         let game_body = game_res.text().await?;
         let game_doc = scraper::Html::parse_document(&game_body);

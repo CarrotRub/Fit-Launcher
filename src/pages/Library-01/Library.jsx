@@ -13,6 +13,9 @@ import { invoke } from "@tauri-apps/api/core";
 import BasicPathInputPopup from "../../Pop-Ups/Basic-PathInput-PopUp/Basic-PathInput-PopUp";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import BasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
+import BasicAddToCollectionPopup from "../../Pop-Ups/Basic-AddToCollection-PopUp/Basic-AddToCollection-PopUp";
+import BasicErrorPopup from "../../Pop-Ups/Basic-Error-PopUp/Basic-Error-PopUp";
+
 const appDir = await appDataDir();
 const dirPath = appDir;
 
@@ -38,18 +41,12 @@ function Library() {
     const [downloadedGamesList, setDownloadedGamesList] = createSignal({});
     onMount(async () => {
         try {
-            // Get the path to the library folder
             const libraryPath = await userToDownloadGamesPath();
-
-            // Read all files in the folder
             const files = await fs.readDir(libraryPath);
 
-            // Create an object to store file contents
             const contents = {};
-
             for (const file of files) {
                 if (file.isFile) {
-                    // Read the file content if it's a file
                     const filePathToFile = await join(libraryPath, file.name);
                     const fileContent = await fs.readTextFile(filePathToFile);
                     const fileName = file.name.split('.')[0]; // Remove file extension
@@ -57,64 +54,53 @@ function Library() {
                 }
             }
 
-            // Update the signal
-            const firstKey = Object.keys(contents)[0];
-            const firstValue = contents[firstKey];
-            setFileContents(firstValue);
-            setCollectionList(prevList => ({
+            setCollectionList((prevList) => ({
                 ...prevList,
-                ...contents
+                ...contents,
             }));
         } catch (error) {
-            console.error('Error reading files:', error);
+            console.error("Error reading files:", error);
         }
-    });
 
-    onMount(async () => {
-        const collectionPath = await userCollectionPath();
-        const libraryPath = await userCollectionPath();
-        const files = await fs.readDir(collectionPath);
+        try {
+            const collectionPath = await userCollectionPath();
+            const files = await fs.readDir(collectionPath);
 
-        // Create an object to store file contents
-        const contents = {};
-
-        for (const file of files) {
-            if (file.isFile) {
-                // Read the file content if it's a file
-                const filePathToFile = await join(libraryPath, file.name);
-                const fileContent = await fs.readTextFile(filePathToFile);
-                const fileName = file.name.split('.')[0]; // Remove file extension
-                contents[fileName] = JSON.parse(fileContent);
-                const firstKey = Object.keys(contents)[0];
-                const firstValue = contents[firstKey];
-                setCollectionList(prevList => ({
-                    ...prevList,
-                    ...contents
-                }));
+            const contents = {};
+            for (const file of files) {
+                if (file.isFile) {
+                    const filePathToFile = await join(collectionPath, file.name);
+                    const fileContent = await fs.readTextFile(filePathToFile);
+                    const fileName = file.name.split('.')[0]; // Remove file extension
+                    contents[fileName] = JSON.parse(fileContent);
+                }
             }
+
+            setCollectionList((prevList) => ({
+                ...prevList,
+                ...contents,
+            }));
+        } catch (error) {
+            console.error("Error reading collections:", error);
+        }
+
+        try {
+            const downloadedGamesPath = await userDownloadedGamesPath();
+            const fullPath = await join(downloadedGamesPath, "downloaded_games.json");
+
+            const fileContent = await fs.readTextFile(fullPath);
+            const downloadedGames = JSON.parse(fileContent);
+
+            setCollectionList((prevList) => ({
+                ...prevList,
+                downloaded_games: downloadedGames,
+            }));
+
+            setDownloadedGamesList(downloadedGames);
+        } catch (error) {
+            console.error("Error reading downloaded games:", error);
         }
     });
-
-    onMount(async () => {
-
-        let downloadedGamesPath = await userDownloadedGamesPath();
-        downloadedGamesPath = await join(downloadedGamesPath, "downloaded_games.json")
-
-        // Create an object to store file contents
-        const contents = {};
-
-        const fileContent = await fs.readTextFile(downloadedGamesPath);
-        const fileName = "downloaded_games.json".split('.')[0]; // Remove file extension
-        contents[fileName] = JSON.parse(fileContent);
-
-        setCollectionList(prevList => ({
-            ...prevList,
-            ...contents
-        }));
-
-        setDownloadedGamesList(contents)
-
-    })
 
     async function createNewColletion(collectionName) {
 
@@ -129,6 +115,7 @@ function Library() {
                 ...prevList,
                 [cleanCollectioNameOnList]: { [cleanCollectioNameOnList]: {} }
             }));
+            window.location.reload()
         } catch (error) {
             console.error("error creating collection: ", error)
         }
@@ -169,10 +156,10 @@ function Library() {
                 </For>
             </div>
             <div className="library-content-games">
-                {Object.keys(collectionList()).length > 0 && collectionList()["downloaded_games"]?.length > 0 ? (
+                {collectionList()["downloaded_games"]?.length > 0 ? (
                     <GameDownloadedItem
                         downloadedGamesList={collectionList()["downloaded_games"]}
-                        collectionList={collectionList()}
+                        collectionsList={collectionList()}
                     />
                 ) : (
                     <p>No Games Downloaded</p>
@@ -182,14 +169,15 @@ function Library() {
     );
 }
 
-function GameDownloadedItem({ downloadedGamesList, collectionList }) {
+function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
     const [dynamicDownloadedGamesList, setDynamicDownloadedGamesList] = createSignal(downloadedGamesList)
     const [executableGamePath, setExecutableGamePath] = createSignal("");
     const [gamesListContent, setGamesListContent] = createSignal([])
 
-    createEffect(() => {
-        console.warn("Updated CollectionList in GameDownloadedItem:", collectionList);
-    });
+    onMount(() => {
+        console.log(collectionsList)
+    })
+
     onMount(async () => {
 
         const userPath = await userDownloadedGamesPath();
@@ -220,9 +208,7 @@ function GameDownloadedItem({ downloadedGamesList, collectionList }) {
                     return game;
                 } else if (executableInfoPath) {
                     try {
-
                         const gameInfo = await getExecutableInfo(executableInfoPath, game?.torrentOutputFolder);
-                        console.warn(gameInfo);
                     } catch (error) {
                         console.error("Error fetching executable info:", error);
                     }
@@ -296,7 +282,6 @@ function GameDownloadedItem({ downloadedGamesList, collectionList }) {
         async function addNewPathToFile(path) {
             try {
                 const executableInfo = await getExecutableInfo(path, gameObj?.torrentOutputFolder?.replace(' [FitGirl Repack]', '')); // Fetch executable info
-                console.warn(executableInfo);
                 await writeExecutableInfo(gameObj, executableInfo); // Save to file
             } catch (error) {
                 console.error("Error adding executable path:", error);
@@ -320,8 +305,6 @@ function GameDownloadedItem({ downloadedGamesList, collectionList }) {
             pageContent
         );
     }
-
-    //TODO: IT HAS TO BE THE SIZE OF THE FOLDER NOT THE EXECUTABLE 
 
     async function handleStartGame(gameExePath) {
 
@@ -353,8 +336,31 @@ function GameDownloadedItem({ downloadedGamesList, collectionList }) {
         }
     }
 
-    async function handleAddToCollection(gameObj) {
+    function handleAddToCollections(gameObj) {
+        const pageContent = document.querySelector(".library")
+        console.log(collectionsList)
+        try {
+            render(
+                () => <BasicAddToCollectionPopup
+                    infoTitle={"Are you sure you want to run this Game"}
+                    infoMessage={`Do you want to start playing ?`}
+                    collectionsList={collectionsList}
+                    infoFooter={''}
+                    gameObjectInfo={gameObj}
+                />
+                , pageContent
+            )
 
+        } catch (error) {
+            render(
+                () => <BasicErrorPopup
+                    errorTitle={"AN ERROR ADDING YOUR GAME A COLLECTION HAPPENED"}
+                    errorMessage={`Please check if you haven't done any weird things I have no idea why this wouldn't work :( : ${error}`}
+                    errorFooter={''}
+                />
+                , pageContent
+            )
+        }
     }
 
     return (
@@ -376,11 +382,11 @@ function GameDownloadedItem({ downloadedGamesList, collectionList }) {
                         )
                         }
                         <div className="library-content-list-game-item-game-options">
-                            <button>
-                                <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1860.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1860.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#bb72a0;stroke-opacity:1" class="stroke-shape" /></g><path d="M1872.5 1559.16v6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1872.5 1559.16v6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#bb72a0;stroke-opacity:1" class="stroke-shape" /></g><path d="M1875.5 1562.16h-6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1875.5 1562.16h-6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#bb72a0;stroke-opacity:1" class="stroke-shape" /></g></g></svg>
+                            <button onClick={() => { handleAddToCollections(game) }}>
+                                <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1860.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1860.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1872.5 1559.16v6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1872.5 1559.16v6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1875.5 1562.16h-6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1875.5 1562.16h-6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g></g></svg>
                             </button>
                             <button>
-                                <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1913.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1913.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#bb72a0;stroke-opacity:1" class="stroke-shape" /></g><circle cx="1925.5" cy="1564.16" style="fill:none" class="fills" r="3" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1925.5" cy="1564.16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#bb72a0;stroke-opacity:1" class="stroke-shape" r="3" /></g></g></svg>
+                                <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1913.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1913.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><circle cx="1925.5" cy="1564.16" style="fill:none" class="fills" r="3" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1925.5" cy="1564.16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" r="3" /></g></g></svg>
                             </button>
                         </div>
                         <ul className="library-content-list-game-item-executable-info">
@@ -429,9 +435,15 @@ function GameDownloadedItem({ downloadedGamesList, collectionList }) {
     );
 }
 
-function CollectionList({ collectionGamesList, collectionName }) {
+function CollectionList({ collectionGamesList, collectionName, collectionsList }) {
     const [gamesList, setGamesList] = createSignal({})
     const [clicked, setClicked] = createSignal(false);
+    const [isExpanded, setIsExpanded] = createSignal(true);
+
+    const toggleExpand = () => {
+        setIsExpanded(!isExpanded());
+    };
+
     const navigate = useNavigate();
 
     function extractMainTitle(title) {
@@ -473,39 +485,51 @@ function CollectionList({ collectionGamesList, collectionName }) {
         }
     })
 
+
     return (
         <div className="library-collection-list">
-
-            <div className="library-collection-list-title">
-                <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="103.5 287.8 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="103.5" y="287.8" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m106.5 295.8 4-4 4 4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m106.5 295.8 4-4 4 4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M110.5 291.8v16" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M110.5 291.8v16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M114.5 299.8h4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M114.5 299.8h4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M114.5 303.8h7" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M114.5 303.8h7" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M114.5 307.8h10" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M114.5 307.8h10" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g></g></svg>
+            <div className="library-collection-list-title" onClick={toggleExpand}>
+                <svg style={{
+                    transform: isExpanded() ? 'rotate(0deg)' : 'rotate(180deg)',
+                    transition: 'transform 0.2s ease',
+                }} width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="103.5 287.8 24 24" fill="none"><g class="fills"><rect rx="0" ry="0" x="103.5" y="287.8" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m106.5 295.8 4-4 4 4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m106.5 295.8 4-4 4 4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M110.5 291.8v16" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M110.5 291.8v16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M114.5 299.8h4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M114.5 299.8h4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M114.5 303.8h7" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M114.5 303.8h7" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M114.5 307.8h10" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M114.5 307.8h10" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:1" class="stroke-shape" /></g></g></svg>
                 <p>{formatKeyName(collectionName)}</p>
-
             </div>
-            <ul className="library-collection-list-item">
-                {gamesList().length > 0 ? (
-                    gamesList().map((game, index) => (
-                        <li
-                            key={index}
-                            className="library-collection-list-game-item"
-                            onClick={() => handleGameClick(
-                                game?.title ?? game?.torrentExternInfo?.title,
-                                game?.filePath ?? game?.torrentExternInfo?.filePath,
-                                game?.href ?? game?.torrentExternInfo?.href
-                            )}
-                        >
-                            <img
-                                src={game?.img ?? game?.torrentExternInfo?.img}
-                                alt={extractMainTitle(game?.title ?? game?.torrentExternInfo?.title)}
-                            />
-                            <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
-                                {extractMainTitle(game?.title ?? game?.torrentExternInfo?.title)}
-                            </span>
-                        </li>
-                    ))
-                ) : (
-                    <p>No games found</p>
-                )}
-            </ul>
+            {isExpanded() && (
+                <ul className="library-collection-list-item">
+                    {gamesList().length > 0 ? (
+                        gamesList().map((game, index) => (
+                            <li
+                                key={index}
+                                className="library-collection-list-game-item"
+                                onClick={() =>
+                                    handleGameClick(
+                                        game?.title ?? game?.torrentExternInfo?.title,
+                                        game?.filePath ?? game?.torrentExternInfo?.filePath,
+                                        game?.href ?? game?.torrentExternInfo?.href
+                                    )
+                                }
+                            >
+                                <img
+                                    src={game?.img ?? game?.torrentExternInfo?.img}
+                                    alt={extractMainTitle(
+                                        game?.title ?? game?.torrentExternInfo?.title
+                                    )}
+                                />
+                                <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
+                                    {extractMainTitle(
+                                        game?.title ?? game?.torrentExternInfo?.title
+                                    )}
+                                </span>
+
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m-6 5v6m4-6v6" /></svg>
+                            </li>
+                        ))
+                    ) : (
+                        <p>No games found</p>
+                    )}
+                </ul>
+            )}
         </div>
     );
 }
