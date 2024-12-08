@@ -23,6 +23,9 @@ pub use crate::image_colors::dominant_colors;
 mod game_info;
 pub use crate::game_info::games_informations;
 
+mod net_client_config;
+pub use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
+
 use scraper::{Html, Selector};
 use serde_json::Value;
 use std::error::Error;
@@ -32,9 +35,8 @@ use tracing::error;
 use tracing::info;
 use tracing::warn;
 
-use core::str;
+use std::str;
 
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
@@ -65,7 +67,6 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 use futures::stream::{self, StreamExt};
-use tokio::task;
 
 use chrono::Utc;
 
@@ -98,8 +99,8 @@ struct GameImages {
 }
 
 /// Helper function.
-async fn check_url_status(client: &Client, url: &str) -> Result<bool> {
-    let response = client.head(url).send().await?;
+async fn check_url_status(url: &str) -> Result<bool> {
+    let response = CUSTOM_DNS_CLIENT.head(url).send().await?;
     Ok(response.status().is_success())
 }
 
@@ -124,12 +125,11 @@ fn parse_image_links(body: &str, start: usize, end: usize) -> Result<Vec<String>
     Ok(images)
 }
 
-async fn fetch_image_links(client: Arc<Client>, body: &str) -> Result<Vec<String>> {
+async fn fetch_image_links(body: &str) -> Result<Vec<String>> {
     let initial_images = parse_image_links(body, 3, 10)?;
-    let client = Arc::clone(&client);
 
     let processed_images = stream::iter(initial_images)
-        .map(|src| process_image_link(Arc::clone(&client), src))
+        .map(process_image_link)
         .buffer_unordered(10)
         .filter_map(|result| async move { result.ok() })
         .collect::<Vec<_>>()
@@ -138,15 +138,15 @@ async fn fetch_image_links(client: Arc<Client>, body: &str) -> Result<Vec<String
     Ok(processed_images)
 }
 
-async fn process_image_link(client: Arc<Client>, src_link: String) -> Result<String> {
+async fn process_image_link(src_link: String) -> Result<String> {
     if src_link.contains("jpg.240p.") {
         let primary_image = src_link.replace("240p", "1080p");
-        if check_url_status(&client, &primary_image).await? {
+        if check_url_status(&primary_image).await? {
             return Ok(primary_image);
         }
 
         let fallback_image = primary_image.replace("jpg.1080p.", "");
-        if check_url_status(&client, &fallback_image).await? {
+        if check_url_status(&fallback_image).await? {
             return Ok(fallback_image);
         }
     }
@@ -159,9 +159,8 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
 
-    let client = Arc::new(Client::new());
-    let body = client.get(url).send().await?.text().await?;
-    let images = fetch_image_links(client, &body).await?;
+    let body = CUSTOM_DNS_CLIENT.get(url).send().await?.text().await?;
+    let images = fetch_image_links(&body).await?;
 
     Ok(images)
 }
@@ -214,7 +213,7 @@ async fn get_games_images(
     // Save fetched data back to the cache
     let mut cache = image_cache.lock().await;
     cache.put(game_link.clone(), image_srcs.clone());
-    save_cache_to_file(&cache_file_path, &*cache).await?;
+    save_cache_to_file(&cache_file_path, &cache).await?;
 
     info!("Time elapsed to find images: {:?}", now.elapsed());
 
@@ -403,19 +402,6 @@ fn check_file_for_tags(path: &Path) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn setup_logging(logs_dir: PathBuf) -> WorkerGuard {
-    let file_appender = tracing_appender::rolling::never(logs_dir, "app.log");
-    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
-
-    tracing_subscriber::fmt()
-        .with_writer(file_writer)
-        .with_ansi(false)
-        .with_max_level(tracing::Level::INFO)
-        .init();
-
-    guard
 }
 
 // Function to perform a network request after ensuring frontend is ready, and emit network-failure if the request fails

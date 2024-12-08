@@ -3,19 +3,37 @@
     grid-template-columns: 18vw 1fr;
     grid-template-areas:
         "sidebar library-content";
-    justify-content: stretch;
-    align-content: stretch;
+    height: 100vh;
+    overflow: hidden;
 }
+
+/*--------------------- SIDEBAR COLLECTIONS ---------------------*/
 
 .library-sidebar {
     grid-area: sidebar;
-    border: solid var(--accent-color);
-    border-width: 0 2px 0 0;
-
+    border-right: 2px solid var(--accent-color);
     display: flex;
     flex-direction: column;
     gap: 32px;
     padding: 24px;
+    padding-top: 12vh;
+    width: 18vw;
+    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+.library-sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.library-content-games {
+    grid-area: library-content;
+    box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .library-create-collection-button {
@@ -52,7 +70,7 @@
 .library-collection-list-title {
     margin: 0;
     font-family: "Mulish Variable";
-    padding: 1em 1em 0 1em;
+    padding: 1em 1em 1em 1em;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -70,6 +88,7 @@
     cursor: pointer;
 }
 
+
 .library-collection-list-item {
     display: flex;
     flex-direction: column;
@@ -79,12 +98,21 @@
     margin: 0;
 }
 
+
+/*--------------------- SIDEBAR COLLECTIONS ---------------------*/
+
+
+/*--------------------- MAIN CONTENT GAMES ---------------------*/
+
+
 .library-collection-list-game-item {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 4px;
     cursor: pointer;
+    list-style-type: none;
+    /* Move this from `li` to the main class */
 }
 
 .library-collection-list-game-item img {
@@ -94,10 +122,20 @@
 
 .library-collection-list-game-item span {
     font-size: 1rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
-.library-collection-list-game-item li {
-    list-style-type: none;
+.library-collection-list-game-item svg {
+    margin-left: auto;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
 }
 
 .library-content-list-games {
@@ -183,13 +221,23 @@
     padding: 6px;
     border: none;
     border-radius: 6px;
-
     display: flex;
     align-items: center;
     justify-content: center;
-    justify-items: center;
-
     cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.library-content-list-game-item-game-options button:hover {
+    transform: scale(1.05);
+}
+
+.library-content-list-game-item-game-options button svg {
+    transition: fill 0.3s ease, stroke 0.3s ease, transform 0.3s ease;
+}
+
+.library-content-list-game-item-game-options button:hover {
+    transform: scale(1.1);
 }
 
 .library-content-list-game-item-executable-info {
