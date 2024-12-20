@@ -26,10 +26,10 @@ async function parseNewGameData() {
         const gameData = JSON.parse(fileContent)
 
         // Load the user's settings to check if NSFW content should be hidden
-        const settingsPath = await path.join(appDir, 'fitgirlConfig', 'settings.json');
+        const settingsPath = await path.join(appDir, 'fitgirlConfig', 'settings', 'gamehub', 'gamehub.json');
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
-        const hideNSFW = true;
+        const hideNSFW = settings.nsfw_censorship;
 
         // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
@@ -49,11 +49,11 @@ function NewlyAddedGames() {
     const [titlesList, setTitlesList] = createSignal([])
     const [hrefsList, setHrefsList] = createSignal([])
     const [numberOfGames, setNumberOfGames] = createSignal(1);
-    const [filteredImages, setFilteredImages] = createSignal([]) 
+    const [filteredImages, setFilteredImages] = createSignal([])
 
     const [sliderComponent, setSliderComponent] = createSignal(null)
 
-    onMount( async () => {
+    onMount(async () => {
         try {
             const newlyAddedGamesData = await parseNewGameData();
             setImagesObject(newlyAddedGamesData);
@@ -68,9 +68,9 @@ function NewlyAddedGames() {
             setHrefsList(hrefsObjsList);
 
             setNumberOfGames(newlyAddedGamesData?.length)
-    
+
             setFilteredImages(newlyAddedGamesData);
-            
+
         } catch (error) {
             console.error("Error parsing game data : ", error)
         }
@@ -83,13 +83,13 @@ function NewlyAddedGames() {
             </div>
             {
                 filteredImages().length > 0 ? (
-                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()} hrefs={hrefsList()}/>
+                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()} hrefs={hrefsList()} />
                 ) : (
                     null
                 )
             }
         </div>
-        
+
     )
 }
 

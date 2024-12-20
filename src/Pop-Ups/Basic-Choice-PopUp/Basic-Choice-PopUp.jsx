@@ -5,16 +5,24 @@ import '../Download-PopUp/Download-PopUp.css'
 const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
 
     function closePopup() {
-        const fullPopup = document.querySelector('.popup-choice-overlay')
-
-        if (fullPopup) {
-            fullPopup.remove()
+        const popup = document.querySelector('.popup-choice-overlay');
+        if (popup) {
+            popup.classList.remove('show');
+            setTimeout(() => {
+                popup.remove();
+            }, 300); // Matches transition duration
         }
     }
 
     onMount(() => {
-        console.log(infoMessage)
-    })
+        const popup = document.querySelector('.popup-choice-overlay');
+        if (popup) {
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 10); // Small delay to trigger transition
+        }
+    });
+
     return (
         <div className="popup-choice-overlay">
             <div className="basic-choice-popup">

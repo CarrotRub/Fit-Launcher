@@ -6,10 +6,11 @@
 }
 
 .slider-container {
-   display: flex;
+    display: flex;
     gap: 12px;
     transition: transform 0.4s ease;
     overflow-x: hidden;
+    overflow-y: hidden;
     padding: 12px;
     scroll-snap-type: x mandatory;
 }
@@ -28,8 +29,9 @@
 
 .slider-image-container:hover {
     transform: scale(1.1);
-    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5); 
+    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5);
     z-index: 9;
+
 }
 
 .image-slider-gradient {
@@ -46,7 +48,8 @@
     background-color: var(--background-color);
     align-self: flex-end;
 
-    pointer-events: none; /* If this isn't none then it will be clickable and that's no no good*/
+    pointer-events: none;
+    /* If this isn't none then it will be clickable and that's no no good*/
     z-index: 9;
 }
 
@@ -57,9 +60,10 @@
     display: flex;
     justify-content: space-between;
     transform: translateY(-50%);
-    pointer-events: none; /* If this isn't none then it will be clickable and that's no no good*/
+    pointer-events: none;
+    /* If this isn't none then it will be clickable and that's no no good*/
     z-index: 10;
-    
+
 }
 
 .skipper {
@@ -85,7 +89,7 @@
 
 .skipper svg:hover {
     transform: scale(1.2);
-    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5); 
+    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5);
     z-index: 9;
     border-radius: 36px;
 }

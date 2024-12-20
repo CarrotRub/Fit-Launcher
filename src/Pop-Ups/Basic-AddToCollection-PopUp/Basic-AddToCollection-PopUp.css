@@ -17,6 +17,9 @@
 .basic-addtocollection-popup {
     z-index: 15;
     transform: translateY(-5%);
+    transform: scale(0.5);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 
     display: flex;
     flex-direction: column;
@@ -31,6 +34,12 @@
     max-width: fit-content;
     background-color: var(--popup-background-color);
     border-radius: 32px;
+
+}
+
+.popup-addtocollection-overlay.show .basic-addtocollection-popup {
+    transform: scale(1);
+    opacity: 1;
 
 }
 

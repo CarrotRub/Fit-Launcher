@@ -90,14 +90,16 @@ mod checklist_automation {
 
 #[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::{thread, time};
     use tracing::{error, info};
 
     use crate::mighty::windows_controls_processes;
+    use crate::settings_configuration::get_installation_settings;
 
     #[allow(dead_code)]
+    #[deprecated(note = "please use `start_executable_components_args` instead")]
     /// DEPRECATED VERSION OF THE START_EXECUTABLE.
     ///
     /// PLEASE USE start_executable_components_args(path: String, checkboxes_list: &\[String]) INSTEAD.
@@ -117,44 +119,48 @@ pub mod windows_ui_automation {
         }
     }
 
+    //TODO: Add one for specifical VERY_SILENT mode but only for no 2gb limit and nothing specifical.
+
     /// Start an executable using tauri::command and gets the components that needs to be checked.
     ///
-    /// # ! ONLY USE WHEN THE 2GB LIMIT IS UNCHECKED !
-    ///
-    ///
-    /// Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
-    pub fn start_executable_components_args(path: String, checkboxes_list: &[String]) {
-        // Here, use this **ONLY** for windows OS
+    pub fn start_executable_components_args(path: PathBuf) {
         #[cfg(target_os = "windows")]
         {
+            let installation_settings = get_installation_settings();
+            let mut checkboxes_list: Vec<String> = Vec::new();
+
+            if installation_settings.directx_install {
+                checkboxes_list.push("directx".to_string());
+            }
+            if installation_settings.microsoftcpp_install {
+                checkboxes_list.push("microsoft".to_string());
+            }
             let components = checkboxes_list.join(",");
-            let args = format!("/COMPONENTS=\"{}\"", components);
+            let args_list = format!("/COMPONENTS=\"{}\"", components);
 
-            match Command::new(&path).arg(args).spawn() {
-                Ok(child) => {
-                    info!("Executable started with PID: {}", child.id());
-                }
-                Err(e) => {
-                    error!("Failed to start executable: {}", e);
-
-                    if let Some(32) = e.raw_os_error() {
-                        error!("Another process is using the executable.");
+            let temp_path = path.with_extension("temp_setup.exe");
+            match std::fs::copy(&path, &temp_path) {
+                Ok(_) => match Command::new(&temp_path).arg(args_list).spawn() {
+                    Ok(child) => {
+                        info!("Executable started with PID: {}", child.id());
                     }
+                    Err(e) => {
+                        error!("Failed to start executable: {}", e);
+                    }
+                },
+                Err(e) => {
+                    error!("Failed to copy executable: {}", e);
                 }
             }
         }
     }
 
     #[cfg(target_os = "windows")]
-    pub async fn automate_until_download(
-        user_checkboxes_to_check: Vec<String>,
-        path_to_game: &str,
-        should_two_gb_limit: bool,
-    ) {
+    pub async fn automate_until_download(path_to_game: &str) {
         // Skip Select Setup Language.
         windows_controls_processes::click_ok_button();
         // Skip Select Setup Language.
-
+        let should_two_gb_limit = get_installation_settings().two_gb_limit;
         if should_two_gb_limit {
             // Skip until checkboxes.
             thread::sleep(time::Duration::from_millis(1000));
@@ -199,6 +205,7 @@ pub mod windows_ui_automation {
         }
 
         // * No need for this anymore since we can contact the components directly through commandline.
+        // My stupid self forgor that this was still usable :(
         // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
         // thread::sleep(time::Duration::from_millis(1000));
         // checklist_automation::get_checkboxes_from_list(user_checkboxes_to_check);

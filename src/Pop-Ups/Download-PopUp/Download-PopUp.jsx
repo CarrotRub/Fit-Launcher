@@ -7,7 +7,6 @@ import { render } from "solid-js/web";
 import { invoke } from "@tauri-apps/api/core";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { addGlobalTorrentsInfo, globalTorrentsInfo } from "../../components/functions/dataStoreGlobal";
-import { setInstallationConfigurations, installationConfigurations } from "../../components/functions/dataStoreGlobal";
 import * as fs from "@tauri-apps/plugin-fs"
 import { useNavigate } from "@solidjs/router";
 
@@ -17,27 +16,81 @@ const cacheDirPath = cacheDir;
 const appDir = await appDataDir();
 const dirPath = appDir;
 
-const DownloadPopup = ({ closePopup, gameTitle, gameMagnet, externFullGameInfo }) => {
+const DownloadPopup = ({ badClosePopup, gameTitle, gameMagnet, externFullGameInfo }) => {
     const [downloadPath, setDownloadPath] = createSignal('')
     const [isPathValid, setIsPathValid] = createSignal(false);
     const [isFinalStep, setIsFinalStep] = createSignal(false);
     const [twoGBLimit, setTwoGBLimit] = createSignal(false)
     const [directXInstall, setDirectXInstall] = createSignal(false)
-    const [microsoftCPPInstall, setMicrosoftCPPInstall] = createSignal(false)
-
-    const handleCheckboxChange = (setter, configKey, value) => {
-        setter(value);  // Update the signal
-        setInstallationConfigurations(configKey, value);  // Save the configuration
-    };
+    const [microsoftCPPInstall, setMicrosoftCPPInstall] = createSignal(false);
+    const [installationSettings, setInstallationSettings] = createSignal(null)
+    function closePopup() {
+        const popup = document.querySelector('.popup-overlay');
+        if (popup) {
+            popup.classList.remove('show');
+            setTimeout(() => {
+                popup.remove();
+                badClosePopup()
+            }, 300); // Matches transition duration
+        }
+    }
 
     onMount(() => {
-        setTwoGBLimit(installationConfigurations.two_gb_limit);
-        setDirectXInstall(installationConfigurations.directx_install)
-        setMicrosoftCPPInstall(installationConfigurations.microsoftcpp_install)
+        const popup = document.querySelector('.popup-overlay');
+        if (popup) {
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 10); // Small delay to trigger transition
+        }
+    });
+
+    const handleCheckboxChange = (type, value) => {
+        const updatedSettings = { ...installationSettings() }; // Clone the current settings
+
+        switch (type) {
+            case 'two_gb_limit':
+                setTwoGBLimit(value);
+                updatedSettings.two_gb_limit = value;
+                break;
+            case 'directx':
+                setDirectXInstall(value);
+                updatedSettings.directx_install = value;
+                break;
+            case 'microsoftcpp':
+                setMicrosoftCPPInstall(value);
+                updatedSettings.microsoftcpp_install = value;
+                break;
+            default:
+                console.warn(`Unknown type: ${type}`);
+                return;
+        }
+
+        setInstallationSettings(updatedSettings);
+    };
+    onMount(async () => {
+        try {
+            let install_settings = await invoke('get_installation_settings');
+            setInstallationSettings(install_settings);
+            setTwoGBLimit(install_settings.two_gb_limit);
+            setDirectXInstall(install_settings.directx_install)
+            setMicrosoftCPPInstall(install_settings.microsoftcpp_install)
+        } catch (error) {
+            await message(`Error Getting Installation Settings : ${error}`, { title: 'FitLauncher', kind: 'error' })
+        }
     })
 
+    createEffect(async () => {
+        try {
+            await invoke('change_installation_settings', { settings: installationSettings() });
+        } catch (error) {
+
+        }
+    })
+
+    //TODO: add background worker that will automatically run the auto install if needed depending on the settings
+
     onMount(async () => {
-        let fullTorrentConfig = await invoke('get_torrent_full_config');
+        let fullTorrentConfig = await invoke('get_torrent_full_settings');
 
         setDownloadPath(fullTorrentConfig.default_download_location);
         console.warn(fullTorrentConfig.default_download_location)
@@ -74,7 +127,7 @@ const DownloadPopup = ({ closePopup, gameTitle, gameMagnet, externFullGameInfo }
 
     onMount(async () => {
         try {
-            let fullTorrentConfig = await invoke('get_torrent_full_config');
+            let fullTorrentConfig = await invoke('get_torrent_full_settings');
             const savedPath = fullTorrentConfig.default_download_location;
             setDownloadPath(savedPath);
 
@@ -169,7 +222,7 @@ const DownloadPopup = ({ closePopup, gameTitle, gameMagnet, externFullGameInfo }
                                 <ul className="popup-list-options">
                                     <li className="popup-item-options">
                                         <label className="custom-checkbox">
-                                            <input type="checkbox" checked={twoGBLimit()} onChange={(e) => handleCheckboxChange(setTwoGBLimit, 'two_gb_limit', e.target.checked)} />
+                                            <input type="checkbox" checked={twoGBLimit()} onChange={(e) => handleCheckboxChange('two_gb_limit', e.target.checked)} />
                                             <span className="checkbox-mark"></span>
                                             Limit to 2GB of RAM
                                             <i>If you have 8GB or less, it <b>will</b> be checked at installation</i>
@@ -177,14 +230,14 @@ const DownloadPopup = ({ closePopup, gameTitle, gameMagnet, externFullGameInfo }
                                     </li>
                                     <li className="popup-item-options">
                                         <label className="custom-checkbox">
-                                            <input type="checkbox" checked={directXInstall()} onChange={(e) => handleCheckboxChange(setDirectXInstall, 'directx_install', e.target.checked)} />
+                                            <input type="checkbox" checked={directXInstall()} onChange={(e) => handleCheckboxChange('directx', e.target.checked)} />
                                             <span className="checkbox-mark"></span>
                                             Download and Install DirectX
                                         </label>
                                     </li>
                                     <li className="popup-item-options">
                                         <label className="custom-checkbox">
-                                            <input type="checkbox" checked={microsoftCPPInstall()} onChange={(e) => handleCheckboxChange(setMicrosoftCPPInstall, 'microsoftcpp_install', e.target.checked)} />
+                                            <input type="checkbox" checked={microsoftCPPInstall()} onChange={(e) => handleCheckboxChange('microsoftcpp', e.target.checked)} />
                                             <span className="checkbox-mark"></span>
                                             Download and Install any VCRedist {'(Microsoft C++ 20XX)'}
                                         </label>
@@ -333,7 +386,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
         return missingFiles;
     };
 
-    //This function is there because of some issues in librqbit that create a placeholder for the files that aren't selected but doesn't download anything inside of it.
+    //*This function is there because of some issues in librqbit that create a placeholder for the files that aren't selected but doesn't download anything inside of it.
     async function deleteUselessFiles(fileList) {
         const torrentOutputFolder = mainTorrentDetails().output_folder; // Get the folder path
         const missingFileList = handleUnselectedFiles(fileList);
@@ -435,17 +488,18 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
             url: gameMagnet,
             opts: { only_files: completeIDFileList(), overwrite: true }
         });
-        if (installationConfigurations) {
+        let installationSettings = await invoke('get_installation_settings');
+        if (installationSettings) {
             const checkedOptions = [];
-
-            if (installationConfigurations.directx_install) {
+            //TODO: Remove this spaghetti code and let the backend handle this depending on the result of the settings_initialization.rs get_installation_settings() function.
+            if (installationSettings.directx_install) {
                 // becuz due to how I made the auto install, it needs to be lowercase directx and/or lowercase microsoft as components needed to be sent. - CarrotRub
                 checkedOptions.push("directx")
             } else {
                 checkedOptions.push("")
             }
 
-            if (installationConfigurations.microsoftcpp_install) {
+            if (installationSettings.microsoftcpp_install) {
                 // Same here but no need to worry becuz even if the microsoft components sometimes doesn't exist in the setup installer source code it won't cause any issues. - CarrotRub
                 checkedOptions.push("microsoft")
             } else {
@@ -456,7 +510,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
         }
         deleteUselessFiles(completeFileList());
         console.log(mainTorrentDetails().details)
-        addGlobalTorrentsInfo(externFullGameInfo, mainTorrentDetails().details.info_hash, mainTorrentDetails().output_folder, downloadGamePath, checkboxesListComponents(), installationConfigurations.two_gb_limit)
+        addGlobalTorrentsInfo(externFullGameInfo, mainTorrentDetails().details.info_hash, mainTorrentDetails().output_folder, downloadGamePath, checkboxesListComponents(), installationSettings.two_gb_limit)
         setGameStartedDownload(true)
         setLoading(false)
 

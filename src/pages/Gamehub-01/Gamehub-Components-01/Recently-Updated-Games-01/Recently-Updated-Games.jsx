@@ -22,10 +22,10 @@ async function parseNewGameData() {
         const gameData = JSON.parse(fileContent)
 
         // Load the user's settings to check if NSFW content should be hidden
-        const settingsPath = await path.join(appDir, 'fitgirlConfig', 'settings.json');
+        const settingsPath = await path.join(appDir, 'fitgirlConfig', 'settings', 'gamehub', 'gamehub.json');
         const settingsContent = await readTextFile(settingsPath)
         const settings = JSON.parse(settingsContent)
-        const hideNSFW = settings.hide_nsfw_content; // settings.hide_nsfw_content
+        const hideNSFW = settings.nsfw_censorship;
 
         // Filter out NSFW games based on the "Adult" tag if the setting is enabled
         const filteredGameData = hideNSFW
@@ -45,11 +45,11 @@ function RecentlyUpdatedGames() {
     const [titlesList, setTitlesList] = createSignal([])
     const [hrefsList, setHrefsList] = createSignal([])
     const [numberOfGames, setNumberOfGames] = createSignal(1);
-    const [filteredImages, setFilteredImages] = createSignal([]) 
+    const [filteredImages, setFilteredImages] = createSignal([])
 
     const [sliderComponent, setSliderComponent] = createSignal(null)
 
-    onMount( async () => {
+    onMount(async () => {
         try {
             const recentlyUpdatedGamesData = await parseNewGameData();
             setImagesObject(recentlyUpdatedGamesData);
@@ -64,9 +64,9 @@ function RecentlyUpdatedGames() {
             setHrefsList(hrefsObjsList);
 
             setNumberOfGames(recentlyUpdatedGamesData?.length)
-    
+
             setFilteredImages(recentlyUpdatedGamesData);
-            
+
         } catch (error) {
             console.error("Error parsing game data : ", error)
         }
@@ -79,13 +79,13 @@ function RecentlyUpdatedGames() {
             </div>
             {
                 filteredImages().length > 0 ? (
-                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()} hrefs={hrefsList()}/>
+                    <Slider images={imagesList()} filePath={popularRepacksPath} titles={titlesList()} hrefs={hrefsList()} />
                 ) : (
                     null
                 )
             }
         </div>
-        
+
     )
 }
 
