@@ -1,6 +1,7 @@
 pub mod basic_scraping {
     use anyhow::Result;
     use core::str;
+    use futures::{stream::FuturesUnordered, StreamExt};
     use serde::{Deserialize, Serialize};
 
     use std::path::Path;
@@ -40,6 +41,9 @@ pub mod basic_scraping {
             source: std::io::Error,
             fn_name: String,
         },
+        #[error("Global Error: {0}")]
+        #[serde(skip)]
+        GlobalError(String),
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -76,89 +80,109 @@ pub mod basic_scraping {
     #[tokio::main]
     pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
         use tokio::fs;
-
+    
         let start_time = Instant::now();
         let mut recently_up_games: Vec<Game> = Vec::new();
-
-        for page_number in 1..=2 {
-            let url = format!(
-                "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
-                page_number
-            );
-
-            let res = CUSTOM_DNS_CLIENT.get(&url).send().await.map_err(|e| {
-                eprintln!("Failed to get a response from URL: {}", &url);
-                ScrapingError::ReqwestError(e)
-            })?;
-
-            if !res.status().is_success() {
-                eprintln!("Error: Failed to connect to the website or the website is down. Status is : {:#?}", res.status());
-                return Ok(());
-            }
-
-            let body = res.text().await.map_err(|e| {
-                eprintln!("Failed to get a body from URL: {}", &url);
-                ScrapingError::ReqwestError(e)
-            })?;
-
-            let document = scraper::Html::parse_document(&body);
-
-            // Selector to get each game container (article)
-            let article_selector = scraper::Selector::parse("article")
-                .map_err(|err| ScrapingError::SelectorError(err.to_string()))?;
-
-            for article_elem in document.select(&article_selector) {
-                let title_elem = article_elem
-                    .select(&scraper::Selector::parse(".entry-title a").unwrap())
-                    .next();
-                let pic_elem = article_elem
-                    .select(&scraper::Selector::parse(".entry-content .alignleft").unwrap())
-                    .next();
-                let desc_elem = article_elem
-                    .select(&scraper::Selector::parse("div.entry-content").unwrap())
-                    .next();
-                let hreflink_elem = article_elem
-                    .select(&scraper::Selector::parse(".entry-title > a").unwrap())
-                    .next();
-                let tag_elem = article_elem
-                    .select(
-                        &scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap(),
-                    )
-                    .next();
-
-                if let (Some(title_elem), Some(pic_elem), Some(desc_elem), Some(hreflink_elem)) =
-                    (title_elem, pic_elem, desc_elem, hreflink_elem)
-                {
-                    let title = title_elem.text().collect::<String>();
-                    let img = pic_elem.value().attr("src").unwrap_or_default();
-                    let desc = desc_elem.text().collect::<String>();
-                    let href = hreflink_elem.value().attr("href").unwrap_or_default();
-                    let tag = tag_elem
-                        .map_or_else(|| "Unknown".to_string(), |e| e.text().collect::<String>());
-
-                    let magnet_link = desc_elem
-                        .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
-                        .next()
-                        .and_then(|elem| elem.value().attr("href"))
-                        .unwrap_or_default();
-
-                    if img.contains("imageban") {
-                        recently_up_games.push(Game {
-                            title,
-                            img: img.to_string(),
-                            desc,
-                            magnetlink: magnet_link.to_string(),
-                            href: href.to_string(),
-                            tag: tag.to_string(),
-                        });
+    
+        // Fetch tasks for pages concurrently
+        let fetch_tasks: FuturesUnordered<_> = (1..=2)
+            .map(|page_number| async move {
+                let url = format!(
+                    "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
+                    page_number
+                );
+    
+                let res = CUSTOM_DNS_CLIENT.get(&url).send().await.map_err(|e| {
+                    eprintln!("Failed to get a response from URL: {}", &url);
+                    ScrapingError::ReqwestError(e)
+                }).unwrap();
+    
+                if !res.status().is_success() {
+                    eprintln!(
+                        "Error: Failed to connect to the website or the website is down. Status is : {:#?}",
+                        res.status()
+                    );
+                    return Err(format!("Failed to fetch page {}", page_number));
+                }
+    
+                let body = res.text().await.map_err(|e| {
+                    eprintln!("Failed to get a body from URL: {}", &url);
+                    ScrapingError::ReqwestError(e)
+                }).unwrap();
+    
+                let document = scraper::Html::parse_document(&body);
+                let article_selector = scraper::Selector::parse("article")
+                    .map_err(|err| ScrapingError::SelectorError(err.to_string())).unwrap();
+    
+                let mut games_on_page = Vec::new();
+    
+                for article_elem in document.select(&article_selector) {
+                    let title_elem = article_elem
+                        .select(&scraper::Selector::parse(".entry-title a").unwrap())
+                        .next();
+                    let pic_elem = article_elem
+                        .select(&scraper::Selector::parse(".entry-content .alignleft").unwrap())
+                        .next();
+                    let desc_elem = article_elem
+                        .select(&scraper::Selector::parse("div.entry-content").unwrap())
+                        .next();
+                    let hreflink_elem = article_elem
+                        .select(&scraper::Selector::parse(".entry-title > a").unwrap())
+                        .next();
+                    let tag_elem = article_elem
+                        .select(
+                            &scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap(),
+                        )
+                        .next();
+    
+                    if let (Some(title_elem), Some(pic_elem), Some(desc_elem), Some(hreflink_elem)) =
+                        (title_elem, pic_elem, desc_elem, hreflink_elem)
+                    {
+                        let title = title_elem.text().collect::<String>();
+                        let img = pic_elem.value().attr("src").unwrap_or_default();
+                        let desc = desc_elem.text().collect::<String>();
+                        let href = hreflink_elem.value().attr("href").unwrap_or_default();
+                        let tag = tag_elem
+                            .map_or_else(|| "Unknown".to_string(), |e| e.text().collect::<String>());
+    
+                        let magnet_link = desc_elem
+                            .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
+                            .next()
+                            .and_then(|elem| elem.value().attr("href"))
+                            .unwrap_or_default();
+    
+                        if img.contains("imageban") {
+                            games_on_page.push(Game {
+                                title,
+                                img: img.to_string(),
+                                desc,
+                                magnetlink: magnet_link.to_string(),
+                                href: href.to_string(),
+                                tag: tag.to_string(),
+                            });
+                        }
                     }
                 }
+    
+                Ok(games_on_page)
+            })
+            .collect();
+    
+        // Collect results into a Vec
+        let results: Vec<Result<Vec<Game>, String>> = fetch_tasks.collect().await;
+    
+        // Process the results
+        for result in results {
+            match result {
+                Ok(parsed_games) => recently_up_games.extend(parsed_games),
+                Err(err_msg) => eprintln!("{}", err_msg),
             }
         }
-
+    
+        // Create the directory for storing the JSON file
         let mut binding = app_handle.path().app_data_dir().unwrap();
         binding.push("tempGames");
-
+    
         fs::create_dir_all(&binding).await.map_err(|e| {
             eprintln!("Failed to create directories: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -166,35 +190,26 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-
+    
         let json_path = binding.join("newly_added_games.json");
         let temp_json_path = binding.join("newly_added_games.tmp.json");
-
+    
+        // Handle existing games for deduplication
         let mut existing_games: Vec<Game> = Vec::new();
         if json_path.exists() {
-            let mut file = fs::File::open(&json_path).await.map_err(|e| {
-                eprintln!("Error opening the file: {:#?}", e);
+            let file_content = fs::read_to_string(&json_path).await.map_err(|e| {
+                eprintln!("Error reading the existing file: {:#?}", e);
                 ScrapingError::CreatingFileError {
                     source: e,
                     fn_name: "scraping_func()".to_string(),
                 }
             })?;
-
-            let mut file_content = String::new();
-            file.read_to_string(&mut file_content).await.map_err(|e| {
-                eprintln!("Error reading file content: {:#?}", e);
-                ScrapingError::CreatingFileError {
-                    source: e,
-                    fn_name: "scraping_func()".to_string(),
-                }
-            })?;
-
             existing_games = serde_json::from_str(&file_content).map_err(|e| {
                 eprintln!("Failed to parse existing JSON data: {:#?}", e);
                 ScrapingError::FileJSONError(e)
             })?;
         }
-
+    
         for (i, scraped_game) in recently_up_games.iter().enumerate() {
             if i < existing_games.len() && scraped_game.title == existing_games[i].title {
                 println!(
@@ -204,31 +219,22 @@ pub mod basic_scraping {
                 return Ok(());
             }
         }
-
+    
+        // Write to the temp file
         let json_data = serde_json::to_string_pretty(&recently_up_games).map_err(|e| {
             eprintln!("Error serializing recently_up_games: {:#?}", e);
             ScrapingError::FileJSONError(e)
         })?;
-
-        let mut temp_file = fs::File::create(&temp_json_path).await.map_err(|e| {
-            eprintln!("Temp file could not be created: {:#?}", e);
+    
+        fs::write(&temp_json_path, &json_data).await.map_err(|e| {
+            eprintln!("Error writing to the temp file: {:#?}", e);
             ScrapingError::CreatingFileError {
                 source: e,
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-
-        temp_file
-            .write_all(json_data.as_bytes())
-            .await
-            .map_err(|e| {
-                eprintln!("Error writing to the temp file: {:#?}", e);
-                ScrapingError::CreatingFileError {
-                    source: e,
-                    fn_name: "scraping_func()".to_string(),
-                }
-            })?;
-
+    
+        // Rename the temp file to the final file
         fs::rename(&temp_json_path, &json_path).await.map_err(|e| {
             eprintln!("Error renaming temp file: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -236,16 +242,16 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-
+    
         let duration_time_process = Instant::now() - start_time;
         info!(
             "Data has been written to newly_added_games.json. Time was: {:#?}",
             duration_time_process
         );
-
+    
         Ok(())
     }
-
+    
     #[tokio::main]
     pub async fn popular_games_scraping_func(
         app_handle: tauri::AppHandle,

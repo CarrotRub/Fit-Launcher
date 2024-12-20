@@ -45,7 +45,7 @@
 
 .downloading-game-image {
     height: 21vh;
-    display: block; 
+    display: block;
 }
 
 .downloading-secondary-info-game {
@@ -93,26 +93,33 @@
     transition: background-color 0.3s, transform 0.3s, width 0.3s, height 0.3s;
 }
 
-.custom-checkbox-download input[type="checkbox"]:checked + .checkbox-mark-download::after {
-    background-color: var(--primary-color); 
+.custom-checkbox-download input[type="checkbox"]:checked+.checkbox-mark-download::after {
+    background-color: var(--primary-color);
     width: 8px;
     height: 8px;
-    transform: translate(-50%, -50%) scale(1); 
+    transform: translate(-50%, -50%) scale(1);
 }
 
 .downloading-action-button {
     color: var(--text-color);
-    font-weight: 700;
     font-size: 18px;
+    font-weight: 800;
+    font-family: "Mulish Variable";
     display: flex;
     background-color: var(--secondary-color);
     height: 8vh;
     width: 12vw;
     border: none;
     border-radius: 8px;
+    gap: 4px;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: transform 0.4s ease-in-out;
+
+    &:hover {
+        transform: scale(1.1);
+    }
 }
 
 .downloading-action-button p {
@@ -131,7 +138,8 @@
 
 .downloading-download-bar-info-container {
     display: flex;
-    width: 90%; /* Not 100% just so that it won't stick to the end due to border-radius of the download bar*/
+    width: 90%;
+    /* Not 100% just so that it won't stick to the end due to border-radius of the download bar*/
     justify-content: space-between;
 }
 
@@ -139,8 +147,8 @@
     margin: 0;
     padding: 0;
     font-size: 14px;
-    white-space: nowrap;      
-    overflow: hidden;         
+    white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
@@ -156,7 +164,7 @@
     border-radius: 50px;
     position: relative;
     background-color: var(--secondary-30-selected-color);
-    transition: width 0.3s ease; 
+    transition: width 0.3s ease;
 
 }
 

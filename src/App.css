@@ -30,6 +30,7 @@ body::-webkit-scrollbar {
   --background-color: rgba(11, 7, 14, 1);
   /* #0b070e */
   --70-background-color: rgba(11, 7, 14, 0.7);
+  --30-background-color: rgba(11, 7, 14, 0.3);
   --popup-background-color: rgba(15, 9, 18, 1);
   --resume-button-accent-color: #64A3A8;
   --warning-orange: #e65d00;
@@ -50,8 +51,8 @@ body::-webkit-scrollbar {
   justify-content: stretch;
 
 
-  grid-template-rows: auto 1fr;
   grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
 
 
   grid-template-areas:
@@ -61,8 +62,15 @@ body::-webkit-scrollbar {
 
 .content-page {
   grid-area: content-page;
+  grid-row: 2;
+  grid-column: 1;
   height: 100%;
   width: 100%;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 

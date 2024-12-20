@@ -10,7 +10,7 @@
     align-items: center;
     align-content: center;
     justify-content: center;
-    
+
 
 }
 
@@ -18,17 +18,27 @@
     z-index: 13;
 
     position: absolute;
-    transform: translateY(-5%); /*Idk why but I had to do this to get it in the center*/
+    transform: translateY(-5%);
+    transform: scale(0.5);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    /*Idk why but I had to do this to get it in the center*/
     background-color: var(--popup-background-color);
     min-height: 80vh;
     max-height: fit-content;
-    min-width: 60vh; 
+    min-width: 60vh;
     max-width: fit-content;
     border-radius: 32px;
 
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+}
+
+.popup-overlay.show .download-popup {
+    transform: scale(1);
+    opacity: 1;
+
 }
 
 .popup-content {
@@ -114,8 +124,10 @@
     right: 10px;
     top: 0;
     bottom: 0;
-    width: 30px; /*DO NOT CHANGE*/
-    background: url("data:image/svg+xml;base64,IDxzdmcgaWQ9ImZvbGRlci1pY29uLXBvcHVwIiB3aWR0aD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgaGVpZ2h0PSIyNCIgdmlld0JveD0iLTEyNTcgNTUyIDI0IDI0IiBzdHlsZT0iLXdlYmtpdC1wcmludC1jb2xvci1hZGp1c3Q6OmV4YWN0IiBmaWxsPSJub25lIj48ZyBjbGFzcz0iZmlsbHMiPjxyZWN0IHJ4PSIwIiByeT0iMCIgeD0iLTEyNTciIHk9IjU1MiIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBjbGFzcz0iZnJhbWUtYmFja2dyb3VuZCIvPjwvZz48ZyBjbGFzcz0iZnJhbWUtY2hpbGRyZW4iPjxwYXRoIGQ9Im0tMTI1MSA1NjYgMS41LTIuOWEyIDIgMCAwIDEgMS43NC0xLjFoMTAuNzZhMi4wMDMgMi4wMDMgMCAwIDEgMS45NCAyLjVsLTEuNTQgNmEyIDIgMCAwIDEtMS45NSAxLjVILTEyNTNhMiAyIDAgMCAxLTItMnYtMTNhMiAyIDAgMCAxIDItMmgzLjlhMiAyIDAgMCAxIDEuNjkuOWwuODEgMS4yYy4zNy41NjIuOTk3LjkgMS42Ny45aDUuOTNhMiAyIDAgMCAxIDIgMnYyIiBzdHlsZT0iZmlsbDpub25lIiBjbGFzcz0iZmlsbHMiLz48ZyBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJzdHJva2VzIj48cGF0aCBkPSJtLTEyNTEgNTY2IDEuNS0yLjlhMiAyIDAgMCAxIDEuNzQtMS4xaDEwLjc2YTIuMDAzIDIuMDAzIDAgMCAxIDEuOTQgMi41bC0xLjU0IDZhMiAyIDAgMCAxLTEuOTUgMS41SC0xMjUzYTIgMiAwIDAgMS0yLTJ2LTEzYTIgMiAwIDAgMSAyLTJoMy45YTIgMiAwIDAgMSAxLjY5LjlsLjgxIDEuMmMuMzcuNTYyLjk5Ny45IDEuNjcuOWg1LjkzYTIgMiAwIDAgMSAyIDJ2MiIgc3R5bGU9ImZpbGw6bm9uZTtmaWxsLW9wYWNpdHk6bm9uZTtzdHJva2Utd2lkdGg6MjtzdHJva2U6I2MyOWVkMTtzdHJva2Utb3BhY2l0eToxIiBjbGFzcz0ic3Ryb2tlLXNoYXBlIi8+PC9nPjwvZz48L3N2Zz4=") no-repeat right; /* :3 Idk but it works svg to base64 converter*/
+    width: 30px;
+    /*DO NOT CHANGE*/
+    background: url("data:image/svg+xml;base64,IDxzdmcgaWQ9ImZvbGRlci1pY29uLXBvcHVwIiB3aWR0aD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgaGVpZ2h0PSIyNCIgdmlld0JveD0iLTEyNTcgNTUyIDI0IDI0IiBzdHlsZT0iLXdlYmtpdC1wcmludC1jb2xvci1hZGp1c3Q6OmV4YWN0IiBmaWxsPSJub25lIj48ZyBjbGFzcz0iZmlsbHMiPjxyZWN0IHJ4PSIwIiByeT0iMCIgeD0iLTEyNTciIHk9IjU1MiIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBjbGFzcz0iZnJhbWUtYmFja2dyb3VuZCIvPjwvZz48ZyBjbGFzcz0iZnJhbWUtY2hpbGRyZW4iPjxwYXRoIGQ9Im0tMTI1MSA1NjYgMS41LTIuOWEyIDIgMCAwIDEgMS43NC0xLjFoMTAuNzZhMi4wMDMgMi4wMDMgMCAwIDEgMS45NCAyLjVsLTEuNTQgNmEyIDIgMCAwIDEtMS45NSAxLjVILTEyNTNhMiAyIDAgMCAxLTItMnYtMTNhMiAyIDAgMCAxIDItMmgzLjlhMiAyIDAgMCAxIDEuNjkuOWwuODEgMS4yYy4zNy41NjIuOTk3LjkgMS42Ny45aDUuOTNhMiAyIDAgMCAxIDIgMnYyIiBzdHlsZT0iZmlsbDpub25lIiBjbGFzcz0iZmlsbHMiLz48ZyBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJzdHJva2VzIj48cGF0aCBkPSJtLTEyNTEgNTY2IDEuNS0yLjlhMiAyIDAgMCAxIDEuNzQtMS4xaDEwLjc2YTIuMDAzIDIuMDAzIDAgMCAxIDEuOTQgMi41bC0xLjU0IDZhMiAyIDAgMCAxLTEuOTUgMS41SC0xMjUzYTIgMiAwIDAgMS0yLTJ2LTEzYTIgMiAwIDAgMSAyLTJoMy45YTIgMiAwIDAgMSAxLjY5LjlsLjgxIDEuMmMuMzcuNTYyLjk5Ny45IDEuNjcuOWg1LjkzYTIgMiAwIDAgMSAyIDJ2MiIgc3R5bGU9ImZpbGw6bm9uZTtmaWxsLW9wYWNpdHk6bm9uZTtzdHJva2Utd2lkdGg6MjtzdHJva2U6I2MyOWVkMTtzdHJva2Utb3BhY2l0eToxIiBjbGFzcz0ic3Ryb2tlLXNoYXBlIi8+PC9nPjwvZz48L3N2Zz4=") no-repeat right;
+    /* :3 Idk but it works svg to base64 converter*/
     cursor: pointer;
 }
 
@@ -186,8 +198,8 @@
     cursor: pointer;
 }
 
-.custom-checkbox input[type="checkbox"]:checked + .checkbox-mark {
-    background-color: var(--primary-color); 
+.custom-checkbox input[type="checkbox"]:checked+.checkbox-mark {
+    background-color: var(--primary-color);
     border-color: var(--accent-color);
 }
 
@@ -278,55 +290,53 @@
     display: inline-block;
     width: 3rem;
     height: 1.5rem;
-}
-  
-/* Hide default HTML checkbox */
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
 
-.switch-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--secondary-30-selected-color);
-    -webkit-transition: .4s;
-    transition: .4s;
-    
-}
+    /* Hide default HTML checkbox */
+    input {
+        opacity: 0;
+        width: 0;
+        height: 0;
 
-.switch-slider:before {
-  position: absolute;
-  content: "";
-  width: 1rem;
-  height: 1rem;
-  left: 4px;
-  bottom: 4px;
-  background-color: var(--secondary-color);
-  -webkit-transition: .4s;
-  transition: .4s;
-}
+        &:checked+.switch-slider {
+            background-color: var(--accent-color);
 
-input:checked + .switch-slider {
-  background-color: var(--accent-color);
-}
+            &::before {
+                transform: translateX(26px);
+                -webkit-transform: translateX(26px);
+                -ms-transform: translateX(26px);
+            }
+        }
+    }
 
-input:checked + .switch-slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
-}
+    .switch-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--secondary-30-selected-color);
+        transition: .4s;
+        -webkit-transition: .4s;
 
-/* Rounded switch-sliders */
-.switch-slider.round {
-  border-radius: 34px;
-}
+        &::before {
+            position: absolute;
+            content: "";
+            width: 1rem;
+            height: 1rem;
+            left: 4px;
+            bottom: 4px;
+            background-color: var(--secondary-color);
+            transition: .4s;
+            -webkit-transition: .4s;
+        }
 
-.switch-slider.round:before {
-  border-radius: 50%;
+        &.round {
+            border-radius: 34px;
+
+            &::before {
+                border-radius: 50%;
+            }
+        }
+    }
 }

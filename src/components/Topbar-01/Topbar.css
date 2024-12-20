@@ -3,6 +3,8 @@
     z-index: 12;
 
     grid-area: topbar;
+    grid-column: 1;
+    grid-row: 1;
 
     position: sticky;
     top: 0;
@@ -25,32 +27,6 @@
     height: 50px;
 }
 
-.search-bar {
-    display: flex;
-    align-items: center;
-    width: 16vw;
-    height: 4vh;
-    background-color: var(--secondary-30-selected-color); 
-    border-radius: 36px; 
-    padding: 5px 10px;
-    gap: 8px;
-}
-
-
-.search-bar input[type="text"] {
-    flex: 1;
-    background-color: transparent; 
-    border: none;
-    outline: none;
-    color: var(--text-color); 
-    font-size: 14px; 
-}
-
-
-.search-bar input::placeholder {
-    color: var(--non-selected-text-color);
-}
-
 .pages-link-list {
     display: flex;
 }
@@ -67,6 +43,7 @@
 #link-settings {
     padding-right: 24px
 }
+
 #fitgirl-logo {
     padding-left: 24px;
 }
@@ -83,18 +60,18 @@
     right: 0;
     z-index: 100000;
 }
-  
+
 .titlebar-button {
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      width: 30px;
-      height: 30px;
-      color:white;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    color: white;
 }
+
 .titlebar-button:hover {
-      color: #df508e;
-      cursor: pointer;
-      
+    color: #df508e;
+    cursor: pointer;
+
 }
-  

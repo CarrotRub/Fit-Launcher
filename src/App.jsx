@@ -14,6 +14,7 @@ import './App.css';
 import Topbar from './components/Topbar-01/Topbar';
 import { appDataDir, dirname, join } from '@tauri-apps/api/path';
 import { exists, mkdir, readDir, writeFile } from '@tauri-apps/plugin-fs';
+import { invoke } from '@tauri-apps/api/core';
 
 const appDir = await appDataDir()
 async function userCollectionPath() {
@@ -31,25 +32,6 @@ function App() {
         }
     };
 
-    onMount(async () => {
-        const settingsPath = await join(appDir,'fitgirlConfig', 'settings.json');
-        const collectionPath = await userCollectionPath();
-        ensureDirectoryExists(collectionPath)
-        try {
-          const fileExists = await exists(settingsPath);
-          if (!fileExists) {
-            // If file doesn't exist, create it
-            const defaultSettings = JSON.stringify({ key: '' });  // Adjust the default settings as needed
-            await writeFile({ path: settingsPath, contents: defaultSettings });
-            console.log('File created successfully');
-          } else {
-            console.log('File already exists');
-          }
-        } catch (error) {
-          console.error('Error checking or creating the directory/file:', error);
-        }
-      });
-
     const sidebarRoutes = [
         {
             path: '/',
@@ -60,6 +42,10 @@ function App() {
             component: lazy(() => import('./pages/Download-Game-UUID-01/Download-Game-UUID')),
         },
         {
+            path: '/discovery-page',
+            component: lazy(() => import('./pages/Discovery-01/Discovery'))
+        },
+        {
             path: '/downloads-page',
             component: lazy(() => import('./pages/Downloads-01/Downloads-Page'))
         },
@@ -67,14 +53,14 @@ function App() {
             path: '/library',
             component: lazy(() => import('./pages/Library-01/Library')),
         },
-        // {
-        //     path: '/settings',
-        //     component: lazy(() => import('./templates/Settings-01/Settings')),
-        // },
+        {
+            path: '/settings',
+            component: lazy(() => import('./pages/Settings-01/Settings')),
+        },
     ];
 
     return (
-        <div id='router-page'>
+        <>
 
 
             <Router root={(props) => {
@@ -82,19 +68,16 @@ function App() {
                 return (
                     <>
                         <div className='main-layout'>
-                            <Topbar />
-                            <div className='content-page'>
-                                {props.children}
-                            </div>
+                            <Topbar /> {/* This is the .topbar */}
+
+                            {props.children} {/* This is the .content-page */}
                         </div>
-
-
                     </>
                 );
             }}>
                 {sidebarRoutes}
             </Router>
-        </div>
+        </>
     );
 }
 

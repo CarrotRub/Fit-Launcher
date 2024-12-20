@@ -2,11 +2,12 @@
   "bundle": {
     "active": true,
     "targets": [
-      "msi"
+      "msi",
+      "nsis"
     ],
     "windows": {
       "webviewInstallMode": {
-        "type": "downloadBootstrapper"
+        "type": "embedBootstrapper"
       }
     },
     "icon": [
@@ -50,14 +51,14 @@
         ],
         "enable": true
       },
-      "csp": "script-src 'wasm-unsafe-eval'; connect-src ipc: http://ipc.localhost"
+      "csp": "script-src 'wasm-unsafe-eval'; connect-src ipc: http://ipc.localhost; asset: http://asset.localhost"
     },
     "windows": [
       {
         "label": "main",
         "title": "Fit Launcher",
-        "width": 1280,
-        "height": 720,
+        "minWidth": 1280,
+        "minHeight": 720,
         "resizable": true,
         "transparent": true,
         "fullscreen": false,
@@ -72,7 +73,7 @@
         "height": 400,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "center": true,
         "title": "Splashscreen",
         "useHttpsScheme": true

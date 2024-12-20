@@ -6,8 +6,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../../components/functions/dataStoreGlobal";
 import { makePersisted } from "@solid-primitives/storage";
 import { Dynamic, render } from "solid-js/web";
-import BasicErrorPopup from "../../Pop-Ups/Basic-Error-PopUp/Basic-Error-PopUp";
 import BasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
+import { message } from "@tauri-apps/plugin-dialog";
 
 const cacheDir = await appCacheDir();
 const appDir = await appDataDir();
@@ -231,7 +231,7 @@ function DownloadPage() {
                                 intervals.delete(torrentIdx);
 
                                 console.log("This torrent is done:", torrentIdx);
-                                await invoke('torrent_action_forget', { id: torrentIdx });
+
 
                                 // Remove the finished torrent
                                 setGlobalTorrentsInfo("torrents", (prevTorrents) =>
@@ -241,8 +241,12 @@ function DownloadPage() {
                                     prevTorrents.filter((torrent) => torrent.torrentIdx !== torrentIdx)
                                 );
 
-                                console.log(globalTorrentsInfo(), downloadingTorrents());
-                                console.log(globalTorrentsInfo(), downloadingTorrents())
+                                let install_settings = await invoke('get_installation_settings');
+
+                                if (install_settings.auto_install) {
+                                    await invoke('run_automate_setup_install', { id: torrentIdx });
+                                    await invoke('torrent_action_forget', { id: torrentIdx });
+                                }
 
                             }
                         }
@@ -291,19 +295,7 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
     const [torrentState, setTorrentState] = createSignal('initializing')
     const [numberPercentage, setNumberPercentage] = createSignal(1)
 
-    function callError(errorMessage) {
-        const pageContent = document.querySelector(".download-game")
-        render(
-            () => <BasicErrorPopup
-                errorTitle={"AN ERROR PUTTING DOWNLOADING YOUR GAME HAPPENED"}
-                errorMessage={errorMessage}
-                errorFooter={''}
-            />
-            , pageContent
-        )
-    }
-
-    createEffect(() => {
+    createEffect(async () => {
         let percentage100 = (torrentStats().progress_bytes / torrentStats().total_bytes) * 100;
 
         setNumberPercentage(percentage100.toFixed(0))
@@ -311,7 +303,7 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
         setTorrentState(torrentStats().state)
 
         if (torrentStats().error) {
-            callError(torrentStats().error)
+            await message(torrentStats().error, { title: 'FitLauncher', kind: 'error' })
         }
     }, torrentStats())
 
@@ -398,18 +390,6 @@ function ActionButtonDownload({ gameState, torrentStats, torrentIdx }) {
     const [globalState, setGlobalState] = createSignal(gameState())
     const [gameDone, setGameDone] = createSignal(false);
 
-    function callError(errorMessage) {
-        const pageContent = document.querySelector(".download-game")
-        render(
-            () => <BasicErrorPopup
-                errorTitle={"AN ERROR PUTTING DOWNLOADING YOUR GAME HAPPENED"}
-                errorMessage={errorMessage}
-                errorFooter={''}
-            />
-            , pageContent
-        )
-    };
-
     async function handleTorrentAction() {
         try {
             if (globalState() === 'live' && !gameDone()) {
@@ -421,7 +401,7 @@ function ActionButtonDownload({ gameState, torrentStats, torrentIdx }) {
             } else if (gameDone()) {
                 console.log('already done')
             } else {
-                callError(torrentStats()?.error)
+                await message(torrentStats()?.error, { title: 'FitLauncher', kind: 'error' })
             }
         } catch (error) {
             console.error(`Failed to pause/resume torrent ${torrentIdx()}:`, error);

@@ -14,14 +14,25 @@ pub mod custom_client_dns {
     use std::io::Write;
     use std::net::{IpAddr, SocketAddr};
     use std::sync::Arc;
+
     #[derive(Serialize, Deserialize, Debug, Clone)]
-    struct DnsConfig {
+    pub struct FitLauncherDnsConfig {
         protocol: String,
         primary: String,
         secondary: String,
     }
 
-    fn ensure_and_load_dns_config() -> DnsConfig {
+    impl Default for FitLauncherDnsConfig {
+        fn default() -> Self {
+            FitLauncherDnsConfig {
+                protocol: "UDP".to_string(),
+                primary: "1.1.1.1".to_string(),
+                secondary: "1.0.0.1".to_string(),
+            }
+        }
+    }
+
+    fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
         let base_dirs = BaseDirs::new().expect("Failed to determine base directories");
         let config_path = base_dirs
             .config_dir()
@@ -36,11 +47,7 @@ pub mod custom_client_dns {
 
         let config_file = config_path.join("dns.json");
         if !config_file.exists() {
-            let default_config = DnsConfig {
-                protocol: "UDP".to_string(),
-                primary: "1.1.1.1".to_string(),
-                secondary: "1.0.0.1".to_string(),
-            };
+            let default_config = FitLauncherDnsConfig::default();
 
             let default_config_data = serde_json::to_string_pretty(&default_config)
                 .expect("Failed to serialize default DNS config");
@@ -52,7 +59,7 @@ pub mod custom_client_dns {
 
         let config_data =
             fs::read_to_string(config_file).expect("Failed to read dns.json configuration file");
-        let dns_config: DnsConfig = serde_json::from_str(&config_data)
+        let dns_config: FitLauncherDnsConfig = serde_json::from_str(&config_data)
             .expect("Failed to parse dns.json configuration file");
 
         dns_config
@@ -60,7 +67,9 @@ pub mod custom_client_dns {
 
     /// A generalized function to create a new resolver given a `DnsConfig`.
     /// We determine the protocol and primary DNS server, then construct the resolver.
-    pub fn new_resolver_with_config(dns_config: &DnsConfig) -> io::Result<TokioAsyncResolver> {
+    pub fn new_resolver_with_config(
+        dns_config: &FitLauncherDnsConfig,
+    ) -> io::Result<TokioAsyncResolver> {
         // Determine protocol
         let protocol = match dns_config.protocol.to_uppercase().as_str() {
             "UDP" => Protocol::Udp,
@@ -97,12 +106,12 @@ pub mod custom_client_dns {
     #[derive(Debug, Clone)]
     pub struct HickoryResolverWithProtocol {
         state: Arc<once_cell::sync::OnceCell<TokioAsyncResolver>>,
-        dns_config: DnsConfig,
+        dns_config: FitLauncherDnsConfig,
         rng: Option<rand::rngs::SmallRng>,
     }
 
     impl HickoryResolverWithProtocol {
-        pub fn new(dns_config: DnsConfig) -> Self {
+        pub fn new(dns_config: FitLauncherDnsConfig) -> Self {
             Self {
                 state: Arc::new(once_cell::sync::OnceCell::new()),
                 dns_config,
@@ -158,9 +167,22 @@ pub mod custom_client_dns {
 
         ClientBuilder::new()
             .dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)))
+            .use_rustls_tls()
+            .gzip(true)
+            .brotli(true)
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+            .pool_max_idle_per_host(20)
             .build()
             .expect("Failed to build custom DNS reqwest client")
     });
+
+    // pub static CUSTOM_BLOCKING_DNS_CLIENT: Lazy<reqwest::blocking::Client> = Lazy::new(|| {
+    //     let dns_config = ensure_and_load_dns_config();
+
+    //     reqwest::blocking::ClientBuilder::new()
+    //         .dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)))
+    //         .build()
+    //         .expect("Failed to build custom DNS reqwest client")
+    // });
     // --------------- Thanks to https://github.com/Xuanwo/reqwest-hickory-resolver for the inspiration, would have taken me 3 days or even more without him ! ---------------
 }
-

@@ -1,5 +1,7 @@
 // ! ALWAYS ADMIN MODE.
 
+//TODO: IMPORTANT ---- USE ASYNC INSTEAD OF THIS WEIRD LOOP ----- IMPORTANT
+
 #[cfg(target_os = "windows")]
 pub mod windows_controls_processes {
 
@@ -362,7 +364,8 @@ pub mod windows_controls_processes {
         }
 
         if progress_bar_hwnd.0 != std::ptr::null_mut() {
-            let mut final_percentage = 0.1; // Variable to hold the result make it 0.1 to bypass the is_normal()
+            #[allow(unused_assignments)]
+            let mut final_percentage: f64 = 0.1; // Variable to hold the result make it 0.1 to bypass the is_normal()
 
             unsafe {
                 // Get the current value of the progress bar

@@ -20,7 +20,7 @@ impl Default for FitLauncherConfigDht {
     fn default() -> Self {
         let persistnce_dht_path = directories::BaseDirs::new()
             .expect("Could not determine base directories")
-            .config_local_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
             .join("com.fitlauncher.carrotrub")
             .join("torrentConfig")
             .join("dht")
@@ -46,7 +46,6 @@ impl Default for FitLauncherConfigTcpListen {
     fn default() -> Self {
         Self {
             disable: false,
-            // TODO: use consts from librqbit
             min_port: 4240,
             max_port: 4260,
         }
@@ -66,7 +65,7 @@ pub struct FitLauncherConfigPersistence {
 
     /// Deprecated, but keeping for backwards compat for serialized / deserialized config.
     #[serde(default)]
-    pub filename: PathBuf,
+    filename: PathBuf,
 }
 
 impl FitLauncherConfigPersistence {
@@ -161,14 +160,14 @@ pub struct FitLauncherConfig {
 
     #[cfg(feature = "disable-upload")]
     #[serde(default)]
-    pub disable_upload: bool,
+    disable_upload: bool,
 
     pub dht: FitLauncherConfigDht,
     pub tcp_listen: FitLauncherConfigTcpListen,
     pub upnp: FitLauncherConfigUpnp,
     pub persistence: FitLauncherConfigPersistence,
     pub peer_opts: FitLauncherConfigPeerOpts,
-    pub http_api: FitLauncherConfigHttpApi,
+    http_api: FitLauncherConfigHttpApi,
 }
 
 impl Default for FitLauncherConfig {

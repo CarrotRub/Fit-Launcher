@@ -54,15 +54,16 @@
 }
 
 #download-game-return-button svg {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
     transform: scale(1, -1);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    transition: transform 0.3s ease, filter 0.3s ease, background-color 0.3s ease;
+
+    &:hover {
+        transform: scale(1.2, -1.2);
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+    }
 }
 
-#download-game-return-button svg:hover {
-    transform: scale(1.2, -1.2);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-}
 
 .download-game-info {
     margin-top: 1px;
@@ -314,13 +315,13 @@
 }
 
 #download-game-favorite-button svg {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-}
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    transition: transform 0.3s ease, filter 0.3s ease, background-color 0.3s ease;
 
-#download-game-favorite-button svg:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    &:hover {
+        transform: scale(1.1);
+        filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+    }
 }
 
 
