@@ -33,6 +33,13 @@
     border-radius: 32px;
 }
 
+.popup-textinput-overlay.show .basic-textinput-popup {
+    transform: scale(1);
+    opacity: 1;
+
+}
+
+
 .popup-footer-container {
     color: var(--non-selected-text-color);
     margin-bottom: 8px;

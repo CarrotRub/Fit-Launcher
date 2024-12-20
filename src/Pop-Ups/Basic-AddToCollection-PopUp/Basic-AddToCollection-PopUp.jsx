@@ -16,12 +16,15 @@ const BasicAddToCollectionPopup = ({ infoTitle, infoMessage, collectionsList, ga
     const [possibleCollections, setPossibleCollections] = createSignal([])
 
     function closePopup() {
-        const fullPopup = document.querySelector('.popup-addtocollection-overlay');
-
-        if (fullPopup) {
-            fullPopup.remove();
+        const popup = document.querySelector('.popup-addtocollection-overlay');
+        if (popup) {
+            popup.classList.remove('show');
+            setTimeout(() => {
+                popup.remove();
+            }, 300); // Matches transition duration
         }
     }
+
 
     function toggleCollection(collectionName) {
         setSelectedCollections((prev) => {
@@ -49,10 +52,19 @@ const BasicAddToCollectionPopup = ({ infoTitle, infoMessage, collectionsList, ga
             Object.entries(collectionsList) // Convert object to array of [key, value]
                 .filter(([key, value]) => checkIfUserCreatedCollection(key)) // Use key to filter by name
                 .reduce((acc, [key, value]) => {
-                    acc[key] = value; // Convert back to object if necessary
+                    acc[key] = value;
                     return acc;
                 }, {})
         );
+    });
+
+    onMount(() => {
+        const popup = document.querySelector('.popup-addtocollection-overlay');
+        if (popup) {
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 10); // Small delay to trigger transition
+        }
     });
 
     async function addToCollectionFile() {
@@ -66,20 +78,20 @@ const BasicAddToCollectionPopup = ({ infoTitle, infoMessage, collectionsList, ga
 
                 const fileContent = await readTextFile(collectionFilePath);
                 let currentData = JSON.parse(fileContent);
-
+                console.warn(currentData)
                 const isDuplicate = currentData.some(
-                    (item) => item.id === gameObjectInfo.id // Replace `id` with the unique property of your objects
+                    (item) => item.torrentExternInfo.title === gameObjectInfo.torrentExternInfo.title
                 );
 
                 if (!isDuplicate) {
                     currentData.push(gameObjectInfo);
+                    await writeTextFile(collectionFilePath, JSON.stringify(currentData, null, 2));
+                    await message('Your Game has been added correctly !', { title: 'Everything is good', kind: 'info' });
                 } else {
                     console.log("The object already exists in the data.");
                     await message("The game already exists in the collection, it won't add it", { title: 'FitLauncher Error', kind: 'warning' })
                 }
-                await writeTextFile(collectionFilePath, JSON.stringify(currentData, null, 2));
 
-                await message('Your Game has been added correctly !', { title: 'Everything is good', kind: 'info' });
                 window.location.reload();
             } catch (error) {
                 let formattedError = ('Error adding game to collection : ', error)
@@ -104,8 +116,8 @@ const BasicAddToCollectionPopup = ({ infoTitle, infoMessage, collectionsList, ga
                     <div className="popup-text-title">
                         <p className="popup-main-title">{infoTitle || 'Please choose a collection :)'}</p>
                     </div>
-
                     <div className="popup-collection-container">
+
                         {possibleCollections() ? (
                             <For each={Object.keys(possibleCollections())}>
                                 {(collectionKey) => (
@@ -132,7 +144,7 @@ const BasicAddToCollectionPopup = ({ infoTitle, infoMessage, collectionsList, ga
                     </div>
 
                     <div className="popup-footer-container">
-                        {infoMessage || 'Select one or more collections to add your games to.'}
+                        {'Select one or more collections to add your games to.'}
                     </div>
                 </div>
                 <div className="popup-buttons">

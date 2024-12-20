@@ -3,15 +3,15 @@
     display: grid;
     grid-template-columns: auto;
     grid-template-rows: auto auto;
-    height: 100%; 
+    height: 100%;
     gap: 2em;
-    grid-template-areas: 
+    grid-template-areas:
         "game-presentation"
         "game-skipper";
 }
 
 .game-presentation {
-    position: relative; 
+    position: relative;
     width: auto;
     height: auto;
 
@@ -31,20 +31,25 @@
 
 
 .game-presentation::before {
-    content: ''; /* Required for pseudo-element */
-    position: absolute; /* Position it on top of the image */
-    top: 0; 
-    left: 0; 
-    width: 100%; 
+    content: '';
+    /* Required for pseudo-element */
+    position: absolute;
+    /* Position it on top of the image */
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
     background: linear-gradient(0deg, var(--background-color) 0%, rgba(0, 0, 0, 0) 150%);
-    pointer-events: none; /* Allow clicks to pass through */
-    z-index: 1; /* To keep the background behind */
+    pointer-events: none;
+    /* Allow clicks to pass through */
+    z-index: 1;
+    /* To keep the background behind */
 }
 
-.game-presentation > * {
+.game-presentation>* {
     position: relative;
-    z-index: 2; /* Content inside stays above the gradient */
+    z-index: 2;
+    /* Content inside stays above the gradient */
 }
 
 .game-image-background {
@@ -52,26 +57,32 @@
     object-fit: cover;
     width: 100%;
     height: 100%;
-   
+
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 .loading-icon-pop-games {
     position: relative;
     display: flex;
     width: 100vw;
     justify-content: center;
 }
+
 .loading-icon-pop-games svg {
     animation: spin 500ms linear infinite;
 }
 
 .main-game-container {
-    
+
     /* position: absolute; */
 
     display: flex;
@@ -88,7 +99,7 @@
     height: 36vh;
     width: 48vw;
     display: flex;
-    
+
     margin-left: 24px;
     justify-content: flex-end;
 
@@ -125,27 +136,36 @@
     overflow: hidden;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 
+    overflow-y: scroll;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+
 }
 
-.main-game-image-zoomed-in:hover, .main-game-info-container:hover {
+.main-game-image-zoomed-in:hover,
+.main-game-info-container:hover {
     transform: scale(1.02);
-    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5); 
+    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5);
     z-index: 9;
     border-radius: 36px;
-    
+
 }
 
-.main-game-image-zoomed-in:active, .main-game-info-container:active {
+.main-game-image-zoomed-in:active,
+.main-game-info-container:active {
     transform: scale(0.9);
 }
 
 #game-clean-title {
     font-family: 'Lexend Variable', sans-serif;
     font-size: 24px;
-    
+
 
     margin-bottom: 0;
     padding-right: 24px;
+    margin-top: 12px;
 }
 
 #long-game-title {
@@ -163,8 +183,8 @@
 #game-details {
     height: min-content;
     flex-direction: column;
-    gap: 8px; 
-    
+    gap: 8px;
+
 }
 
 #game-details p {
@@ -180,8 +200,8 @@
     width: 6vw;
     border-radius: 36px;
     display: grid;
-    grid-template-rows: 50% 2px 50%; 
-    grid-template-areas: 
+    grid-template-rows: 50% 2px 50%;
+    grid-template-areas:
         "next-div"
         "divider"
         "previous-div";
@@ -189,8 +209,14 @@
     margin-right: 24px;
 }
 
-#next-area-skipper:hover, #previous-area-skipper:hover {
+#next-area-skipper:hover,
+#previous-area-skipper:hover {
     transform: scale(0.8)
+}
+
+#next-area-skipper:active,
+#previous-area-skipper:active {
+    transform: scale(1.1);
 }
 
 #next-area-skipper {
@@ -205,9 +231,9 @@
 
 #previous-area-skipper {
     grid-area: previous-div;
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
     transition: transform 0.3s ease;
     border-radius: 36px;
 }
@@ -224,7 +250,7 @@
 }
 
 .item-skipper {
-    
+
     display: flex;
     align-items: center;
     gap: 1em;
@@ -242,10 +268,11 @@
     padding-bottom: 12px;
 
 }
+
 /*box-shadow: 0 2px 0 0 var(--accent-color);*/
 
 
 .item-elipse.active {
-    fill: var(--accent-color); 
-    fill-opacity: 1; 
+    fill: var(--accent-color);
+    fill-opacity: 1;
 }

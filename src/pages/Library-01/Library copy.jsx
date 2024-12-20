@@ -187,7 +187,6 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
     const [executableGamePath, setExecutableGamePath] = createSignal("");
     const [gamesListContent, setGamesListContent] = createSignal([])
     const [installSettings, setInstallSettings] = createSignal(null);
-    const [activeItem, setActiveItem] = createSignal(null);
     onMount(() => {
         console.log(collectionsList)
     })
@@ -410,7 +409,6 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
 
     const SortableGameItem = (props) => {
         const sortable = createSortable(props.itemId);
-        const game = props.game;
         const [state] = useDragDropContext();
         return (
             <li
@@ -418,71 +416,10 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
                 className="library-content-list-game-item"
                 classList={{
                     "opacity-25": sortable.isActiveDraggable,
-                    "transition-transform": !!state.active?.draggable,
+                    "transition-transform": !!state.active.draggable,
                 }}
             >
-                <svg onMouseDown={(e) => e.stopPropagation()} className="draggable-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grip-vertical"><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></svg>
-                <img className="library-content-list-game-item-image" src={game?.torrentExternInfo?.img} alt="Game Cover" />
-                <p className="library-content-list-game-item-title">{extractMainTitle(game?.torrentExternInfo?.title)}</p>
-                {game?.executableInfo?.executable_path
-                    ? (
-                        <button className="library-content-list-game-item-button" style={`background-color: var(--accent-color)`} onClick={() => handleStartGame(game?.executableInfo?.executable_path)}>
-                            <p>PLAY</p>
-                        </button>
-                    ) : (
-                        <button className="library-content-list-game-item-button" style={`background-color: var(--warning-orange)`} onClick={async () => await getexecutable_path(game)}>
-                            <p>ADD PATH</p>
-                        </button>
-                    )
-                }
-
-                <div className="library-content-list-game-item-game-options">
-                    <button onClick={async () => { await handleAddToCollections(game) }}>
-                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1860.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1860.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1872.5 1559.16v6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1872.5 1559.16v6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1875.5 1562.16h-6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1875.5 1562.16h-6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g></g></svg>
-                    </button>
-                    <button>
-                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1913.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1913.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><circle cx="1925.5" cy="1564.16" style="fill:none" class="fills" r="3" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1925.5" cy="1564.16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" r="3" /></g></g></svg>
-                    </button>
-                </div>
-                <ul className="library-content-list-game-item-executable-info">
-                    <li className="library-content-list-game-item-executable-info-container">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" style="-webkit-print-color-adjust::exact" viewBox="995.5 1634.44 24 24"><g class="fills"><rect width="24" height="24" x="995.5" y="1634.44" class="frame-background" rx="0" ry="0" /></g><g class="frame-children"><rect width="18" height="18" x="998.5" y="1638.44" class="fills" rx="2" ry="2" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><rect width="18" height="18" x="998.5" y="1638.44" class="stroke-shape" rx="2" ry="2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1011.5 1636.44v4" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1011.5 1636.44v4" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1003.5 1636.44v4" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1003.5 1636.44v4" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M998.5 1644.44h18" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M998.5 1644.44h18" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1003.5 1648.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1003.5 1648.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1007.5 1648.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1007.5 1648.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1011.5 1648.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1011.5 1648.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1003.5 1652.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1003.5 1652.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1007.5 1652.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1007.5 1652.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1011.5 1652.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1011.5 1652.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g></g></svg>
-                        <div className="library-content-list-game-item-executable-info-text">
-                            <p className="library-content-list-game-item-executable-info-text-title">Last Played</p>
-                            <p><b>{game?.executableInfo?.executable_last_opened_date?.replace(/-/g, '/') || "N/A"}</b></p>
-                        </div>
-                    </li>
-                    <li className="library-content-list-game-item-executable-info-container">
-                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1263.381 1837.501 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1263.381" y="1837.501" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1284.381 1845.001v-1.5a2 2 0 0 0-2-2h-14a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1284.381 1845.001v-1.5a2 2 0 0 0-2-2h-14a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1279.381 1839.501v4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1279.381 1839.501v4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1271.381 1839.501v4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1271.381 1839.501v4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1266.381 1847.501h5" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1266.381 1847.501h5" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="m1280.881 1855.001-1.5-1.25v-2.25" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1280.881 1855.001-1.5-1.25v-2.25" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1285.381 1853.501a6 6 0 1 1-12 0 6 6 0 0 1 12 0" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1285.381 1853.501a6 6 0 1 1-12 0 6 6 0 0 1 12 0" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g></g></svg>
-                        <div className="library-content-list-game-item-executable-info-text">
-                            <p className="library-content-list-game-item-executable-info-text-title">Installed Date</p>
-                            <p><b>{game?.executableInfo?.executable_installed_date?.replace(/-/g, '/') || "N/A"}</b></p>
-                        </div>
-                    </li>
-                    <li className="library-content-list-game-item-executable-info-container">
-                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1508.381 1837.501 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1508.381" y="1837.501" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1522.881 1839.501h-8.5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-12.5z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1522.881 1839.501h-8.5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-12.5z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1522.381 1839.501v6h6" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1522.381 1839.501v6h6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g></g></svg>
-                        <div className="library-content-list-game-item-executable-info-text">
-                            <p className="library-content-list-game-item-executable-info-text-title">Disk Size</p>
-                            <p>
-                                <b>
-                                    {game?.executableInfo?.executable_disk_size
-                                        ? game.executableInfo.executable_disk_size / (1024 ** 3) >= 1
-                                            ? (game.executableInfo.executable_disk_size / (1024 ** 3)).toFixed(2) + " GB"
-                                            : (game.executableInfo.executable_disk_size / (1024 ** 2)).toFixed(2) + " MB"
-                                        : "N/A"}
-                                </b>
-                            </p>
-
-                        </div>
-                    </li>
-                    <li className="library-content-list-game-item-executable-info-container">
-                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1753.381 1837.501 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1753.381" y="1837.501" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1763.381 1839.501h4" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1763.381 1839.501h4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="m1765.381 1851.501 3-3" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="m1765.381 1851.501 3-3" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><circle cx="1765.381" cy="1851.501" style="fill:none" class="fills" r="8" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1765.381" cy="1851.501" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" r="8" /></g></g></svg>
-                        <div className="library-content-list-game-item-executable-info-text">
-                            <p className="library-content-list-game-item-executable-info-text-title">Play Time</p>
-                            <p><b>{game?.executableInfo?.executable_play_time || "N/A"}</b></p>
-                        </div>
-                    </li>
-                </ul>
+                {props.children}
             </li>
         );
     };
@@ -495,17 +432,78 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
         >
             <DragDropSensors />
             <SortableProvider ids={ids()}>
-                <ul className="library-content-list-games self-stretch" >
+                <ul className="library-content-list-games">
                     <For each={dynamicDownloadedGamesList()}>
-                        {(game) => (
-                            <SortableGameItem itemId={game.torrentExternInfo.title} game={game} />
+                        {(game, index) => (
+
+                            <li
+                                className={`library-content-list-game-item`}
+                                draggable={true}
+                            >
+                                <img className="library-content-list-game-item-image" src={game?.torrentExternInfo?.img} />
+                                <p className="library-content-list-game-item-title">{extractMainTitle(game?.torrentExternInfo?.title)}</p>
+                                {game?.executableInfo?.executable_path !== "" && game?.executableInfo?.executable_path ? (
+                                    <button className="library-content-list-game-item-button" style={`background-color: var(--accent-color)`} onClick={() => handleStartGame(game?.executableInfo?.executable_path)}>
+                                        <p>PLAY</p>
+                                    </button>
+                                ) : (
+                                    <button className="library-content-list-game-item-button" style={`background-color: var(--warning-orange)`} onClick={async () => await getexecutable_path(game)}>
+                                        <p>ADD PATH</p>
+                                    </button>
+                                )
+                                }
+                                <div className="library-content-list-game-item-game-options">
+                                    <button onClick={async () => { await handleAddToCollections(game) }}>
+                                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1860.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1860.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1872.5 1559.16v6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1872.5 1559.16v6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1875.5 1562.16h-6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1875.5 1562.16h-6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g></g></svg>
+                                    </button>
+                                    <button>
+                                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1913.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1913.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><circle cx="1925.5" cy="1564.16" style="fill:none" class="fills" r="3" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1925.5" cy="1564.16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" r="3" /></g></g></svg>
+                                    </button>
+                                </div>
+                                <ul className="library-content-list-game-item-executable-info">
+                                    <li className="library-content-list-game-item-executable-info-container">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" style="-webkit-print-color-adjust::exact" viewBox="995.5 1634.44 24 24"><g class="fills"><rect width="24" height="24" x="995.5" y="1634.44" class="frame-background" rx="0" ry="0" /></g><g class="frame-children"><rect width="18" height="18" x="998.5" y="1638.44" class="fills" rx="2" ry="2" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><rect width="18" height="18" x="998.5" y="1638.44" class="stroke-shape" rx="2" ry="2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1011.5 1636.44v4" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1011.5 1636.44v4" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1003.5 1636.44v4" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1003.5 1636.44v4" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M998.5 1644.44h18" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M998.5 1644.44h18" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1003.5 1648.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1003.5 1648.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1007.5 1648.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1007.5 1648.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1011.5 1648.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1011.5 1648.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1003.5 1652.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1003.5 1652.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1007.5 1652.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1007.5 1652.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g><path d="M1011.5 1652.44Z" class="fills" style="fill:none" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1011.5 1652.44h0Z" class="stroke-shape" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" /></g></g></svg>
+                                        <div className="library-content-list-game-item-executable-info-text">
+                                            <p className="library-content-list-game-item-executable-info-text-title">Last Played</p>
+                                            <p><b>{game?.executableInfo?.executable_last_opened_date?.replace(/-/g, '/') || "N/A"}</b></p>
+                                        </div>
+                                    </li>
+                                    <li className="library-content-list-game-item-executable-info-container">
+                                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1263.381 1837.501 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1263.381" y="1837.501" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1284.381 1845.001v-1.5a2 2 0 0 0-2-2h-14a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1284.381 1845.001v-1.5a2 2 0 0 0-2-2h-14a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1279.381 1839.501v4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1279.381 1839.501v4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1271.381 1839.501v4" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1271.381 1839.501v4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1266.381 1847.501h5" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1266.381 1847.501h5" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="m1280.881 1855.001-1.5-1.25v-2.25" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1280.881 1855.001-1.5-1.25v-2.25" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1285.381 1853.501a6 6 0 1 1-12 0 6 6 0 0 1 12 0" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1285.381 1853.501a6 6 0 1 1-12 0 6 6 0 0 1 12 0" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g></g></svg>
+                                        <div className="library-content-list-game-item-executable-info-text">
+                                            <p className="library-content-list-game-item-executable-info-text-title">Installed Date</p>
+                                            <p><b>{game?.executableInfo?.executable_installed_date?.replace(/-/g, '/') || "N/A"}</b></p>
+                                        </div>
+                                    </li>
+                                    <li className="library-content-list-game-item-executable-info-container">
+                                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1508.381 1837.501 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1508.381" y="1837.501" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1522.881 1839.501h-8.5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-12.5z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1522.881 1839.501h-8.5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-12.5z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="M1522.381 1839.501v6h6" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1522.381 1839.501v6h6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g></g></svg>
+                                        <div className="library-content-list-game-item-executable-info-text">
+                                            <p className="library-content-list-game-item-executable-info-text-title">Disk Size</p>
+                                            <p>
+                                                <b>
+                                                    {game?.executableInfo?.executable_disk_size
+                                                        ? game.executableInfo.executable_disk_size / (1024 ** 3) >= 1
+                                                            ? (game.executableInfo.executable_disk_size / (1024 ** 3)).toFixed(2) + " GB"
+                                                            : (game.executableInfo.executable_disk_size / (1024 ** 2)).toFixed(2) + " MB"
+                                                        : "N/A"}
+                                                </b>
+                                            </p>
+
+                                        </div>
+                                    </li>
+                                    <li className="library-content-list-game-item-executable-info-container">
+                                        <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1753.381 1837.501 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1753.381" y="1837.501" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1763.381 1839.501h4" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1763.381 1839.501h4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><path d="m1765.381 1851.501 3-3" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="m1765.381 1851.501 3-3" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" /></g><circle cx="1765.381" cy="1851.501" style="fill:none" class="fills" r="8" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1765.381" cy="1851.501" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--text-color);stroke-opacity:.5" class="stroke-shape" r="8" /></g></g></svg>
+                                        <div className="library-content-list-game-item-executable-info-text">
+                                            <p className="library-content-list-game-item-executable-info-text-title">Play Time</p>
+                                            <p><b>{game?.executableInfo?.executable_play_time || "N/A"}</b></p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
                         )}
                     </For>
                 </ul>
             </SortableProvider>
-
-            <DragOverlay>
-            </DragOverlay>
         </DragDropProvider>
     );
 }

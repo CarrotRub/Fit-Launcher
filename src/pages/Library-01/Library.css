@@ -1,9 +1,10 @@
 .library {
     display: grid;
     grid-template-columns: 18vw 1fr;
+    grid-template-rows: auto;
     grid-template-areas:
         "sidebar library-content";
-    height: 100vh;
+    height: 100%;
     overflow: hidden;
 }
 
@@ -32,8 +33,13 @@
 
 .library-content-games {
     grid-area: library-content;
+    grid-column: 2;
     box-sizing: border-box;
     overflow-y: auto;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 .library-create-collection-button {
@@ -81,7 +87,14 @@
 .library-collection-list-title p {
     margin: 0;
     padding: 0;
-
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    width: auto;
 }
 
 .library-collection-list-title svg {
@@ -92,17 +105,25 @@
 .library-collection-list-item {
     display: flex;
     flex-direction: column;
-    list-style-type: none;
-    padding: 1em;
-    gap: 1em;
+    list-style: none;
+    /* Simplified shorthand */
+    padding: 0.5em;
+    gap: 0.5em;
     margin: 0;
 }
 
+.library-collection-list-item li {
+    border-radius: 6px;
+    padding: 0.4em;
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease, background-color 0.3s ease;
+}
 
-/*--------------------- SIDEBAR COLLECTIONS ---------------------*/
-
-
-/*--------------------- MAIN CONTENT GAMES ---------------------*/
+.library-collection-list-item li:hover {
+    background-color: var(--secondary-20-color);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    transform: scale(0.9);
+}
 
 
 .library-collection-list-game-item {
@@ -129,6 +150,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+    width: -webkit-fill-available;
+    width: 100%;
 }
 
 .library-collection-list-game-item svg {
@@ -136,7 +159,27 @@
     width: 24px;
     height: 24px;
     flex-shrink: 0;
+    pointer-events: auto;
+    z-index: 99;
+
 }
+
+.remove-collection-svg {
+    margin-left: auto;
+}
+
+.library-collection-list-game-item svg:hover {
+    transform: rotate(360deg) scale(1.3);
+    transition: transform 0.4s ease;
+}
+
+/*--------------------- SIDEBAR COLLECTIONS ---------------------*/
+
+
+/*--------------------- MAIN CONTENT GAMES ---------------------*/
+
+
+
 
 .library-content-list-games {
     display: flex;
@@ -146,6 +189,8 @@
     width: 100%;
     margin: 0;
     padding: 0;
+    scroll-snap-align: center;
+    scroll-snap-type: y mandatory;
 }
 
 .library-content-list-game-item {
@@ -156,9 +201,28 @@
     grid-template-rows: 50% 50%;
     grid-template-columns: auto 30% 1fr;
     column-gap: 12px;
-
+    position: relative;
     padding: 16px 24px 16px 24px;
+
+
+    user-select: none;
+    /* Prevent text selection */
+    transition: transform 0.2s ease;
+
 }
+
+.draggable-svg {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    cursor: grab;
+
+    &:active {
+        cursor: grabbing;
+    }
+
+}
+
 
 .library-content-list-game-item-image {
     align-self: center;
@@ -269,4 +333,11 @@
 .library-content-list-game-item-executable-info-text-title {
     color: var(--non-selected-text-color);
     font-weight: 700;
+}
+
+.library-content-list-game-item img,
+.library-content-list-game-item-title,
+.library-content-list-game-item-button,
+.library-content-list-game-item-game-options button {
+    pointer-events: auto;
 }

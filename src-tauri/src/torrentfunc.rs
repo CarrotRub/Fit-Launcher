@@ -1,4 +1,4 @@
-mod torrent_config;
+pub mod torrent_config;
 
 use std::{
     fs::{File, OpenOptions},
@@ -209,7 +209,12 @@ impl State {
 
 pub mod torrent_commands {
 
-    use std::path::PathBuf;
+    use std::{path::PathBuf, str::FromStr};
+
+    use crate::{
+        custom_ui_automation::windows_ui_automation::{self, automate_until_download},
+        mighty::windows_controls_processes,
+    };
 
     use super::*;
 
@@ -287,14 +292,14 @@ pub mod torrent_commands {
     }
 
     #[tauri::command]
-    pub async fn get_torrent_full_config(
+    pub async fn get_torrent_full_settings(
         state: tauri::State<'_, State>,
     ) -> Result<FitLauncherConfig, ApiError> {
         Ok(state.get_config().await)
     }
 
     #[tauri::command]
-    pub async fn config_change_full_config(
+    pub async fn change_torrent_config(
         state: tauri::State<'_, State>,
         config: FitLauncherConfig,
     ) -> Result<EmptyJsonResponse, ApiError> {
@@ -317,4 +322,110 @@ pub mod torrent_commands {
             .await
             .map(|_| EmptyJsonResponse {})
     }
+
+    #[tauri::command]
+    /// This function needs to receive the least arguments possible to detangle the code.
+    /// The more this function receives arguments the more the code will be spaghetti code and no one will look at it so it's better to make it hard and complicated
+    /// in Rust as at least it is better and readable compared to JS.
+    ///
+    /// # Important
+    pub async fn run_automate_setup_install(
+        state: tauri::State<'_, State>,
+        id: TorrentIdOrHash,
+    ) -> Result<(), ApiError> {
+        let session_json_path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_local_dir()
+            .join("com.fitlauncher.carrotrub")
+            .join("torrentConfig")
+            .join("session")
+            .join("data")
+            .join("session.json");
+
+        let file_content = std::fs::read_to_string(&session_json_path).unwrap_or_else(|err| {
+            error!(
+                "Error reading the file at {:?}: {:#?}",
+                session_json_path, err
+            );
+            "{}".to_string() // Return an empty JSON object as a fallback
+        });
+
+        let session_config_json: serde_json::Value = serde_json::from_str(&file_content)
+            .unwrap_or_else(|err| {
+                error!("Error parsing JSON: {:#?}", err);
+                serde_json::Value::default()
+            });
+
+        let mut torrent_folder: Option<String> = None;
+
+        if let Some(torrents) = session_config_json.get("torrents") {
+            // Convert the `id` into a string to match the hash
+            let id_hash = id.to_string(); // Assume `id.to_string()` gives the correct hash representation
+
+            // Iterate over torrents to find a matching "info_hash"
+            if let Some((_, torrent)) = torrents.as_object().and_then(|obj| {
+                obj.iter().find(|(_, torrent)| {
+                    torrent
+                        .get("info_hash")
+                        .map_or(false, |hash| hash == &id_hash)
+                })
+            }) {
+                if let Some(output_folder) = torrent.get("output_folder") {
+                    torrent_folder = Some(output_folder.to_string().replace("\"", ""));
+                } else {
+                    error!(
+                        "Torrent with ID '{}' found, but no output_folder key present.",
+                        id_hash
+                    );
+                }
+            } else {
+                error!("No torrent found with the given ID/hash: {}", id_hash);
+            }
+        } else {
+            error!("No 'torrents' object found in the JSON.");
+        }
+
+        if let Some(folder) = torrent_folder {
+            let setup_path = PathBuf::from_str(&folder).unwrap().join("setup.exe");
+            info!("Setup path is : {}", setup_path.to_str().unwrap());
+            windows_ui_automation::start_executable_components_args(setup_path);
+
+            let game_output_folder = folder.replace(" [FitGirl Repack]", "");
+
+            windows_ui_automation::automate_until_download(&game_output_folder).await;
+            info!("Torrent has completed!");
+            info!("Game Installation Has been Started");
+
+            Ok(())
+        } else {
+            error!("Failed to initialize torrent_folder. Aborting operation.");
+
+            Err(ApiError::new_from_text(
+                StatusCode::from_u16(401).unwrap(),
+                "Failed to initialize torrent_folder. Aborting operation",
+            ))
+        }
+    }
+
+    #[tauri::command]
+    pub async fn delete_game_folder_recursively(folder_path: &Path) -> Result<(), ApiError> {
+        if folder_path.exists() && folder_path.is_dir() {
+            return match tokio::fs::remove_dir_all(folder_path).await {
+                Ok(_) => {
+                    info!("Correctly removed directory: {:#?}", &folder_path);
+                    Ok(())
+                }
+                Err(e) => {
+                    error!("Error removing directory: {}", e);
+                    Err(ApiError::new_from_anyhow(
+                        StatusCode::from_u16(401).unwrap(),
+                        anyhow::Error::new(e),
+                    ))
+                }
+            };
+        }
+        Ok(())
+    }
+
+    //TODO: Add clear cache functions
 }

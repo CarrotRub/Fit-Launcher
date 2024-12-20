@@ -1,16 +1,17 @@
 import { createEffect, onMount, createSignal } from "solid-js";
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen, emit } from '@tauri-apps/api/event';
-import { A } from "@solidjs/router";
+import { A, useLocation } from "@solidjs/router";
 import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../functions/dataStoreGlobal";
 import './Topbar.css'
 import { invoke } from "@tauri-apps/api/core";
+import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
 const appWindow = getCurrentWebviewWindow()
 
 function Topbar() {
     const [isDialogOpen, setIsDialogOpen] = createSignal(false);
     const [notificationMessage, setNotificationMessage] = createSignal('');
-    
+
     function handleWindowClose() {
         // Iterate through all torrents and pause them
         const { torrents } = globalTorrentsInfo;
@@ -24,7 +25,7 @@ function Topbar() {
                     console.error(`Failed to pause torrent with idx: ${torrentIdx}`, error);
                 });
         });
-    
+
         // Close the app window
         appWindow.close();
     }
@@ -32,10 +33,11 @@ function Topbar() {
     function closeDialog() {
         setIsDialogOpen(false);
     }
-
+    const location = useLocation();
+    const isActive = (path) => location.pathname === path;
     onMount(() => {
         console.log('App mounted. Setting up event listeners...');
-          
+
         // Add event listeners for Tauri app window controls
         document
             .getElementById('titlebar-minimize')
@@ -110,26 +112,57 @@ function Topbar() {
                 </div>
             </div>
 
-            <img id='fitgirl-logo' src='/Square310x310Logo.png'  alt='fitgirl repack logo' />
-            
-            <div className='search-bar'>
-                <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="-543 241.4 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g data-testid="search"><g class="fills"><rect rx="0" ry="0" x="-543" y="241.4" width="24" height="24" class="frame-background"/></g><g class="frame-children"><g data-testid="svg-circle"><circle cx="-532" cy="252.4" style="fill:none" class="fills" r="8"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="-532" cy="252.4" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape" r="8"/></g></g><g data-testid="svg-path"><path d="m-522 262.4-4.3-4.3" style="fill:none" class="fills"/><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m-522 262.4-4.3-4.3" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape"/></g></g></g></g></svg>
-                <input type='text' placeholder='Search Game'/>
-            </div>
-            
-            <A href="/" class="clickable-link" link="" aria-current="page">
+            <img id='fitgirl-logo' src='/Square310x310Logo.png' alt='fitgirl repack logo' />
+
+            <Searchbar />
+
+            <A
+                href="/"
+                classList={{
+                    "clickable-link": true,
+                    active: isActive("/"),
+                }}
+            >
                 <p id="link-gamehub" className="links-texts">GameHub</p>
             </A>
 
-            <A href="/library" className="clickable-link" link="" aria-current="page">
+            <A
+                href="/discovery-page"
+                classList={{
+                    "clickable-link": true,
+                    active: isActive("/discovery-page"),
+                }}
+            >
+                <p id="link-discovery" className="links-texts">Discovery</p>
+            </A>
+
+            <A
+                href="/library"
+                classList={{
+                    "clickable-link": true,
+                    active: isActive("/library"),
+                }}
+            >
                 <p id="link-library" className="links-texts">Library</p>
             </A>
-            
-            <A href="/downloads-page" className="clickable-link" link="" aria-current="page">
+
+            <A
+                href="/downloads-page"
+                classList={{
+                    "clickable-link": true,
+                    active: isActive("/downloads-page"),
+                }}
+            >
                 <p id="link-downloads" className="links-texts">Downloads</p>
             </A>
 
-            <A href="/settings" className="clickable-link" link="" aria-current="page">
+            <A
+                href="/settings"
+                classList={{
+                    "clickable-link": true,
+                    active: isActive("/settings"),
+                }}
+            >
                 <p id="link-settings" className="links-texts">Settings</p>
             </A>
 

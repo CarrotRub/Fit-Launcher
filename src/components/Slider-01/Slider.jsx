@@ -47,7 +47,7 @@ const Slider = (props) => {
             containerWidth = container.offsetWidth;
         }
 
-        let screenWidth = screen.width; 
+        let screenWidth = screen.width;
         let traveledOffset = 0;
 
 
@@ -59,7 +59,7 @@ const Slider = (props) => {
             linearGradientContainer.style.maskImage = `linear-gradient(to right, transparent 70%, var(--background-color) 100%)`;
         }
 
-        
+
         if (container) {
             container.style.transform = `translateX(${offset}px)`;
             traveledOffset += offset;
@@ -86,17 +86,23 @@ const Slider = (props) => {
                     onClick={goPrevious}
                 >
                     {/* Left Arrow SVG */}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 12H8m4-4-4 4 4 4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M16 12H8m4-4-4 4 4 4" />
+                    </svg>
                 </div>
                 <div
                     className={`skipper right ${currentIndex() === images.length - 1 ? 'hidden' : ''}`}
                     onClick={goNext}
                 >
                     {/* Right Arrow SVG */}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8m-4 4 4-4-4-4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M8 12h8m-4 4 4-4-4-4" />
+                    </svg>
                 </div>
             </div>
-            <div className="image-slider-gradient"/>
+            <div className="image-slider-gradient" />
             <div className="slider-container">
                 {images.length > 0 ? (
                     images.map((image, index) => (
