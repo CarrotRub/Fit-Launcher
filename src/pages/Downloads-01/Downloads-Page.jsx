@@ -145,55 +145,50 @@ function DownloadPage() {
     async function addGameToDownloadedGames(gameData) {
         let currentData = { games: [] };
         const userDownloadedGames = await join(appDir, 'library', 'downloadedGames', 'downloaded_games.json');
+      
         // Ensure the directory exists
-
         try {
-            let toDownloadDirPath = await join(appDir, 'library', 'downloadedGames');
-            await mkdir(toDownloadDirPath, { recursive: true }); // Create the directory
+          let toDownloadDirPath = await join(appDir, 'library', 'downloadedGames');
+          await mkdir(toDownloadDirPath, { recursive: true });
         } catch (error) {
-            console.error('Error creating directory:', error);
+          console.error('Error creating directory:', error);
         }
-
-        // Read the current data from the file if it exists, or initialize it
+      
+        // Read and parse the current file contents
+        let fileContent = [];
         try {
-            const fileContent = await readTextFile(userDownloadedGames);
-            currentData = JSON.parse(fileContent);
+          const existingData = await readTextFile(userDownloadedGames);
+          fileContent = JSON.parse(existingData) || [];
         } catch (error) {
-            // Handle case where the file does not exist yet (initialize with an empty array)
-            console.log('No existing file found, starting fresh...');
+          console.warn('File does not exist or is empty. Creating a new one.');
         }
-
-        try {
-            let fileContent = [];
-
-            try {
-                const existingData = await readTextFile(userDownloadedGames);
-                fileContent = JSON.parse(existingData); // Parse JSON content
-            } catch (error) {
-                console.warn('File does not exist or is empty. Creating a new one.');
-            }
-
-            // Ensure the content is an array
-            if (!Array.isArray(fileContent)) {
-                throw new Error('File content is not an array, cannot append.');
-            }
-
-            // Clean and append the new game data
-            let cleanGameData = JSON.stringify(gameData, null, 2);  // Make sure it's a stringified JSON object
-            fileContent.push(JSON.parse(cleanGameData)); // Push parsed JSON object, not string
-
-            // Write the updated array back to the file
-            await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2)); // Write as pretty JSON array
-
-            console.log('New data appended successfully!');
-        } catch (error) {
-            console.error('Error appending to file:', error);
+      
+        // Ensure the content is an array
+        if (!Array.isArray(fileContent)) {
+          throw new Error('File content is not an array, cannot append.');
+        }
+      
+        // CHECK FOR DUPLICATES HERE
+        // Use a unique property to identify if the game is already in the file.
+        const alreadyInIndex = fileContent.findIndex(
+          (item) => item.torrentIdx === gameData.torrentIdx
+        );
+      
+        if (alreadyInIndex === -1) {
+          // Only push to the array if it's not already there
+          fileContent.push(gameData);
+      
+          // Write the updated array back to the file
+          await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2));
+          console.log('New data appended successfully!');
+        } else {
+          console.log(`Game with torrentIdx "${gameData.torrentIdx}" already in downloaded_games.json`);
         }
     }
 
     onMount(async () => {
         const intervals = new Map(); // Map to keep track of intervals for each torrentIdx
-
+        console.log(intervals)
         // Iterate over downloading torrents
         downloadingTorrents().forEach((torrent) => {
             const { torrentIdx } = torrent;
@@ -259,11 +254,7 @@ function DownloadPage() {
             }
         });
 
-        // Cleanup intervals when the effect is disposed
-        onCleanup(() => {
-            intervals.forEach((intervalId) => clearInterval(intervalId));
-            intervals.clear();
-        });
+
     });
 
     createEffect(() => {

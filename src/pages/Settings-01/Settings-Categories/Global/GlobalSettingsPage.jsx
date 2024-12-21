@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onMount, Show } from "solid-js"
 import './GlobalSettingsPage.css'
 import { invoke } from "@tauri-apps/api/core";
-import { message } from "@tauri-apps/plugin-dialog";
+import { confirm, message } from "@tauri-apps/plugin-dialog";
 
 function GlobalSettingsPage(props) {
     const [globalSettings, setGlobalSettings] = createSignal(null); // Start with null to indicate loading
@@ -127,6 +127,8 @@ function GlobalSettingsPage(props) {
                     <DNSPart settings={globalSettings().dns} handleTextCheckChange={handleTextCheckChange} />
                 ) : selectedPart() === 'install' ? (
                     <InstallSettingsPart settings={globalSettings().installation_settings} handleSwitchCheckChange={handleSwitchCheckChange} />
+                ) : selectedPart() === 'cache' ? (
+                    <CacheSettings />
                 ) : (
                     <p>Invalid or Unsupported Part</p>
                 )}
@@ -288,5 +290,47 @@ function InstallSettingsPart({ settings, handleSwitchCheckChange }) {
     );
 }
 
+function CacheSettings() {
+    async function handleClearCache() {
+        const confirmation = await confirm('This will delete every cache files, this action cannot be reverted, are you sure ?', {title: 'FitLauncher', kind: 'warning'})
+        if (confirmation) {
+            try {
+                await invoke('clear_all_cache');
+                await message('Cache cleared successfully !', {title: 'FitLauncher', kind: 'info'})
+            } catch(error) {
+                await message(error, {title: 'FitLauncher', kind: 'error'})
+            }
+        }
+    }
 
+    async function handleGoToLogs() {
+        try {
+            await invoke('open_logs_directory');
+        } catch(error) {
+            await message(error, {title: 'FitLauncher', kind: 'error'});
+        }
+    }
+
+    return (
+
+        <div className="global-page-group" id="global-display">
+            <p className="global-page-group-title">Cache & Logs Settings</p>
+            <ul className="global-page-group-list">
+                <li>
+                    <span>Clear All Cache Files <small><i>(This will remove images cache and all torrents cache, dht and session data. )</i></small>:</span>
+                    <button className="clear-cache-settings-button" onClick={async () => { await handleClearCache() }}>
+                        <span>Clear</span>
+                    </button>
+                </li>
+                <li>
+                    <span>Go To Logs <small><i>(Please do not share this with anyone except the official FitLauncher's Moderation !)</i></small>:</span>
+                    <button className="go-to-logs-settings-button" onClick={async () => { await handleGoToLogs() }}>
+                        <span>Go !</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+    );
+}
 export default GlobalSettingsPage;

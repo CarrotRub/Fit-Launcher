@@ -134,6 +134,25 @@ pub mod settings_creation {
         }
         Ok(())
     }
+
+    pub fn create_image_cache_file() -> Result<(), std::io::Error> {
+        let base_dirs = BaseDirs::new().expect("Failed to determine base directories");
+        let image_cache_file_path = base_dirs
+            .config_dir()
+            .join("com.fitlauncher.carrotrub")
+            .join("image_cache.json");
+
+        if !image_cache_file_path.exists() {
+            fs::File::create(&image_cache_file_path).map_err(|err| {
+                error!("Error creating the file: {:#?}", err);
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Directory not found for creating installation file",
+                )
+            })?;
+        }
+        Ok(())
+    }
 }
 
 pub mod settings_configuration {
@@ -142,6 +161,7 @@ pub mod settings_configuration {
     use std::fmt;
     use std::fs;
     use tracing::error;
+    use tracing::info;
 
     use crate::net_client_config::custom_client_dns::FitLauncherDnsConfig;
 
@@ -391,6 +411,76 @@ pub mod settings_configuration {
             .map_err(SettingsConfigurationError::from)?;
 
         fs::write(dns_file_path, settings_json_string).map_err(SettingsConfigurationError::from)?;
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
+        let persistence_session_path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub")
+            .join("torrentConfig")
+            .join("session")
+            .join("data");
+        let persistnce_dht_path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub")
+            .join("torrentConfig")
+            .join("dht")
+            .join("cache");
+
+        let image_cache_path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub")
+            .join("image_cache.json");
+
+        tokio::fs::remove_dir_all(persistence_session_path).await?;
+        tokio::fs::remove_dir_all(persistnce_dht_path).await?;
+        tokio::fs::remove_file(image_cache_path).await?;
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub fn open_logs_directory() -> Result<(), String> {
+        let path = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_dir()
+            .join("com.fitlauncher.carrotrub")
+            .join("logs");
+
+        // Detect OS
+        if cfg!(target_os = "windows") {
+            match std::process::Command::new("explorer").arg(path).spawn() {
+                Ok(child) => {
+                    info!("file explorer started with PID: {}", child.id());
+                }
+                Err(e) => {
+                    error!("Failed to start file explorer: {}", e);
+                }
+            }
+        } else if cfg!(target_os = "macos") {
+            match std::process::Command::new("open").arg(path).spawn() {
+                Ok(child) => {
+                    info!("file explorer started with PID: {}", child.id());
+                }
+                Err(e) => {
+                    error!("Failed to start file explorer: {}", e);
+                }
+            }
+        } else {
+            match std::process::Command::new("xdg-open").arg(path).spawn() {
+                Ok(child) => {
+                    info!("file explorer started with PID: {}", child.id());
+                }
+                Err(e) => {
+                    error!("Failed to start file explorer: {}", e);
+                }
+            }
+        }
+
         Ok(())
     }
 }
