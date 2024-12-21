@@ -4,6 +4,7 @@ import './Discovery.css'
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import HorizontalImagesCarousel from './Discovery-Components/Horizontal-Image-Carousel-01/Image-Carousel';
+import { message } from '@tauri-apps/plugin-dialog';
 
 const appDir = await appDataDir();
 
@@ -30,7 +31,7 @@ function DiscoveryPage() {
             console.warn(filteredGameData)
             return filteredGameData
         } catch (error) {
-            console.error('Error parsing game data:', error)
+            await message(error, {title: 'FitLauncher', kind: 'error'})
             throw error
         }
     }

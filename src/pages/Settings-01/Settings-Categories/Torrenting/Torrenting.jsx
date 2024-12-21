@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onMount, Show } from "solid-js"
 import './Torrenting.css'
 import { invoke } from "@tauri-apps/api/core";
-import { message } from "@tauri-apps/plugin-dialog";
+import { confirm, message } from "@tauri-apps/plugin-dialog";
 
 function TorrentingPage(props) {
     const [globalTorrentConfig, setGlobalTorrentConfig] = createSignal(null); // Start with null to indicate loading
@@ -210,6 +210,7 @@ function PersistencePart({ config, handleSwitchCheckChange, handleTextCheckChang
                         <span className="settings-path-text">{config.persistence.folder}</span>
                     </div>
                 </li>
+
             </ul>
         </div>
     );

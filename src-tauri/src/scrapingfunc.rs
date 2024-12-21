@@ -1,7 +1,7 @@
 pub mod basic_scraping {
     use anyhow::Result;
     use core::str;
-    use futures::{stream::FuturesUnordered, StreamExt};
+    use futures::{stream::{FuturesOrdered, FuturesUnordered}, StreamExt};
     use serde::{Deserialize, Serialize};
 
     use std::path::Path;
@@ -85,7 +85,7 @@ pub mod basic_scraping {
         let mut recently_up_games: Vec<Game> = Vec::new();
     
         // Fetch tasks for pages concurrently
-        let fetch_tasks: FuturesUnordered<_> = (1..=2)
+        let fetch_tasks: FuturesOrdered<_> = (1..=2)
             .map(|page_number| async move {
                 let url = format!(
                     "https://fitgirl-repacks.site/category/lossless-repack/page/{}",

@@ -137,6 +137,34 @@
     }
 }
 
+.clear-cache-settings-button, .go-to-logs-settings-button {
+    width: 8vw;
+    height: 3vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--70-background-color);
+    border: none;
+    border-radius: 6px;
+    position: relative;
+    justify-self: flex-end;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.5s ease;
+    margin-left: auto;
+    & span {
+        font-size: 16px;
+        color: var(--accent-color);
+    }
+
+    &:hover {
+        transform: scale(0.9);
+    }
+
+    &:active {
+        background-color: var(--primary-color);
+    }
+}
+
 .global-settings-buttons-container {
     margin-right: 10%;
     /* Becuz it has to be 10% to the right cuz the size of one length of an item is 90%*/

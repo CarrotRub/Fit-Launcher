@@ -161,7 +161,7 @@
     flex-shrink: 0;
     pointer-events: auto;
     z-index: 99;
-
+    transition: transform 0.4s ease-in-out;
 }
 
 .remove-collection-svg {
@@ -178,8 +178,28 @@
 
 /*--------------------- MAIN CONTENT GAMES ---------------------*/
 
+.library-content-options-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    
+    height: 6vh;
+    width: 100%;
+    background-color: var(--secondary-20-color);
 
+    margin-bottom: 24px;
 
+    & svg {
+        margin-right: 24px;
+        cursor: pointer;
+        transition: transform 0.8s ease-in-out;
+    
+        &:hover {
+          transform: rotate(360deg) scale(1.3);
+        }
+      }
+}
 
 .library-content-list-games {
     display: flex;

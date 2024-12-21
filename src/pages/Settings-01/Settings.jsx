@@ -73,6 +73,10 @@ function SettingsSidebar({ setActiveCategory, setActiveGroup }) {
                         <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="-196 948.3 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="-196" y="948.3" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M-181.3 954.6a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a5.999 5.999 0 0 1-7.94 7.94l-6.91 6.91a2.122 2.122 0 0 1-3-3l6.91-6.91a5.999 5.999 0 0 1 7.94-7.94z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M-181.3 954.6a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a5.999 5.999 0 0 1-7.94 7.94l-6.91 6.91a2.122 2.122 0 0 1-3-3l6.91-6.91a5.999 5.999 0 0 1 7.94-7.94z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape" /></g></g></svg>
                         <span>Install Settings</span>
                     </a>
+                    <a id="settings-cache" onClick={() => handleActivateElem("settings-cache", "global-cache")}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-database"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+                        <span>Cache & Logs Settings</span>
+                    </a>
 
 
                 </ul>

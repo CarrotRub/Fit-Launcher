@@ -1,0 +1,99 @@
+.popup-gamesettings-overlay {
+    z-index: 14;
+
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    background-color: var(--70-background-color);
+
+    display: flex;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+
+
+}
+
+.basic-gamesettings-popup {
+    z-index: 15;
+    transform: translateY(-5%);
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    padding: 16px;
+    box-sizing: border-box;
+    min-height: 50vh;
+    height: 50vh;
+    max-height: fit-content;
+    width: 50vw;
+    max-width: fit-content;
+    background-color: var(--popup-background-color);
+    border-radius: 32px;
+}
+
+.popup-content {
+    justify-content: space-between;
+}
+
+.popup-footer-container {
+    color: var(--non-selected-text-color);
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-style: italic;
+    position: absolute;
+    bottom: 1%;
+    display: flex;
+}
+
+.popup-game-settings-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+}
+
+.popup-game-settings-div {
+    display: flex;
+    width: auto;
+}
+
+.popup-game-settings {
+    background-size: 20px;
+
+    height: 5vh;
+    width: 16vw;
+
+    padding-right: 40px;
+    /* due to the icon*/
+
+    min-width: fit-content;
+    padding-left: 1rem;
+
+    border-radius: 12px;
+    border: none;
+
+    background-color: var(--secondary-30-selected-color);
+    color: var(--text-color);
+}
+
+.popup-game-settings::placeholder {
+    color: var(--non-selected-text-color);
+    font-style: normal;
+}
+
+
+.popup-input-label::before {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 0;
+    bottom: 0;
+    width: 30px;
+    /*DO NOT CHANGE*/
+    background: url("data:image/svg+xml;base64,IDxzdmcgaWQ9ImZvbGRlci1pY29uLXBvcHVwIiB3aWR0aD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgaGVpZ2h0PSIyNCIgdmlld0JveD0iLTEyNTcgNTUyIDI0IDI0IiBzdHlsZT0iLXdlYmtpdC1wcmludC1jb2xvci1hZGp1c3Q6OmV4YWN0IiBmaWxsPSJub25lIj48ZyBjbGFzcz0iZmlsbHMiPjxyZWN0IHJ4PSIwIiByeT0iMCIgeD0iLTEyNTciIHk9IjU1MiIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBjbGFzcz0iZnJhbWUtYmFja2dyb3VuZCIvPjwvZz48ZyBjbGFzcz0iZnJhbWUtY2hpbGRyZW4iPjxwYXRoIGQ9Im0tMTI1MSA1NjYgMS41LTIuOWEyIDIgMCAwIDEgMS43NC0xLjFoMTAuNzZhMi4wMDMgMi4wMDMgMCAwIDEgMS45NCAyLjVsLTEuNTQgNmEyIDIgMCAwIDEtMS45NSAxLjVILTEyNTNhMiAyIDAgMCAxLTItMnYtMTNhMiAyIDAgMCAxIDItMmgzLjlhMiAyIDAgMCAxIDEuNjkuOWwuODEgMS4yYy4zNy41NjIuOTk3LjkgMS42Ny45aDUuOTNhMiAyIDAgMCAxIDIgMnYyIiBzdHlsZT0iZmlsbDpub25lIiBjbGFzcz0iZmlsbHMiLz48ZyBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJzdHJva2VzIj48cGF0aCBkPSJtLTEyNTEgNTY2IDEuNS0yLjlhMiAyIDAgMCAxIDEuNzQtMS4xaDEwLjc2YTIuMDAzIDIuMDAzIDAgMCAxIDEuOTQgMi41bC0xLjU0IDZhMiAyIDAgMCAxLTEuOTUgMS41SC0xMjUzYTIgMiAwIDAgMS0yLTJ2LTEzYTIgMiAwIDAgMSAyLTJoMy45YTIgMiAwIDAgMSAxLjY5LjlsLjgxIDEuMmMuMzcuNTYyLjk5Ny45IDEuNjcuOWg1LjkzYTIgMiAwIDAgMSAyIDJ2MiIgc3R5bGU9ImZpbGw6bm9uZTtmaWxsLW9wYWNpdHk6bm9uZTtzdHJva2Utd2lkdGg6MjtzdHJva2U6I2MyOWVkMTtzdHJva2Utb3BhY2l0eToxIiBjbGFzcz0ic3Ryb2tlLXNoYXBlIi8+PC9nPjwvZz48L3N2Zz4=") no-repeat right;
+    /* :3 Idk but it works svg to base64 converter*/
+    cursor: pointer;
+}
