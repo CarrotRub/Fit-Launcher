@@ -41,7 +41,7 @@ const BasicPathInputPopup = ({ infoTitle, infoMessage, infoPlaceholder, defaultP
                             directory: isDirectory,
                             multiple: multipleFiles,
                             extensions: fileType,
-                            defaultPath: "D:\\TorrentGames\\Skies above the Great War [FitGirl Repack]\\",
+                            defaultPath: defaultPath,
                         });
                         if (chosenPath) {
                             setCurrentPath(chosenPath)

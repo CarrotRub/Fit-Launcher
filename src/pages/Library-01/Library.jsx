@@ -23,6 +23,8 @@ import {
     createSortable,
     closestCenter,
 } from "@thisbeyond/solid-dnd";
+import GameSettingsLibraryPopUp from "../../Pop-Ups/Library-Game-Settings-PopUp/Game-Settings";
+import AddLocalGamePopUp from "../../Pop-Ups/Add-Local-Game-PopUp/Add-Local-Game-PopUp";
 const appDir = await appDataDir();
 const dirPath = appDir;
 
@@ -149,7 +151,20 @@ function Library() {
             pageContent
         );
     }
+    async function handleAddLocalGame() {
+        const pageContent = document.querySelector(".library")
 
+        render(
+            () => <AddLocalGamePopUp
+                infoTitle={"Are you sure you want to run this Game"}
+                infoMessage={`Do you want to start playing ?`}
+                infoFooter={''}
+                
+            />
+            , pageContent
+        )
+
+    }
     return (
         <div className="library content-page">
             <div className="library-sidebar">
@@ -169,6 +184,10 @@ function Library() {
                 </For>
             </div>
             <div className="library-content-games">
+                <div className="library-content-options-bar">
+                    {/* Here we will also add next update a second way to display the games. */}
+                    <svg onClick={async() => {await handleAddLocalGame()}} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-diamond-plus"><path d="M12 8v8m-9.3-5.7a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41L13.7 2.71a2.41 2.41 0 0 0-3.41 0zM8 12h8"/></svg>
+                </div>
                 {collectionList()["downloaded_games"]?.length > 0 ? (
                     <GameDownloadedItem
                         downloadedGamesList={collectionList()["downloaded_games"]}
@@ -311,11 +330,13 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
                         await message(error, { title: 'FitLauncher', kind: 'error' });
                     }
                 }
+                window.location.reload()
             } catch (error) {
                 await message(error, { title: 'FitLauncher', kind: 'error' })
             }
         }
-        const pageContent = document.querySelector(".library")
+        const pageContent = document.querySelector(".library");
+
         render(
             () => (
                 <BasicPathInputPopup
@@ -390,11 +411,57 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
         }
     }
 
+    async function handleChangeSettings(gameObj) {
+        const pageContent = document.querySelector(".library")
+        try {
+            render(
+                () => (
+                    <GameSettingsLibraryPopUp
+                        infoTitle={"Handle the settings of your game !"}
+                        infoMessage={"Here, you'll be able to change the settings of your game, feel free to do it :)"}
+                        infoPlaceholder={"Executable Path"}
+                        defaultPath={gameObj?.torrentOutputFolder?.replace(' [FitGirl Repack]', '')}
+                        fileType={["exe"]}
+                        multipleFiles={false}
+                        isDirectory={false}
+                        infoFooter={''}
+                        userGame={gameObj}
+                    />
+                ),
+                pageContent
+            );
+
+        } catch (error) {
+            await message(error, { title: 'FitLauncher', kind: 'error' })
+        }
+    }
+
+    createEffect(() => {
+        console.log(dynamicDownloadedGamesList())
+
+        const syncDownloadedGames = async () => {
+            const userPath = await userDownloadedGamesPath();
+            const downloadedGamesPath = await join(userPath, "downloaded_games.json");
+    
+            // Write to the file
+            await fs.writeTextFile(
+                downloadedGamesPath,
+                JSON.stringify(dynamicDownloadedGamesList(), null, 2)
+            );
+        };
+    
+        // Call the function inside createEffect
+        syncDownloadedGames().catch((error) => {
+            console.error("Error syncing downloaded games:", error);
+        });
+    })
+
     const ids = () => dynamicDownloadedGamesList().map(game => game.torrentExternInfo.title);
 
     const onDragStart = ({ draggable }) => setActiveItem(draggable.id);
 
     const onDragEnd = ({ draggable, droppable }) => {
+        
         if (draggable && droppable) {
             const currentItems = dynamicDownloadedGamesList();
             const fromIndex = currentItems.findIndex(item => item.torrentExternInfo.title === draggable.id);
@@ -440,7 +507,7 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
                     <button onClick={async () => { await handleAddToCollections(game) }}>
                         <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1860.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1860.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1879.5 1573.16-7-4-7 4v-16a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1872.5 1559.16v6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1872.5 1559.16v6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><path d="M1875.5 1562.16h-6" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="M1875.5 1562.16h-6" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g></g></svg>
                     </button>
-                    <button>
+                    <button onClick={async () => { await handleChangeSettings(game)}}>
                         <svg width="24" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="1913.5 1552.16 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1913.5" y="1552.16" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M1925.72 1554.16h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" /></g><circle cx="1925.5" cy="1564.16" style="fill:none" class="fills" r="3" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><circle cx="1925.5" cy="1564.16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:var(--accent-color);stroke-opacity:1" class="stroke-shape" r="3" /></g></g></svg>
                     </button>
                 </div>

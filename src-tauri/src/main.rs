@@ -34,6 +34,7 @@ use futures::future::join_all;
 use scraper::{Html, Selector};
 use serde_json::Value;
 use settings_initialization::settings_creation::create_gamehub_settings_file;
+use settings_initialization::settings_creation::create_image_cache_file;
 use settings_initialization::settings_creation::create_installation_settings_file;
 use tokio::task::LocalSet;
 use std::error::Error;
@@ -485,9 +486,15 @@ async fn start() {
             }
 
             if let Err(err) = create_gamehub_settings_file() {
-                error!("Error while creating the installation settings file : {}", err);
-                eprintln!("Error while creating the installation settings file : {}", err)
+                error!("Error while creating the gamehub settings file : {}", err);
+                eprintln!("Error while creating the gamehub settings file : {}", err)
             }
+
+            if let Err(err) = create_image_cache_file() {
+                error!("Error while creating the image cache file : {}", err);
+                eprintln!("Error while creating the image cache file : {}", err)
+            }
+
 
             // Perform the network request
             spawn(async move {
@@ -601,6 +608,7 @@ async fn start() {
         })
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             close_splashscreen,
             get_games_images,
@@ -632,6 +640,8 @@ async fn start() {
             settings_configuration::reset_installation_settings,
             settings_configuration::reset_gamehub_settings,
             settings_configuration::reset_dns_settings,
+            settings_configuration::clear_all_cache,
+            settings_configuration::open_logs_directory,
         ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands

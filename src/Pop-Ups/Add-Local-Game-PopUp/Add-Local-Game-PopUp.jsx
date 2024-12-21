@@ -1,15 +1,18 @@
+
+
 import { createSignal, createEffect, Show, onMount } from "solid-js";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import "./Searchbar.css";
+
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
-import { setDownloadGamePageInfo } from "../../../functions/dataStoreGlobal";
+import { setDownloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
 const appDir = await appDataDir();
-
+import './Add-Local-Game-PopUp.css'
+import '../Download-PopUp/Download-PopUp.css'
 
 function Searchbar() {
-    const navigate = useNavigate();
+
     const [clicked, setClicked] = createSignal(false)
     const [searchTerm, setSearchTerm] = createSignal("");
     const [searchResults, setSearchResults] = createSignal([]);
@@ -125,18 +128,18 @@ function Searchbar() {
     }
 
     const handleGoToGamePage = async (href) => {
-        if (!clicked()) {
-            console.log(href)
-            setClicked(true);
-            const uuid = crypto.randomUUID();
-            setDownloadGamePageInfo({
-                gameTitle: "",
-                gameHref: href,
-                filePath: ""
-            })
-            navigate(`/game/${uuid}`);
-            clearSearch()
-        }
+        // if (!clicked()) {
+        //     console.log(href)
+        //     setClicked(true);
+        //     const uuid = crypto.randomUUID();
+        //     setDownloadGamePageInfo({
+        //         gameTitle: "",
+        //         gameHref: href,
+        //         filePath: ""
+        //     })
+        //     navigate(`/game/${uuid}`);
+        //     clearSearch()
+        // }
     };
 
     return (
@@ -239,4 +242,57 @@ function Searchbar() {
     );
 }
 
-export default Searchbar;
+
+const AddLocalGamePopUp = ({ infoTitle, infoMessage, infoFooter, action }) => {
+
+    function closePopup() {
+        const popup = document.querySelector('.popup-addlocalgame-overlay');
+        if (popup) {
+            popup.classList.remove('show');
+            setTimeout(() => {
+                popup.remove();
+            }, 300); // Matches transition duration
+        }
+    }
+
+    onMount(() => {
+        const popup = document.querySelector('.popup-addlocalgame-overlay');
+        if (popup) {
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 10); // Small delay to trigger transition
+        }
+    });
+
+    return (
+        <div className="popup-addlocalgame-overlay">
+            <div className="basic-addlocalgame-popup">
+                <div className="popup-content">
+                    <div className="popup-text-title">
+                        <p className="popup-main-title">{infoTitle ? infoTitle : 'Please choose :)'}</p>
+                    </div>
+
+                    <div className="popup-text-container">
+                        <Searchbar />
+                    </div>
+
+                    <div className="popup-footer-container">
+                        {infoFooter ? infoFooter : 'If you have any issues with this try to close and open the app, if it still persists, please contact us on Discord, link in the settings page or on github'}
+                    </div>
+                </div>
+                <div className="popup-buttons">
+                    <button id="popup-cancel-button" onClick={closePopup}>Cancel</button>
+                    <button id="popup-confirm-button" onClick={() => {
+                        if (action != null) {
+                            action()
+                        }
+                        closePopup()
+                    }}>Confirm</button>
+                </div>
+            </div>
+        </div>
+
+    );
+};
+
+export default AddLocalGamePopUp;
