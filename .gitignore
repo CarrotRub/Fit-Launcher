@@ -6,3 +6,4 @@ examples
 .vscode
 target
 test.json
+test_info.json

@@ -21,6 +21,7 @@
     "@solidjs/router": "^0.14.1",
     "@tanstack/solid-virtual": "^3.0.4",
     "@tauri-apps/api": "2.1.1",
+    "@tauri-apps/plugin-updater": "^2.3.0",
     "@thisbeyond/solid-dnd": "^0.7.5",
     "chart.js": "4.4.4",
     "solid-js": "^1.7.8",
