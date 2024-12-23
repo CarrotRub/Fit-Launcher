@@ -57,8 +57,6 @@ function App() {
                 await message(`Update has been installed correctly ! close and re-open the app.`)
             }
         }
-
-        await message('no update')
     }
 
     onMount(() => {

@@ -111,6 +111,7 @@ const AddLocalGamePopUp = ({ infoTitle, infoMessage, infoFooter, action }) => {
           await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2));
           console.log('New data appended successfully!');
           await message('Game added to Library successfully', {title: 'FitLauncher', kind: 'info'});
+          window.location.reload();
         } else {
             await message('Game is already in Library', {title: 'FitLauncher', kind: 'warning'});
         }
