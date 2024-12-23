@@ -49,11 +49,6 @@ pub mod settings_creation {
             .join("settings")
             .join("installation");
 
-        let library_settings = base_dirs
-            .config_dir()
-            .join("com.fitlauncher.carrotrub")
-            .join("library");
-
         if !installation_folder_path.exists() {
             fs::create_dir_all(&installation_folder_path)
                 .expect("Failed to create Installation Config directory");
@@ -92,11 +87,48 @@ pub mod settings_creation {
                 })?;
         }
 
-        if !library_settings.exists() {
-            fs::create_dir_all(&library_settings)
+        let library_settings_dir = base_dirs
+            .config_dir()
+            .join("com.fitlauncher.carrotrub")
+            .join("library");
+
+        // Ensure the library directory exists
+        if !library_settings_dir.exists() {
+            fs::create_dir_all(&library_settings_dir)
                 .expect("Failed to create Installation Config directory");
         }
 
+        // Define paths for specific files/directories within library settings
+        let downloaded_games_file = library_settings_dir
+            .join("downloadedGames")
+            .join("downloaded_games.json");
+        let collections_dir = library_settings_dir.join("collections");
+
+        // Ensure the downloadedGames directory and its file exist
+        if !downloaded_games_file.parent().unwrap().exists() {
+            fs::create_dir_all(downloaded_games_file.parent().unwrap())
+                .expect("Failed to create downloadedGames directory");
+        }
+        if !downloaded_games_file.exists() {
+            let mut file = fs::File::create(downloaded_games_file)
+                .expect("Failed to create downloaded_games.json file");
+            file.write_all(b"[]")
+                .expect("Failed to write to downloaded_games.json file");
+        } else {
+            let metadata =
+                fs::metadata(&downloaded_games_file).expect("Failed to get file metadata");
+            if metadata.len() == 0 {
+                // If the file is empty, write "{}"
+                let mut file = fs::File::create(&downloaded_games_file)
+                    .expect("Failed to open downloaded_games.json file for writing");
+                file.write_all(b"{}")
+                    .expect("Failed to write to downloaded_games.json file");
+            }
+        }
+        // Ensure the collections directory exists
+        if !collections_dir.exists() {
+            fs::create_dir_all(&collections_dir).expect("Failed to create collections directory");
+        }
         Ok(())
     }
 
