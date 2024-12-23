@@ -27,7 +27,7 @@ function Topbar() {
         });
 
         // Close the app window
-        appWindow.close();
+        appWindow.hide();
     }
 
     function closeDialog() {

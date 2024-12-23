@@ -10,7 +10,10 @@ const appDir = await appDataDir();
 
 
 function Searchbar({isTopBar = true, setSearchValue  }) {
-
+    let navigate;
+    if(isTopBar) {
+      navigate = useNavigate();
+    }
     const [clicked, setClicked] = createSignal(false)
     const [searchTerm, setSearchTerm] = createSignal("");
     const [searchResults, setSearchResults] = createSignal([]);
@@ -131,7 +134,7 @@ function Searchbar({isTopBar = true, setSearchValue  }) {
 
     const handleGoToGamePage = async (href) => {
         if (!clicked() && isTopBar) {
-            const navigate = useNavigate();
+
             console.log(href)
             setClicked(true);
             const uuid = crypto.randomUUID();

@@ -36,6 +36,8 @@ use serde_json::Value;
 use settings_initialization::settings_creation::create_gamehub_settings_file;
 use settings_initialization::settings_creation::create_image_cache_file;
 use settings_initialization::settings_creation::create_installation_settings_file;
+use tauri::menu::Menu;
+use tauri::menu::MenuItem;
 use std::error::Error;
 use tauri::async_runtime::spawn_blocking;
 use tauri::Emitter;
@@ -58,8 +60,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use tauri::async_runtime::spawn;
 
-use tracing_appender::non_blocking::WorkerGuard;
-
+use tauri::tray::TrayIconBuilder;
 // use serde_json::json;
 use std::path::Path;
 // crates for requests
@@ -471,6 +472,51 @@ async fn start() {
             let app_handle = app.handle().clone();
 
             let scraping_failed_event = app_handle.clone();
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
+            let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit_i, &show_app_i, &hide_app_i])?;
+            
+            TrayIconBuilder::new()
+              .icon(app.default_window_icon().unwrap().clone())
+              .menu(&menu)
+              .menu_on_left_click(true)
+              .on_menu_event(|app, event| match event.id.as_ref() {
+                "quit" => {
+                  info!("quit menu item was clicked");
+                  app.exit(0);
+                }
+                "show_app" => {
+                    info!("show app menu item was clicked");
+                    if app.get_webview_window("main").unwrap().is_visible().unwrap() {
+                        info!("Window is already visible")
+                    } else {
+                        match app.get_webview_window("main").unwrap().show() {
+                            Ok(_) => {
+                                info!("opened main windows")
+                            },
+                            Err(e) => error!("Error showing main window: {}", e)
+                        };
+                    };
+                }
+                "hide_app" => {
+                    info!("hide app menu item was clicked");
+                    if !app.get_webview_window("main").unwrap().is_visible().unwrap() {
+                        info!("Window is already hidden")
+                    } else {
+                        match app.get_webview_window("main").unwrap().hide() {
+                            Ok(_) => {
+                                info!("hid main windows")
+                            },
+                            Err(e) => error!("Error hiding main window: {}", e)
+                        };
+                    };
+                }
+                _ => {
+                    info!("menu item {:?} not handled", event.id);
+                }
+              })
+              .build(app)?;
 
             // Delete JSON files missing the 'tag' field or corrupted and log the process
             if let Err(err) = delete_invalid_json_files(&current_app_handle) {
@@ -649,9 +695,14 @@ async fn start() {
         .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                PAUSE_FLAG.store(true, Ordering::Relaxed);
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                if let Some(main_window) = app_handle.get_webview_window("main") {
+                    main_window.hide().unwrap();
+                } else {
+                    println!("Main window not found during ExitRequested event.");
+                }
+                api.prevent_exit();
             }
         });
 }
