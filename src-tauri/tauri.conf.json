@@ -54,7 +54,14 @@
         ],
         "enable": true
       },
-      "csp": "script-src 'wasm-unsafe-eval'; connect-src ipc: http://ipc.localhost; asset: http://asset.localhost"
+      
+      "csp": {
+        "default-src": "'self' customprotocol: asset: 'unsafe-inline'",
+        "script-src": "'wasm-unsafe-eval'",
+        "connect-src": "ipc: http://ipc.localhost http://asset.localhost",
+        "img-src": "'self' asset: http://asset.localhost blob: data: http: https: *",
+        "asset-src": "http://asset.localhost"
+      }
     },
     "windows": [
       {
