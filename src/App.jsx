@@ -15,6 +15,8 @@ import Topbar from './components/Topbar-01/Topbar';
 import { appDataDir, dirname, join } from '@tauri-apps/api/path';
 import { exists, mkdir, readDir, writeFile } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
+import { check } from '@tauri-apps/plugin-updater';
+import { confirm, message } from '@tauri-apps/plugin-dialog';
 
 const appDir = await appDataDir()
 async function userCollectionPath() {
@@ -23,14 +25,46 @@ async function userCollectionPath() {
 
 function App() {
 
-    const ensureDirectoryExists = async (path) => {
-        try {
-            // Check if the directory exists
-            await readDir(path);
-        } catch (error) {
-            await mkdir(path, { recursive: true });
+    //TODO: Add option to remove auto check update
+    async function handleCheckUpdate() {
+        let update = await check();
+    
+        if (update) {
+            console.log(
+              `found update ${update.version} from ${update.date} with notes ${update.body}`
+            );
+            const confirm_update = await confirm(`Update "${update.version} was found, do you want to download it ?" `, {title: 'FitLauncher', kind:'info'})
+            if (confirm_update) {
+                let downloaded = 0;
+                let contentLength = 0;
+                // alternatively we could also call update.download() and update.install() separately
+                await update.downloadAndInstall((event) => {
+                  switch (event.event) {
+                    case 'Started':
+                      contentLength = event.data.contentLength;
+                      console.log(`started downloading ${event.data.contentLength} bytes`);
+                      break;
+                    case 'Progress':
+                      downloaded += event.data.chunkLength;
+                      console.log(`downloaded ${downloaded} from ${contentLength}`);
+                      break;
+                    case 'Finished':
+                      console.log('download finished');
+                      
+                      break;
+                  }
+                });
+                await message(`Update has been installed correctly ! close and re-open the app.`)
+            }
         }
-    };
+
+        await message('no update')
+    }
+
+    onMount(() => {
+        //TODO: Check this
+        handleCheckUpdate();
+    })
 
     const sidebarRoutes = [
         {

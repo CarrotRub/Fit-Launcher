@@ -1,7 +1,10 @@
 pub mod basic_scraping {
     use anyhow::Result;
     use core::str;
-    use futures::{stream::{FuturesOrdered, FuturesUnordered}, StreamExt};
+    use futures::{
+        stream::{FuturesOrdered, FuturesUnordered},
+        StreamExt,
+    };
     use serde::{Deserialize, Serialize};
 
     use std::path::Path;
@@ -80,10 +83,10 @@ pub mod basic_scraping {
     #[tokio::main]
     pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
         use tokio::fs;
-    
+
         let start_time = Instant::now();
         let mut recently_up_games: Vec<Game> = Vec::new();
-    
+
         // Fetch tasks for pages concurrently
         let fetch_tasks: FuturesOrdered<_> = (1..=2)
             .map(|page_number| async move {
@@ -167,10 +170,10 @@ pub mod basic_scraping {
                 Ok(games_on_page)
             })
             .collect();
-    
+
         // Collect results into a Vec
         let results: Vec<Result<Vec<Game>, String>> = fetch_tasks.collect().await;
-    
+
         // Process the results
         for result in results {
             match result {
@@ -178,11 +181,11 @@ pub mod basic_scraping {
                 Err(err_msg) => eprintln!("{}", err_msg),
             }
         }
-    
+
         // Create the directory for storing the JSON file
         let mut binding = app_handle.path().app_data_dir().unwrap();
         binding.push("tempGames");
-    
+
         fs::create_dir_all(&binding).await.map_err(|e| {
             eprintln!("Failed to create directories: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -190,10 +193,10 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-    
+
         let json_path = binding.join("newly_added_games.json");
         let temp_json_path = binding.join("newly_added_games.tmp.json");
-    
+
         // Handle existing games for deduplication
         let mut existing_games: Vec<Game> = Vec::new();
         if json_path.exists() {
@@ -209,7 +212,7 @@ pub mod basic_scraping {
                 ScrapingError::FileJSONError(e)
             })?;
         }
-    
+
         for (i, scraped_game) in recently_up_games.iter().enumerate() {
             if i < existing_games.len() && scraped_game.title == existing_games[i].title {
                 println!(
@@ -219,13 +222,13 @@ pub mod basic_scraping {
                 return Ok(());
             }
         }
-    
+
         // Write to the temp file
         let json_data = serde_json::to_string_pretty(&recently_up_games).map_err(|e| {
             eprintln!("Error serializing recently_up_games: {:#?}", e);
             ScrapingError::FileJSONError(e)
         })?;
-    
+
         fs::write(&temp_json_path, &json_data).await.map_err(|e| {
             eprintln!("Error writing to the temp file: {:#?}", e);
             ScrapingError::CreatingFileError {
@@ -233,7 +236,7 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-    
+
         // Rename the temp file to the final file
         fs::rename(&temp_json_path, &json_path).await.map_err(|e| {
             eprintln!("Error renaming temp file: {:#?}", e);
@@ -242,16 +245,16 @@ pub mod basic_scraping {
                 fn_name: "scraping_func()".to_string(),
             }
         })?;
-    
+
         let duration_time_process = Instant::now() - start_time;
         info!(
             "Data has been written to newly_added_games.json. Time was: {:#?}",
             duration_time_process
         );
-    
+
         Ok(())
     }
-    
+
     #[tokio::main]
     pub async fn popular_games_scraping_func(
         app_handle: tauri::AppHandle,
