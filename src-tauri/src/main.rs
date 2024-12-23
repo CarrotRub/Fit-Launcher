@@ -477,6 +477,7 @@ async fn start() {
             let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_i, &show_app_i, &hide_app_i])?;
             
+            
             TrayIconBuilder::new()
               .icon(app.default_window_icon().unwrap().clone())
               .menu(&menu)
@@ -635,11 +636,11 @@ async fn start() {
                 current_app_handle.emit("scraping-complete", {}).unwrap();
             
                 // TODO: Remove this reload as it disrupts emits
-                // current_app_handle
-                //     .get_webview_window("main")
-                //     .unwrap()
-                //     .eval("window.location.reload();")
-                //     .unwrap();
+                current_app_handle
+                    .get_webview_window("main")
+                    .unwrap()
+                    .eval("window.location.reload();")
+                    .unwrap();
             
                 info!("Scraping signal has been sent.");
                 info!(
