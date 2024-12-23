@@ -1,5 +1,6 @@
 pub mod basic_scraping {
     use anyhow::Result;
+    use chrono::{TimeZone, Utc};
     use core::str;
     use futures::{
         stream::{FuturesOrdered, FuturesUnordered},
@@ -7,7 +8,7 @@ pub mod basic_scraping {
     };
     use serde::{Deserialize, Serialize};
 
-    use std::path::Path;
+    use std::{path::Path, time::UNIX_EPOCH};
     use std::time::Instant;
 
     use tauri::{Emitter, Manager};
@@ -334,52 +335,6 @@ pub mod basic_scraping {
         let mut binding = app_handle.path().app_data_dir().unwrap();
         binding.push("tempGames");
         binding.push("popular_games.json");
-
-        if Path::new(&binding).exists() {
-            // If file exists, read and compare
-            let mut file = match tokio::fs::File::open(&binding).await {
-                Ok(file) => file,
-                Err(e) => {
-                    eprintln!("Error opening the file: {:#?}", e);
-                    return Err(Box::new(ScrapingError::CreatingFileError {
-                        source: e,
-                        fn_name: "popular_games_scraping_func()".to_string(),
-                    }));
-                }
-            };
-
-            let mut file_content = String::new();
-            if let Err(e) = file.read_to_string(&mut file_content).await {
-                eprintln!("Error reading file content: {:#?}", e);
-                return Err(Box::new(ScrapingError::CreatingFileError {
-                    source: e,
-                    fn_name: "popular_games_scraping_func()".to_string(),
-                }));
-            }
-
-            let existing_games: Vec<Game> = match serde_json::from_str(&file_content) {
-                Ok(games) => games,
-                Err(e) => {
-                    error!("Failed to parse existing JSON data: {:#?}", e);
-                    return Err(Box::new(ScrapingError::FileJSONError(e)));
-                }
-            };
-
-            for (i, (title_elem, hreflink_elem)) in
-                titles.clone().zip(hreflinks.clone()).enumerate()
-            {
-                let title = title_elem.value().attr("title").unwrap_or_default();
-                let _href = hreflink_elem.value().attr("href").unwrap_or_default();
-
-                if i < existing_games.len() && title == existing_games[i].title {
-                    info!(
-                        "Game '{}' matches with the existing file. Stopping...",
-                        title
-                    );
-                    return Ok(()); // Stop the process if the game matches
-                }
-            }
-        }
 
         // If no file exists or games do not match, continue with the scraping
         let mut game_count = 0;

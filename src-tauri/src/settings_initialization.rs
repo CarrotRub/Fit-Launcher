@@ -49,6 +49,11 @@ pub mod settings_creation {
             .join("settings")
             .join("installation");
 
+        let library_settings = base_dirs
+            .config_dir()
+            .join("com.fitlauncher.carrotrub")
+            .join("library");
+
         if !installation_folder_path.exists() {
             fs::create_dir_all(&installation_folder_path)
                 .expect("Failed to create Installation Config directory");
@@ -67,6 +72,7 @@ pub mod settings_creation {
                 "Serialization of default Installation config failed",
             )
         })?;
+
         if !installation_file_path.exists() {
             let mut file = fs::File::create(&installation_file_path).map_err(|err| {
                 error!("Error creating the file: {:#?}", err);
@@ -84,6 +90,11 @@ pub mod settings_creation {
                         "Failed to write data to installation.json",
                     )
                 })?;
+        }
+
+        if !library_settings.exists() {
+            fs::create_dir_all(&library_settings)
+                .expect("Failed to create Installation Config directory");
         }
 
         Ok(())
