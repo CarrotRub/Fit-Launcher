@@ -47,7 +47,10 @@
           "$APPCONFIG/sitemaps/**",
           "$APPDATA/sitemaps/**",
           "$APPCACHE/**",
-          "$APPCACHE/.persistence/**"
+          "$APPCACHE/.persistence/**",
+          "app://*",
+          "file:///*",
+          "resource:///*"
         ],
         "enable": true
       },

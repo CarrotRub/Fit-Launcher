@@ -485,7 +485,7 @@ async fn start() {
               .on_menu_event(|app, event| match event.id.as_ref() {
                 "quit" => {
                   info!("quit menu item was clicked");
-                  app.exit(0);
+                  std::process::exit(0);
                 }
                 "show_app" => {
                     info!("show app menu item was clicked");
