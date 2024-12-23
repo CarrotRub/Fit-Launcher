@@ -223,7 +223,8 @@ pub mod torrent_commands {
             ApiAddTorrentResponse, EmptyJsonResponse, TorrentDetailsResponse, TorrentIdOrHash,
             TorrentListResponse, TorrentStats,
         },
-        AddTorrent, AddTorrentOptions, ApiError,
+        dht::Id20,
+        AddTorrent, AddTorrentOptions, ApiError, Magnet,
     };
 
     #[tauri::command]
@@ -241,6 +242,23 @@ pub mod torrent_commands {
             .api()?
             .api_add_torrent(AddTorrent::Url(url.into()), opts)
             .await
+    }
+
+    #[tauri::command]
+    pub async fn get_torrent_idx_from_url(url: String) -> Result<String, ApiError> {
+        let actual_torrent_magnet = match Magnet::parse(&url) {
+            Ok(magnet) => magnet,
+            Err(e) => {
+                error!("Error Parsing Magnet : {:#?}", e);
+                return Err(ApiError::new_from_anyhow(
+                    StatusCode::from_u16(401).unwrap(),
+                    e,
+                ));
+            }
+        };
+
+        let actual_torrent_id20 = Magnet::as_id20(&actual_torrent_magnet);
+        Ok(TorrentIdOrHash::Hash(actual_torrent_id20.unwrap()).to_string())
     }
 
     #[tauri::command]

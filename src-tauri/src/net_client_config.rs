@@ -165,13 +165,15 @@ pub mod custom_client_dns {
     pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
         let dns_config = ensure_and_load_dns_config();
 
+        // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
+        // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
         ClientBuilder::new()
             .dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)))
             .use_rustls_tls()
             .gzip(true)
             .brotli(true)
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
-            .pool_max_idle_per_host(20)
+            .pool_max_idle_per_host(0)
             .build()
             .expect("Failed to build custom DNS reqwest client")
     });

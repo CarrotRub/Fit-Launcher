@@ -243,9 +243,9 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
                         }
                     }
                     return game;
-                } else if (executableInfoPath) {
+                } else if (executableInfoPath?.length > 0) {
                     try {
-                        const gameInfo = await getExecutableInfo(executableInfoPath, game?.torrentOutputFolder);
+                        await getExecutableInfo(executableInfoPath, game?.torrentOutputFolder);
                     } catch (error) {
                         await message(error, { title: 'FitLauncher', kind: 'error' })
                     }

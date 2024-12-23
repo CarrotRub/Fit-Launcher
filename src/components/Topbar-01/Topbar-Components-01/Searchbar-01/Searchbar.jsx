@@ -5,11 +5,12 @@ import "./Searchbar.css";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
 import { setDownloadGamePageInfo } from "../../../functions/dataStoreGlobal";
+import { Portal } from "solid-js/web";
 const appDir = await appDataDir();
 
 
-function Searchbar() {
-    const navigate = useNavigate();
+function Searchbar({isTopBar = true, setSearchValue  }) {
+
     const [clicked, setClicked] = createSignal(false)
     const [searchTerm, setSearchTerm] = createSignal("");
     const [searchResults, setSearchResults] = createSignal([]);
@@ -18,13 +19,17 @@ function Searchbar() {
     const [showDragonBallSVG, setShowDragonBallSVG] = createSignal(false); // Signal for SVG display
     const [isDialogOpen, setIsDialogopen] = createSignal(false);
     const [games, setGames] = createSignal([]);
-
+    const [searchBarUUID, setSearchBarUUID] = createSignal(123)
+  
 
     onMount(() => {
         const urlParameter = getUrlParameter("url");
         if (urlParameter !== "") {
             showResults(urlParameter);
         }
+        const uuid = crypto.randomUUID();
+
+        setSearchBarUUID(uuid)
     });
 
     function getUrlParameter(name) {
@@ -125,7 +130,8 @@ function Searchbar() {
     }
 
     const handleGoToGamePage = async (href) => {
-        if (!clicked()) {
+        if (!clicked() && isTopBar) {
+            const navigate = useNavigate();
             console.log(href)
             setClicked(true);
             const uuid = crypto.randomUUID();
@@ -136,107 +142,88 @@ function Searchbar() {
             })
             navigate(`/game/${uuid}`);
             clearSearch()
+        } else if (!isTopBar) {
+            setSearchTerm(capitalizeTitle(getTitleFromUrl(href)));
+            setSearchResults([]);
+            setSearchValue(href)
         }
     };
 
     return (
-        <div className="searchbar-container">
-            <div className="search-bar">
-                <svg
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="24"
-                    viewBox="-543 241.4 24 24"
-                    style="-webkit-print-color-adjust:exact"
-                    fill="none"
-                >
-                    <g data-testid="search">
-                        <g class="fills">
-                            <rect
-                                rx="0"
-                                ry="0"
-                                x="-543"
-                                y="241.4"
-                                width="24"
-                                height="24"
-                                class="frame-background"
-                            />
-                        </g>
-                        <g class="frame-children">
-                            <g data-testid="svg-circle">
-                                <circle
-                                    cx="-532"
-                                    cy="252.4"
-                                    style={{ fill: "none" }}
-                                    class="fills"
-                                    r="8"
-                                />
-                                <g stroke-linecap="round" stroke-linejoin="round" class="strokes">
-                                    <circle
-                                        cx="-532"
-                                        cy="252.4"
-                                        style={{
-                                            fill: "none",
-                                            fillOpacity: "none",
-                                            strokeWidth: 2,
-                                            stroke: "#ece0f0",
-                                            strokeOpacity: 1,
-                                        }}
-                                        class="stroke-shape"
-                                        r="8"
-                                    />
-                                </g>
-                            </g>
-                            <g data-testid="svg-path">
-                                <path
-                                    d="m-522 262.4-4.3-4.3"
-                                    style={{ fill: "none" }}
-                                    class="fills"
-                                />
-                                <g stroke-linecap="round" stroke-linejoin="round" class="strokes">
-                                    <path
-                                        d="m-522 262.4-4.3-4.3"
-                                        style={{
-                                            fill: "none",
-                                            fillOpacity: "none",
-                                            strokeWidth: 2,
-                                            stroke: "#ece0f0",
-                                            strokeOpacity: 1,
-                                        }}
-                                        class="stroke-shape"
-                                    />
-                                </g>
-                            </g>
-                        </g>
-                    </g>
-                </svg>
-                <input
-                    id="searchbar-input"
-                    type="text"
-                    placeholder="Search Game"
-                    value={searchTerm()}
-                    onInput={handleInputChange}
-                    autocomplete="off"
+        <div class="searchbar-container" id={`searchbar-container-${searchBarUUID()}`}>
+          <div class="search-bar">
+            {/* Your search icon, etc. */}
+            <svg
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+              height="24"
+              viewBox="-543 241.4 24 24"
+              style="-webkit-print-color-adjust: exact"
+              fill="none"
+            >
+              <g data-testid="search">
+                <circle
+                  cx="-532"
+                  cy="252.4"
+                  r="8"
+                  stroke="#ece0f0"
+                  stroke-width="2"
+                  fill="none"
                 />
-
-            </div>
-            <Show when={searchResults().length > 0} >
+                <path
+                  d="m-522 262.4-4.3-4.3"
+                  stroke="#ece0f0"
+                  stroke-width="2"
+                  fill="none"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </g>
+            </svg>
+    
+            <input
+              id="searchbar-input"
+              type="text"
+              placeholder="Search Game"
+              value={searchTerm()}
+              onInput={handleInputChange}
+              autocomplete="off"
+            />
+          </div>
+    
+          {/* Option 1: NO PORTAL – just render the results in place, absolutely anchored */}
+          <Show when={searchResults().length > 0}>
+            <ul id="searchbar-results">
+              {searchResults().map((result, index) => (
+                <li key={index}>
+                  <a href="#" onClick={() => handleGoToGamePage(result)}>
+                    {capitalizeTitle(getTitleFromUrl(result))}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Show>
+    
+          {/* 
+            Option 2: If you WANT a Portal for layering, mount to this container 
+            (and ensure .searchbar-container is position: relative):
+            
+            <Show when={searchResults().length > 0}>
+              <Portal mount={document.getElementById(`searchbar-container-${searchBarUUID()}`)}>
                 <ul id="searchbar-results">
-                    {searchResults().map((result, index) => (
-                        <li key={index}>
-                            <a
-                                href="#"
-                                onClick={async () => await handleGoToGamePage(result)} // Add onClick event handler
-                                class="item-results"
-                            >
-                                {capitalizeTitle(getTitleFromUrl(result))}
-                            </a>
-                        </li>
-                    ))}
+                  {searchResults().map((result, index) => (
+                    <li key={index}>
+                      <a href="#" onClick={() => handleGoToGamePage(result)}>
+                        {capitalizeTitle(getTitleFromUrl(result))}
+                      </a>
+                    </li>
+                  ))}
                 </ul>
+              </Portal>
             </Show>
+          */}
         </div>
-    );
-}
-
-export default Searchbar;
+      );
+    }
+    
+    export default Searchbar;

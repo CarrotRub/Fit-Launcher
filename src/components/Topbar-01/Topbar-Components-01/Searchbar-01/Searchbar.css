@@ -1,9 +1,11 @@
 .searchbar-container {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
+/* The search bar itself */
 .search-bar {
     display: flex;
     align-items: center;
@@ -15,7 +17,6 @@
     gap: 8px;
 }
 
-
 .search-bar input[type="text"] {
     flex: 1;
     background-color: transparent;
@@ -25,57 +26,55 @@
     font-size: 14px;
 }
 
-
 .search-bar input::placeholder {
     color: var(--non-selected-text-color);
 }
 
+/* The results popup */
 #searchbar-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: auto;
+    list-style: none;
+
     display: flex;
     flex-direction: column;
+    gap: 12px;
 
     background-color: var(--popup-background-color);
-    position: absolute;
-    list-style: none;
-    gap: 12px;
-    top: 70%;
     border-radius: 6px;
     padding: 16px;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 
+    /* Optional nice transitions */
+    transition: max-height 0.3s ease-in-out,
+        padding 0.3s ease-in-out,
+        max-width 0.3s ease-in-out;
 
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, max-width 0.3s ease-in-out, ;
+    z-index: 13;
+}
 
+#searchbar-results li {
+    margin: 0;
+    padding: 0;
+}
 
-    & p {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        font-family: "Mulish Variable";
-        font-weight: 700;
-    }
+#searchbar-results li a {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--secondary-30-selected-color);
+    border-radius: 4px;
+    padding: 8px 4px;
+    transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
+    text-decoration: none;
+    color: var(--text-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
 
-    & a {
-        background-color: var(--secondary-30-selected-color);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 4px;
-        transition: transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out;
-
-        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.08);
-        padding: 8px 4px 8px 4px;
-
-        &:visited,
-        &:link,
-        &:active {
-            text-decoration: none;
-            color: var(--text-color);
-        }
-
-        &:hover {
-            transform: scale(1.05);
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.12);
-        }
-    }
+#searchbar-results li a:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
 }

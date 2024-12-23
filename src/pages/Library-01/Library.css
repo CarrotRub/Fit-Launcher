@@ -48,7 +48,7 @@
     height: 6vh;
     width: 100%;
     border: none;
-    border-radius: 12px;
+    border-radius: 6px;
     display: flex;
 
     justify-content: flex-start;
@@ -70,7 +70,7 @@
     background-color: var(--secondary-20-color);
     height: fit-content;
     width: 100%;
-    border-radius: 12px;
+    border-radius: 6px;
 }
 
 .library-collection-list-title {
@@ -93,14 +93,16 @@
     line-clamp: 2;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
-    width: auto;
+    /* max-width: 100%; */
+    flex: 1;
 }
 
 .library-collection-list-title svg {
     cursor: pointer;
+    flex-shrink: 0; 
+    width: 24px; 
+    height: 24px; 
 }
-
 
 .library-collection-list-item {
     display: flex;
@@ -130,7 +132,7 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     cursor: pointer;
     list-style-type: none;
     /* Move this from `li` to the main class */

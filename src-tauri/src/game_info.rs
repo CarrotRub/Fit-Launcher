@@ -34,7 +34,7 @@ pub mod games_informations {
     ) -> Option<ExecutableInfo> {
         let metadata = fs::metadata(&path_to_exe).ok()?;
 
-        let mut total_size = dir_size(path_to_folder).unwrap();
+        let mut total_size = dir_size(path_to_folder).unwrap_or(0);
 
         let executable_disk_size = total_size;
 

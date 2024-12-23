@@ -36,15 +36,15 @@ use serde_json::Value;
 use settings_initialization::settings_creation::create_gamehub_settings_file;
 use settings_initialization::settings_creation::create_image_cache_file;
 use settings_initialization::settings_creation::create_installation_settings_file;
-use tokio::task::LocalSet;
 use std::error::Error;
 use tauri::async_runtime::spawn_blocking;
 use tauri::Emitter;
 use tauri::Listener;
+use tokio::task::LocalSet;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
-
+use tauri_plugin_updater::UpdaterExt;
 use std::str;
 
 use serde::{Deserialize, Serialize};
@@ -233,7 +233,10 @@ async fn get_games_images(
             // Images already exist in cache, no need to fetch
             return Ok(());
         }
-        warn!("The list of {} is empty, it will get images again", &game_link);
+        warn!(
+            "The list of {} is empty, it will get images again",
+            &game_link
+        );
     }
 
     drop(cache); // Release lock before performing network operations
@@ -457,8 +460,6 @@ async fn start() {
         NonZeroUsize::new(30).unwrap(),
     )));
 
-
-
     tauri::Builder
         ::default()
         .setup(|app| {
@@ -508,11 +509,10 @@ async fn start() {
             let third_app_handle = current_app_handle.clone();
             let fourth_app_handle = current_app_handle.clone();
 
-
             // Perform asynchronous initialization tasks without blocking the main thread
             tauri::async_runtime::spawn(async move {
                 tracing::info!("Starting async tasks");
-            
+
                 // Spawn blocking tasks for each `#[tokio::main]` function
                 let task_1 = spawn_blocking(|| {
                     if let Err(e) = get_100_games_unordered() {
@@ -609,6 +609,7 @@ async fn start() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             close_splashscreen,
             get_games_images,
@@ -628,6 +629,7 @@ async fn start() {
             torrent_commands::change_torrent_config,
             torrent_commands::run_automate_setup_install,
             torrent_commands::delete_game_folder_recursively,
+            torrent_commands::get_torrent_idx_from_url,
             commands_scraping::get_singular_game_info,
             executable_custom_commands::start_executable,
             games_informations::executable_info_discovery,

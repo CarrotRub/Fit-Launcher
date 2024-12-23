@@ -1,4 +1,6 @@
 pub mod discovery {
+    use std::sync::Arc;
+
     //TODO: Add a checker to not get all the games everytime, needs to be out before the update
     use futures::{
         future::join_all,
@@ -7,7 +9,7 @@ pub mod discovery {
     };
     use scraper::{selectable::Selectable, Html, Selector};
     use serde::{Deserialize, Serialize};
-    use tokio::{fs, task};
+    use tokio::{fs, sync::Semaphore, task};
 
     use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
 
@@ -218,45 +220,56 @@ pub mod discovery {
 
     #[tokio::main]
     pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
+        // Create a semaphore that only allows 5 concurrent tasks
+        let concurrency_limit = Arc::new(Semaphore::new(5));
+
         let mut list_games_pages: Vec<GamePage> = Vec::new();
 
+        // Collect futures in an unordered stream
         let fetch_tasks: FuturesUnordered<_> = (1..=10)
-            .map(|page_number| async move {
-                let url = format!(
-                    "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
-                    page_number
-                );
-                match CUSTOM_DNS_CLIENT.get(&url).send().await {
-                    Ok(res) if res.status().is_success() => match res.text().await {
-                        Ok(text) => Ok(parse_and_process_page(text).await),
-                        Err(_) => Err(format!("Failed to parse text for page {}", page_number)),
-                    },
-                    Ok(res) => Err(format!(
-                        "Page {} returned unsuccessful status: {}",
-                        page_number,
-                        res.status()
-                    )),
-                    Err(err) => Err(format!("Failed to fetch page {}: {:?}", page_number, err)),
+            .map(|page_number| {
+                // Clone the Arc so each task has a handle to the same semaphore
+                let concurrency_limit = concurrency_limit.clone();
+                async move {
+                    // Acquire the semaphore permit – only 5 tasks can run this point concurrently
+                    let _permit = concurrency_limit.acquire_owned().await.unwrap();
+
+                    let url = format!(
+                        "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
+                        page_number
+                    );
+
+                    match CUSTOM_DNS_CLIENT.get(&url).send().await {
+                        Ok(res) if res.status().is_success() => match res.text().await {
+                            Ok(text) => Ok(parse_and_process_page(text).await),
+                            Err(_) => Err(format!("Failed to parse text for page {}", page_number)),
+                        },
+                        Ok(res) => Err(format!(
+                            "Page {} returned unsuccessful status: {}",
+                            page_number,
+                            res.status()
+                        )),
+                        Err(err) => Err(format!("Failed to fetch page {}: {:?}", page_number, err)),
+                    }
                 }
             })
             .collect();
 
-        // Collect results into a temporary Vec
+        // Collect results outside the async closure
         let results: Vec<Result<Vec<GamePage>, String>> = fetch_tasks.collect().await;
 
-        // Process the collected results outside the async closure
+        // Process each result
         for result in results {
             match result {
                 Ok(parsed_pages) => {
-                    // If successful, extend the list with the parsed pages
                     list_games_pages.extend(parsed_pages);
                 }
                 Err(err_msg) => {
-                    // If an error occurred, log it
                     eprintln!("{}", err_msg);
                 }
             }
         }
+
         println!("Processed {} game pages.", list_games_pages.len());
 
         // Asynchronous directory creation and file writing

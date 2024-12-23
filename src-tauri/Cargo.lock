@@ -281,7 +281,7 @@ dependencies = [
  "axum-core",
  "bytes",
  "futures-util",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "http-body-util",
  "hyper",
@@ -314,7 +314,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures-util",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "http-body-util",
  "mime",
@@ -1356,7 +1356,7 @@ dependencies = [
  "futures",
  "futures-util",
  "hickory-resolver",
- "http 1.1.0",
+ "http 1.2.0",
  "image",
  "kuchiki",
  "lazy_static",
@@ -1943,7 +1943,7 @@ dependencies = [
  "fnv",
  "futures-core",
  "futures-sink",
- "http 1.1.0",
+ "http 1.2.0",
  "indexmap 2.6.0",
  "slab",
  "tokio",
@@ -2132,9 +2132,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21b9ddb458710bc376481b842f5da65cdf31522de232c1ca8146abce2a358258"
+checksum = "f16ca2af56261c99fba8bac40a10251ce8188205a4c448fbb745a2e4daa76fea"
 dependencies = [
  "bytes",
  "fnv",
@@ -2148,7 +2148,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1cac85db508abc24a2e48553ba12a996e87244a0395ce011e62b37158745d643"
 dependencies = [
  "bytes",
- "http 1.1.0",
+ "http 1.2.0",
 ]
 
 [[package]]
@@ -2159,7 +2159,7 @@ checksum = "793429d76616a256bcb62c2a2ec2bed781c8307e797e2598c50010f2bee2544f"
 dependencies = [
  "bytes",
  "futures-util",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "pin-project-lite",
 ]
@@ -2192,7 +2192,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "h2 0.4.5",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "httparse",
  "httpdate",
@@ -2210,7 +2210,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ee4be2c948921a1a5320b629c4193916ed787a7f7f293fd3f7f5a6c9de74155"
 dependencies = [
  "futures-util",
- "http 1.1.0",
+ "http 1.2.0",
  "hyper",
  "hyper-util",
  "rustls 0.23.12",
@@ -2246,7 +2246,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "hyper",
  "pin-project-lite",
@@ -2823,7 +2823,7 @@ dependencies = [
  "dashmap",
  "futures",
  "hex 0.4.3",
- "http 1.1.0",
+ "http 1.2.0",
  "itertools",
  "librqbit-bencode",
  "librqbit-buffers",
@@ -3023,7 +3023,7 @@ dependencies = [
  "axum",
  "bstr",
  "gethostname",
- "http 1.1.0",
+ "http 1.2.0",
  "httparse",
  "librqbit-core",
  "librqbit-sha1-wrapper",
@@ -4622,9 +4622,9 @@ checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
 name = "reqwest"
-version = "0.12.7"
+version = "0.12.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8f4955649ef5c38cc7f9e8aa41761d48fb9677197daea9984dc54f56aad5e63"
+checksum = "a77c62af46e79de0a562e1a9849205ffcb7fc1238876e9bd743357570e04046f"
 dependencies = [
  "async-compression",
  "base64 0.22.1",
@@ -4635,7 +4635,7 @@ dependencies = [
  "futures-util",
  "h2 0.4.5",
  "hickory-resolver",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "http-body-util",
  "hyper",
@@ -5603,7 +5603,7 @@ dependencies = [
  "glob",
  "gtk",
  "heck 0.5.0",
- "http 1.1.0",
+ "http 1.2.0",
  "http-range",
  "jni",
  "libc",
@@ -5782,15 +5782,15 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-updater"
-version = "2.0.2"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dd3d2fe0f02bf52eebb5a9d23b987fffac6684646ab6fd683d706dafb18da87"
+checksum = "b7351014c140906bcfff59d96e04b1170c8f602557f40eb37f7de356d4e7067b"
 dependencies = [
  "base64 0.22.1",
  "dirs",
  "flate2",
  "futures-util",
- "http 1.1.0",
+ "http 1.2.0",
  "infer",
  "minisign-verify",
  "percent-encoding",
@@ -5802,7 +5802,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "tempfile",
- "thiserror 1.0.63",
+ "thiserror 2.0.3",
  "time",
  "tokio",
  "url",
@@ -5818,7 +5818,7 @@ checksum = "cce18d43f80d4aba3aa8a0c953bbe835f3d0f2370aca75e8dbb14bd4bab27958"
 dependencies = [
  "dpi",
  "gtk",
- "http 1.1.0",
+ "http 1.2.0",
  "jni",
  "raw-window-handle",
  "serde",
@@ -5836,7 +5836,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f442a38863e10129ffe2cec7bd09c2dcf8a098a3a27801a476a304d5bb991d2"
 dependencies = [
  "gtk",
- "http 1.1.0",
+ "http 1.2.0",
  "jni",
  "log",
  "objc2",
@@ -5867,7 +5867,7 @@ dependencies = [
  "dunce",
  "glob",
  "html5ever 0.26.0",
- "http 1.1.0",
+ "http 1.2.0",
  "infer",
  "json-patch",
  "kuchikiki",
@@ -6240,7 +6240,7 @@ checksum = "1e9cd434a998747dd2c4276bc96ee2e0c7a2eadf3cae88e52be55a05fa9053f5"
 dependencies = [
  "bitflags 2.6.0",
  "bytes",
- "http 1.1.0",
+ "http 1.2.0",
  "http-body",
  "http-body-util",
  "pin-project-lite",
@@ -7401,7 +7401,7 @@ dependencies = [
  "gdkx11",
  "gtk",
  "html5ever 0.26.0",
- "http 1.1.0",
+ "http 1.2.0",
  "javascriptcore-rs",
  "jni",
  "kuchikiki",

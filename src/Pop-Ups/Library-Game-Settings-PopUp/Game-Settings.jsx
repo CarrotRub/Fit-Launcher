@@ -14,7 +14,7 @@ const GameSettingsLibraryPopUp = ({ infoTitle, infoMessage, infoPlaceholder, def
     const [textInputValue, setTextInputValue] = createSignal("");
     const [isDialogOpen, setIsDialogOpen] = createSignal(false); // Lock for dialog state
     const [currentPath, setCurrentPath] = createSignal("")
-
+    const [currentFolderPath, setCurrentFolderPath] = createSignal("");
     function closePopup() {
         const fullPopup = document.querySelector('.popup-gamesettings-overlay');
         if (fullPopup) {
@@ -22,13 +22,18 @@ const GameSettingsLibraryPopUp = ({ infoTitle, infoMessage, infoPlaceholder, def
         }
     }
 
-    function clearTextInput() {
+    function clearExeTextInput() {
         setCurrentPath("");
+    }
+
+    function clearFolderTextInput() {
+        setCurrentFolderPath("");
     }
 
     onMount(() => {
         let path_exe = userGame?.executableInfo?.executable_path || defaultPath;
-        setCurrentPath(path_exe)
+        setCurrentPath(path_exe);
+        setCurrentFolderPath(userGame?.torrentOutputFolder?.replace(' [FitGirl Repacks]', ''));
     });
 
     createEffect(() => {
@@ -79,6 +84,7 @@ const GameSettingsLibraryPopUp = ({ infoTitle, infoMessage, infoPlaceholder, def
     createEffect(() => {
         console.log(currentPath());
     });
+
     async function handleDeleteGame() {
         let user_downloaded_game_path = await userDownloadedGamesPath();
         const fullPath = await join(user_downloaded_game_path, "downloaded_games.json");
@@ -106,7 +112,7 @@ const GameSettingsLibraryPopUp = ({ infoTitle, infoMessage, infoPlaceholder, def
     return (
         <div className="popup-gamesettings-overlay">
             <div className="basic-gamesettings-popup">
-                <div className="popup-content">
+                <div className="popup-content" style={{justifyContent: "space-between"}}>
                     <div className="popup-text-title">
                         <p className="popup-main-title">{infoTitle ? infoTitle : 'Fill the input :)'}</p>
                     </div>
@@ -116,6 +122,7 @@ const GameSettingsLibraryPopUp = ({ infoTitle, infoMessage, infoPlaceholder, def
                     </div>
 
                     <div className="popup-game-settings-container">
+                        <p>Path to Executable :</p>
                         <label className="popup-input-label">
                             <input
                                 className="popup-game-settings"
@@ -125,7 +132,12 @@ const GameSettingsLibraryPopUp = ({ infoTitle, infoMessage, infoPlaceholder, def
                                 onInput={(e) => setCurrentPath(e.target.value)}
                             />
                         </label>
-                        <svg onClick={clearTextInput} style={{cursor: "pointer"}} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21m9 0H7M5 11l9 9"/></svg>
+                        <svg onClick={clearExeTextInput} style={{cursor: "pointer"}} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21m9 0H7M5 11l9 9"/></svg>
+                    </div>
+
+                    <div className="popup-game-settings-container">
+                        <p>Path to Folder : <small><i>Sadly for now there is no way to get game's size when adding local game :(</i></small></p>
+                        {/* TODO: IMPORTANT, I NEED NOT TO FORGET TO ADD A NEW WAY AND ALSO TO FCKNG ADD THE OBJ TO RUST STRUCT CUZ RUST IS JUST THAT GUY AND IS WAY BETTER IN EVERYTHING I SHOULD HAVE USED MY STUPID BRAIN TO THINK THAT WHILE REMAKING EVERYTHING BUT IM TOO SLOW IN THE HEAD SO NOW I'LL HAVE TO REDO EVERYTHING AGAIN I'M GONNA REMOVE MYSELF FROM LIFE. */}
                     </div>
 
                     <div className="popup-footer-container">
