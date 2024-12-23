@@ -14,6 +14,9 @@ Fit Launcher is a 🚀 **blazingly fast** 🚀 game launcher designed specifical
 
 ![Launcher Screenshot 1](images/screenshot1.png)
 ![Launcher Screenshot 2](images/screenshot2.png)
+![Launcher Screenshot 3](images/screenshot3.png)
+![Launcher Screenshot 4](images/screenshot4.png)
+![Launcher Screenshot 5](images/screenshot5.png)
 
 ## Installation Guide
 
@@ -23,7 +26,7 @@ Fit Launcher is a 🚀 **blazingly fast** 🚀 game launcher designed specifical
    Go to the [release page here](https://github.com/CarrotRub/Fit-Launcher/releases/latest).
 
 2. **Download the Executable**  
-   Scroll down until you find the executable, which will look like this `Fit.Launcher_1.X.X_x64_en-US.msi`
+   Scroll down until you find the executable, which will look like this `Fit.Launcher_2.X.X_x64_en-US.msi`
 
 3. **Run it !**
    Once downloaded, simply execute the setup and install it inside
