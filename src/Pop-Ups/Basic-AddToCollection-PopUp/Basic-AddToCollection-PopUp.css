@@ -10,7 +10,7 @@
     align-items: center;
     align-content: center;
     justify-content: center;
-
+    backdrop-filter: blur(6px);
 
 }
 

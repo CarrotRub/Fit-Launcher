@@ -23,6 +23,7 @@
     "@tauri-apps/api": "2.1.1",
     "@tauri-apps/plugin-updater": "^2.3.0",
     "@thisbeyond/solid-dnd": "^0.7.5",
+    "@thisbeyond/solid-select": "^0.15.0",
     "chart.js": "4.4.4",
     "solid-js": "^1.7.8",
     "sweetalert2": "^11.12.4",

@@ -531,7 +531,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
                 <div className="popup-text-title">
                     <p className="popup-main-title">One Last Step !</p>
                     <p className="popup-secondary-title">
-                        Yup this is really the last step before downloading {':)'}
+                        Yup this is really the last step before downloading, if it takes some time it's normal, just wait, this is how a Torrent works, you can learn about it if you want. {':)'}
                     </p>
                 </div>
                 {isLoading() ? (

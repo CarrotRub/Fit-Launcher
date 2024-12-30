@@ -111,6 +111,7 @@
     align-self: flex-end;
     /* Align the button to the bottom-right corner if needed */
     width: 8vw;
+    min-width: fit-content;
     height: 4vw;
     display: flex;
     align-items: center;
@@ -137,7 +138,8 @@
     }
 }
 
-.clear-cache-settings-button, .go-to-logs-settings-button {
+.clear-cache-settings-button,
+.go-to-logs-settings-button {
     width: 8vw;
     height: 3vw;
     display: flex;
@@ -151,6 +153,10 @@
     cursor: pointer;
     transition: transform 0.3s ease, background-color 0.5s ease;
     margin-left: auto;
+    border-color: var(--accent-color);
+    border-width: 2px;
+    border-style: solid;
+
     & span {
         font-size: 16px;
         color: var(--accent-color);
@@ -172,4 +178,87 @@
     flex-direction: row;
     align-self: flex-end;
     gap: 12px;
+}
+
+.plus-button-settings {
+    width: 3vw;
+    height: 3vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--70-background-color);
+    border: none;
+    border-radius: 6px;
+    position: relative;
+    justify-self: flex-end;
+    cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.5s ease;
+    margin-left: 24px;
+    border-color: var(--accent-color);
+    border-width: 2px;
+    border-style: solid;
+
+    & span {
+        font-size: 16px;
+        color: var(--accent-color);
+    }
+
+    &:hover {
+        transform: scale(0.9);
+    }
+
+    &:active {
+        background-color: var(--primary-color);
+    }
+}
+
+.theme-dropdown {
+    margin-left: auto;
+    cursor: pointer;
+    position: relative;
+    height: 100%;
+    align-self: flex-start;
+
+    & * {
+        padding: 4px;
+        margin: 0;
+
+    }
+
+    & .solid-select-input {
+        display: none;
+    }
+
+    & .solid-select-control {
+        border: 2px solid var(--accent-color);
+        border-radius: 6px;
+        background-color: var(--secondary-20-color);
+        box-shadow: none;
+    }
+
+    & .solid-select-control:focus-within {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    & .solid-select-placeholder {
+        color: var(--text-color);
+        opacity: 0.8;
+    }
+
+    & .solid-select-option {
+        background-color: var(--popup-background-color);
+        border-radius: 4px;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    & .solid-select-option:hover {
+        background-color: var(--secondary-30-selected-color);
+        color: #fff;
+    }
+
+    & .solid-select-option[data-focused="true"] {
+        background-color: var(--primary-color);
+        color: #fff;
+    }
 }

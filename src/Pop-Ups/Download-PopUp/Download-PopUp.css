@@ -5,14 +5,14 @@
     height: 100%;
     width: 100%;
     background-color: var(--70-background-color);
-
     display: flex;
     align-items: center;
     align-content: center;
     justify-content: center;
 
-
+    backdrop-filter: blur(6px);
 }
+
 
 .download-popup {
     z-index: 13;
