@@ -179,7 +179,7 @@ const DownloadPopup = ({ badClosePopup, gameTitle, gameMagnet, externFullGameInf
             await invoke('config_change_only_path', { downloadPath: downloadPath() });
             console.log("placed into config file")
         } catch (error) {
-            console.error("error placing into config file")
+            console.error("error placing into config file", error)
         }
 
     }
@@ -531,7 +531,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
                 <div className="popup-text-title">
                     <p className="popup-main-title">One Last Step !</p>
                     <p className="popup-secondary-title">
-                        Yup this is really the last step before downloading, if it takes some time it's normal, just wait, this is how a Torrent works, you can learn about it if you want. {':)'}
+                        Yup this is really the last step before downloading. <br />If it takes some time it's normal, just wait, this is how a Torrent works, you can learn about it if you want. {':)'}
                     </p>
                 </div>
                 {isLoading() ? (
