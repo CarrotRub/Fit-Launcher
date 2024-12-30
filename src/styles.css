@@ -1,19 +1,16 @@
-:root[data-theme="default-dark-purple"] {
-    background-color: var(--background-color);
+:root {
+  background-color: var(--background-color);
 }
 
 body {
-    margin: 0;
-    padding: 0;
-  }
+  margin: 0;
+  padding: 0;
+  color: var(--text-color);
+}
 
-  html,
-  body,
-  #root {
-    height: 100vh; 
-    margin: 0; 
-  }
-
-
-
-
+html,
+body,
+#root {
+  height: 100vh;
+  margin: 0;
+}

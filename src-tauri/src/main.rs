@@ -29,6 +29,9 @@ pub use crate::settings_initialization::settings_configuration;
 
 mod discovery_scraping;
 
+mod downloadingfunc;
+pub use crate::downloadingfunc::downloads_function;
+
 use discovery_scraping::discovery::get_100_games_unordered;
 use futures::future::join_all;
 use scraper::{Html, Selector};
@@ -691,6 +694,7 @@ async fn start() {
             settings_configuration::reset_dns_settings,
             settings_configuration::clear_all_cache,
             settings_configuration::open_logs_directory,
+            downloads_function::get_fucking_fast_file_links
         ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands

@@ -36,6 +36,86 @@ body::-webkit-scrollbar {
   --warning-orange: #e65d00;
 }
 
+:root[data-theme="forest-dark-green"] {
+  --accent-color: rgba(34, 102, 58, 1);
+  --secondary-color: rgba(20, 70, 40, 1);
+  --secondary-30-selected-color: rgba(20, 70, 40, 0.3);
+  --non-selected-text-color: rgba(200, 220, 200, 0.5);
+  --primary-color: rgba(46, 139, 87, 1);
+  --secondary-20-color: rgba(20, 70, 40, 0.2);
+  --text-color: rgba(230, 240, 230, 1);
+  --background-color: rgb(14, 13, 13);
+  --70-background-color: rgba(14, 13, 13, 0.7);
+  --30-background-color: rgba(14, 13, 13, 0.3);
+  --popup-background-color: rgb(5, 15, 9);
+  --resume-button-accent-color: #4C9A66;
+  --warning-orange: #C86432;
+}
+
+:root[data-theme="ocean-dark-blue"] {
+  --accent-color: rgba(34, 58, 102, 1);
+  --secondary-color: rgba(20, 40, 70, 1);
+  --secondary-30-selected-color: rgba(20, 40, 70, 0.3);
+  --non-selected-text-color: rgba(200, 210, 230, 0.5);
+  --primary-color: rgba(46, 87, 139, 1);
+  --secondary-20-color: rgba(20, 40, 70, 0.2);
+  --text-color: rgba(230, 240, 250, 1);
+  --background-color: rgb(13, 14, 30);
+  --70-background-color: rgba(13, 14, 30, 0.7);
+  --30-background-color: rgba(13, 14, 30, 0.3);
+  --popup-background-color: rgb(9, 15, 25);
+  --resume-button-accent-color: #4C66C9;
+  --warning-orange: #C86432;
+}
+
+:root[data-theme="desert-light-beige"] {
+  --accent-color: rgb(127 111 90);
+  --secondary-color: rgba(190, 160, 120, 1);
+  --secondary-30-selected-color: rgba(190, 160, 120, 0.3);
+  --non-selected-text-color: rgba(36, 29, 23, 0.5);
+  --primary-color: rgba(240, 220, 180, 1);
+  --secondary-20-color: rgba(190, 160, 120, 0.2);
+  --text-color: rgba(60, 40, 20, 1);
+  --background-color: rgb(245, 245, 220);
+  --70-background-color: rgba(245, 245, 220, 0.7);
+  --30-background-color: rgba(245, 245, 220, 0.3);
+  --popup-background-color: rgb(230, 220, 200);
+  --resume-button-accent-color: #D2B48C;
+  --warning-orange: #C86432;
+}
+
+:root[data-theme="dark-orange-mead"] {
+  --accent-color: rgba(180, 85, 20, 1);
+  --secondary-color: rgba(140, 65, 15, 1);
+  --secondary-30-selected-color: rgba(140, 65, 15, 0.3);
+  --non-selected-text-color: rgba(220, 200, 180, 0.5);
+  --primary-color: rgba(200, 100, 30, 1);
+  --secondary-20-color: rgba(140, 65, 15, 0.2);
+  --text-color: rgba(240, 220, 200, 1);
+  --background-color: rgb(16, 10, 6);
+  --70-background-color: rgba(25, 15, 10, 0.7);
+  --30-background-color: rgba(25, 15, 10, 0.3);
+  --popup-background-color: rgb(20, 10, 5);
+  --resume-button-accent-color: #C86432;
+  --warning-orange: #A34216;
+}
+
+:root[data-theme="le-beau-cyan"] {
+  --accent-color: rgba(0, 128, 128, 1);
+  --secondary-color: rgba(0, 102, 102, 1);
+  --secondary-30-selected-color: rgba(0, 102, 102, 0.3);
+  --non-selected-text-color: rgba(200, 240, 240, 0.5);
+  --primary-color: rgba(64, 224, 208, 1);
+  --secondary-20-color: rgba(0, 102, 102, 0.2);
+  --text-color: rgba(240, 255, 255, 1);
+  --background-color: rgb(10, 20, 25);
+  --70-background-color: rgba(10, 20, 25, 0.7);
+  --30-background-color: rgba(10, 20, 25, 0.3);
+  --popup-background-color: rgb(5, 15, 20);
+  --resume-button-accent-color: #00CCCC;
+  --warning-orange: #FF7F50;
+}
+
 #router-page {
   height: 100%;
   width: 100%;

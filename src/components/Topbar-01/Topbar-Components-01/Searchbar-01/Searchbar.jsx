@@ -169,13 +169,14 @@ function Searchbar({isTopBar = true, setSearchValue  }) {
                   cx="-532"
                   cy="252.4"
                   r="8"
-                  stroke="#ece0f0"
+                  stroke="var(--text-color)"
                   stroke-width="2"
+                  
                   fill="none"
                 />
                 <path
                   d="m-522 262.4-4.3-4.3"
-                  stroke="#ece0f0"
+                  stroke="var(--text-color)"
                   stroke-width="2"
                   fill="none"
                   stroke-linecap="round"
@@ -193,8 +194,7 @@ function Searchbar({isTopBar = true, setSearchValue  }) {
               autocomplete="off"
             />
           </div>
-    
-          {/* Option 1: NO PORTAL – just render the results in place, absolutely anchored */}
+  
           <Show when={searchResults().length > 0}>
             <ul id="searchbar-results">
               {searchResults().map((result, index) => (
@@ -207,24 +207,6 @@ function Searchbar({isTopBar = true, setSearchValue  }) {
             </ul>
           </Show>
     
-          {/* 
-            Option 2: If you WANT a Portal for layering, mount to this container 
-            (and ensure .searchbar-container is position: relative):
-            
-            <Show when={searchResults().length > 0}>
-              <Portal mount={document.getElementById(`searchbar-container-${searchBarUUID()}`)}>
-                <ul id="searchbar-results">
-                  {searchResults().map((result, index) => (
-                    <li key={index}>
-                      <a href="#" onClick={() => handleGoToGamePage(result)}>
-                        {capitalizeTitle(getTitleFromUrl(result))}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </Portal>
-            </Show>
-          */}
         </div>
       );
     }

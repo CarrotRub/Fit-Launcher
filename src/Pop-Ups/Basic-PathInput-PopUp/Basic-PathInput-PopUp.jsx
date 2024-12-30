@@ -40,7 +40,10 @@ const BasicPathInputPopup = ({ infoTitle, infoMessage, infoPlaceholder, defaultP
                         let chosenPath = await open({
                             directory: isDirectory,
                             multiple: multipleFiles,
-                            extensions: fileType,
+                            filters: [{
+                                name: fileType[0],
+                                extensions: fileType
+                            }],
                             defaultPath: defaultPath,
                         });
                         if (chosenPath) {
