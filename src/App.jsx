@@ -13,7 +13,7 @@ import '@fontsource-variable/lexend'
 import './App.css';
 import Topbar from './components/Topbar-01/Topbar';
 import { appDataDir, dirname, join } from '@tauri-apps/api/path';
-import { exists, mkdir, readDir, writeFile } from '@tauri-apps/plugin-fs';
+import { exists, mkdir, readDir, readTextFile, writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import { check } from '@tauri-apps/plugin-updater';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
@@ -24,6 +24,88 @@ async function userCollectionPath() {
 }
 
 function App() {
+    const defaultThemes = [
+        "Default Dark Purple", 
+        "Forest Dark Green", 
+        "Ocean Dark Blue", 
+        "Dark Orange Mead", 
+        "Desert Light Beige", 
+        "Le Beau Cyan"
+    ];
+
+    onMount(async () => {
+        try {
+            const themesDir = await appDataDir();
+            const themePath = await join(themesDir, "themes");
+            await mkdir(themePath, { recursive: true });
+
+            const themeFiles = await readDir(themePath);
+
+            const loadedThemes = themeFiles
+                .filter(file => file.name.endsWith(".css"))
+                .map(file => file.name.replace(".css", "").replace(/-/g, " ").replace(/\b\w/g, char => char.toUpperCase()));
+
+            // Apply the saved theme
+            const defaultThemeKeys = defaultThemes.map(theme => theme.replace(/\s+/g, "-").toLowerCase());
+            const savedTheme = localStorage.getItem("theme") || defaultThemeKeys[0];
+            if (defaultThemeKeys.includes(savedTheme)) {
+                document.documentElement.setAttribute("data-theme", savedTheme);
+                const originalThemeName = defaultThemes[defaultThemeKeys.indexOf(savedTheme)];
+            } else {
+                await applyTheme(savedTheme);
+            }
+        } catch (error) {
+            console.error("Error loading new themes:", error);
+        }
+    });
+
+    async function applyTheme(themeName) {
+        try {
+            const defaultThemeKeys = defaultThemes.map(t => t.replace(/\s+/g, "-").toLowerCase());
+            const themeFileName = themeName.replace(/\s+/g, "-").toLowerCase();
+    
+            if (defaultThemeKeys.includes(themeFileName)) {
+                document.documentElement.setAttribute("data-theme", themeFileName);
+            } else {
+                const themesDir = await appDataDir();
+                const themePath = await join(themesDir, "themes", `${themeFileName}.css`);
+    
+                try {
+                    const themeContent = await readTextFile(themePath);
+    
+                    let themeStyle = document.getElementById("theme-style");
+                    if (!themeStyle) {
+                        themeStyle = document.createElement("style");
+                        themeStyle.id = "theme-style";
+                        document.head.appendChild(themeStyle);
+                    }
+                    themeStyle.textContent = themeContent;
+    
+                    document.documentElement.setAttribute("data-theme", themeFileName);
+                } catch (fileError) {
+                    console.warn("User theme not found. Reverting to default theme.");
+                    await revertToDefault();
+                }
+            }
+    
+            localStorage.setItem("theme", themeFileName);
+        } catch (error) {
+            console.error("Error applying theme:", error);
+            await revertToDefault();
+        }
+    }
+
+    async function revertToDefault() {
+        const defaultTheme = "default-dark-purple";
+        const defaultThemeKey = defaultTheme.replace(/\s+/g, "-").toLowerCase();
+    
+        document.documentElement.setAttribute("data-theme", defaultThemeKey);
+        localStorage.setItem("theme", defaultThemeKey);
+
+        console.info("Reverted to default theme:", defaultTheme);
+    }
+
+
 
     //TODO: Add option to remove auto check update
     async function handleCheckUpdate() {
@@ -60,7 +142,6 @@ function App() {
     }
 
     onMount(() => {
-        //TODO: Check this
         handleCheckUpdate();
     })
 

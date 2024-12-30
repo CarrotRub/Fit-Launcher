@@ -178,7 +178,7 @@
         width: 0;
 
         &:checked~svg {
-            fill: #ffeb49;
+            fill: var(--accent-color);
         }
     }
 

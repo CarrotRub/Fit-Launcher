@@ -35,7 +35,7 @@ pub mod settings_creation {
         fn default() -> Self {
             GamehubSettings {
                 nsfw_censorship: true,
-                auto_get_colors_popular_games: true,
+                auto_get_colors_popular_games: false,
             }
         }
     }

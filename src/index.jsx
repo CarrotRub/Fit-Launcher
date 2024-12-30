@@ -3,7 +3,10 @@ import { render } from "solid-js/web";
 import "./styles.css";
 import App from "./App";
 
-// TODO: Add file checking from settings.toml to check the data-theme used.
-document.documentElement.setAttribute('data-theme', 'default-dark-purple');
+let savedTheme = localStorage.getItem("theme") || "default-dark-purple";
+
+// Apply the saved theme to the document element
+document.documentElement.setAttribute("data-theme", savedTheme);
+
 
 render(() => <App />, document.getElementById("root"));

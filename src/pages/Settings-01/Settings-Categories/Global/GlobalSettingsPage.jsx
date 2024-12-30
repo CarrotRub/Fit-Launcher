@@ -1,9 +1,13 @@
 import { createEffect, createSignal, onMount, Show } from "solid-js"
 import './GlobalSettingsPage.css'
 import { invoke } from "@tauri-apps/api/core";
-import { confirm, message } from "@tauri-apps/plugin-dialog";
+import { confirm, message, open } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
+import { Select } from "@thisbeyond/solid-select";
+import { mkdir, readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { appDataDir, join } from "@tauri-apps/api/path";
+
 
 function GlobalSettingsPage(props) {
     const [globalSettings, setGlobalSettings] = createSignal(null); // Start with null to indicate loading
@@ -148,6 +152,179 @@ function GlobalSettingsPage(props) {
 }
 
 function DisplayPart({ settings, handleSwitchCheckChange }) {
+    const defaultThemes = [
+        "Default Dark Purple", 
+        "Forest Dark Green", 
+        "Ocean Dark Blue", 
+        "Dark Orange Mead", 
+        "Desert Light Beige", 
+        "Le Beau Cyan"
+    ];
+    const [newThemes, setNewThemes] = createSignal([]);
+    const [currentTheme, setCurrentTheme] = createSignal(defaultThemes[0]);
+
+    onMount(async () => {
+        try {
+            // Load user-added themes
+            const themesDir = await appDataDir();
+            const themePath = await join(themesDir, "themes");
+            await mkdir(themePath, { recursive: true });
+
+            const themeFiles = await readDir(themePath);
+
+            const loadedThemes = themeFiles
+                .filter(file => file.name.endsWith(".css"))
+                .map(file => file.name.replace(".css", "").replace(/-/g, " ").replace(/\b\w/g, char => char.toUpperCase()));
+
+            setNewThemes(loadedThemes);
+
+            // Apply the saved theme
+            const defaultThemeKeys = defaultThemes.map(theme => theme.replace(/\s+/g, "-").toLowerCase());
+            const savedTheme = localStorage.getItem("theme") || defaultThemeKeys[0];
+            if (defaultThemeKeys.includes(savedTheme)) {
+                document.documentElement.setAttribute("data-theme", savedTheme);
+                const originalThemeName = defaultThemes[defaultThemeKeys.indexOf(savedTheme)];
+                setCurrentTheme(originalThemeName);
+            } else {
+                setCurrentTheme(savedTheme.replace(/-/g, " ").replace(/\b\w/g, char => char.toUpperCase()));
+                await applyTheme(savedTheme);
+            }
+        } catch (error) {
+            console.error("Error loading new themes:", error);
+        }
+    });
+
+    async function applyTheme(themeName) {
+        try {
+            const defaultThemeKeys = defaultThemes.map(t => t.replace(/\s+/g, "-").toLowerCase());
+            const themeFileName = themeName.replace(/\s+/g, "-").toLowerCase();
+    
+            if (defaultThemeKeys.includes(themeFileName)) {
+                document.documentElement.setAttribute("data-theme", themeFileName);
+            } else {
+                const themesDir = await appDataDir();
+                const themePath = await join(themesDir, "themes", `${themeFileName}.css`);
+    
+                try {
+                    const themeContent = await readTextFile(themePath);
+    
+                    let themeStyle = document.getElementById("theme-style");
+                    if (!themeStyle) {
+                        themeStyle = document.createElement("style");
+                        themeStyle.id = "theme-style";
+                        document.head.appendChild(themeStyle);
+                    }
+                    themeStyle.textContent = themeContent;
+    
+                    document.documentElement.setAttribute("data-theme", themeFileName);
+                } catch (fileError) {
+                    console.warn("User theme not found. Reverting to default theme.");
+                    await revertToDefault();
+                }
+            }
+    
+            localStorage.setItem("theme", themeFileName);
+        } catch (error) {
+            console.error("Error applying theme:", error);
+            await revertToDefault();
+        }
+    }
+
+    async function revertToDefault() {
+        const defaultTheme = "default-dark-purple";
+        const defaultThemeKey = defaultTheme.replace(/\s+/g, "-").toLowerCase();
+    
+        document.documentElement.setAttribute("data-theme", defaultThemeKey);
+        localStorage.setItem("theme", defaultThemeKey);
+        setCurrentTheme(defaultTheme.replace(/-/g, " ").replace(/\b\w/g, char => char.toUpperCase()));
+    
+        console.info("Reverted to default theme:", defaultTheme);
+    }
+
+    async function handleAddTheme() {
+        const requiredVariables = [
+            "--accent-color",
+            "--secondary-color",
+            "--secondary-30-selected-color",
+            "--non-selected-text-color",
+            "--primary-color",
+            "--secondary-20-color",
+            "--text-color",
+            "--background-color",
+            "--70-background-color",
+            "--30-background-color",
+            "--popup-background-color",
+            "--resume-button-accent-color",
+            "--warning-orange",
+        ];
+
+        const themeNamePattern = /^[a-z0-9-]{1,40}$/;
+        const themeBlockPattern = /:root\[data-theme="([a-z0-9-]{1,40})"\]\s*{([^}]+)}/;
+
+        try {
+            const cssThemeFile = await open({
+                directory: false,
+                multiple: false,
+                filters: [{ name: "Cascading Style Sheets", extensions: ["css"] }],
+            });
+
+            if (!cssThemeFile) {
+                await message("No file selected", { title: "FitLauncher", kind: "error" });
+                return;
+            }
+
+            const fileContent = await readTextFile(cssThemeFile);
+
+            const match = fileContent.match(themeBlockPattern);
+
+            if (!match) {
+                await message("Invalid theme block structure.", { title: "FitLauncher", kind: "error" });
+                return;
+            }
+
+            const themeName = match[1];
+            const themeVariables = match[2];
+
+            if (!themeNamePattern.test(themeName)) {
+                await message(
+                    "Invalid theme name. Must be lowercase, contain only letters, numbers, hyphens, and be max 40 characters.",
+                    { title: "FitLauncher", kind: "error" }
+                );
+                return;
+            }
+
+            const isValidTheme = requiredVariables.every((variable) => themeVariables.includes(variable));
+
+            if (isValidTheme) {
+                let themesDir = await appDataDir();
+                themesDir = await join(themesDir, "themes");
+
+                await mkdir(themesDir, { recursive: true });
+
+                const themeFilePath = await join(themesDir, `${themeName}.css`);
+                await writeTextFile(themeFilePath, fileContent);
+
+                // Add the new theme to the list
+                setNewThemes([...newThemes(), themeName.replace(/-/g, " ").replace(/\b\w/g, char => char.toUpperCase())]);
+
+                await message("Theme saved successfully! You can now use it.", {
+                    title: "FitLauncher",
+                    kind: "info",
+                });
+            } else {
+                await message("Invalid theme file. Missing required variables.", {
+                    title: "FitLauncher",
+                    kind: "error",
+                });
+            }
+        } catch (error) {
+            console.error("Error adding theme:", error);
+            await message("An error occurred while processing the theme file.", {
+                title: "FitLauncher",
+                kind: "error",
+            });
+        }
+    }
 
     return (
         <Show when={settings} placeholder={<p>Loading</p>} >
@@ -178,6 +355,19 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
                     </li>
                     <li>
                         <span>Change Themes <small><i>(Coming really soon...)</i></small> :</span>
+                        <Select
+                            class="theme-dropdown"
+                            options={[...defaultThemes, ...newThemes()]}
+                            placeholder={<span>{currentTheme()}  &darr;</span>}
+                            onChange={async (selectedOption) => {
+                                const themeName = selectedOption.replace(/\s+/g, "-").toLowerCase();
+                                await applyTheme(themeName);
+                                setCurrentTheme(selectedOption);
+                            }}
+                        />
+                        <button className="plus-button-settings" onClick={async () => await handleAddTheme()}>
+                            <span>+</span>
+                        </button>
                     </li>
                 </ul>
             </div>
