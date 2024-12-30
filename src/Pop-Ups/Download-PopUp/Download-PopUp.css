@@ -1,38 +1,61 @@
 .popup-overlay {
-    z-index: 12;
-
+    z-index: 11;
     position: fixed;
+    /* Use fixed for a full-screen overlay */
+    top: 0;
+    left: 0;
     height: 100%;
+    /* Ensure it covers the entire viewport */
     width: 100%;
     background-color: var(--70-background-color);
     display: flex;
     align-items: center;
-    align-content: center;
     justify-content: center;
-
     backdrop-filter: blur(6px);
+    overflow-y: auto;
+    /* Enable scrolling for the overlay */
 }
-
 
 .download-popup {
     z-index: 13;
-
-    position: absolute;
-    transform: translateY(-5%);
-    transform: scale(0.5);
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    /*Idk why but I had to do this to get it in the center*/
+    position: relative;
+    margin-top: 5%;
     background-color: var(--popup-background-color);
     min-height: 80vh;
-    max-height: fit-content;
+    max-height: 90vh;
     min-width: 60vh;
-    max-width: fit-content;
+    max-width: 90vw;
     border-radius: 32px;
-
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    overflow-y: auto;
+    padding-right: 8px;
+
+    &::-webkit-scrollbar {
+        width: 12px;
+        height: 80%;
+
+    }
+
+    &::-webkit-scrollbar-track {
+        background: var(--secondary-30-selected-color);
+        border-radius: 32px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--accent-color);
+        border-radius: 32px;
+        border: 1px solid var(--primary-color);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary-20-color);
+    }
+
+    &::-webkit-scrollbar-button {
+        display: none;
+    }
 }
 
 .popup-overlay.show .download-popup {

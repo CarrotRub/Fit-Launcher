@@ -349,10 +349,10 @@ const DownloadGameUUIDPage = () => {
                                 <div className="download-game-main-info">
                                     <div className="download-game-title">
                                         <p id="download-game-main-title">
-                                            {extractMainTitle(gameTitle)}
+                                            {extractMainTitle(gameInfo().title)}
                                         </p>
                                         <p id="download-game-secondary-title">
-                                            {gameTitle}
+                                            {gameInfo().title}
                                         </p>
                                     </div>
                                     <div className="download-game-download-button" onClick={handleDownloadClick}>
