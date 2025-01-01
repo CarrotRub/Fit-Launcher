@@ -250,7 +250,11 @@ const DownloadPopup = ({ badClosePopup, gameTitle, gameMagnet, externFullGameInf
                             <button id="popup-confirm-button"
                                 onClick={async () => {
                                     setIsFinalStep(true);
-                                    await placePathIntoConfig();
+                                    try {
+                                        await placePathIntoConfig();
+                                    } catch (error) {
+                                        console.warn(error);
+                                    }
                                 }}
                                 disabled={!isPathValid()}
                             >
