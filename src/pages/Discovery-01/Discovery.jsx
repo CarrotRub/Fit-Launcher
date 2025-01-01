@@ -35,6 +35,7 @@ function DiscoveryPage() {
         }
     }
 
+    //TODO: Fix that soon.
     function updateVisibleGames() {
         const start = currentPage() * 25;
         const end = start + 25;
@@ -56,7 +57,7 @@ function DiscoveryPage() {
     onMount(async () => {
         const games_list = await parseNewGameData();
         setGamesList(games_list);
-        setVisibleGames(games_list.slice(0, 25)); // Initialize the first page
+        setVisibleGames(games_list.slice(0, 100)); // Initialize the first page
     });
 
     return (
