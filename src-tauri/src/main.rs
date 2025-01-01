@@ -39,18 +39,18 @@ use serde_json::Value;
 use settings_initialization::settings_creation::create_gamehub_settings_file;
 use settings_initialization::settings_creation::create_image_cache_file;
 use settings_initialization::settings_creation::create_installation_settings_file;
+use std::error::Error;
+use std::str;
+use tauri::async_runtime::spawn_blocking;
 use tauri::menu::Menu;
 use tauri::menu::MenuItem;
-use std::error::Error;
-use tauri::async_runtime::spawn_blocking;
 use tauri::Emitter;
 use tauri::Listener;
+use tauri_plugin_updater::UpdaterExt;
 use tokio::task::LocalSet;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
-use tauri_plugin_updater::UpdaterExt;
-use std::str;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -466,6 +466,45 @@ async fn start() {
 
     tauri::Builder
         ::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            info!(
+                "Another instance attempted to launch with arguments: {:?}, cwd: {:?}",
+                args, cwd
+            );
+
+            // Bring the main window to focus if it exists
+            if let Some(main_window) = app.get_webview_window("main") {
+                if main_window.is_visible().unwrap() {
+                    info!("Window is already visible")
+                } else {
+                    match main_window.show() {
+                        Ok(_) => {
+                            info!("opened main windows")
+                        },
+                        Err(e) => error!("Error showing main window: {}", e)
+                    };
+                };
+                main_window.set_focus().unwrap_or_else(|e| {
+                    error!("Failed to focus on main window: {}", e);
+                });
+            };
+
+            if let Some(splashscreen_window) = app.get_webview_window("splashscreen") {
+                if splashscreen_window.is_visible().unwrap() {
+                    info!("Window is already visible")
+                } else {
+                    match splashscreen_window.show() {
+                        Ok(_) => {
+                            info!("opened main windows")
+                        },
+                        Err(e) => error!("Error showing main window: {}", e)
+                    };
+                };
+                splashscreen_window.set_focus().unwrap_or_else(|e| {
+                    error!("Failed to focus on splashscreen window: {}", e);
+                });
+            }
+        }))
         .setup(|app| {
             let start_time = Instant::now();
             let splashscreen_window = app.get_webview_window("splashscreen").unwrap();

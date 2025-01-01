@@ -8,8 +8,8 @@ pub mod basic_scraping {
     };
     use serde::{Deserialize, Serialize};
 
-    use std::{path::Path, time::UNIX_EPOCH};
     use std::time::Instant;
+    use std::{path::Path, time::UNIX_EPOCH};
 
     use tauri::{Emitter, Manager};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
