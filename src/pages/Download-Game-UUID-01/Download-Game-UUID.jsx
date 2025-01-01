@@ -180,8 +180,8 @@ const DownloadGameUUIDPage = () => {
 
 
     onMount(async () => {
-        setLoading(true);
 
+        setLoading(true);
         const cacheDir = await appCacheDir();
         setCacheDirPath(cacheDir);
 
