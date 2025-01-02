@@ -256,7 +256,8 @@ const DownloadGameUUIDPage = () => {
     }
 
     function handleReturnToPreviousPage() {
-        navigate(-1)
+        // navigate(-1)
+        window.history.back(); 
     }
 
     const handleDownloadClick = () => {

@@ -143,8 +143,8 @@ function Searchbar({isTopBar = true, setSearchValue  }) {
                 gameHref: href,
                 filePath: ""
             })
-            navigate(`/game/${uuid}`);
-            clearSearch()
+            window.location.href = `/game/${uuid}`;
+            clearSearch();
         } else if (!isTopBar) {
             setSearchTerm(capitalizeTitle(getTitleFromUrl(href)));
             setSearchResults([]);

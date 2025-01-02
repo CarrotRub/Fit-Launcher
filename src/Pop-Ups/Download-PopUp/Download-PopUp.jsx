@@ -536,7 +536,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
         const popupAdditionalFiles = document.querySelector(".torrent-additional-files-details");
         popupAdditionalFiles.style.display = 'none'
 
-        navigate(`/downloads-page`)
+        window.location.href = `/downloads-page`;
     }
 
     return (
