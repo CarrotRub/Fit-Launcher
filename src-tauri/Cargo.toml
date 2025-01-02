@@ -38,7 +38,8 @@ kuchiki = "0.8.1"
 anyhow = "1.0.86"
 lru = "0.12.4"
 futures = "0.3.31"
-librqbit = { version = "7.0.1", features = [
+# I chose specifically this version of librqbit due to ratelimits, don't go past this commit as I have not tested more recent, thank you.
+librqbit = { git = "https://github.com/ikatson/rqbit", rev = "b9f949c6c1bef5ee67ece336016fb14894472f63", features = [
     "tracing-subscriber-utils",
     "http-api",
     "upnp-serve-adapter",

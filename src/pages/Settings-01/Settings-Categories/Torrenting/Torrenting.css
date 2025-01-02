@@ -56,6 +56,7 @@
     padding: 12px 12px 12px 12px;
     border-radius: 4px;
     margin-left: 1em;
+    gap: 4px;
 
     & .settings-path-text {
         font-family: "Mulish Variable";
@@ -83,7 +84,6 @@
 
     & input[type="number"]::-webkit-inner-spin-button,
     & input[type="number"]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
         margin: 0;
 
         &:focus {
@@ -134,3 +134,29 @@
     }
 }
 
+.rate-unit {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}
+
+.rate-limit-toggle {
+    font-family: "Mulish Variable";
+    font-size: 14px;
+    font-weight: 600;
+    background-color: var(--secondary-20-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.rate-limit-toggle:hover {
+    background-color: var(--secondary-40-color);
+    transform: scale(1.05);
+}
+
+.rate-limit-toggle:active {
+    background-color: var(--primary-color);
+}

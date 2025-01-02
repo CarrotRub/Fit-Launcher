@@ -1,5 +1,6 @@
 pub mod settings_creation {
     use directories::BaseDirs;
+    use librqbit::limits::LimitsConfig;
     use serde::{Deserialize, Serialize};
     use std::{fs, io::Write};
     use tracing::error;

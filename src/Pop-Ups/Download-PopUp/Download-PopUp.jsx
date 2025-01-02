@@ -23,7 +23,8 @@ const DownloadPopup = ({ badClosePopup, gameTitle, gameMagnet, externFullGameInf
     const [twoGBLimit, setTwoGBLimit] = createSignal(false)
     const [directXInstall, setDirectXInstall] = createSignal(false)
     const [microsoftCPPInstall, setMicrosoftCPPInstall] = createSignal(false);
-    const [installationSettings, setInstallationSettings] = createSignal(null)
+    const [installationSettings, setInstallationSettings] = createSignal(null);
+
     function closePopup() {
         const popup = document.querySelector('.popup-overlay');
         if (popup) {
@@ -72,8 +73,8 @@ const DownloadPopup = ({ badClosePopup, gameTitle, gameMagnet, externFullGameInf
             let install_settings = await invoke('get_installation_settings');
             setInstallationSettings(install_settings);
             setTwoGBLimit(install_settings.two_gb_limit);
-            setDirectXInstall(install_settings.directx_install)
-            setMicrosoftCPPInstall(install_settings.microsoftcpp_install)
+            setDirectXInstall(install_settings.directx_install);
+            setMicrosoftCPPInstall(install_settings.microsoftcpp_install);
         } catch (error) {
             await message(`Error Getting Installation Settings : ${error}`, { title: 'FitLauncher', kind: 'error' })
         }
@@ -284,7 +285,11 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
     const [completeIDFileList, setCompleteIDFileList] = createSignal([]);
     const [toBeDeletedFiles, setToBeDeletedFiles] = createSignal([]);
     const [checkboxesListComponents, setCheckboxesListComponents] = createSignal([])
-    const [gameStartedDownload, setGameStartedDownload] = createSignal(false)
+    const [gameStartedDownload, setGameStartedDownload] = createSignal(false);
+
+    const [torrentingSettings, setTorrentingSettings] = createSignal(null);
+
+    
     const navigate = useNavigate();
     function toUpperFirstLetters(str) {
         return str
@@ -480,7 +485,12 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
         setRawFileList(torrentFilesNames);
         setRawIdFileList(rawID);
         setCompleteFileList(torrentFilesNames)
+
+        
+        let torrent_settings = await invoke('get_torrent_full_settings');
+        setTorrentingSettings(torrent_settings);
         setLoading(false);
+
     });
 
     async function handleStartDownloadingTorrent() {
@@ -490,7 +500,7 @@ const LastStep = ({ closePopup, gameMagnet, downloadGamePath, externFullGameInfo
         console.log(completeIDFileList())
         await invoke("torrent_create_from_url", {
             url: gameMagnet,
-            opts: { only_files: completeIDFileList(), overwrite: true }
+            opts: { only_files: completeIDFileList(), overwrite: true, ratelimits:  torrentingSettings().ratelimits}
         });
         let installationSettings = await invoke('get_installation_settings');
         if (installationSettings) {
