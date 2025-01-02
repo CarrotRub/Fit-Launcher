@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use librqbit::dht::PersistentDht;
+use librqbit::{dht::PersistentDht, limits::LimitsConfig};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -167,6 +167,7 @@ pub struct FitLauncherConfig {
     pub upnp: FitLauncherConfigUpnp,
     pub persistence: FitLauncherConfigPersistence,
     pub peer_opts: FitLauncherConfigPeerOpts,
+    pub ratelimits: LimitsConfig,
     http_api: FitLauncherConfigHttpApi,
 }
 
@@ -185,6 +186,7 @@ impl Default for FitLauncherConfig {
             upnp: Default::default(),
             persistence: Default::default(),
             peer_opts: Default::default(),
+            ratelimits: Default::default(),
             http_api: Default::default(),
         }
     }

@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onMount, Show } from "solid-js"
+import { createEffect, createSignal, Match, onMount, Show, Switch } from "solid-js"
 import './Torrenting.css'
 import { invoke } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
@@ -56,40 +56,134 @@ function TorrentingPage(props) {
 
     return (
         <Show when={globalTorrentConfig()} fallback={<p>Loading...</p>}>
-            <div className="torrenting-page">
-                {selectedPart() === 'dht' ? (
-                    <DHTPart
-                        config={globalTorrentConfig()}
-                        handleCheckChange={handleSwitchCheckChange}
-                    />
-                ) : selectedPart() === 'tcp' ? (
-                    <TCPPart
-                        config={globalTorrentConfig()}
-                        handleSwitchCheckChange={handleSwitchCheckChange}
-                        handleTextCheckChange={handleTextCheckChange}
-                    />
-                ) : selectedPart() === 'persistence' ? (
-                    <PersistencePart
-                        config={globalTorrentConfig()}
-                        handleSwitchCheckChange={handleSwitchCheckChange}
-                        handleTextCheckChange={handleTextCheckChange}
-                    />
-                ) : selectedPart() === 'peer-opts' ? (
-                    <PeerOptsParts
-                        config={globalTorrentConfig()}
-                        handleSwitchCheckChange={handleSwitchCheckChange}
-                        handleTextCheckChange={handleTextCheckChange}
-                    />
-                ) : (
-                    <p>Invalid or Unsupported Part</p>
-                )}
-                <button className="save-settings-button" onClick={async () => { await handleOnSave() }}>
-                    <span>Save</span>
-                </button>
-            </div>
-        </Show>
+        <div class="torrenting-page">
+          <Switch>
+            <Match when={selectedPart() === 'transferopts'}>
+                <DownloadUploadPart
+                    config={globalTorrentConfig()}
+                    handleTextCheckChange={handleTextCheckChange}
+                />
+            </Match>
+            <Match when={selectedPart() === 'dht'}>
+              <DHTPart
+                config={globalTorrentConfig()}
+                handleCheckChange={handleSwitchCheckChange}
+              />
+            </Match>
+            <Match when={selectedPart() === 'tcp'}>
+              <TCPPart
+                config={globalTorrentConfig()}
+                handleSwitchCheckChange={handleSwitchCheckChange}
+                handleTextCheckChange={handleTextCheckChange}
+              />
+            </Match>
+            <Match when={selectedPart() === 'persistence'}>
+              <PersistencePart
+                config={globalTorrentConfig()}
+                handleSwitchCheckChange={handleSwitchCheckChange}
+                handleTextCheckChange={handleTextCheckChange}
+              />
+            </Match>
+            <Match when={selectedPart() === 'peer-opts'}>
+              <PeerOptsParts
+                config={globalTorrentConfig()}
+                handleSwitchCheckChange={handleSwitchCheckChange}
+                handleTextCheckChange={handleTextCheckChange}
+              />
+            </Match>
+            <Match when={true}>
+              <p>Invalid or Unsupported Part</p>
+            </Match>
+          </Switch>
+          <button class="save-settings-button" onClick={async () => { await handleOnSave(); }}>
+            <span>Save</span>
+          </button>
+        </div>
+      </Show>
     );
 }
+
+function DownloadUploadPart({ config, handleTextCheckChange }) {
+    const [downloadRate, setDownloadRate] = createSignal(config.ratelimits.download_bps);
+    const [uploadRate, setUploadRate] = createSignal(config.ratelimits.upload_bps);
+  
+    const bytesToMbps = (bytes) => (bytes === null ? "\u221E" : (bytes / 1_000_000).toFixed(0));
+    const mbpsToBytes = (mbps) => (mbps === "" || mbps === "\u221E" ? null : Math.round(mbps * 1_000_000));
+  
+    const updateRate = (setter, key) => (value) => {
+      const byteRate = mbpsToBytes(value);
+      setter(byteRate);
+      handleTextCheckChange(key, byteRate);
+    };
+  
+    const toggleRate = (setter, key, currentValue) => {
+      const newValue = currentValue === null ? 10_000_000 : null;
+      setter(newValue);
+      handleTextCheckChange(key, newValue);
+    };
+  
+    return (
+      <div class="torrenting-page-group" id="torrenting-download-upload">
+        <p class="torrenting-page-group-title">Download & Upload : <b>UNSTABLE</b></p>
+        <ul class="torrenting-page-group-list">
+          {/* Download Rate Limit */}
+          <li>
+            <span>Download Rate Limit <small><i>(this will only work if you set it before downloading, still unstable)</i></small>: </span>
+            <div class="settings-path-container">
+              <input
+                type="text"
+                class="settings-path-input"
+                value={bytesToMbps(downloadRate())}
+                step="0.10"
+                onInput={(e) => {
+                  const value = e.target.value;
+                  if (!isNaN(value) || value === "\u221E") {
+                    updateRate(setDownloadRate, "ratelimits.download_bps")(value);
+                  }
+                }}
+              />
+              <span class="rate-unit">MBps</span>
+              <button
+                class="rate-limit-toggle"
+                onClick={() => toggleRate(setDownloadRate, "ratelimits.download_bps", downloadRate())}
+              >
+                {"Reset"}
+              </button>
+            </div>
+          </li>
+          {/* Upload Rate Limit */}
+          <li>
+            <span>Upload Rate Limit <small><i>(this will only work if you set it before downloading, still unstable)</i></small>: </span>
+            <div class="settings-path-container">
+              <input
+                type="text"
+                class="settings-path-input"
+                value={bytesToMbps(uploadRate())}
+                placeholder="Enter limit in MBps"
+                min="0"
+                step="0.10"
+                onInput={(e) => {
+                  const value = e.target.value;
+                  if (!isNaN(value) || value === "\u221E") {
+                    updateRate(setUploadRate, "ratelimits.upload_bps")(value);
+                  }
+                }}
+              />
+              <span class="rate-unit">MBps</span>
+              <button
+                class="rate-limit-toggle"
+                onClick={() => toggleRate(setUploadRate, "ratelimits.upload_bps", uploadRate())}
+              >
+                {"Reset"}
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
+    );
+  }
+  
+  
 
 function DHTPart({ config, handleCheckChange }) {
     return (
