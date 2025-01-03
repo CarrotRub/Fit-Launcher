@@ -268,7 +268,7 @@ const DownloadGameUUIDPage = () => {
             } else {
                 clearInterval(interval); // Stop the interval once we're out of the /game/ path
             }
-        }, 10); // Navigate back every 300ms to avoid throttling
+        }, 10);
     }
 
     const handleDownloadClick = () => {
