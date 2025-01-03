@@ -157,9 +157,12 @@ function PopularGames() {
             const imageUrls = images?.map(img => img.img);
 
             // TODO: Fix callback issue when user reload the page, could also prohibit the user completely from reloading the window.
-            const colorStrings = await invoke("check_dominant_color_vec", { listImages: imageUrls });
+            if (displaySettings().auto_get_colors_popular_games) {
+                const colorStrings = await invoke("check_dominant_color_vec", { listImages: imageUrls });
+                setColorCache(colorStrings);
+            }
 
-            setColorCache(colorStrings);
+
 
         } catch (error) {
             console.error("Error fetching dominant colors:", error);

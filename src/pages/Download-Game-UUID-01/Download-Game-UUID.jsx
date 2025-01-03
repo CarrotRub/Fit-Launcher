@@ -180,8 +180,12 @@ const DownloadGameUUIDPage = () => {
 
 
     onMount(async () => {
-
+        if(document.referrer.includes("/game/")) {
+            window.history.back();
+        }
         setLoading(true);
+        console.log(document.referrer);
+
         const cacheDir = await appCacheDir();
         setCacheDirPath(cacheDir);
 
@@ -256,8 +260,15 @@ const DownloadGameUUIDPage = () => {
     }
 
     function handleReturnToPreviousPage() {
-        // navigate(-1)
-        window.history.back(); 
+        console.warn("one");
+        let interval = setInterval(() => {
+            let currentLoc = window.location.href;
+            if (currentLoc.includes("/game/")) {
+                window.history.back();
+            } else {
+                clearInterval(interval); // Stop the interval once we're out of the /game/ path
+            }
+        }, 10); // Navigate back every 300ms to avoid throttling
     }
 
     const handleDownloadClick = () => {
@@ -330,7 +341,7 @@ const DownloadGameUUIDPage = () => {
                                     'background-position': 'center',
                                 }}>
 
-                                <div id="download-game-return-button" onClick={handleReturnToPreviousPage}>
+                                <div id="download-game-return-button" onClick={() => handleReturnToPreviousPage()}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-forward"><path d="m15 17 5-5-5-5" /><path d="M4 18v-2a4 4 0 0 1 4-4h12" /></svg>
                                 </div>
 
