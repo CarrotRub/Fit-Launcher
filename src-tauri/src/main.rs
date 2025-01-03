@@ -517,7 +517,8 @@ async fn start() {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
             let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit_i, &show_app_i, &hide_app_i])?;
+            let reload_app_i = MenuItem::with_id(app, "reload", "Reload", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit_i, &show_app_i, &hide_app_i, &reload_app_i])?;
             
             
             TrayIconBuilder::new()
@@ -555,9 +556,25 @@ async fn start() {
                         };
                     };
                 }
+                "reload" => {
+                    info!("hide app menu item was clicked");
+                    if app.get_webview_window("main").unwrap().is_visible().unwrap() {
+                        info!("Window is already visible");
+                        app.get_webview_window("main").unwrap().eval("window.location.reload();");
+                    } else {
+                        match app.get_webview_window("main").unwrap().show() {
+                            Ok(_) => {
+                                info!("opened main windows");
+                                app.get_webview_window("main").unwrap().eval("window.location.reload();");
+                            },
+                            Err(e) => error!("Error showing main window: {}", e)
+                        };
+                    };
+                }
                 _ => {
                     info!("menu item {:?} not handled", event.id);
                 }
+
               })
               .build(app)?;
 
