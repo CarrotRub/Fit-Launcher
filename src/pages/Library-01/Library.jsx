@@ -617,7 +617,7 @@ function CollectionList({ collectionGamesList, collectionName }) {
                 gameHref: href,
                 filePath: filePath
             })
-            navigate(`/game/${uuid}`);
+            window.location.href = `/game/${uuid}`;
         }
     };
 

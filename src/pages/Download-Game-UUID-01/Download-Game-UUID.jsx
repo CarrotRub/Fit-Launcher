@@ -4,7 +4,7 @@ import './Download-Game-UUID.css';
 import { mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { appCacheDir, appDataDir } from "@tauri-apps/api/path";
 import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
-import { useLocation, useNavigate } from "@solidjs/router";
+import { createMemoryHistory, useLocation, useNavigate } from "@solidjs/router";
 import { render } from "solid-js/web";
 import DownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { path } from "@tauri-apps/api";
@@ -22,7 +22,6 @@ const singularGameInfoPath = await path.join(dirPath, 'tempGames', 'singular_gam
 
 const DownloadGameUUIDPage = () => {
     const [gameInfo, setGameInfo] = createSignal({});
-
     const gameHref = downloadGamePageInfo.gameHref;
     const gameTitle = downloadGamePageInfo.gameTitle;
     const gameFilePath = downloadGamePageInfo.filePath;
@@ -180,7 +179,6 @@ const DownloadGameUUIDPage = () => {
 
 
     onMount(async () => {
-
         setLoading(true);
         const cacheDir = await appCacheDir();
         setCacheDirPath(cacheDir);
@@ -256,7 +254,8 @@ const DownloadGameUUIDPage = () => {
     }
 
     function handleReturnToPreviousPage() {
-        navigate(-1)
+        let latestGlobalHref = localStorage.getItem('latestGlobalHref')
+        navigate(latestGlobalHref)
     }
 
     const handleDownloadClick = () => {

@@ -1,7 +1,7 @@
 import { onMount, createSignal } from 'solid-js';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen, emit } from '@tauri-apps/api/event';
-import { Router, useLocation } from '@solidjs/router';
+import { Route, Router, useLocation } from '@solidjs/router';
 import { lazy } from 'solid-js';
 
 import Notification from './components/Notification-01/Notification';
@@ -170,13 +170,21 @@ function App() {
             path: '/settings',
             component: lazy(() => import('./pages/Settings-01/Settings')),
         },
+        {
+            path: "*404",
+            component: lazy(() => import('./pages/Gamehub-01/Gamehub')),
+        },
+        {
+            path: "*",
+            component: lazy(() => import('./pages/Gamehub-01/Gamehub')),
+        }
     ];
 
     return (
         <>
 
 
-            <Router root={(props) => {
+            <Router base={'/'} root={(props) => {
                 const location = useLocation();
                 return (
                     <>
@@ -188,7 +196,9 @@ function App() {
                     </>
                 );
             }}>
-                {sidebarRoutes}
+                {sidebarRoutes.map(route => (
+                  <Route path={route.path} component={route.component} />
+                ))}
             </Router>
         </>
     );
