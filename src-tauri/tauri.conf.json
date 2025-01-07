@@ -27,7 +27,7 @@
   },
   "productName": "Fit Launcher",
   "mainBinaryName": "Fit Launcher",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "identifier": "com.fitlauncher.carrotrub",
   "plugins": {
     "updater": {
