@@ -19,7 +19,7 @@ const Slider = (props) => {
                 gameHref: href,
                 filePath: filePath
             })
-            navigate(`/game/${uuid}`);
+            window.location.href = `/game/${uuid}`;
         }
     };
     const [currentIndex, setCurrentIndex] = createSignal(0);
