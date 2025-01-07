@@ -1,7 +1,7 @@
-import { createEffect, onMount, createSignal } from "solid-js";
+import { createEffect, onMount, createSignal, onCleanup } from "solid-js";
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen, emit } from '@tauri-apps/api/event';
-import { A, useLocation } from "@solidjs/router";
+import {  A, useLocation } from "@solidjs/router";
 import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../functions/dataStoreGlobal";
 import './Topbar.css'
 import { invoke } from "@tauri-apps/api/core";
@@ -61,6 +61,13 @@ function Topbar() {
             console.log('Scraping failed:', event.payload.message);
         });
     });
+
+
+    function changeLocalStorageLatestHref(href) {
+        localStorage.setItem("latestGlobalHref", href);
+        console.log("Updated latestGlobalHref:", href);
+      }
+      
     return (
         <div className='top-bar-container'>
             <div data-tauri-drag-region class="titlebar">
@@ -122,7 +129,8 @@ function Topbar() {
                     "clickable-link": true,
                     active: isActive("/"),
                 }}
-            >
+                onClick={() => changeLocalStorageLatestHref("/")}
+            end>
                 <p id="link-gamehub" className="links-texts">GameHub</p>
             </A>
 
@@ -132,6 +140,7 @@ function Topbar() {
                     "clickable-link": true,
                     active: isActive("/discovery-page"),
                 }}
+                onClick={() => changeLocalStorageLatestHref("/discovery-page")}
             >
                 <p id="link-discovery" className="links-texts">Discovery</p>
             </A>
@@ -142,6 +151,7 @@ function Topbar() {
                     "clickable-link": true,
                     active: isActive("/library"),
                 }}
+                onClick={() => changeLocalStorageLatestHref("/library")}
             >
                 <p id="link-library" className="links-texts">Library</p>
             </A>
@@ -152,6 +162,7 @@ function Topbar() {
                     "clickable-link": true,
                     active: isActive("/downloads-page"),
                 }}
+                onClick={() => changeLocalStorageLatestHref("/downloads-page")}
             >
                 <p id="link-downloads" className="links-texts">Downloads</p>
             </A>
@@ -162,6 +173,7 @@ function Topbar() {
                     "clickable-link": true,
                     active: isActive("/settings"),
                 }}
+                onClick={() => changeLocalStorageLatestHref("/settings")}
             >
                 <p id="link-settings" className="links-texts">Settings</p>
             </A>

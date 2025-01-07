@@ -129,7 +129,7 @@ function PopularGames() {
                 gameHref: href,
                 filePath: filePath
             })
-            navigate(`/game/${uuid}`);
+            window.location.href = `/game/${uuid}`;
         }
     };
 
