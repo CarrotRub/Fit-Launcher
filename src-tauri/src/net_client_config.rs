@@ -1,6 +1,8 @@
 pub mod custom_client_dns {
     use directories::BaseDirs;
     use hickory_resolver::config::*;
+    use hickory_resolver::system_conf::read_system_conf;
+    use hickory_resolver::Resolver;
     use hickory_resolver::TokioAsyncResolver;
     use once_cell::sync::Lazy;
     use reqwest::ClientBuilder;
@@ -17,17 +19,33 @@ pub mod custom_client_dns {
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct FitLauncherDnsConfig {
+        system_conf: bool,
         protocol: String,
-        primary: String,
-        secondary: String,
+        primary: Option<String>,
+        secondary: Option<String>,
     }
 
     impl Default for FitLauncherDnsConfig {
         fn default() -> Self {
             FitLauncherDnsConfig {
+                system_conf: false,
                 protocol: "UDP".to_string(),
-                primary: "1.1.1.1".to_string(),
-                secondary: "1.0.0.1".to_string(),
+                primary: Some("1.1.1.1".to_string()),
+                secondary: Some("1.0.0.1".to_string()),
+            }
+        }
+    }
+
+    impl FitLauncherDnsConfig {
+        #[allow(clippy::get_first)]
+        fn default_system() -> Self {
+            let config = read_system_conf().unwrap().0;
+            let resolver_config_name_servers = config.name_servers();
+            FitLauncherDnsConfig {
+                system_conf: true,
+                protocol: "UDP".to_string(),
+                primary: resolver_config_name_servers.get(0).map(|ns| ns.to_string()),
+                secondary: resolver_config_name_servers.get(1).map(|ns| ns.to_string()),
             }
         }
     }
@@ -59,8 +77,12 @@ pub mod custom_client_dns {
 
         let config_data =
             fs::read_to_string(config_file).expect("Failed to read dns.json configuration file");
-        let dns_config: FitLauncherDnsConfig = serde_json::from_str(&config_data)
+        let mut dns_config: FitLauncherDnsConfig = serde_json::from_str(&config_data)
             .expect("Failed to parse dns.json configuration file");
+
+        if dns_config.system_conf {
+            dns_config = FitLauncherDnsConfig::default_system();
+        }
 
         dns_config
     }
@@ -83,6 +105,8 @@ pub mod custom_client_dns {
         // Parse the primary DNS address
         let primary_ip: IpAddr = dns_config
             .primary
+            .clone()
+            .unwrap_or("1.1.1.1".to_string())
             .parse()
             .expect("Invalid primary DNS address in dns.json");
 
