@@ -38,7 +38,7 @@ kuchiki = "0.8.1"
 anyhow = "1.0.86"
 lru = "0.12.4"
 futures = "0.3.31"
-librqbit = { version = "7.0.1", features = [
+librqbit = { version = "8.0.0", features = [
     "tracing-subscriber-utils",
     "http-api",
     "upnp-serve-adapter",
