@@ -16,6 +16,7 @@ pub mod custom_client_dns {
     use std::io::Write;
     use std::net::{IpAddr, SocketAddr};
     use std::sync::Arc;
+    use tracing::error;
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct FitLauncherDnsConfig {
@@ -77,8 +78,14 @@ pub mod custom_client_dns {
 
         let config_data =
             fs::read_to_string(config_file).expect("Failed to read dns.json configuration file");
-        let mut dns_config: FitLauncherDnsConfig = serde_json::from_str(&config_data)
-            .expect("Failed to parse dns.json configuration file");
+        let mut dns_config: FitLauncherDnsConfig = match serde_json::from_str(&config_data) {
+            Ok(conf) => conf,
+            Err(e) => {
+                error!("Error serializing dns config from file : {}", e);
+                error!("Using old config, updating...");
+                FitLauncherDnsConfig::default()
+            }
+        };
 
         if dns_config.system_conf {
             dns_config = FitLauncherDnsConfig::default_system();
