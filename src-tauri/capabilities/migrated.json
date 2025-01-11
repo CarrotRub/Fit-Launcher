@@ -8,6 +8,11 @@
   "permissions": [
     "core:default",
     "dialog:default",
+    "process:default",
+    "store:default",
+    {
+      "identifier": "process:allow-restart"
+    },
     {
       "identifier": "dialog:allow-open"
     },

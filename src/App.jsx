@@ -14,9 +14,10 @@ import './App.css';
 import Topbar from './components/Topbar-01/Topbar';
 import { appDataDir, dirname, join } from '@tauri-apps/api/path';
 import { exists, mkdir, readDir, readTextFile, writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { check } from '@tauri-apps/plugin-updater';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
+import { load } from '@tauri-apps/plugin-store';
 
 const appDir = await appDataDir()
 async function userCollectionPath() {
@@ -32,6 +33,30 @@ function App() {
         "Desert Light Beige", 
         "Le Beau Cyan"
     ];
+
+    onMount(async() => {
+        const bgElement = document.querySelector(".background-style");
+
+        try {
+            const bgImageStore = await load('background_store.json', { autoSave: false });
+            const imageLink = await bgImageStore.get('background_image');
+            
+            await invoke('allow_dir', {path: imageLink});
+            console.log('done')
+            const blurAmount = await bgImageStore.get('blur_amount');
+            console.log(imageLink)
+            if (imageLink) {
+                bgElement.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
+                const bgBlurElement = document.querySelector(".background-blur-whole")
+                bgBlurElement.style.backdropFilter = `blur(${blurAmount}px)`;
+            } else {
+                bgElement.style.backgroundColor = 'var(--background-color)';
+            }
+        } catch (error) {
+            console.error('Error loading background store:', error);
+            bgElement.style.backgroundColor = 'var(--background-color)';
+        }
+    })
 
     onMount(async () => {
         try {
@@ -189,6 +214,7 @@ function App() {
                 return (
                     <>
                         <div className='main-layout'>
+                            <div className='background-style'><div className='background-blur-whole'></div></div>
                             <Topbar /> {/* This is the .topbar */}
 
                             {props.children} {/* This is the .content-page */}

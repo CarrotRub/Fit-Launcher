@@ -448,11 +448,22 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
 #[tauri::command]
 fn allow_dir(app: tauri::AppHandle, path: std::path::PathBuf) -> Result<(), String> {
     use tauri_plugin_fs::FsExt;
+    use std::fs;
+
+    let dir = if fs::metadata(&path)
+        .map_err(|err| err.to_string())?
+        .is_file()
+    {
+        path.parent().unwrap_or(&path).to_path_buf()
+    } else {
+        path
+    };
 
     app.fs_scope()
-        .allow_directory(path.parent().unwrap_or(&path), true)
+        .allow_directory(dir, true)
         .map_err(|err| err.to_string())
 }
+
 
 async fn start() {
     tauri::async_runtime::set(tokio::runtime::Handle::current());
@@ -466,6 +477,8 @@ async fn start() {
 
     tauri::Builder
         ::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             info!(
                 "Another instance attempted to launch with arguments: {:?}, cwd: {:?}",

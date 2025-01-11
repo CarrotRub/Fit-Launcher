@@ -25,14 +25,13 @@
     scroll-snap-align: center;
     z-index: 8;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+    &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5);
+    }
 }
 
-.slider-image-container:hover {
-    transform: scale(1.1);
-    box-shadow: 0 8px 21px rgba(0, 0, 0, 0.5);
-    z-index: 9;
-
-}
 
 .image-slider-gradient {
 
@@ -40,10 +39,7 @@
     left: 0;
     width: 100vw;
 
-    height: calc((500px* 0.5) + 24px);
     height: 100%;
-    mask-image: linear-gradient(to right, transparent, black 20%);
-    -webkit-mask-image: linear-gradient(to right, transparent 70%, black 100%);
 
     background-color: var(--background-color);
     align-self: flex-end;

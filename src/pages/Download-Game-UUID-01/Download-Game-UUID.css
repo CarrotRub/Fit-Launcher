@@ -35,8 +35,14 @@
 
 .download-game-background {
     grid-area: game-background;
-    height: -webkit-fill-available;
+    /* height: -webkit-fill-available; */
+    height: 120%;
+
+    /*It makes it go lower and be pretty*/
     width: 100vw;
+    pointer-events: none;
+
+    z-index: 0;
 }
 
 #download-game-return-button {
@@ -51,6 +57,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: all;
 }
 
 #download-game-return-button svg {
@@ -62,6 +69,7 @@
         transform: scale(1.2, -1.2);
         filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
     }
+
 }
 
 
@@ -89,6 +97,7 @@
     padding: 0px 24px 12px 24px;
     overflow-x: auto;
     box-shadow: 0 2px 0 0 var(--accent-color);
+    z-index: 1;
 }
 
 .download-game-main-info::-webkit-scrollbar {
@@ -312,6 +321,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+
+    pointer-events: all;
 }
 
 #download-game-favorite-button svg {

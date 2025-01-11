@@ -45,6 +45,7 @@
       "assetProtocol": {
         "scope": [
           "$APPCONFIG/sitemaps/**",
+          "$APPCONFIG/backgroundImages/**",
           "$APPDATA/sitemaps/**",
           "$APPCACHE/**",
           "$APPCACHE/.persistence/**",

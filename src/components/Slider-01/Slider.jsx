@@ -52,9 +52,12 @@ const Slider = (props) => {
 
 
         if (currentIndex() > 0 && linearGradientContainer != null) {
+            // * LEFT SIDE
             linearGradientContainer.style.webkitMaskImage = `linear-gradient(to right, var(--background-color) 0%, transparent 30%, transparent 70%, var(--background-color) 100%)`;
             linearGradientContainer.style.maskImage = `linear-gradient(to right, var(--background-color) 0%, transparent 30%, transparent 70%, var(--background-color) 100%)`;
         } else if (currentIndex() === 0 && linearGradientContainer != null) {
+
+            // * RIGHT SIDE
             linearGradientContainer.style.webkitMaskImage = `linear-gradient(to right, transparent 70%, var(--background-color) 100%)`;
             linearGradientContainer.style.maskImage = `linear-gradient(to right, transparent 70%, var(--background-color) 100%)`;
         }

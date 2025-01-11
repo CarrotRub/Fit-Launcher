@@ -79,6 +79,10 @@
         border: none;
         color: var(--text-color);
         user-select: text;
+
+        &:disabled {
+            color: var(--non-selected-text-color);
+        }
     }
 
     & input[type="number"]::-webkit-inner-spin-button,
@@ -91,6 +95,8 @@
         &:focus {
             outline: none;
         }
+
+
     }
 
     /* For Firefox */
@@ -141,6 +147,7 @@
 .clear-cache-settings-button,
 .go-to-logs-settings-button {
     width: 8vw;
+    min-width: fit-content;
     height: 3vw;
     display: flex;
     align-items: center;
@@ -210,6 +217,11 @@
     &:active {
         background-color: var(--primary-color);
     }
+
+    &:disabled {
+        pointer-events: none;
+        color: var(--non-selected-text-color);
+    }
 }
 
 .theme-dropdown {
@@ -218,6 +230,7 @@
     position: relative;
     height: 100%;
     align-self: flex-start;
+    z-index: 12;
 
     & * {
         padding: 4px;
@@ -261,4 +274,46 @@
         background-color: var(--primary-color);
         color: #fff;
     }
+}
+
+.slidecontainer {
+    margin-left: auto;
+    width: 70%;
+
+}
+
+/* The slider itself */
+.slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 70%;
+    height: 12px;
+    background: var(--70-background-color);
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+    border-radius: 6px;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--accent-color);
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--accent-color);
+    cursor: pointer;
+    border-radius: 50%;
 }
