@@ -62,6 +62,8 @@ sysinfo = "0.32.0"
 image = "0.25.4"
 palette = "0.7.6"
 color-thief = "0.2.2"
+tauri-plugin-process = "2"
+tauri-plugin-store = "2"
 
 
 [target.'cfg(windows)'.dependencies]

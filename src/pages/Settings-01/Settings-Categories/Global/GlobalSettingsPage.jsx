@@ -1,13 +1,14 @@
 import { createEffect, createSignal, onMount, Show } from "solid-js"
 import './GlobalSettingsPage.css'
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { confirm, message, open } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { Select } from "@thisbeyond/solid-select";
-import { mkdir, readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { appDataDir, join } from "@tauri-apps/api/path";
-
+import { copyFile, mkdir, readDir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { appDataDir, basename, dirname, join } from "@tauri-apps/api/path";
+import { exit, relaunch } from "@tauri-apps/plugin-process";
+import { load } from "@tauri-apps/plugin-store";
 
 function GlobalSettingsPage(props) {
     const [globalSettings, setGlobalSettings] = createSignal(null); // Start with null to indicate loading
@@ -130,7 +131,7 @@ function GlobalSettingsPage(props) {
                 {selectedPart() === 'display' ? (
                     <DisplayPart settings={globalSettings().display} handleSwitchCheckChange={handleSwitchCheckChange} />
                 ) : selectedPart() === 'dns' ? (
-                    <DNSPart settings={globalSettings().dns} handleTextCheckChange={handleTextCheckChange} />
+                    <DNSPart settings={globalSettings().dns} handleTextCheckChange={handleTextCheckChange} handleSwitchCheckChange={handleSwitchCheckChange}/>
                 ) : selectedPart() === 'install' ? (
                     <InstallSettingsPart settings={globalSettings().installation_settings} handleSwitchCheckChange={handleSwitchCheckChange} />
                 ) : selectedPart() === 'cache' ? (
@@ -162,6 +163,8 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
     ];
     const [newThemes, setNewThemes] = createSignal([]);
     const [currentTheme, setCurrentTheme] = createSignal(defaultThemes[0]);
+    const [blurAmount, setBlurAmount] = createSignal(null);
+    const [bgApplied, setBgApplied] = createSignal(false);
 
     onMount(async () => {
         try {
@@ -188,6 +191,26 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
             } else {
                 setCurrentTheme(savedTheme.replace(/-/g, " ").replace(/\b\w/g, char => char.toUpperCase()));
                 await applyTheme(savedTheme);
+            }
+
+            try {
+                const bgImageStore = await load('background_store.json', { autoSave: true });
+                let bg_path = await bgImageStore.get('background_image');
+                let bg_blur = await bgImageStore.get('blur_amount')
+                if (bg_path === '') {
+                    setBgApplied(false)
+                } else {
+                    setBgApplied(true)
+                }
+                console.log(bg_blur)
+                if (bg_blur !== null) {
+                    setBlurAmount(bg_blur);
+                } else {
+                    setBlurAmount(5);
+                    console.warn("no")
+                }
+            } catch (error) {
+                await message(`Error checking background:\n ${error}`, {title: 'FitLauncher', kind: 'error'});
             }
         } catch (error) {
             console.error("Error loading new themes:", error);
@@ -326,6 +349,71 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
         }
     }
 
+    async function addBackgroundImage(imagePath) {
+        const bgElement = document.querySelector(".background-style");
+        const bgBlurElement = document.querySelector(".background-blur-whole");
+    
+        const bgDir = await appDataDir();
+        let imageName = await basename(imagePath);
+        let targetPath = await join(bgDir, 'backgroundImages', imageName);
+        let parentDir = await dirname(targetPath)
+        await mkdir(parentDir, { recursive: true });
+        console.log(targetPath)
+        // Copy the image to the target directory
+        await copyFile(imagePath, targetPath)
+
+        await invoke('allow_dir', { path: targetPath });
+        const bgImageStore = await load('background_store.json', { autoSave: false });
+    
+        // Set the background image and blur amount in the store
+        await bgImageStore.set('background_image', targetPath);
+        await bgImageStore.set('blur_amount', blurAmount());
+    
+        // Use this imageLink as a fallback
+        const imageLink = await bgImageStore.get('background_image');
+        bgElement.style.backgroundColor = ``;
+        bgElement.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
+    
+        // Apply blur effect
+        bgBlurElement.style.backdropFilter = `blur(${blurAmount()}px)`;
+    }
+
+    createEffect(async() => {
+        const bgBlurElement = document.querySelector(".background-blur-whole");
+        bgBlurElement.style.backdropFilter = `blur(${blurAmount()}px)`;
+    
+        load('background_store.json', { autoSave: false }).then(async (bgImageStore) => {
+            if (blurAmount() !== null) {
+                await bgImageStore.set('blur_amount', blurAmount());
+            }
+        });
+
+    });
+
+    async function handleAddBackgroundImage() {
+        let imagePath = await open({
+            multiple: false,
+            directory: false,
+            filters: [{
+                name: 'Image',
+                extensions: ['png', 'jpeg', 'jpg', 'webp']
+            }]
+        })
+
+        if (imagePath) {
+            addBackgroundImage(imagePath);
+            setBgApplied(true);
+        }
+    }
+
+    async function handleRemoveBackground() {
+        const bgImageStore = await load('background_store.json', { autoSave: false });
+        await bgImageStore.set('background_image', '');
+        await bgImageStore.set('blur_amount', 0);
+
+        window.location.reload()
+    }
+
     return (
         <Show when={settings} placeholder={<p>Loading</p>} >
             <div className="global-page-group" id="global-display">
@@ -369,6 +457,24 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
                             <span>+</span>
                         </button>
                     </li>
+                    <li>
+                        <span>Add Background Image :</span>
+                        <button className="go-to-logs-settings-button" onClick={async () => handleAddBackgroundImage()}>
+                            <span>
+                                Set Background Image
+                            </span>
+                        </button>
+                        <button className="plus-button-settings" disabled={!bgApplied()} onClick={async () => await handleRemoveBackground()} >
+                            <span>-</span>
+                        </button>
+                    </li>
+                    <li>
+                        <span>Change Background Blur :</span>
+                        <div class="slidecontainer">
+                          <input type="range" min="0" max="50" value={blurAmount()} class="slider" id="myRange" onInput={(e) => setBlurAmount(e.target.value)}/>
+                          <span> {blurAmount()} pixels</span>
+                        </div>
+                    </li>
                 </ul>
             </div>
 
@@ -376,13 +482,34 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
     );
 }
 
-function DNSPart({ settings, handleTextCheckChange }) {
+function DNSPart({ settings, handleTextCheckChange, handleSwitchCheckChange }) {
+    async function warnDNSSystemConf() {
+        const confirm_sys = await confirm("Please remember that you will have to save first and then restart FitLauncher for the changes to be made.\n Do you want to restart now or later ?  (if you do not restart now, you will have to quit the app from taskbar too).\n Keep in mind that if it makes the app slow down revert to the default settings. ",{title:'FitLauncher', kind: 'warning'})
+        if( confirm_sys ) {
+            await exit();
+        }
+    }
 
     return (
         <Show when={settings} placeholder={<p>Loading</p>} >
             <div className="global-page-group" id="global-display">
                 <p className="global-page-group-title">DNS Settings</p>
                 <ul className="global-page-group-list">
+                    <li>
+                        <span>Use your system's default DNS Settings :</span>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={settings.system_conf}
+                                onChange={async () => {
+                                    handleSwitchCheckChange("dns.system_conf")
+                                    await warnDNSSystemConf();
+                                }}
+                            />
+                            <span className="switch-slider round"></span>
+                        </label>
+                    </li>
+
                     <li>
                         <span>Primary DNS Address <small><i>(IpV4)</i></small>: </span>
                         <div className="settings-path-container">
@@ -393,6 +520,7 @@ function DNSPart({ settings, handleTextCheckChange }) {
                                 onInput={(e) =>
                                     handleTextCheckChange(`dns.primary`, e.target.value)
                                 }
+                                disabled={settings.system_conf}
                             />
                         </div>
                     </li>
@@ -406,15 +534,16 @@ function DNSPart({ settings, handleTextCheckChange }) {
                                 onInput={(e) =>
                                     handleTextCheckChange(`dns.secondary`, e.target.value)
                                 }
+                                disabled={settings.system_conf}
                             />
                         </div>
                     </li>
                 </ul>
             </div>
-
         </Show>
     );
 }
+
 
 function InstallSettingsPart({ settings, handleSwitchCheckChange }) {
 

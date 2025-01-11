@@ -266,126 +266,380 @@ function PopularGames() {
     }
 
 
+    // * IMPORTANT : Here I removed the background-image because it was unseeable and it ate more memory (gradient are weirdly memory consuming) and made the launcher slower on startup.
+    // * For later it will be an option to enable or disable but for now it will stay disabled.
+    // * Keep the style comment as it will be useful for later purposes.
+
     return (
-        <>
-            <div className="popular-games-grid">
-                <div className="game-presentation" style={{
-                    'background-image': `url(${imagesObject()?.[selectedGame()]?.img})`,
-                    'background-size': 'cover',
-                    'background-position': 'center',
-                }}>
-                    {isLoading() ? (
-                        <div className="loading-icon-pop-games">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--secondary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-circle"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
-                        </div>
-                    ) : (
-                        <div className="main-game-container">
-                            <div className="main-game-image-zoomed-in">
-                                <img src={imagesObject()?.[selectedGame()]?.img} alt="game-background" className="game-image-background" style={{
-                                    'border-color': borderColor(),
-                                    'border-style': 'solid',
-                                    'border-width': '2px',
-                                    'box-shadow': `0px 0px 30px 3px ${infoContainerColor()}`,
-                                    'cursor': 'pointer'
-                                }}
-                                    onClick={() => {
-                                        handleImageClick(imagesObject()?.[selectedGame()]?.title, popularRepacksPath, imagesObject()?.[selectedGame()]?.href)
-                                    }}
-                                />
-                            </div>
-                            <div className="main-game-info-container" style={
-                                `
+      <>
+        <div className="popular-games-grid">
+          <div className="game-presentation">
+            <div
+              className="game-whole-background"
+              style={{
+                // "background-image": `url(${
+                //   imagesObject()?.[selectedGame()]?.img
+                // })`,
+                "background-size": "cover",
+                "background-position": "center",
+              }}
+            >
+              <div
+                className="game-presentation-mask"
+                style={{
+                  "mask-image": "linear-gradient(to bottom, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0))",
+                }}
+              ></div>
+            </div>
+
+            {isLoading() ? (
+              <div className="loading-icon-pop-games">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="72"
+                  height="72"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--secondary-color)"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="lucide lucide-loader-circle"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              </div>
+            ) : (
+              <div className="main-game-container">
+                <div className="main-game-image-zoomed-in">
+                  <img
+                    src={imagesObject()?.[selectedGame()]?.img}
+                    alt="game-background"
+                    className="game-image-background"
+                    style={{
+                      "border-color": borderColor(),
+                      "border-style": "solid",
+                      "border-width": "2px",
+                      "box-shadow": `0px 0px 30px 3px ${infoContainerColor()}`,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => {
+                      handleImageClick(
+                        imagesObject()?.[selectedGame()]?.title,
+                        popularRepacksPath,
+                        imagesObject()?.[selectedGame()]?.href
+                      );
+                    }}
+                  />
+                </div>
+                <div
+                  className="main-game-info-container"
+                  style={`
                             background-color : ${infoContainerColor()}; 
                             border-color: ${borderColor()};
                             border-style: solid;
                             border-width: 2px;
                             box-shadow  : 0px 0px 30px 3px ${infoContainerColor()};
                             cursor: pointer;
-                            `
-                            }
-                                onClick={() => {
-                                    handleImageClick(imagesObject()?.[selectedGame()]?.title, popularRepacksPath, imagesObject()?.[selectedGame()]?.href)
-                                }}
-                            >
-                                <p id="game-clean-title">
-                                    {cleanGameTitle()}
-                                </p>
-                                <p id="long-game-title">
-                                    {longGameTitle()}
-                                </p>
-                                <div id="game-details">
-                                    <p><strong>Genre/Tags:</strong> {gameDetails().GenreTags}</p>
-                                    <p><strong>Companies:</strong> {gameDetails().Companies}</p>
-                                    <p><strong>Languages:</strong> {gameDetails().Language}</p>
-                                    <p><strong>Original Size:</strong> {gameDetails().OriginalSize}</p>
-                                    <p><strong>Repack Size:</strong> {gameDetails().RepackSize}</p>
-                                </div>
-                            </div>
-                            <div className="game-skipper" style={
-                                `
+                            `}
+                  onClick={() => {
+                    handleImageClick(
+                      imagesObject()?.[selectedGame()]?.title,
+                      popularRepacksPath,
+                      imagesObject()?.[selectedGame()]?.href
+                    );
+                  }}
+                >
+                  <p id="game-clean-title">{cleanGameTitle()}</p>
+                  <p id="long-game-title">{longGameTitle()}</p>
+                  <div id="game-details">
+                    <p>
+                      <strong>Genre/Tags:</strong> {gameDetails().GenreTags}
+                    </p>
+                    <p>
+                      <strong>Companies:</strong> {gameDetails().Companies}
+                    </p>
+                    <p>
+                      <strong>Languages:</strong> {gameDetails().Language}
+                    </p>
+                    <p>
+                      <strong>Original Size:</strong>{" "}
+                      {gameDetails().OriginalSize}
+                    </p>
+                    <p>
+                      <strong>Repack Size:</strong> {gameDetails().RepackSize}
+                    </p>
+                  </div>
+                </div>
+                <div
+                  className="game-skipper"
+                  style={`
                                 background-color : ${infoContainerColor()}; 
                                 border-style: solid;
                                 border-width: 2px;
                                 border-color: ${borderColor()};
                                 box-shadow  : 0px 0px 50px 3px ${infoContainerColor()}
-                            `
-                            }>
-                                <div id="next-area-skipper" onClick={() => {
-                                    setSelectedGame((prev) => (prev + 1) % numberOfGames());
-                                }}>
-                                    <svg width="32" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="894 629.25 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="894" y="629.25" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="M897 634.25v14" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M897 634.25v14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape" /></g><path d="M915 641.25h-14" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M915 641.25h-14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape" /></g><path d="m909 647.25 6-6-6-6" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m909 647.25 6-6-6-6" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape" /></g></g></svg>
-                                </div>
-                                <div id="previous-next-divider" style={
-                                    `
+                            `}
+                >
+                  <div
+                    id="next-area-skipper"
+                    onClick={() => {
+                      setSelectedGame((prev) => (prev + 1) % numberOfGames());
+                    }}
+                  >
+                    <svg
+                      width="32"
+                      xmlns="http://www.w3.org/2000/svg"
+                      height="32"
+                      viewBox="894 629.25 24 24"
+                      style="-webkit-print-color-adjust::exact"
+                      fill="none"
+                    >
+                      <g class="fills">
+                        <rect
+                          rx="0"
+                          ry="0"
+                          x="894"
+                          y="629.25"
+                          width="24"
+                          height="24"
+                          class="frame-background"
+                        />
+                      </g>
+                      <g class="frame-children">
+                        <path
+                          d="M897 634.25v14"
+                          style="fill:none"
+                          class="fills"
+                        />
+                        <g
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="strokes"
+                        >
+                          <path
+                            d="M897 634.25v14"
+                            style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`}
+                            class="stroke-shape"
+                          />
+                        </g>
+                        <path
+                          d="M915 641.25h-14"
+                          style="fill:none"
+                          class="fills"
+                        />
+                        <g
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="strokes"
+                        >
+                          <path
+                            d="M915 641.25h-14"
+                            style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`}
+                            class="stroke-shape"
+                          />
+                        </g>
+                        <path
+                          d="m909 647.25 6-6-6-6"
+                          style="fill:none"
+                          class="fills"
+                        />
+                        <g
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="strokes"
+                        >
+                          <path
+                            d="m909 647.25 6-6-6-6"
+                            style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`}
+                            class="stroke-shape"
+                          />
+                        </g>
+                      </g>
+                    </svg>
+                  </div>
+                  <div
+                    id="previous-next-divider"
+                    style={`
                                     background-color: ${borderColor()}
-                                `
-                                }></div>
-                                <div id="previous-area-skipper" onClick={() => {
-                                    setSelectedGame((prev) => (prev - 1 + numberOfGames()) % numberOfGames());
-                                }}>
-                                    <svg width="32" xmlns="http://www.w3.org/2000/svg" height="32" viewBox="894 444.75 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="894" y="444.75" width="24" height="24" class="frame-background" /></g><g class="frame-children"><path d="m903 450.75-6 6 6 6" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m903 450.75-6 6 6 6" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape" /></g><path d="M897 456.75h14" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M897 456.75h14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape" /></g><path d="M915 463.75v-14" style="fill:none" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="M915 463.75v-14" style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`} class="stroke-shape" /></g></g></svg>
-                                </div>
-                            </div>
-                        </div>
-                    )
-                    }
+                                `}
+                  ></div>
+                  <div
+                    id="previous-area-skipper"
+                    onClick={() => {
+                      setSelectedGame(
+                        (prev) => (prev - 1 + numberOfGames()) % numberOfGames()
+                      );
+                    }}
+                  >
+                    <svg
+                      width="32"
+                      xmlns="http://www.w3.org/2000/svg"
+                      height="32"
+                      viewBox="894 444.75 24 24"
+                      style="-webkit-print-color-adjust::exact"
+                      fill="none"
+                    >
+                      <g class="fills">
+                        <rect
+                          rx="0"
+                          ry="0"
+                          x="894"
+                          y="444.75"
+                          width="24"
+                          height="24"
+                          class="frame-background"
+                        />
+                      </g>
+                      <g class="frame-children">
+                        <path
+                          d="m903 450.75-6 6 6 6"
+                          style="fill:none"
+                          class="fills"
+                        />
+                        <g
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="strokes"
+                        >
+                          <path
+                            d="m903 450.75-6 6 6 6"
+                            style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`}
+                            class="stroke-shape"
+                          />
+                        </g>
+                        <path
+                          d="M897 456.75h14"
+                          style="fill:none"
+                          class="fills"
+                        />
+                        <g
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="strokes"
+                        >
+                          <path
+                            d="M897 456.75h14"
+                            style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`}
+                            class="stroke-shape"
+                          />
+                        </g>
+                        <path
+                          d="M915 463.75v-14"
+                          style="fill:none"
+                          class="fills"
+                        />
+                        <g
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="strokes"
+                        >
+                          <path
+                            d="M915 463.75v-14"
+                            style={`fill:none;fill-opacity:none;stroke-width:2;stroke:${borderColor()};stroke-opacity:1`}
+                            class="stroke-shape"
+                          />
+                        </g>
+                      </g>
+                    </svg>
+                  </div>
                 </div>
-                <div className="item-skipper-container">
-                    <div className="item-skipper" style={
-                        `filter: drop-shadow(0px 0px 32px ${borderColor()});`
-                    }>
-                        {Array.from({ length: numberOfGames() }, (_, index) => (
-                            <div class={`item-elipse ${selectedGame() === index ? 'active' : 'inactive'}`} style={{
-                                fill: selectedGame() === index ? `${borderColor()}` : '', // Change background based on active state
-                            }}>
-                                <svg width="28" xmlns="http://www.w3.org/2000/svg" height="28" id="screenshot-fab4a6ec-74ec-8017-8005-2a1923de04fc" viewBox="864.01 772.864 31 32" style="-webkit-print-color-adjust::exact" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
-                                    <g id="shape-fab4a6ec-74ec-8017-8005-2a1923de04fc" data-testid="Ellipse">
-                                        <defs></defs>
-                                        <g class="fills" id="fills-fab4a6ec-74ec-8017-8005-2a1923de04fc">
-                                            <ellipse cx="879.510000000001" cy="788.864" rx="12.5" ry="13" transform="matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000)"></ellipse>
-                                        </g>
-                                        <g id="strokes-fab4a6ec-74ec-8017-8005-2a1923de04fc" class="strokes">
-                                            <g class="outer-stroke-shape">
-                                                <defs>
-                                                    <mask id="outer-stroke-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0" x="864.1815728752548" y="773.0355728752538" width="30.65685424949238" height="31.65685424949238" maskUnits="userSpaceOnUse">
-                                                        <use href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0" style="fill:none;stroke:white;stroke-width:4"></use>
-                                                        <use href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0" style="fill:black;stroke:none"></use>
-                                                    </mask>
-                                                    <ellipse cx="879.510000000001" cy="788.864" rx="12.5" ry="13" transform="matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000)" id="stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"></ellipse>
-                                                </defs>
-                                                <use href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0" mask="url(#outer-stroke-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0)" style={`fill:none;stroke-width:4;stroke:${infoContainerColor()};stroke-opacity:1`}></use>
-                                                <use href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0" style="fill:none;fill-opacity:none;stroke-width:2;stroke:none;stroke-opacity:1"></use>
-                                            </g>
-                                        </g>
-                                    </g>
-                                </svg>
-                            </div>
-                        ))}
-                    </div>
+              </div>
+            )}
+          </div>
+          <div className="item-skipper-container">
+            <div
+              className="item-skipper"
+              style={`filter: drop-shadow(0px 0px 32px ${borderColor()});`}
+            >
+              {Array.from({ length: numberOfGames() }, (_, index) => (
+                <div
+                  class={`item-elipse ${
+                    selectedGame() === index ? "active" : "inactive"
+                  }`}
+                  style={{
+                    fill: selectedGame() === index ? `${borderColor()}` : "", // Change background based on active state
+                  }}
+                >
+                  <svg
+                    width="28"
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="28"
+                    id="screenshot-fab4a6ec-74ec-8017-8005-2a1923de04fc"
+                    viewBox="864.01 772.864 31 32"
+                    style="-webkit-print-color-adjust::exact"
+                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                    version="1.1"
+                  >
+                    <g
+                      id="shape-fab4a6ec-74ec-8017-8005-2a1923de04fc"
+                      data-testid="Ellipse"
+                    >
+                      <defs></defs>
+                      <g
+                        class="fills"
+                        id="fills-fab4a6ec-74ec-8017-8005-2a1923de04fc"
+                      >
+                        <ellipse
+                          cx="879.510000000001"
+                          cy="788.864"
+                          rx="12.5"
+                          ry="13"
+                          transform="matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000)"
+                        ></ellipse>
+                      </g>
+                      <g
+                        id="strokes-fab4a6ec-74ec-8017-8005-2a1923de04fc"
+                        class="strokes"
+                      >
+                        <g class="outer-stroke-shape">
+                          <defs>
+                            <mask
+                              id="outer-stroke-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"
+                              x="864.1815728752548"
+                              y="773.0355728752538"
+                              width="30.65685424949238"
+                              height="31.65685424949238"
+                              maskUnits="userSpaceOnUse"
+                            >
+                              <use
+                                href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"
+                                style="fill:none;stroke:white;stroke-width:4"
+                              ></use>
+                              <use
+                                href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"
+                                style="fill:black;stroke:none"
+                              ></use>
+                            </mask>
+                            <ellipse
+                              cx="879.510000000001"
+                              cy="788.864"
+                              rx="12.5"
+                              ry="13"
+                              transform="matrix(1.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000)"
+                              id="stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"
+                            ></ellipse>
+                          </defs>
+                          <use
+                            href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"
+                            mask="url(#outer-stroke-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0)"
+                            style={`fill:none;stroke-width:4;stroke:${infoContainerColor()};stroke-opacity:1`}
+                          ></use>
+                          <use
+                            href="#stroke-shape-render-886-fab4a6ec-74ec-8017-8005-2a1923de04fc-0"
+                            style="fill:none;fill-opacity:none;stroke-width:2;stroke:none;stroke-opacity:1"
+                          ></use>
+                        </g>
+                      </g>
+                    </g>
+                  </svg>
                 </div>
+              ))}
             </div>
-        </>
-    )
+          </div>
+        </div>
+      </>
+    );
 }
 
 export default PopularGames;

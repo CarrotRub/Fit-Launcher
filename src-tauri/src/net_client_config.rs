@@ -17,6 +17,7 @@ pub mod custom_client_dns {
     use std::net::{IpAddr, SocketAddr};
     use std::sync::Arc;
     use tracing::error;
+    use tracing::info;
 
     #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct FitLauncherDnsConfig {
@@ -40,13 +41,12 @@ pub mod custom_client_dns {
     impl FitLauncherDnsConfig {
         #[allow(clippy::get_first)]
         fn default_system() -> Self {
-            let config = read_system_conf().unwrap().0;
-            let resolver_config_name_servers = config.name_servers();
+            info!("System Conf Enabled");
             FitLauncherDnsConfig {
                 system_conf: true,
                 protocol: "UDP".to_string(),
-                primary: resolver_config_name_servers.get(0).map(|ns| ns.to_string()),
-                secondary: resolver_config_name_servers.get(1).map(|ns| ns.to_string()),
+                primary: Some("1.1.1.1".to_string()),
+                secondary: Some("1.0.0.1".to_string()),
             }
         }
     }
@@ -109,16 +109,23 @@ pub mod custom_client_dns {
             }
         };
 
-        // Parse the primary DNS address
-        let primary_ip: IpAddr = dns_config
-            .primary
-            .clone()
-            .unwrap_or("1.1.1.1".to_string())
-            .parse()
-            .expect("Invalid primary DNS address in dns.json");
+        info!("Primary IP Address: {:#?}", dns_config.primary);
 
-        let custom_socket_vec_addr: SocketAddr = SocketAddr::new(primary_ip, 53);
+        let primary_str = dns_config.primary.clone().unwrap_or("1.1.1.1".to_string());
 
+        let custom_socket_vec_addr: SocketAddr = match primary_str.parse::<SocketAddr>() {
+            Ok(socket_addr) => {
+                // Successfully parsed a SocketAddr with IP and port
+                socket_addr
+            }
+            Err(_) => {
+                // Failed to parse as SocketAddr, assume it's an IP without a port (Probably an IpV4 that's custom because the struct doesn't allow custom ports for UDP)
+                let primary_ip: IpAddr = primary_str
+                    .parse()
+                    .expect("Invalid primary DNS address in dns.json");
+                SocketAddr::new(primary_ip, 53)
+            }
+        };
         let custom_name_server_config = NameServerConfig::new(custom_socket_vec_addr, protocol);
 
         let mut custom_resolver_dns_config = ResolverConfig::new();
@@ -198,13 +205,20 @@ pub mod custom_client_dns {
 
         // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
         // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
-        ClientBuilder::new()
-            .dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)))
+        let mut client_builder = ClientBuilder::new()
             .use_rustls_tls()
             .gzip(true)
             .brotli(true)
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
-            .pool_max_idle_per_host(0)
+            .pool_max_idle_per_host(0);
+
+        // Conditionally set the custom DNS resolver only if sys_conf is disabled
+        if !dns_config.system_conf {
+            client_builder =
+                client_builder.dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)));
+        }
+
+        client_builder
             .build()
             .expect("Failed to build custom DNS reqwest client")
     });

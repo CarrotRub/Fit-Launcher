@@ -323,10 +323,15 @@ const DownloadGameUUIDPage = () => {
                         <>
                             <div className="download-game-background"
                                 style={{
-                                    'background-image': `linear-gradient(0deg, var(--background-color) 0%, rgba(0, 0, 0, 0) 150%), url(${additionalImages()[currentImageIndex()]})`,
+                                    'background-image': `url(${additionalImages()[currentImageIndex()]})`,
                                     'background-size': 'cover',
                                     'background-position': 'center',
-                                }}>
+                                    '--webkit-mask-image': 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 80%, rgba(0, 0, 0, 0) 100%)',
+                                    'webkit-mask-size': 'cover',
+                                    'mask-image': 'linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 70%, rgba(0, 0, 0, 0) 100%)',
+                                    'mask-size': 'cover'
+                                }}
+                            >
 
                                 <div id="download-game-return-button" onClick={handleReturnToPreviousPage}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-forward"><path d="m15 17 5-5-5-5" /><path d="M4 18v-2a4 4 0 0 1 4-4h12" /></svg>

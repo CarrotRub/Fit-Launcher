@@ -29,21 +29,10 @@
 
 }
 
-
-.game-presentation::before {
-    content: '';
-    /* Required for pseudo-element */
-    position: absolute;
-    /* Position it on top of the image */
-    top: 0;
-    left: 0;
-    width: 100%;
+.game-whole-background {
+    position: absolute !important;
     height: 100%;
-    background: linear-gradient(0deg, var(--background-color) 0%, rgba(0, 0, 0, 0) 150%);
-    pointer-events: none;
-    /* Allow clicks to pass through */
-    z-index: 1;
-    /* To keep the background behind */
+    width: 100%;
 }
 
 .game-presentation>* {
@@ -82,8 +71,6 @@
 }
 
 .main-game-container {
-
-    /* position: absolute; */
 
     display: flex;
     justify-content: space-between;
