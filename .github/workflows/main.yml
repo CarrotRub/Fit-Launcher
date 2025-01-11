@@ -1,50 +1,50 @@
-name: 'publish'
+name: "publish"
 
 on:
-    workflow_dispatch:  # Manual trigger only
+ workflow_dispatch: # Manual trigger only
 #   push:
 #     branches:
 #       - master
 #     paths:
 #       - 'src/**'
 #       - 'src-tauri/**'
-      
+
 jobs:
-  publish-tauri:
-    permissions:
-      contents: write
+ publish-tauri:
+  permissions:
+   contents: write
 
-    runs-on: windows-latest
+  runs-on: windows-latest
 
-    steps:
-      - uses: actions/checkout@v4
+  steps:
+   - uses: actions/checkout@v4
 
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: 'npm' 
+   - name: setup node
+     uses: actions/setup-node@v4
+     with:
+      node-version: lts/*
+      cache: "npm"
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+   - name: install Rust stable
+     uses: dtolnay/rust-toolchain@stable
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
+   - name: Rust cache
+     uses: swatinem/rust-cache@v2
+     with:
+      workspaces: "./src-tauri -> target"
 
-      - name: install frontend dependencies
-        run: npm install # change this to npm or pnpm depending on which one you use.
+   - name: install frontend dependencies
+     run: npm install # change this to npm or pnpm depending on which one you use.
 
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY : ${{  secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD : ${{secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD}}
-        with:
-          tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
-          prerelease: false
-          args: ''
+   - uses: tauri-apps/tauri-action@v0
+     env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{  secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD}}
+     with:
+      tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
+      releaseName: "App v__VERSION__"
+      releaseBody: "See the assets to download this version and install."
+      releaseDraft: true
+      prerelease: false
+      args: ""

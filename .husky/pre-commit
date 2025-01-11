@@ -1,0 +1,2 @@
+bun test
+bun run format

@@ -1,85 +1,82 @@
 .popup-textinput-overlay {
-    z-index: 14;
+ z-index: 14;
 
-    position: fixed;
-    height: 100%;
-    width: 100%;
-    background-color: var(--70-background-color);
+ position: fixed;
+ height: 100%;
+ width: 100%;
+ background-color: var(--70-background-color);
 
-    display: flex;
-    align-items: center;
-    align-content: center;
-    justify-content: center;
-    backdrop-filter: blur(6px);
-
+ display: flex;
+ align-items: center;
+ align-content: center;
+ justify-content: center;
+ backdrop-filter: blur(6px);
 }
 
 .basic-textinput-popup {
-    z-index: 15;
-    transform: translateY(-5%);
+ z-index: 15;
+ transform: translateY(-5%);
 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    position: relative;
-    padding: 16px;
-    box-sizing: border-box;
-    min-height: 50vh;
-    height: 50vh;
-    max-height: fit-content;
-    width: 50vw;
-    max-width: fit-content;
-    background-color: var(--popup-background-color);
-    border-radius: 32px;
+ display: flex;
+ flex-direction: column;
+ justify-content: space-between;
+ position: relative;
+ padding: 16px;
+ box-sizing: border-box;
+ min-height: 50vh;
+ height: 50vh;
+ max-height: fit-content;
+ width: 50vw;
+ max-width: fit-content;
+ background-color: var(--popup-background-color);
+ border-radius: 32px;
 }
 
 .popup-textinput-overlay.show .basic-textinput-popup {
-    transform: scale(1);
-    opacity: 1;
-
+ transform: scale(1);
+ opacity: 1;
 }
 
-
 .popup-footer-container {
-    color: var(--non-selected-text-color);
-    margin-bottom: 8px;
-    font-size: 12px;
-    font-style: italic;
-    position: absolute;
-    bottom: 1%;
-    display: flex;
+ color: var(--non-selected-text-color);
+ margin-bottom: 8px;
+ font-size: 12px;
+ font-style: italic;
+ position: absolute;
+ bottom: 1%;
+ display: flex;
 }
 
 .popup-path-input-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 24px;
+ position: relative;
+ display: flex;
+ align-items: center;
+ gap: 24px;
 }
 
 .popup-path-input-div {
-    display: flex;
-    width: auto;
+ display: flex;
+ width: auto;
 }
 
 .popup-path-input {
-    background-size: 20px;
+ background-size: 20px;
 
-    height: 5vh;
-    width: 16vw;
+ height: 5vh;
+ width: 16vw;
 
-    min-width: fit-content;
-    padding-left: 1rem;
-    padding-right: 6px;
+ min-width: fit-content;
+ padding-left: 1rem;
+ padding-right: 6px;
 
-    border-radius: 12px;
-    border: none;
+ border-radius: 12px;
+ border: none;
 
-    background-color: var(--secondary-30-selected-color);
-    color: var(--text-color);
+ background-color: var(--secondary-30-selected-color);
+ color: var(--text-color);
 }
 
 .popup-path-input::placeholder {
-    color: var(--non-selected-text-color);
-    font-style: normal;
+ color: var(--non-selected-text-color);
+ font-style: normal;
 }

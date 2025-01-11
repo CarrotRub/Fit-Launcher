@@ -7,3 +7,6 @@ examples
 target
 test.json
 test_info.json
+
+# A file for building your articulated commit message
+commit.md

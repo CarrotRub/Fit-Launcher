@@ -1,0 +1,156 @@
+.settings {
+ display: grid;
+ grid-template-columns: 18vw 1fr;
+ grid-template-rows: 1fr;
+ grid-template-areas: "sidebar settings-content";
+ height: 100%;
+ overflow: hidden;
+
+ p {
+  margin: 0;
+  padding: 0;
+ }
+}
+
+.settings-content {
+ grid-column: 2;
+ grid-area: settings-content;
+}
+
+.settings-sidebar {
+ grid-area: sidebar;
+ grid-column: 1;
+ grid-row: 1;
+ display: flex;
+ flex-direction: column;
+ flex-wrap: nowrap;
+ border-right: 2px solid var(--accent-color);
+ padding: 0 0 24px 24px;
+ width: 18vw;
+ overflow-y: auto;
+ top: 0;
+ bottom: 0;
+ height: 100%;
+ box-sizing: border-box;
+}
+
+.settings-sidebar::-webkit-scrollbar {
+ display: none;
+}
+
+.settings-sidebar-group {
+ height: auto;
+ width: 100%;
+
+ display: flex;
+ flex-direction: column;
+ flex-wrap: nowrap;
+
+ gap: 12px;
+}
+
+.settings-sidebar-group-title {
+ font-family: "Mulish Variable";
+ font-size: 32px;
+ font-weight: 600;
+ line-height: 1;
+ padding-bottom: 12px !important;
+}
+
+.settings-sidebar-group-list-category {
+ display: flex;
+ flex-direction: column;
+ padding: 0;
+ margin: 0;
+ margin-top: 12px;
+
+ & a {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+   background-color 0.3s ease,
+   transform 0.3s ease;
+  text-decoration: none;
+
+  & p,
+  & span {
+   font-family: "Mulish Variable";
+   font-size: 16px;
+   font-weight: 600;
+   letter-spacing: 0.3px;
+  }
+
+  &:hover {
+   background-color: var(--secondary-30-selected-color);
+   transform: scale(0.9);
+  }
+
+  &:visited,
+  &.active {
+   color: var(--text-color);
+   background-color: var(--secondary-30-selected-color);
+  }
+ }
+}
+
+.switch {
+ position: absolute;
+ right: 10%;
+ display: inline-block;
+ width: 3rem;
+ height: 1.5rem;
+
+ /* Hide default HTML checkbox */
+ input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+
+  &:checked + .switch-slider {
+   background-color: var(--accent-color);
+
+   &::before {
+    transform: translateX(26px);
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+   }
+  }
+ }
+
+ .switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--secondary-30-selected-color);
+  transition: 0.4s;
+  -webkit-transition: 0.4s;
+
+  &::before {
+   position: absolute;
+   content: "";
+   width: 1rem;
+   height: 1rem;
+   left: 4px;
+   bottom: 4px;
+   background-color: var(--secondary-color);
+   transition: 0.4s;
+   -webkit-transition: 0.4s;
+  }
+
+  &.round {
+   border-radius: 34px;
+
+   &::before {
+    border-radius: 50%;
+   }
+  }
+ }
+}

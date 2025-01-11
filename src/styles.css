@@ -1,16 +1,16 @@
 :root {
-  background-color: var(--background-color);
+ background-color: var(--background-color);
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  color: var(--text-color);
+ margin: 0;
+ padding: 0;
+ color: var(--text-color);
 }
 
 html,
 body,
 #root {
-  height: 100vh;
-  margin: 0;
+ height: 100vh;
+ margin: 0;
 }

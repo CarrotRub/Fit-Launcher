@@ -1,35 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fit Launcher</title>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: transparent;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
+   body,
+   html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+   }
+   .logo {
+    width: 400px;
+    height: 400px;
+    background: url("./Square310x310Logo.png") no-repeat center center;
+    background-size: contain;
+    animation: spin 4s linear infinite;
+   }
+   @keyframes spin {
+    0% {
+     transform: rotate(0deg);
     }
-    .logo {
-      width: 400px;
-      height: 400px;
-      background: url('./Square310x310Logo.png') no-repeat center center;
-      background-size: contain;
-      animation: spin 4s linear infinite;
+    100% {
+     transform: rotate(360deg);
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+   }
   </style>
-</head>
-<body>
+ </head>
+ <body>
   <div class="logo"></div>
-</body>
+ </body>
 </html>

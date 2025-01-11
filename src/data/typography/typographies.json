@@ -1,0 +1,54 @@
+{
+ "fab4a6ec-74ec-8017-8005-29e3d1eb2947": {
+  "textTransform": "capitalize",
+  "fontFamily": "Mulish",
+  "fontStyle": "normal",
+  "fontWeight": "600",
+  "lineHeight": "1",
+  "path": "",
+  "letterSpacing": "1",
+  "name": "Mulish Regular",
+  "fontVariantId": "600",
+  "fontSize": "36",
+  "fontId": "gfont-mulish"
+ },
+ "ae178f2a-2cfb-80e2-8005-2ace855e9d2a": {
+  "textTransform": "capitalize",
+  "fontFamily": "Mulish",
+  "fontStyle": "normal",
+  "fontWeight": "600",
+  "lineHeight": "1",
+  "path": "",
+  "letterSpacing": "0",
+  "name": "Title Text",
+  "fontVariantId": "600",
+  "fontSize": "36",
+  "fontId": "gfont-mulish"
+ },
+ "5592b771-4a90-80e3-8005-2b2a817e8e46": {
+  "textTransform": "capitalize",
+  "fontFamily": "Mulish",
+  "fontStyle": "normal",
+  "fontWeight": "600",
+  "lineHeight": "1",
+  "path": "",
+  "letterSpacing": "0",
+  "name": "Mulish 600",
+  "fontVariantId": "600",
+  "fontSize": "26",
+  "fontId": "gfont-mulish"
+ },
+ "cd8d3549-f23a-8049-8005-2b49249a14af": {
+  "textTransform": "capitalize",
+  "fontFamily": "Mulish",
+  "fontStyle": "normal",
+  "fontWeight": "300",
+  "lineHeight": "1",
+  "path": "",
+  "letterSpacing": "0",
+  "name": "Non-Selected-Secondary",
+  "fontVariantId": "300",
+  "fontSize": "12",
+  "fontId": "gfont-mulish"
+ }
+}

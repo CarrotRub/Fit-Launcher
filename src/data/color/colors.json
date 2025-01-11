@@ -1,0 +1,50 @@
+{
+ "036ca5f0-ff69-8038-8005-29dbb2423930": {
+  "name": "Accent",
+  "color": "var(--accent-color)",
+  "opacity": 1,
+  "path": "Dark Purple Theme"
+ },
+ "036ca5f0-ff69-8038-8005-29dba6421157": {
+  "name": "Secondary",
+  "color": "#6e3567",
+  "opacity": 1,
+  "path": "Dark Purple Theme"
+ },
+ "ae178f2a-2cfb-80e2-8005-2af5227c84bb": {
+  "name": "Secondary-30%-Selected",
+  "color": "#6e3567",
+  "opacity": 0.3,
+  "path": "Dark Purple Theme"
+ },
+ "fab4a6ec-74ec-8017-8005-29e2eb3ec953": {
+  "name": "Non-Selected-Text",
+  "color": "#ece0f0",
+  "opacity": 0.5,
+  "path": "Dark Purple Theme"
+ },
+ "036ca5f0-ff69-8038-8005-29db907a1dc4": {
+  "name": "Primary",
+  "color": "#c29ed1",
+  "opacity": 1,
+  "path": "Dark Purple Theme"
+ },
+ "ae178f2a-2cfb-80e2-8005-2aeede5a137e": {
+  "name": "Secondary-20%",
+  "color": "#6e3567",
+  "opacity": 0.2,
+  "path": "Dark Purple Theme"
+ },
+ "036ca5f0-ff69-8038-8005-29db847a3be9": {
+  "name": "Text",
+  "color": "#ece0f0",
+  "opacity": 1,
+  "path": "Dark Purple Theme"
+ },
+ "036ca5f0-ff69-8038-8005-29db54d0138e": {
+  "name": "Background",
+  "color": "#0b070e",
+  "opacity": 1,
+  "path": "Dark Purple Theme"
+ }
+}
