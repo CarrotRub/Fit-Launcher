@@ -194,10 +194,10 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
             }
 
             try {
-                const bgImageStore = await load('background_store.json', { autoSave: true });
+                const bgImageStore = await load('background_store.json', { autoSave: false });
                 let bg_path = await bgImageStore.get('background_image');
                 let bg_blur = await bgImageStore.get('blur_amount')
-                if (bg_path === '') {
+                if (bg_path === '' || bg_path === undefined) {
                     setBgApplied(false)
                 } else {
                     setBgApplied(true)
@@ -353,29 +353,35 @@ function DisplayPart({ settings, handleSwitchCheckChange }) {
         const bgElement = document.querySelector(".background-style");
         const bgBlurElement = document.querySelector(".background-blur-whole");
     
-        const bgDir = await appDataDir();
-        let imageName = await basename(imagePath);
-        let targetPath = await join(bgDir, 'backgroundImages', imageName);
-        let parentDir = await dirname(targetPath)
-        await mkdir(parentDir, { recursive: true });
-        console.log(targetPath)
-        // Copy the image to the target directory
-        await copyFile(imagePath, targetPath)
-
-        await invoke('allow_dir', { path: targetPath });
-        const bgImageStore = await load('background_store.json', { autoSave: false });
+        if (imagePath !== ''&& imagePath !== undefined) {
+            console.log(imagePath)
+            const bgDir = await appDataDir();
+            let imageName = await basename(imagePath);
     
-        // Set the background image and blur amount in the store
-        await bgImageStore.set('background_image', targetPath);
-        await bgImageStore.set('blur_amount', blurAmount());
+            // keep this folder for later usage to show the user background history and allow him to choose between old backgrounds.
+            // This will also be for later usage when adding fully custom theming where the user can just add one single file that will add background + theme + fonts kind of like dotfiles.
+            let targetPath = await join(bgDir, 'backgroundImages', imageName);
+            let parentDir = await dirname(targetPath)
+            await mkdir(parentDir, { recursive: true });
+            console.log(targetPath)
+            // Copy the image to the target directory
+            await copyFile(imagePath, targetPath)
     
-        // Use this imageLink as a fallback
-        const imageLink = await bgImageStore.get('background_image');
-        bgElement.style.backgroundColor = ``;
-        bgElement.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
-    
-        // Apply blur effect
-        bgBlurElement.style.backdropFilter = `blur(${blurAmount()}px)`;
+            await invoke('allow_dir', { path: targetPath });
+            const bgImageStore = await load('background_store.json', { autoSave: false });
+        
+            // Set the background image and blur amount in the store
+            await bgImageStore.set('background_image', targetPath);
+            await bgImageStore.set('blur_amount', blurAmount() || 5);
+        
+            // Use this imageLink as a fallback
+            const imageLink = await bgImageStore.get('background_image');
+            bgElement.style.backgroundColor = ``;
+            bgElement.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
+        
+            // Apply blur effect
+            bgBlurElement.style.backdropFilter = `blur(${blurAmount()}px)`;
+        }
     }
 
     createEffect(async() => {
