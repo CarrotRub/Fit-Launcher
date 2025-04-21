@@ -86,3 +86,5 @@ tauri-plugin-updater = { version = "2.7.1", features = ["rustls-tls"] }
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+# enable UAC on debug builds
+debug-uac = []

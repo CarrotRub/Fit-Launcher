@@ -1,6 +1,10 @@
 fn main() {
-    let mut windows = tauri_build::WindowsAttributes::new();
-    windows = windows.app_manifest(
+    if cfg!(debug_assertions) && !cfg!(feature = "debug-uac") {
+        tauri_build::try_build(tauri_build::Attributes::new()).expect("failed to run build script");
+        return;
+    }
+
+    let windows = tauri_build::WindowsAttributes::new().app_manifest(
         r#"
     <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
       <dependency>
