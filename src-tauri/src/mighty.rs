@@ -8,13 +8,14 @@ pub mod windows_controls_processes {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
     use std::{thread, time};
-    use windows::Win32::Foundation::{BOOL, FALSE, HWND, LPARAM, LRESULT, TRUE, WPARAM};
+    use windows::Win32::Foundation::{FALSE, HWND, LPARAM, LRESULT, TRUE, WPARAM};
     use windows::Win32::System::SystemInformation::*;
     use windows::Win32::UI::Controls::{PBM_GETPOS, PBM_GETRANGE};
     use windows::Win32::UI::WindowsAndMessaging::{
         EnumChildWindows, EnumWindows, GetClassNameW, GetWindowTextLengthW, GetWindowTextW,
         PostMessageW, SendMessageW, BM_CLICK, WM_SETTEXT,
     };
+    use windows_result::BOOL;
 
     fn get_window_title(hwnd: HWND) -> Option<String> {
         unsafe {
@@ -125,7 +126,7 @@ pub mod windows_controls_processes {
 
         unsafe {
             let _ = EnumChildWindows(
-                parent_hwnd,
+                Some(parent_hwnd),
                 Some(enum_child_windows_proc),
                 LPARAM(&data as *const _ as isize),
             );
@@ -149,7 +150,7 @@ pub mod windows_controls_processes {
 
             if let Some(hwnd) = ok_button_hwnd {
                 unsafe {
-                    let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
+                    let result = PostMessageW(Some(hwnd), BM_CLICK, WPARAM(0), LPARAM(0));
 
                     if result.is_err() {
                         eprintln!(
@@ -213,7 +214,7 @@ pub mod windows_controls_processes {
             unsafe {
                 let wparam = WPARAM(0);
                 let lparam = LPARAM(0);
-                let result = PostMessageW(hwnd, BM_CLICK, wparam, lparam);
+                let result = PostMessageW(Some(hwnd), BM_CLICK, wparam, lparam);
 
                 if result.is_err() {
                     eprintln!(
@@ -236,7 +237,7 @@ pub mod windows_controls_processes {
 
         if let Some(hwnd) = ok_button_hwnd {
             unsafe {
-                let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
+                let result = PostMessageW(Some(hwnd), BM_CLICK, WPARAM(0), LPARAM(0));
 
                 if result.is_err() {
                     eprintln!(
@@ -275,7 +276,7 @@ pub mod windows_controls_processes {
 
         unsafe {
             let _ = EnumChildWindows(
-                parent_hwnd,
+                Some(parent_hwnd),
                 Some(find_text_input_proc),
                 LPARAM(&mut text_input_hwnd as *mut _ as isize),
             );
@@ -289,8 +290,8 @@ pub mod windows_controls_processes {
                 let result = SendMessageW(
                     text_input_hwnd,
                     WM_SETTEXT,
-                    WPARAM(0),
-                    LPARAM(text_wide.as_ptr() as isize),
+                    Some(WPARAM(0)),
+                    Some(LPARAM(text_wide.as_ptr() as isize)),
                 );
 
                 if result == LRESULT(0) {
@@ -318,7 +319,7 @@ pub mod windows_controls_processes {
 
             if let Some(hwnd) = install_button_hwnd {
                 unsafe {
-                    let result = PostMessageW(hwnd, BM_CLICK, WPARAM(0), LPARAM(0));
+                    let result = PostMessageW(Some(hwnd), BM_CLICK, WPARAM(0), LPARAM(0));
 
                     if result.is_err() {
                         eprintln!("PostMessageW for Install Button failed to send the message. Result  {:#?} ", result);
@@ -357,7 +358,7 @@ pub mod windows_controls_processes {
 
         unsafe {
             let _ = EnumChildWindows(
-                parent_hwnd,
+                Some(parent_hwnd),
                 Some(find_progress_bar_proc),
                 LPARAM(&mut progress_bar_hwnd as *mut _ as isize),
             );
@@ -370,13 +371,13 @@ pub mod windows_controls_processes {
             unsafe {
                 // Get the current value of the progress bar
                 let current_value =
-                    SendMessageW(progress_bar_hwnd, PBM_GETPOS, WPARAM(0), LPARAM(0)).0 as i32;
+                    SendMessageW(progress_bar_hwnd, PBM_GETPOS, Some(WPARAM(0)), Some(LPARAM(0))).0 as i32;
 
                 // Get the high and low values of the progress bar range
                 let get_high_value =
-                    SendMessageW(progress_bar_hwnd, PBM_GETRANGE, WPARAM(0), LPARAM(0));
+                    SendMessageW(progress_bar_hwnd, PBM_GETRANGE, Some(WPARAM(0)), Some(LPARAM(0)));
                 let get_low_value =
-                    SendMessageW(progress_bar_hwnd, PBM_GETRANGE, WPARAM(1), LPARAM(0));
+                    SendMessageW(progress_bar_hwnd, PBM_GETRANGE, Some(WPARAM(1)), Some(LPARAM(0)));
 
                 let min = get_low_value.0 as i32;
                 let max = get_high_value.0 as i32;
