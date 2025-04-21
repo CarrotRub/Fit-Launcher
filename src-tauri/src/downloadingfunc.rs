@@ -138,26 +138,22 @@ pub mod downloads_function {
             .buffer_unordered(2)
             // send to tokio thread pool
             .filter_map(|info| async move {
-                tokio::task::spawn_blocking(move || {
-                    let (html, filename) = info.ok()?;
+                let (html, filename) = info.ok()?;
 
-                    if html.contains("rate limit") {
-                        error!("triggered rate limit! must setup a proxy or wait for minutes");
-                        return None;
-                    }
-                    if html.contains("File Not Found Or Deleted") {
-                        warn!("a file is missing");
-                        return None;
-                    }
+                if html.contains("rate limit") {
+                    error!("triggered rate limit! must setup a proxy or wait for minutes");
+                    return None;
+                }
+                if html.contains("File Not Found Or Deleted") {
+                    warn!("a file is missing");
+                    return None;
+                }
 
-                    FUCKINGFAST_DDL_REGEX
-                        .captures(&html)?
-                        .get(1)
-                        .map(|m| m.as_str().to_string())
-                        .map(|url| DirectLink { url, filename })
-                })
-                .await
-                .unwrap()
+                FUCKINGFAST_DDL_REGEX
+                    .captures(&html)?
+                    .get(1)
+                    .map(|m| m.as_str().to_string())
+                    .map(|url| DirectLink { url, filename })
             })
             .collect()
             .into_future()
