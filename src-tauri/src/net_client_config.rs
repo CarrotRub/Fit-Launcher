@@ -160,7 +160,7 @@ pub mod custom_client_dns {
         pub fn with_shuffle(mut self, shuffle: bool) -> Self {
             if shuffle {
                 use rand::SeedableRng;
-                self.rng = Some(rand::rngs::SmallRng::from_entropy());
+                self.rng = Some(rand::rngs::SmallRng::from_os_rng());
             }
             self
         }
