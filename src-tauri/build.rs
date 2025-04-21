@@ -1,11 +1,11 @@
-fn main() {
-    if cfg!(debug_assertions) && !cfg!(feature = "debug-uac") {
-        tauri_build::try_build(tauri_build::Attributes::new()).expect("failed to run build script");
-        return;
-    }
+use tauri_build::WindowsAttributes;
 
-    let windows = tauri_build::WindowsAttributes::new().app_manifest(
-        r#"
+fn main() {
+    let win_attr = if tauri_build::is_dev() {
+        WindowsAttributes::new()
+    } else {
+        WindowsAttributes::new().app_manifest(
+            r#"
     <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
       <dependency>
         <dependentAssembly>
@@ -28,7 +28,9 @@ fn main() {
       </trustInfo>
     </assembly>
     "#,
-    );
-    tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows))
+        )
+    };
+
+    tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(win_attr))
         .expect("failed to run build script");
 }
