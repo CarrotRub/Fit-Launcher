@@ -154,6 +154,22 @@ pub struct FitLauncherConfigUpnp {
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
+pub struct FitLauncherConfigAria2 {
+    pub base_url: String,
+    pub token: Option<String>,
+}
+
+impl Default for FitLauncherConfigAria2 {
+    fn default() -> Self {
+        Self {
+            base_url: "ws://127.0.0.1:6800".into(),
+            token: None,
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default)]
 pub struct FitLauncherConfig {
     pub default_download_location: PathBuf,
 
@@ -167,6 +183,8 @@ pub struct FitLauncherConfig {
     pub persistence: FitLauncherConfigPersistence,
     pub peer_opts: FitLauncherConfigPeerOpts,
     http_api: FitLauncherConfigHttpApi,
+
+    pub aria2_rpc: Option<FitLauncherConfigAria2>,
 }
 
 impl Default for FitLauncherConfig {
@@ -185,6 +203,7 @@ impl Default for FitLauncherConfig {
             persistence: Default::default(),
             peer_opts: Default::default(),
             http_api: Default::default(),
+            aria2_rpc: None,
         }
     }
 }
