@@ -1,18 +1,16 @@
 pub mod basic_scraping {
     use anyhow::Result;
-    use chrono::{TimeZone, Utc};
     use core::str;
     use futures::{
-        stream::{FuturesOrdered, FuturesUnordered},
+        stream::FuturesOrdered,
         StreamExt,
     };
     use serde::{Deserialize, Serialize};
 
     use std::time::Instant;
-    use std::{path::Path, time::UNIX_EPOCH};
 
     use tauri::{Emitter, Manager};
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     use tracing::{error, info};
 
     use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
@@ -338,7 +336,7 @@ pub mod basic_scraping {
 
         // If no file exists or games do not match, continue with the scraping
         let mut game_count = 0;
-        while let (Some(title_elem), Some(image_elem), Some(hreflink_elem)) =
+        while let (Some(title_elem), Some(_image_elem), Some(hreflink_elem)) =
             (titles.next(), images.next(), hreflinks.next())
         {
             let title = title_elem.value().attr("title").unwrap_or_default();

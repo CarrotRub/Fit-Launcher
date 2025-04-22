@@ -211,10 +211,7 @@ pub mod torrent_commands {
 
     use std::{path::PathBuf, str::FromStr};
 
-    use crate::{
-        custom_ui_automation::windows_ui_automation::{self, automate_until_download},
-        mighty::windows_controls_processes,
-    };
+    use crate::custom_ui_automation::windows_ui_automation;
 
     use super::*;
 
@@ -223,7 +220,6 @@ pub mod torrent_commands {
             ApiAddTorrentResponse, EmptyJsonResponse, TorrentDetailsResponse, TorrentIdOrHash,
             TorrentListResponse, TorrentStats,
         },
-        dht::Id20,
         AddTorrent, AddTorrentOptions, ApiError, Magnet,
     };
 
@@ -348,7 +344,7 @@ pub mod torrent_commands {
     ///
     /// # Important
     pub async fn run_automate_setup_install(
-        state: tauri::State<'_, State>,
+        _state: tauri::State<'_, State>,
         id: TorrentIdOrHash,
     ) -> Result<(), ApiError> {
         let session_json_path = directories::BaseDirs::new()

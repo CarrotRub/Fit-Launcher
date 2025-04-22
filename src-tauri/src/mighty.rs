@@ -9,7 +9,6 @@ pub mod windows_controls_processes {
     use std::os::windows::ffi::OsStringExt;
     use std::{thread, time};
     use windows::Win32::Foundation::{FALSE, HWND, LPARAM, LRESULT, TRUE, WPARAM};
-    use windows::Win32::System::SystemInformation::*;
     use windows::Win32::UI::Controls::{PBM_GETPOS, PBM_GETRANGE};
     use windows::Win32::UI::WindowsAndMessaging::{
         EnumChildWindows, EnumWindows, GetClassNameW, GetWindowTextLengthW, GetWindowTextW,

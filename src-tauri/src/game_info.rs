@@ -1,5 +1,5 @@
 pub mod games_informations {
-    use chrono::{NaiveDate, NaiveDateTime};
+    use chrono::{DateTime, NaiveDate};
     use serde::Serialize;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -34,15 +34,15 @@ pub mod games_informations {
     ) -> Option<ExecutableInfo> {
         let metadata = fs::metadata(&path_to_exe).ok()?;
 
-        let mut total_size = dir_size(path_to_folder).unwrap_or(0);
+        let total_size = dir_size(path_to_folder).unwrap_or(0);
 
         let executable_disk_size = total_size;
 
         // Helper function to convert SystemTime to NaiveDate
         fn system_time_to_naive_date(system_time: SystemTime) -> Option<NaiveDate> {
             let duration_since_epoch = system_time.duration_since(UNIX_EPOCH).ok()?;
-            NaiveDateTime::from_timestamp_opt(duration_since_epoch.as_secs() as i64, 0)
-                .map(|naive_date_time| naive_date_time.date())
+            DateTime::from_timestamp(duration_since_epoch.as_secs() as i64, 0)
+                .map(|naive_date_time| naive_date_time.date_naive())
         }
 
         // Get the installed date (creation time or fallback to modified time)
@@ -51,14 +51,14 @@ pub mod games_informations {
             .ok()
             .and_then(system_time_to_naive_date)
             .or_else(|| metadata.modified().ok().and_then(system_time_to_naive_date))
-            .unwrap_or_else(|| NaiveDate::from_ymd(1970, 1, 1));
+            .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
 
         // Get the last opened date (accessed time)
         let executable_last_opened_date = metadata
             .accessed()
             .ok()
             .and_then(system_time_to_naive_date)
-            .unwrap_or_else(|| NaiveDate::from_ymd(1970, 1, 1));
+            .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
 
         // Set the executable play time (placeholder value as it can't be determined from metadata)
         let executable_play_time = "Coming Soon...".to_string();

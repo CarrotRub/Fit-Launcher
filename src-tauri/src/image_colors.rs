@@ -1,35 +1,18 @@
 pub mod dominant_colors {
     use color_thief::{get_palette, ColorFormat};
     use image::{load_from_memory, DynamicImage, ImageError};
-    use reqwest::{self, blocking::Response};
-    use std::fmt;
-    use std::sync::{Arc, Mutex};
-    use std::thread;
-    use tokio::task;
+    use thiserror::Error;
 
-    #[derive(Debug)]
+    #[derive(Debug, Error)]
     enum DominantColorError {
+        #[error("Failed to download image from URL: {0}")]
         NetworkError(reqwest::Error),
+        #[error("Failed to decode image data: {0}")]
         ImageDecodingError(ImageError),
+        #[error("Failed to extract dominant color")]
         ColorExtractionError,
+        #[error("Unexpected image format")]
         FormatError,
-    }
-
-    impl fmt::Display for DominantColorError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                DominantColorError::NetworkError(_) => {
-                    write!(f, "Failed to download image from URL")
-                }
-                DominantColorError::ImageDecodingError(_) => {
-                    write!(f, "Failed to decode image data")
-                }
-                DominantColorError::ColorExtractionError => {
-                    write!(f, "Failed to extract dominant color")
-                }
-                DominantColorError::FormatError => write!(f, "Unexpected image format"),
-            }
-        }
     }
 
     impl From<reqwest::Error> for DominantColorError {

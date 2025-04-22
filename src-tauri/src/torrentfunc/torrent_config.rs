@@ -4,7 +4,6 @@ use std::{
     time::Duration,
 };
 
-use librqbit::dht::PersistentDht;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 

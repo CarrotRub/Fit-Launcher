@@ -1,8 +1,6 @@
 pub mod custom_client_dns {
     use directories::BaseDirs;
     use hickory_resolver::config::*;
-    use hickory_resolver::system_conf::read_system_conf;
-    use hickory_resolver::Resolver;
     use hickory_resolver::TokioAsyncResolver;
     use once_cell::sync::Lazy;
     use reqwest::ClientBuilder;
@@ -157,6 +155,7 @@ pub mod custom_client_dns {
             }
         }
 
+        #[allow(unused)]
         pub fn with_shuffle(mut self, shuffle: bool) -> Self {
             if shuffle {
                 use rand::SeedableRng;

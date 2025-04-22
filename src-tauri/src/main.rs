@@ -46,20 +46,14 @@ use tauri::menu::Menu;
 use tauri::menu::MenuItem;
 use tauri::Emitter;
 use tauri::Listener;
-use tauri_plugin_updater::UpdaterExt;
-use tokio::task::LocalSet;
-use tracing::error;
-use tracing::info;
-use tracing::warn;
 
+use tracing::{info, warn, error};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fs::File;
-use std::io::Read;
+
 
 use tauri::{Manager, Window};
 
-use std::path::PathBuf;
 use std::time::Instant;
 use tauri::async_runtime::spawn;
 
@@ -80,13 +74,11 @@ use std::num::NonZeroUsize;
 use tauri::State;
 use tokio::sync::Mutex;
 
-use futures::stream::{self, StreamExt};
 
 use chrono::Utc;
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
-static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -526,7 +518,7 @@ async fn start() {
 
             let app_handle = app.handle().clone();
 
-            let scraping_failed_event = app_handle.clone();
+            let _scraping_failed_event = app_handle.clone();
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
             let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
