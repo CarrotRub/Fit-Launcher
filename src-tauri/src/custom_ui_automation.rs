@@ -255,6 +255,7 @@ pub mod linux_ui_automation {
     ///
     /// Note that this will work on SteamDeck OS 3.0
     ///
+    #[allow(unused)]
     pub fn start_executable_arch_x11() {
         // TODO: Ask for Wine to be installed either through the AUR or to be installed through Flatpak if a steamdeck is used
         // TODO: Ask it through notification after launching the launcher.

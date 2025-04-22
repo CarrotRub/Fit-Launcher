@@ -8,13 +8,14 @@ use std::{
 };
 
 use anyhow::Context;
+use aria2_ws::Client;
 use http::StatusCode;
 use librqbit::{
     dht::PersistentDhtConfig, Api, ApiError, PeerConnectionOptions, Session, SessionOptions,
     SessionPersistenceConfig,
 };
 use parking_lot::RwLock;
-use torrent_config::FitLauncherConfig;
+use torrent_config::{FitLauncherConfig, FitLauncherConfigAria2};
 use tracing::{error, info, warn};
 
 const ERR_NOT_CONFIGURED: ApiError =
@@ -23,6 +24,7 @@ const ERR_NOT_CONFIGURED: ApiError =
 struct StateShared {
     config: torrent_config::FitLauncherConfig,
     api: Option<Api>,
+    aria2_client: Option<Client>,
 }
 
 pub struct State {
@@ -52,6 +54,12 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
     println!("{}", path);
     std::fs::rename(tmp, path)?;
     Ok(())
+}
+
+async fn aria2_client_from_config(config: &FitLauncherConfig) -> anyhow::Result<aria2_ws::Client> {
+    let FitLauncherConfigAria2 { base_url, token } =
+        config.aria2_rpc.as_ref().context("aria2 not configured!")?;
+    Ok(aria2_ws::Client::connect(base_url, token.as_deref()).await?)
 }
 
 async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
@@ -135,12 +143,21 @@ impl State {
             }
             let api = api_from_config(&config)
                 .await
-                .map_err(|e| {
+                .inspect_err(|e| {
                     warn!(error=?e, "error reading configuration");
-                    e
                 })
                 .ok();
-            let shared = Arc::new(RwLock::new(Some(StateShared { config, api })));
+            let aria2_client = aria2_client_from_config(&config)
+                .await
+                .inspect_err(|e| {
+                    warn!(error=?e, "aria2 not configured, skipping");
+                })
+                .ok();
+            let shared = Arc::new(RwLock::new(Some(StateShared {
+                config,
+                api,
+                aria2_client,
+            })));
 
             return Self {
                 config_filename,
@@ -165,6 +182,17 @@ impl State {
         }
     }
 
+    pub(crate) fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
+        let g = self.shared.read();
+        if g.is_none() {
+            warn!("Shared state is uninitialized");
+        }
+
+        g.as_ref()
+            .and_then(|s| s.aria2_client.clone())
+            .context("aria2 rpc server not configured")
+    }
+
     async fn configure(&self, config: FitLauncherConfig) -> Result<(), ApiError> {
         {
             let g = self.shared.read();
@@ -183,6 +211,7 @@ impl State {
         }
 
         let api = api_from_config(&config).await?;
+        let aria2_client = aria2_client_from_config(&config).await.ok();
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }
@@ -191,6 +220,7 @@ impl State {
         *g = Some(StateShared {
             config,
             api: Some(api),
+            aria2_client,
         });
         Ok(())
     }
@@ -211,10 +241,7 @@ pub mod torrent_commands {
 
     use std::{path::PathBuf, str::FromStr};
 
-    use crate::{
-        custom_ui_automation::windows_ui_automation::{self, automate_until_download},
-        mighty::windows_controls_processes,
-    };
+    use crate::custom_ui_automation::windows_ui_automation;
 
     use super::*;
 
@@ -223,7 +250,6 @@ pub mod torrent_commands {
             ApiAddTorrentResponse, EmptyJsonResponse, TorrentDetailsResponse, TorrentIdOrHash,
             TorrentListResponse, TorrentStats,
         },
-        dht::Id20,
         AddTorrent, AddTorrentOptions, ApiError, Magnet,
     };
 
@@ -348,7 +374,7 @@ pub mod torrent_commands {
     ///
     /// # Important
     pub async fn run_automate_setup_install(
-        state: tauri::State<'_, State>,
+        _state: tauri::State<'_, State>,
         id: TorrentIdOrHash,
     ) -> Result<(), ApiError> {
         let session_json_path = directories::BaseDirs::new()

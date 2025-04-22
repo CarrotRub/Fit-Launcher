@@ -64,6 +64,7 @@ palette = "0.7.6"
 color-thief = "0.2.2"
 tauri-plugin-process = "2"
 tauri-plugin-store = "2"
+aria2-ws = { git = "https://github.com/mokurin000/aria2-ws-rs", version = "0.5.0" }
 
 
 [target.'cfg(windows)'.dependencies]

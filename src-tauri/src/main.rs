@@ -32,6 +32,8 @@ mod discovery_scraping;
 mod downloadingfunc;
 pub use crate::downloadingfunc::downloads_function;
 
+mod aria2_func;
+
 use discovery_scraping::discovery::get_100_games_unordered;
 use futures::future::join_all;
 use scraper::{Html, Selector};
@@ -46,20 +48,14 @@ use tauri::menu::Menu;
 use tauri::menu::MenuItem;
 use tauri::Emitter;
 use tauri::Listener;
-use tauri_plugin_updater::UpdaterExt;
-use tokio::task::LocalSet;
-use tracing::error;
-use tracing::info;
-use tracing::warn;
 
+use tracing::{info, warn, error};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::fs::File;
-use std::io::Read;
+
 
 use tauri::{Manager, Window};
 
-use std::path::PathBuf;
 use std::time::Instant;
 use tauri::async_runtime::spawn;
 
@@ -80,13 +76,11 @@ use std::num::NonZeroUsize;
 use tauri::State;
 use tokio::sync::Mutex;
 
-use futures::stream::{self, StreamExt};
 
 use chrono::Utc;
 
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
-static PAUSE_FLAG: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -526,7 +520,7 @@ async fn start() {
 
             let app_handle = app.handle().clone();
 
-            let scraping_failed_event = app_handle.clone();
+            let _scraping_failed_event = app_handle.clone();
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
             let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
@@ -748,6 +742,23 @@ async fn start() {
             settings_configuration::open_logs_directory,
             downloads_function::get_datahoster_links,
             downloads_function::extract_fuckingfast_ddl,
+
+            // spawn new download task
+            aria2_func::aria2_start_download,
+            // get status of a task
+            aria2_func::aria2_get_status,
+            // get aria2 version and enabled features
+            aria2_func::aria2_get_version,
+            // pause a task by gid
+            aria2_func::aria2_pause,
+            // pause all tasks
+            aria2_func::aria2_pause_all,
+            // resume a task by gid
+            aria2_func::aria2_resume,
+            // resume all paused tasks
+            aria2_func::aria2_resume_all,
+            // stop & remove a task
+            aria2_func::aria2_remove,
         ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands
