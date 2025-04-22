@@ -173,10 +173,6 @@ impl Default for FitLauncherConfigAria2 {
 pub struct FitLauncherConfig {
     pub default_download_location: PathBuf,
 
-    #[cfg(feature = "disable-upload")]
-    #[serde(default)]
-    disable_upload: bool,
-
     pub dht: FitLauncherConfigDht,
     pub tcp_listen: FitLauncherConfigTcpListen,
     pub upnp: FitLauncherConfigUpnp,
