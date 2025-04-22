@@ -126,7 +126,9 @@ pub mod downloads_function {
         futures::stream::iter(fuckingfast_links)
             // download raw HTML
             .map(
-                |link| -> Pin<Box<dyn std::future::Future<Output = Result<(String, String), _>>>> {
+                |link| -> Pin<
+                    Box<dyn Send + std::future::Future<Output = Result<(String, String), _>>>,
+                > {
                     Box::pin(async move {
                         let text = CUSTOM_DNS_CLIENT.get(&link).send().await?.text().await?;
                         let filename = link.split_once('#').unwrap_or_default().1.to_string();

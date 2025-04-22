@@ -536,7 +536,7 @@ async fn start() {
             TrayIconBuilder::new()
               .icon(app.default_window_icon().unwrap().clone())
               .menu(&menu)
-              .menu_on_left_click(true)
+              .show_menu_on_left_click(true)
               .on_menu_event(|app, event| match event.id.as_ref() {
                 "quit" => {
                   info!("quit menu item was clicked");
@@ -746,7 +746,8 @@ async fn start() {
             settings_configuration::reset_dns_settings,
             settings_configuration::clear_all_cache,
             settings_configuration::open_logs_directory,
-            downloads_function::get_datahoster_links
+            downloads_function::get_datahoster_links,
+            downloads_function::extract_fuckingfast_ddl,
         ])
         .manage(image_cache) // Make the cache available to commands
         .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands

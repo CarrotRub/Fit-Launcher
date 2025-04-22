@@ -1,7 +1,11 @@
+use tauri_build::WindowsAttributes;
+
 fn main() {
-    let mut windows = tauri_build::WindowsAttributes::new();
-    windows = windows.app_manifest(
-        r#"
+    let win_attr = if tauri_build::is_dev() {
+        WindowsAttributes::new()
+    } else {
+        WindowsAttributes::new().app_manifest(
+            r#"
     <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
       <dependency>
         <dependentAssembly>
@@ -24,7 +28,9 @@ fn main() {
       </trustInfo>
     </assembly>
     "#,
-    );
-    tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(windows))
+        )
+    };
+
+    tauri_build::try_build(tauri_build::Attributes::new().windows_attributes(win_attr))
         .expect("failed to run build script");
 }
