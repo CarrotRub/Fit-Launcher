@@ -411,7 +411,7 @@ pub mod torrent_commands {
                 obj.iter().find(|(_, torrent)| {
                     torrent
                         .get("info_hash")
-                        .map_or(false, |hash| hash == &id_hash)
+                        .is_some_and(|hash| hash == &id_hash)
                 })
             }) {
                 if let Some(output_folder) = torrent.get("output_folder") {

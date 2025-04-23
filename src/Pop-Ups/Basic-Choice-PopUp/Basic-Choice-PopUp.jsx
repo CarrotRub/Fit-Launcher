@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js";
 import PopupModal from "../../components/Popup-Modal/PopupModal";
-import "./Basic-Choice-PopUp.css";
 
 const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
     const [isOpen, setIsOpen] = createSignal(true);
