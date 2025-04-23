@@ -1,7 +1,6 @@
 .global-page {
     width: auto;
     height: 100%;
-
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -53,7 +52,7 @@
     flex-direction: row;
     align-items: center;
     background-color: var(--secondary-30-selected-color);
-    padding: 12px 12px 12px 12px;
+    padding: 12px;
     border-radius: 4px;
     margin-left: 1em;
 
@@ -83,20 +82,28 @@
         &:disabled {
             color: var(--non-selected-text-color);
         }
-    }
-
-    & input[type="number"]::-webkit-inner-spin-button,
-    & input[type="number"]::-webkit-outer-spin-button,
-    & input[type="text"]::-webkit-inner-spin-button,
-    & input[type="text"]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
 
         &:focus {
             outline: none;
         }
+    }
 
+    & input[type="number"] {
 
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    }
+
+    & input[type="text"] {
+
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
     }
 
     /* For Firefox */
@@ -104,18 +111,12 @@
     & input[type="text"] {
         -moz-appearance: textfield;
         appearance: textfield;
-
-        &:focus {
-            outline: none;
-        }
     }
-
 }
 
 .save-settings-button,
 .reset-settings-button {
     align-self: flex-end;
-    /* Align the button to the bottom-right corner if needed */
     width: 8vw;
     min-width: fit-content;
     height: 4vw;
@@ -126,7 +127,6 @@
     border: none;
     border-radius: 6px;
     margin-bottom: 24px;
-
     cursor: pointer;
     transition: transform 0.3s ease, background-color 0.5s ease;
 
@@ -153,16 +153,13 @@
     align-items: center;
     justify-content: center;
     background-color: var(--70-background-color);
-    border: none;
+    border: 2px solid var(--accent-color);
     border-radius: 6px;
     position: relative;
     justify-self: flex-end;
     cursor: pointer;
     transition: transform 0.3s ease, background-color 0.5s ease;
     margin-left: auto;
-    border-color: var(--accent-color);
-    border-width: 2px;
-    border-style: solid;
 
     & span {
         font-size: 16px;
@@ -180,7 +177,6 @@
 
 .global-settings-buttons-container {
     margin-right: 10%;
-    /* Becuz it has to be 10% to the right cuz the size of one length of an item is 90%*/
     display: flex;
     flex-direction: row;
     align-self: flex-end;
@@ -194,16 +190,13 @@
     align-items: center;
     justify-content: center;
     background-color: var(--70-background-color);
-    border: none;
+    border: 2px solid var(--accent-color);
     border-radius: 6px;
     position: relative;
     justify-self: flex-end;
     cursor: pointer;
     transition: transform 0.3s ease, background-color 0.5s ease;
     margin-left: 24px;
-    border-color: var(--accent-color);
-    border-width: 2px;
-    border-style: solid;
 
     & span {
         font-size: 16px;
@@ -235,7 +228,6 @@
     & * {
         padding: 4px;
         margin: 0;
-
     }
 
     & .solid-select-input {
@@ -279,10 +271,8 @@
 .slidecontainer {
     margin-left: auto;
     width: 70%;
-
 }
 
-/* The slider itself */
 .slider {
     -webkit-appearance: none;
     appearance: none;
@@ -294,26 +284,26 @@
     -webkit-transition: .2s;
     transition: opacity .2s;
     border-radius: 6px;
-}
 
-.slider:hover {
-    opacity: 1;
-}
+    &:hover {
+        opacity: 1;
+    }
 
-.slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    background: var(--accent-color);
-    cursor: pointer;
-    border-radius: 50%;
-}
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        background: var(--accent-color);
+        cursor: pointer;
+        border-radius: 50%;
+    }
 
-.slider::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
-    background: var(--accent-color);
-    cursor: pointer;
-    border-radius: 50%;
+    &::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+        background: var(--accent-color);
+        cursor: pointer;
+        border-radius: 50%;
+    }
 }

@@ -99,9 +99,9 @@
 
 .library-collection-list-title svg {
     cursor: pointer;
-    flex-shrink: 0; 
-    width: 24px; 
-    height: 24px; 
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
 }
 
 .library-collection-list-item {
@@ -185,7 +185,7 @@
     flex-direction: row;
     align-items: center;
     justify-content: flex-end;
-    
+
     height: 6vh;
     width: 100%;
     background-color: var(--secondary-20-color);
@@ -196,11 +196,11 @@
         margin-right: 24px;
         cursor: pointer;
         transition: transform 0.8s ease-in-out;
-    
+
         &:hover {
-          transform: rotate(360deg) scale(1.3);
+            transform: rotate(360deg) scale(1.3);
         }
-      }
+    }
 }
 
 .library-content-list-games {
@@ -268,8 +268,11 @@
     grid-column: 2;
     grid-row: 2;
 
-    background-color: var(--warning-orange);
-    border: none;
+    border: solid;
+    border-width: 2px;
+    border-color: var(--warning-orange);
+
+    background-color: rgba(0, 0, 0, 0);
     cursor: pointer;
     border-radius: 6px;
     align-self: end;
@@ -279,11 +282,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-}
 
-.library-content-list-game-item-button:hover {
-    transform: scale(1.14);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    }
 }
 
 .library-content-list-game-item-button p {

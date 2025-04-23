@@ -493,11 +493,11 @@ function GameDownloadedItem({ downloadedGamesList, collectionsList }) {
                 <p className="library-content-list-game-item-title">{extractMainTitle(game?.torrentExternInfo?.title)}</p>
                 {game?.executableInfo?.executable_path
                     ? (
-                        <button className="library-content-list-game-item-button" style={`background-color: var(--accent-color)`} onClick={() => handleStartGame(game?.executableInfo?.executable_path)}>
+                        <button className="library-content-list-game-item-button" style={`border-color: var(--accent-color)`} onClick={() => handleStartGame(game?.executableInfo?.executable_path)}>
                             <p>PLAY</p>
                         </button>
                     ) : (
-                        <button className="library-content-list-game-item-button" style={`background-color: var(--warning-orange)`} onClick={async () => await getexecutable_path(game)}>
+                        <button className="library-content-list-game-item-button" style={`border-color: var(--warning-orange)`} onClick={async () => await getexecutable_path(game)}>
                             <p>ADD PATH</p>
                         </button>
                     )
