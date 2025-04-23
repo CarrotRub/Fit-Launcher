@@ -26,8 +26,7 @@ tauri-helper = { workspace = true }
 # Serialization and parsing
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_with = { workspace = true }
-toml = "0.8.19"
+
 
 # Utilities
 directories = { workspace = true }
@@ -66,9 +65,6 @@ rand = { workspace = true }
 # Caching
 lru = "0.12.4"
 
-# System information
-sysinfo = "0.32.0"
-
 # Image processing
 image = "0.25.4"
 palette = "0.7.6"
@@ -84,6 +80,7 @@ fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 # Workspace configuration
 [workspace]
 members = [
+    ".",
     "local-crates/fit-launcher-aria2",
     "local-crates/fit-launcher-config",
     "local-crates/fit-launcher-scraping",
@@ -150,6 +147,7 @@ kuchiki = "0.8.1"
 regex = "1.11.1"
 select = "0.6"
 thiserror = "2.0.12"
+
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

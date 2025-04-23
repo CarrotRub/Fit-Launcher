@@ -1518,8 +1518,6 @@ dependencies = [
  "select",
  "serde",
  "serde_json",
- "serde_with",
- "sysinfo 0.32.1",
  "tauri",
  "tauri-build",
  "tauri-helper",
@@ -1532,7 +1530,6 @@ dependencies = [
  "tauri-plugin-updater",
  "thiserror 2.0.12",
  "tokio",
- "toml",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
@@ -1617,7 +1614,7 @@ version = "0.1.0"
 dependencies = [
  "fit-launcher-config",
  "fix-path-env",
- "sysinfo 0.34.2",
+ "sysinfo",
  "tauri",
  "tracing",
  "uiautomation",
@@ -5920,20 +5917,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
-]
-
-[[package]]
-name = "sysinfo"
-version = "0.32.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c33cd241af0f2e9e3b5c32163b873b29956890b5342e6745b917ce9d490f4af"
-dependencies = [
- "core-foundation-sys",
- "libc",
- "memchr",
- "ntapi",
- "rayon",
- "windows 0.57.0",
 ]
 
 [[package]]

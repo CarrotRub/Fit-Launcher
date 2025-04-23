@@ -6,37 +6,37 @@ pub mod dominant_colors {
     #[derive(Debug, Error)]
     enum DominantColorError {
         #[error("Failed to download image from URL: {0}")]
-        NetworkError(reqwest::Error),
+        Network(reqwest::Error),
         #[error("Failed to decode image data: {0}")]
-        ImageDecodingError(ImageError),
+        ImageDecoding(ImageError),
         #[error("Failed to extract dominant color")]
-        ColorExtractionError,
+        ColorExtraction,
         #[error("Unexpected image format")]
-        FormatError,
+        Format,
     }
 
     impl From<reqwest::Error> for DominantColorError {
         fn from(error: reqwest::Error) -> Self {
-            DominantColorError::NetworkError(error)
+            DominantColorError::Network(error)
         }
     }
 
     impl From<ImageError> for DominantColorError {
         fn from(error: ImageError) -> Self {
-            DominantColorError::ImageDecodingError(error)
+            DominantColorError::ImageDecoding(error)
         }
     }
 
     async fn get_image_from_url(url: &str) -> Result<DynamicImage, DominantColorError> {
         let response = reqwest::get(url)
             .await
-            .map_err(DominantColorError::NetworkError)?;
+            .map_err(DominantColorError::Network)?;
         let bytes = response
             .bytes()
             .await
-            .map_err(DominantColorError::NetworkError)?;
+            .map_err(DominantColorError::Network)?;
 
-        let img = load_from_memory(&bytes).map_err(DominantColorError::ImageDecodingError)?;
+        let img = load_from_memory(&bytes).map_err(DominantColorError::ImageDecoding)?;
         Ok(img)
     }
 
@@ -44,7 +44,7 @@ pub mod dominant_colors {
         match img {
             DynamicImage::ImageRgb8(buffer) => Ok((buffer.to_vec(), ColorFormat::Rgb)),
             DynamicImage::ImageRgba8(buffer) => Ok((buffer.to_vec(), ColorFormat::Rgba)),
-            _ => Err(DominantColorError::FormatError),
+            _ => Err(DominantColorError::Format),
         }
     }
 
@@ -53,7 +53,7 @@ pub mod dominant_colors {
         let image_raw = get_image_buffer(result_image)?;
 
         let color_rgb = get_palette(&image_raw.0, image_raw.1, 10, 2)
-            .map_err(|_| DominantColorError::ColorExtractionError)?;
+            .map_err(|_| DominantColorError::ColorExtraction)?;
 
         let dominant_color = color_rgb[0];
         Ok(format!(

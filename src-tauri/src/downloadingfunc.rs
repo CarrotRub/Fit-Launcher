@@ -10,7 +10,7 @@ pub mod downloads_function {
 
     use crate::CUSTOM_DNS_CLIENT;
 
-    const FUCKINGFAST_DDL_REGEX: Lazy<Regex> = Lazy::new(|| {
+    static FUCKINGFAST_DDL_REGEX: Lazy<Regex> = Lazy::new(|| {
         Regex::new(r#"window\.open\(\"(https://fuckingfast.co/dl/[^"]*)\"\)"#).unwrap()
     });
 
