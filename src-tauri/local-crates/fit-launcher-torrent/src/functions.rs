@@ -29,7 +29,7 @@ struct StateShared {
 
 pub struct TorrentSession {
     pub config_filename: String,
-    pub shared: Arc<RwLock<Option<StateShared>>>,
+    shared: Arc<RwLock<Option<StateShared>>>,
 }
 
 fn read_config(path: &str) -> anyhow::Result<FitLauncherConfig> {
@@ -56,13 +56,15 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn aria2_client_from_config(config: &FitLauncherConfig) -> anyhow::Result<aria2_ws::Client> {
+pub async fn aria2_client_from_config(
+    config: &FitLauncherConfig,
+) -> anyhow::Result<aria2_ws::Client> {
     let FitLauncherConfigAria2 { base_url, token } =
         config.aria2_rpc.as_ref().context("aria2 not configured!")?;
     Ok(aria2_ws::Client::connect(base_url, token.as_deref()).await?)
 }
 
-async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
+pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
     config
         .validate()
         .context("error validating configuration")?;
@@ -182,7 +184,7 @@ impl TorrentSession {
         }
     }
 
-    pub(crate) fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
+    pub fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
         let g = self.shared.read();
         if g.is_none() {
             warn!("Shared state is uninitialized");
@@ -193,7 +195,7 @@ impl TorrentSession {
             .context("aria2 rpc server not configured")
     }
 
-    pub(crate) async fn configure(&self, config: FitLauncherConfig) -> Result<(), ApiError> {
+    pub async fn configure(&self, config: FitLauncherConfig) -> Result<(), ApiError> {
         {
             let g = self.shared.read();
             if let Some(shared) = g.as_ref() {
@@ -225,7 +227,7 @@ impl TorrentSession {
         Ok(())
     }
 
-    pub(crate) async fn get_config(&self) -> FitLauncherConfig {
+    pub async fn get_config(&self) -> FitLauncherConfig {
         // Attempt to acquire the read lock
         let g = self.shared.read();
         if let Some(shared) = g.as_ref() {

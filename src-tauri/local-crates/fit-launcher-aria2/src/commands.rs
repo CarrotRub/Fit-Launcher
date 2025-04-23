@@ -1,12 +1,10 @@
 use aria2_ws::{
-    response::{Status, Version},
     TaskOptions,
+    response::{Status, Version},
 };
 
-use crate::torrentfunc::State;
-
-mod error;
-use error::Aria2Error;
+use crate::error::Aria2Error;
+use fit_launcher_torrent::functions::TorrentSession;
 
 /// ### params
 ///
@@ -28,7 +26,7 @@ use error::Aria2Error;
 /// `gid` of the download task.
 #[tauri::command]
 pub async fn aria2_start_download(
-    state: tauri::State<'_, State>,
+    state: tauri::State<'_, TorrentSession>,
     url: String,
     dir: Option<String>,
     filename: String,
@@ -53,7 +51,10 @@ pub async fn aria2_start_download(
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
 #[tauri::command]
-pub async fn aria2_pause(state: tauri::State<'_, State>, gid: String) -> Result<(), Aria2Error> {
+pub async fn aria2_pause(
+    state: tauri::State<'_, TorrentSession>,
+    gid: String,
+) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
@@ -63,7 +64,7 @@ pub async fn aria2_pause(state: tauri::State<'_, State>, gid: String) -> Result<
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.pauseAll
 #[tauri::command]
-pub async fn aria2_pause_all(state: tauri::State<'_, State>) -> Result<(), Aria2Error> {
+pub async fn aria2_pause_all(state: tauri::State<'_, TorrentSession>) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
@@ -73,7 +74,10 @@ pub async fn aria2_pause_all(state: tauri::State<'_, State>) -> Result<(), Aria2
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpause
 #[tauri::command]
-pub async fn aria2_resume(state: tauri::State<'_, State>, gid: String) -> Result<(), Aria2Error> {
+pub async fn aria2_resume(
+    state: tauri::State<'_, TorrentSession>,
+    gid: String,
+) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
@@ -83,7 +87,7 @@ pub async fn aria2_resume(state: tauri::State<'_, State>, gid: String) -> Result
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpauseAll
 #[tauri::command]
-pub async fn aria2_resume_all(state: tauri::State<'_, State>) -> Result<(), Aria2Error> {
+pub async fn aria2_resume_all(state: tauri::State<'_, TorrentSession>) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
@@ -93,7 +97,10 @@ pub async fn aria2_resume_all(state: tauri::State<'_, State>) -> Result<(), Aria
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.remove
 #[tauri::command]
-pub async fn aria2_remove(state: tauri::State<'_, State>, gid: String) -> Result<(), Aria2Error> {
+pub async fn aria2_remove(
+    state: tauri::State<'_, TorrentSession>,
+    gid: String,
+) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
@@ -104,7 +111,7 @@ pub async fn aria2_remove(state: tauri::State<'_, State>, gid: String) -> Result
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.tellStatus
 #[tauri::command]
 pub async fn aria2_get_status(
-    state: tauri::State<'_, State>,
+    state: tauri::State<'_, TorrentSession>,
     gid: String,
 ) -> Result<Status, Aria2Error> {
     let aria2_client = state
@@ -117,7 +124,9 @@ pub async fn aria2_get_status(
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.getVersion
 #[tauri::command]
-pub async fn aria2_get_version(state: tauri::State<'_, State>) -> Result<Version, Aria2Error> {
+pub async fn aria2_get_version(
+    state: tauri::State<'_, TorrentSession>,
+) -> Result<Version, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;

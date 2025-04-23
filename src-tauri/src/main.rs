@@ -1,11 +1,5 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-mod scrapingfunc;
-pub use crate::scrapingfunc::basic_scraping;
-pub use crate::scrapingfunc::commands_scraping;
-
-
 use std::collections::HashMap;
 use std::fs;
 
@@ -15,19 +9,20 @@ pub use crate::image_colors::dominant_colors;
 mod game_info;
 pub use crate::game_info::games_informations;
 
-mod discovery_scraping;
-
 mod downloadingfunc;
 pub use crate::downloadingfunc::downloads_function;
 
-mod aria2_func;
 
-use discovery_scraping::discovery::get_100_games_unordered;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use fit_launcher_config::settings::creation::create_gamehub_settings_file;
 use fit_launcher_config::settings::creation::create_image_cache_file;
 use fit_launcher_config::settings::creation::create_installation_settings_file;
 
+use fit_launcher_scraping::discovery::get_100_games_unordered;
+use fit_launcher_scraping::get_sitemaps_website;
+use fit_launcher_scraping::global::functions::popular_games_scraping_func;
+use fit_launcher_scraping::global::functions::recently_updated_games_scraping_func;
+use fit_launcher_scraping::global::functions::scraping_func;
 use fit_launcher_torrent::functions::TorrentSession;
 use futures::future::join_all;
 use scraper::{Html, Selector};
@@ -88,15 +83,6 @@ struct Game {
     href: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct SingleGame {
-    my_all_images: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct GameImages {
-    my_all_images: Vec<String>,
-}
 
 /// Helper function.
 async fn check_url_status(url: &str) -> anyhow::Result<bool> {
@@ -615,7 +601,7 @@ async fn start() {
             
                 let task_2 = spawn_blocking(move || {
                     let first_app_handle_clone = first_app_handle.clone();
-                    if let Err(e) = basic_scraping::scraping_func(first_app_handle_clone.clone()) {
+                    if let Err(e) = scraping_func(first_app_handle_clone.clone()) {
                         eprintln!("Error in scraping_func: {}", e);
                         tracing::info!("Error in scraping_func: {}", e);
                     } else {
@@ -626,7 +612,7 @@ async fn start() {
             
                 let task_3 = spawn_blocking(move || {
                     let second_app_handle_clone = second_app_handle.clone();
-                    if let Err(e) = basic_scraping::popular_games_scraping_func(second_app_handle_clone.clone()) {
+                    if let Err(e) = popular_games_scraping_func(second_app_handle_clone.clone()) {
                         eprintln!("Error in popular_games_scraping_func: {}", e);
                         tracing::info!("Error in popular_games_scraping_func: {}", e);
                     } else {
@@ -640,7 +626,7 @@ async fn start() {
                 let task_4 = spawn_blocking(move || {
                     let third_app_handle_clone = third_app_handle.clone();
                     if let Err(e) =
-                        basic_scraping::recently_updated_games_scraping_func(third_app_handle_clone.clone())
+                        recently_updated_games_scraping_func(third_app_handle_clone.clone())
                     {
                         eprintln!("Error in recently_updated_games_scraping_func: {}", e);
                         tracing::info!("Error in recently_updated_games_scraping_func: {}", e);
@@ -656,7 +642,7 @@ async fn start() {
             
                 let task_5 = spawn_blocking(move || {
                     let fourth_app_handle_clone = fourth_app_handle.clone();
-                    if let Err(e) = commands_scraping::get_sitemaps_website(fourth_app_handle_clone.clone()) {
+                    if let Err(e) = get_sitemaps_website(fourth_app_handle_clone.clone()) {
                         eprintln!("Error in get_sitemaps_website: {}", e);
                         tracing::info!("Error in get_sitemaps_website: {}", e);
                     } else {

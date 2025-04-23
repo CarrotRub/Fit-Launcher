@@ -1,0 +1,12 @@
+[package]
+name = "fit-launcher-aria2"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aria2-ws = { workspace = true }
+fit-launcher-torrent = { workspace = true }
+fit-launcher-config = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+tauri = { workspace = true }

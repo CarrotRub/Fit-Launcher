@@ -1,0 +1,22 @@
+[package]
+name = "fit-launcher-scraping"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tauri = { workspace = true }
+fit-launcher-config = { workspace = true }
+futures = { workspace = true }
+directories = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+anyhow = { workspace = true }
+scraper = { workspace = true }
+kuchiki = { workspace = true }
+regex = { workspace = true }
+select = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+tracing = { workspace = true }

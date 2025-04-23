@@ -1496,7 +1496,9 @@ dependencies = [
  "chrono",
  "color-thief",
  "directories 6.0.0",
+ "fit-launcher-aria2",
  "fit-launcher-config",
+ "fit-launcher-scraping",
  "fit-launcher-torrent",
  "fit-launcher-ui-automation",
  "futures",
@@ -1508,7 +1510,6 @@ dependencies = [
  "lru",
  "once_cell",
  "palette",
- "parking_lot",
  "rand 0.9.1",
  "rayon",
  "regex",
@@ -1538,6 +1539,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fit-launcher-aria2"
+version = "0.1.0"
+dependencies = [
+ "aria2-ws",
+ "fit-launcher-config",
+ "fit-launcher-torrent",
+ "serde",
+ "tauri",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "fit-launcher-config"
 version = "0.1.0"
 dependencies = [
@@ -1549,6 +1562,28 @@ dependencies = [
  "serde",
  "serde_json",
  "tauri",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fit-launcher-scraping"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "directories 6.0.0",
+ "fit-launcher-config",
+ "futures",
+ "kuchiki",
+ "regex",
+ "reqwest",
+ "scraper",
+ "select",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "tauri",
+ "thiserror 2.0.12",
  "tokio",
  "tracing",
 ]
