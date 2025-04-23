@@ -11,8 +11,8 @@ pub mod windows_controls_processes {
     use windows::Win32::Foundation::{FALSE, HWND, LPARAM, LRESULT, TRUE, WPARAM};
     use windows::Win32::UI::Controls::{PBM_GETPOS, PBM_GETRANGE};
     use windows::Win32::UI::WindowsAndMessaging::{
-        EnumChildWindows, EnumWindows, GetClassNameW, GetWindowTextLengthW, GetWindowTextW,
-        PostMessageW, SendMessageW, BM_CLICK, WM_SETTEXT,
+        BM_CLICK, EnumChildWindows, EnumWindows, GetClassNameW, GetWindowTextLengthW,
+        GetWindowTextW, PostMessageW, SendMessageW, WM_SETTEXT,
     };
     use windows_result::BOOL;
 
@@ -71,7 +71,7 @@ pub mod windows_controls_processes {
         }
 
         unsafe extern "system" fn enum_windows_callback(hwnd: HWND, l_param: LPARAM) -> BOOL {
-            let data = &*(l_param.0 as *const TitleSearchData);
+            let data = unsafe { &*(l_param.0 as *const TitleSearchData) };
             if let Some(title) = get_window_title(hwnd) {
                 if title.contains(data.title) {
                     unsafe {
@@ -104,7 +104,7 @@ pub mod windows_controls_processes {
     }
 
     unsafe extern "system" fn enum_child_windows_proc(hwnd: HWND, l_param: LPARAM) -> BOOL {
-        let data = &*(l_param.0 as *const EnumChildWindowsData);
+        let data = unsafe { &*(l_param.0 as *const EnumChildWindowsData) };
         if let Some(window_text) = get_window_text(hwnd) {
             if window_text.contains(data.search_text) {
                 unsafe { *data.target_hwnd = hwnd };
@@ -321,7 +321,10 @@ pub mod windows_controls_processes {
                     let result = PostMessageW(Some(hwnd), BM_CLICK, WPARAM(0), LPARAM(0));
 
                     if result.is_err() {
-                        eprintln!("PostMessageW for Install Button failed to send the message. Result  {:#?} ", result);
+                        eprintln!(
+                            "PostMessageW for Install Button failed to send the message. Result  {:#?} ",
+                            result
+                        );
                     } else {
                         println!("Posted click message to Install button!");
                         break;
@@ -369,14 +372,27 @@ pub mod windows_controls_processes {
 
             unsafe {
                 // Get the current value of the progress bar
-                let current_value =
-                    SendMessageW(progress_bar_hwnd, PBM_GETPOS, Some(WPARAM(0)), Some(LPARAM(0))).0 as i32;
+                let current_value = SendMessageW(
+                    progress_bar_hwnd,
+                    PBM_GETPOS,
+                    Some(WPARAM(0)),
+                    Some(LPARAM(0)),
+                )
+                .0 as i32;
 
                 // Get the high and low values of the progress bar range
-                let get_high_value =
-                    SendMessageW(progress_bar_hwnd, PBM_GETRANGE, Some(WPARAM(0)), Some(LPARAM(0)));
-                let get_low_value =
-                    SendMessageW(progress_bar_hwnd, PBM_GETRANGE, Some(WPARAM(1)), Some(LPARAM(0)));
+                let get_high_value = SendMessageW(
+                    progress_bar_hwnd,
+                    PBM_GETRANGE,
+                    Some(WPARAM(0)),
+                    Some(LPARAM(0)),
+                );
+                let get_low_value = SendMessageW(
+                    progress_bar_hwnd,
+                    PBM_GETRANGE,
+                    Some(WPARAM(1)),
+                    Some(LPARAM(0)),
+                );
 
                 let min = get_low_value.0 as i32;
                 let max = get_high_value.0 as i32;

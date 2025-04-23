@@ -5,13 +5,7 @@ mod scrapingfunc;
 pub use crate::scrapingfunc::basic_scraping;
 pub use crate::scrapingfunc::commands_scraping;
 
-mod torrentfunc;
-pub use crate::torrentfunc::torrent_commands;
 
-mod custom_ui_automation;
-pub use crate::custom_ui_automation::executable_custom_commands;
-
-mod mighty;
 use std::collections::HashMap;
 use std::fs;
 
@@ -21,12 +15,6 @@ pub use crate::image_colors::dominant_colors;
 mod game_info;
 pub use crate::game_info::games_informations;
 
-mod net_client_config;
-pub use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
-
-mod settings_initialization;
-pub use crate::settings_initialization::settings_configuration;
-
 mod discovery_scraping;
 
 mod downloadingfunc;
@@ -35,12 +23,16 @@ pub use crate::downloadingfunc::downloads_function;
 mod aria2_func;
 
 use discovery_scraping::discovery::get_100_games_unordered;
+use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
+use fit_launcher_config::settings::creation::create_gamehub_settings_file;
+use fit_launcher_config::settings::creation::create_image_cache_file;
+use fit_launcher_config::settings::creation::create_installation_settings_file;
+
+use fit_launcher_torrent::functions::TorrentSession;
 use futures::future::join_all;
 use scraper::{Html, Selector};
 use serde_json::Value;
-use settings_initialization::settings_creation::create_gamehub_settings_file;
-use settings_initialization::settings_creation::create_image_cache_file;
-use settings_initialization::settings_creation::create_installation_settings_file;
+
 use std::error::Error;
 use std::str;
 use tauri::async_runtime::spawn_blocking;
@@ -706,62 +698,9 @@ async fn start() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![
-            close_splashscreen,
-            get_games_images,
-            stop_get_games_images,
-            allow_dir,
-            dominant_colors::check_dominant_color_vec,
-            torrent_commands::torrents_list,
-            torrent_commands::torrent_details,
-            torrent_commands::torrent_stats,
-            torrent_commands::torrent_create_from_url,
-            torrent_commands::torrent_action_delete,
-            torrent_commands::torrent_action_pause,
-            torrent_commands::torrent_action_forget,
-            torrent_commands::torrent_action_start,
-            torrent_commands::get_torrent_full_settings,
-            torrent_commands::config_change_only_path,
-            torrent_commands::change_torrent_config,
-            torrent_commands::run_automate_setup_install,
-            torrent_commands::delete_game_folder_recursively,
-            torrent_commands::get_torrent_idx_from_url,
-            commands_scraping::get_singular_game_info,
-            executable_custom_commands::start_executable,
-            games_informations::executable_info_discovery,
-            settings_configuration::get_installation_settings,
-            settings_configuration::get_gamehub_settings,
-            settings_configuration::get_dns_settings,
-            settings_configuration::change_installation_settings,
-            settings_configuration::change_gamehub_settings,
-            settings_configuration::change_dns_settings,
-            settings_configuration::reset_installation_settings,
-            settings_configuration::reset_gamehub_settings,
-            settings_configuration::reset_dns_settings,
-            settings_configuration::clear_all_cache,
-            settings_configuration::open_logs_directory,
-            downloads_function::get_datahoster_links,
-            downloads_function::extract_fuckingfast_ddl,
-
-            // spawn new download task
-            aria2_func::aria2_start_download,
-            // get status of a task
-            aria2_func::aria2_get_status,
-            // get aria2 version and enabled features
-            aria2_func::aria2_get_version,
-            // pause a task by gid
-            aria2_func::aria2_pause,
-            // pause all tasks
-            aria2_func::aria2_pause_all,
-            // resume a task by gid
-            aria2_func::aria2_resume,
-            // resume all paused tasks
-            aria2_func::aria2_resume_all,
-            // stop & remove a task
-            aria2_func::aria2_remove,
-        ])
+        .invoke_handler(tauri_helper::tauri_collect_commands!())
         .manage(image_cache) // Make the cache available to commands
-        .manage(torrentfunc::State::new().await) // Make the torrent state session available to commands
+        .manage(TorrentSession::new().await) // Make the torrent state session available to commands
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

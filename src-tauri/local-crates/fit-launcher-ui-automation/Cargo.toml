@@ -1,0 +1,18 @@
+[package]
+name = "fit-launcher-ui-automation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sysinfo = { workspace = true }
+tauri = { workspace = true }
+tracing = { workspace = true }
+fit-launcher-config = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+uiautomation = { workspace = true }
+windows = { workspace = true }
+windows-result = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+fix-path-env = { workspace = true }

@@ -90,13 +90,13 @@ mod checklist_automation {
 
 #[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
+    use fit_launcher_config::settings::config::get_installation_settings;
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::{thread, time};
     use tracing::{error, info};
 
     use crate::mighty::windows_controls_processes;
-    use crate::settings_configuration::get_installation_settings;
 
     #[allow(dead_code)]
     #[deprecated(note = "please use `start_executable_components_args` instead")]
@@ -213,38 +213,6 @@ pub mod windows_ui_automation {
         // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
     }
     // Print and get and send progress bar value every 500ms
-}
-
-pub mod executable_custom_commands {
-    #[cfg(target_os = "windows")]
-    use std::process::Command;
-
-    use tracing::{error, info};
-
-    /// Start an executable using tauri::command
-    ///
-    /// Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
-    #[tauri::command]
-    pub fn start_executable(path: String) {
-        // Here, use this **ONLY** for windows OS
-        #[cfg(target_os = "windows")]
-        match Command::new(&path).spawn() {
-            Ok(child) => {
-                info!("Executable started with PID: {}", child.id());
-            }
-            Err(e) => {
-                error!("Failed to start executable: {}", e);
-
-                if let Some(32) = e.raw_os_error() {
-                    error!("Another process is using the executable.");
-                }
-            }
-        }
-
-        #[cfg(target_os = "linux")]
-        // Add usage of wine + check beforehand with Flatpak if steamos
-        todo!()
-    }
 }
 
 pub mod linux_ui_automation {

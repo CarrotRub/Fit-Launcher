@@ -1493,19 +1493,18 @@ name = "fit-launcher"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "aria2-ws",
  "chrono",
  "color-thief",
  "directories 6.0.0",
- "fix-path-env",
+ "fit-launcher-config",
+ "fit-launcher-torrent",
+ "fit-launcher-ui-automation",
  "futures",
  "futures-util",
- "hickory-resolver",
  "http 1.3.1",
  "image",
  "kuchiki",
  "lazy_static",
- "librqbit",
  "lru",
  "once_cell",
  "palette",
@@ -1519,9 +1518,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "sysinfo",
+ "sysinfo 0.32.1",
  "tauri",
  "tauri-build",
+ "tauri-helper",
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-process",
@@ -1535,6 +1535,56 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "fit-launcher-config"
+version = "0.1.0"
+dependencies = [
+ "directories 6.0.0",
+ "hickory-resolver",
+ "once_cell",
+ "rand 0.9.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fit-launcher-torrent"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aria2-ws",
+ "directories 6.0.0",
+ "fit-launcher-config",
+ "fit-launcher-ui-automation",
+ "http 1.3.1",
+ "librqbit",
+ "parking_lot",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "tauri",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "fit-launcher-ui-automation"
+version = "0.1.0"
+dependencies = [
+ "fit-launcher-config",
+ "fix-path-env",
+ "sysinfo 0.34.2",
+ "tauri",
+ "tracing",
  "uiautomation",
  "windows 0.61.1",
  "windows-result 0.3.2",
@@ -5653,7 +5703,7 @@ version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03c3c6b7927ffe7ecaa769ee0e3994da3b8cafc8f444578982c83ecb161af917"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
@@ -5848,6 +5898,19 @@ dependencies = [
  "memchr",
  "ntapi",
  "rayon",
+ "windows 0.57.0",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.34.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4b93974b3d3aeaa036504b8eefd4c039dced109171c1ae973f1dc63b2c7e4b2"
+dependencies = [
+ "libc",
+ "memchr",
+ "ntapi",
+ "objc2-core-foundation",
  "windows 0.57.0",
 ]
 
@@ -6056,6 +6119,20 @@ dependencies = [
  "time",
  "url",
  "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "tauri-helper"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23ae4af86dd350c557a181712491d0620d2d6919321d684aa5c9a23a38d8e9e7"
+dependencies = [
+ "serde",
+ "syn 2.0.100",
+ "tauri_helper_core",
+ "tauri_helper_macros",
+ "toml",
  "walkdir",
 ]
 
@@ -6320,6 +6397,33 @@ checksum = "56eaa45f707bedf34d19312c26d350bc0f3c59a47e58e8adbeecdc850d2c13a0"
 dependencies = [
  "embed-resource",
  "toml",
+]
+
+[[package]]
+name = "tauri_helper_core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e36200a4913ca9d2f5a150960e7d91150d53a4f1790089a826f079b7b4be434c"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
+name = "tauri_helper_macros"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "244222dfbabf6a4c2eb8950cb8a0b107f966b875288308b22f731f17f6f331fb"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "syn 2.0.100",
+ "tauri_helper_core",
+ "thiserror 2.0.12",
+ "toml",
+ "walkdir",
 ]
 
 [[package]]

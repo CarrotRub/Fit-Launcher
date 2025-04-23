@@ -1,6 +1,8 @@
 use tauri_build::WindowsAttributes;
 
 fn main() {
+    let tauri_options = tauri_helper::TauriHelperOptions::new(true);
+    tauri_helper::generate_command_file(tauri_options);
     let win_attr = if tauri_build::is_dev() {
         WindowsAttributes::new()
     } else {

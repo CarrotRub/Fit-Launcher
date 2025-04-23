@@ -1,0 +1,16 @@
+[package]
+name = "fit-launcher-config"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tauri = { workspace = true }
+directories = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+hickory-resolver = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }

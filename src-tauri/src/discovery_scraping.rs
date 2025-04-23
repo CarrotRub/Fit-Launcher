@@ -11,8 +11,6 @@ pub mod discovery {
     use serde::{Deserialize, Serialize};
     use tokio::{fs, sync::Semaphore, task};
 
-    use crate::net_client_config::custom_client_dns::CUSTOM_DNS_CLIENT;
-
     #[allow(dead_code, clippy::enum_variant_names)]
     #[derive(Debug, thiserror::Error, Serialize, Deserialize)]
     pub enum ScrapingError {

@@ -9,16 +9,90 @@ edition = "2021"
 
 [build-dependencies]
 tauri-build = { version = "2.0.3", features = [] }
+tauri-helper = "0.1.4"
 
 [dependencies]
+# Tauri plugins
+tauri = { workspace = true }
 tauri-plugin-dialog = "2.2.0"
 tauri-plugin-shell = "2.2.0"
-tauri-plugin-fs = "2.2.0"
+tauri-plugin-fs = "2.2.1"
+tauri-plugin-process = "2.2.1"
+tauri-plugin-store = "2.2.0"
+tauri-plugin-single-instance = "2.2.3"
+tauri-plugin-updater = { version = "2.7.1", features = ["rustls-tls"] }
+tauri-helper = { workspace = true }
+
+# Serialization and parsing
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+toml = "0.8.19"
+
+# Utilities
+directories = { workspace = true }
+once_cell = { workspace = true }
+lazy_static = "1.5.0"
+anyhow = { workspace = true }
+thiserror = "2.0.12"
+parking_lot = { workspace = true }
+
+# Networking
+http = { workspace = true }
+reqwest = { workspace = true }
+
+# Async and concurrency
+tokio = { workspace = true }
+futures = "0.3.31"
+futures-util = "0.3"
+rayon = "1.10.0"
+
+# Parsing and scraping
+scraper = "0.23.1"
+kuchiki = "0.8.1"
+regex = "1.11.1"
+select = "0.6"
+
+# Logging and tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-appender = { workspace = true }
+
+# Time and date
+chrono = "0.4.38"
+
+# Randomization
+rand = { workspace = true }
+
+# Caching
+lru = "0.12.4"
+
+# System information
+sysinfo = "0.32.0"
+
+# Image processing
+image = "0.25.4"
+palette = "0.7.6"
+color-thief = "0.2.2"
+
+# Local Crates
+fit-launcher-torrent = { path = "./local-crates/fit-launcher-torrent" }
+fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation" }
+fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
+
+# Workspace configuration
+[workspace]
+members = [
+    "local-crates/fit-launcher-config",
+    "local-crates/fit-launcher-torrent",
+    "local-crates/fit-launcher-ui-automation",
+]
+
+[workspace.dependencies]
 tauri = { version = "2.2.0", features = ["protocol-asset", "tray-icon"] }
-serde = { version = "1.0.209", features = ["derive"] }
-serde_json = "1.0.127"
-serde_with = "3.12.0"
-directories = "6.0.0"
+tauri-helper = "0.1.4"
+anyhow = "1.0.86"
+aria2-ws = { git = "https://github.com/mokurin000/aria2-ws-rs", version = "0.5.0" }
 http = "1.3.1"
 reqwest = { version = "0.12.9", features = [
     "blocking",
@@ -28,46 +102,24 @@ reqwest = { version = "0.12.9", features = [
     "deflate",
     "hickory-dns",
 ] }
-hickory-resolver = { version = "0.24.2", features = ["dns-over-https-rustls"] }
-rand = { version = "0.9.1", features = ["small_rng"] }
-once_cell = "1.21.3"
-scraper = "0.23.1"
-tokio = { version = "1.40.0", features = ["full"] }
-futures-util = "0.3"
-kuchiki = "0.8.1"
-anyhow = "1.0.86"
-lru = "0.12.4"
-futures = "0.3.31"
 librqbit = { version = "8.0.0", features = [
     "tracing-subscriber-utils",
     "http-api",
     "upnp-serve-adapter",
 ] }
-rayon = "1.10.0"
-regex = "1.11.1"
-thiserror = "2.0.12"
 parking_lot = "0.12.1"
-lazy_static = "1.5.0"
-chrono = "0.4.38"
+tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
     "json",
     "ansi",
 ] }
-tracing = "0.1.40"
 tracing-appender = "0.2.3"
-select = "0.6"
-toml = "0.8.19"
-sysinfo = "0.32.0"
-image = "0.25.4"
-palette = "0.7.6"
-color-thief = "0.2.2"
-tauri-plugin-process = "2"
-tauri-plugin-store = "2"
-aria2-ws = { git = "https://github.com/mokurin000/aria2-ws-rs", version = "0.5.0" }
-
-
-[target.'cfg(windows)'.dependencies]
+tokio = { version = "1.40.0", features = ["full"] }
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.127"
+serde_with = "3.12.0"
+directories = "6.0.0"
 uiautomation = "0.18.0"
 windows = { version = "0.61.1", features = [
     "Win32_Foundation",
@@ -76,13 +128,14 @@ windows = { version = "0.61.1", features = [
     "Win32_System_SystemInformation",
 ] }
 windows-result = "0.3.2"
-
-[target.'cfg(unix)'.dependencies]
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
-
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-single-instance = "2.2.0"
-tauri-plugin-updater = { version = "2.7.1", features = ["rustls-tls"] }
+sysinfo = "0.34.2"
+fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation" }
+fit-launcher-torrent = { path = "./local-crates/fit-launcher-torrent" }
+fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
+hickory-resolver = { version = "0.24.2", features = ["dns-over-https-rustls"] }
+once_cell = "1.21.3"
+rand = { version = "0.9.1", features = ["small_rng"] }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
