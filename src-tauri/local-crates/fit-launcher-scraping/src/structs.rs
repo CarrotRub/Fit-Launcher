@@ -26,6 +26,7 @@ pub struct GamePage {
     pub game_main_image: String,
     pub game_description: String,
     pub game_magnetlink: String,
+    pub game_torrent_paste_link: String,
     pub game_secondary_images: Vec<String>,
     pub game_tags: String,
     pub game_href: String,

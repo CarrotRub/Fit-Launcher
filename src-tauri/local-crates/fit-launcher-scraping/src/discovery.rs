@@ -14,7 +14,7 @@ use crate::{errors::ScrapingError, structs::GamePage};
 
 /// Helper function.
 async fn check_url_status(url: &str) -> anyhow::Result<bool> {
-    let response = CUSTOM_DNS_CLIENT.head(url).send().await.unwrap();
+    let response = CUSTOM_DNS_CLIENT.head(url).send().await?;
     Ok(response.status().is_success())
 }
 
@@ -96,6 +96,7 @@ async fn parse_and_process_page(body: String) -> Vec<GamePage> {
     let image_selector = Selector::parse(".entry-content .alignleft").unwrap();
     let desc_selector = Selector::parse("div.entry-content").unwrap();
     let magnet_selector = Selector::parse("a[href*='magnet']").unwrap();
+    let torrent_paste_selector = Selector::parse("a[href*='.torrent file only']").unwrap();
     let tag_selector = Selector::parse(".entry-content p strong:first-of-type").unwrap();
     let hreflink_selector = Selector::parse(".entry-title > a").unwrap();
 
@@ -107,6 +108,7 @@ async fn parse_and_process_page(body: String) -> Vec<GamePage> {
             let entry_image_sel_value = image_selector.clone();
             let entry_desc_sel_value = desc_selector.clone();
             let entry_magnetlink_sel_value = magnet_selector.clone();
+            let entry_torrentpaste_sel_value = torrent_paste_selector.clone();
             let entry_tag_sel_value = tag_selector.clone();
             let entry_href_sel_value = hreflink_selector.clone();
             async move {
@@ -137,6 +139,13 @@ async fn parse_and_process_page(body: String) -> Vec<GamePage> {
                     .unwrap_or("")
                     .to_string();
 
+                let torrent_paste_link = desc_elem
+                    .as_ref()
+                    .and_then(|e| e.select(&entry_torrentpaste_sel_value).next())
+                    .and_then(|e| e.value().attr("href"))
+                    .unwrap_or("")
+                    .to_string();
+
                 let tag = article_elem
                     .select(&entry_tag_sel_value)
                     .next()
@@ -161,6 +170,7 @@ async fn parse_and_process_page(body: String) -> Vec<GamePage> {
                         game_main_image: img,
                         game_description: desc,
                         game_magnetlink: magnet_link,
+                        game_torrent_paste_link: torrent_paste_link,
                         game_secondary_images: secondary_images,
                         game_href: href,
                         game_tags: tag,
