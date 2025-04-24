@@ -1,0 +1,19 @@
+[package]
+name = "fit-launcher-ddl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tauri = { workspace = true }
+regex = { workspace = true }
+once_cell = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+thiserror = { workspace = true }
+reqwest = { workspace = true }
+scraper = { workspace = true }
+fit-launcher-config = { workspace = true }
+fit-launcher-scraping = { path = "../fit-launcher-scraping" }

@@ -1,14 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use std::collections::HashMap;
 use std::fs;
 mod image_colors;
-pub use crate::image_colors::dominant_colors;
 mod game_info;
-pub use crate::game_info::games_informations;
-mod downloadingfunc;
-pub use crate::downloadingfunc::downloads_function;
-use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use fit_launcher_config::settings::creation::create_gamehub_settings_file;
 use fit_launcher_config::settings::creation::create_image_cache_file;
 use fit_launcher_config::settings::creation::create_installation_settings_file;
@@ -18,36 +12,31 @@ use fit_launcher_scraping::global::functions::popular_games_scraping_func;
 use fit_launcher_scraping::global::functions::recently_updated_games_scraping_func;
 use fit_launcher_scraping::global::functions::scraping_func;
 use fit_launcher_torrent::functions::TorrentSession;
-use futures::future::join_all;
-use scraper::{Html, Selector};
 use serde_json::Value;
 use std::error::Error;
-use std::str;
 use tauri::async_runtime::spawn_blocking;
 use tauri::menu::Menu;
 use tauri::menu::MenuItem;
 use tauri::Emitter;
 use tauri::Listener;
 use tracing::{info, warn, error};
-use serde::{Deserialize, Serialize};
-use std::fmt;
-use tauri::{Manager, Window};
+use tauri::Manager;
 use std::time::Instant;
 use tauri::async_runtime::spawn;
 use tauri::tray::TrayIconBuilder;
 use std::path::Path;
 use anyhow::Result;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use std::sync::
+    Arc
+;
 use lru::LruCache;
 use std::num::NonZeroUsize;
-use tauri::State;
 use tokio::sync::Mutex;
 use chrono::Utc;
 pub mod utils;
 pub use utils::*;
+pub use image_colors::*;
+pub use game_info::*;
 
 fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn Error>> {
     let mut dir_path = app_handle.path().app_data_dir().unwrap();

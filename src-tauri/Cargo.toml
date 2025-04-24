@@ -76,6 +76,7 @@ fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation
 fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-scraping = { path = "./local-crates/fit-launcher-scraping" }
 fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
+fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 
 # Workspace configuration
 [workspace]
@@ -83,6 +84,7 @@ members = [
     ".",
     "local-crates/fit-launcher-aria2",
     "local-crates/fit-launcher-config",
+    "local-crates/fit-launcher-ddl",
     "local-crates/fit-launcher-scraping",
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",

@@ -1498,6 +1498,7 @@ dependencies = [
  "directories 6.0.0",
  "fit-launcher-aria2",
  "fit-launcher-config",
+ "fit-launcher-ddl",
  "fit-launcher-scraping",
  "fit-launcher-torrent",
  "fit-launcher-ui-automation",
@@ -1560,6 +1561,25 @@ dependencies = [
  "serde_json",
  "tauri",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fit-launcher-ddl"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fit-launcher-config",
+ "fit-launcher-scraping",
+ "futures",
+ "once_cell",
+ "regex",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "tauri",
+ "thiserror 2.0.12",
  "tracing",
 ]
 
