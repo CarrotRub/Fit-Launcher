@@ -84,6 +84,7 @@ Got questions or want to hang out with our users? Join us on Discord! Big thanks
 - **Kürst** - Discord Moderator and Technical and Visual Co-Contributor
 - **Vintage_Soldier** - App Design
 - **SimplyStoned** - Maintenance of the Old Launcher and Contributor.
+- **mokurin000** - Contributor.
 
 ---
 
