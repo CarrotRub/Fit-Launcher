@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::{path::PathBuf, str::FromStr};
 
+use fitgirl_decrypt::Paste;
+use fitgirl_decrypt::base64::prelude::*;
 use http::StatusCode;
 use librqbit::ApiError;
 
@@ -21,6 +23,18 @@ use librqbit::{
 };
 
 #[tauri::command]
+pub fn download_torrent_from_paste(paste_link: String) -> Result<Vec<u8>, fitgirl_decrypt::Error> {
+    let paste = Paste::parse_url(&paste_link)?;
+    let attachment = paste.decrypt()?;
+    let torrent_b64 = attachment
+        .attachment
+        .strip_prefix("data:application/x-bittorrent;base64,")
+        .ok_or(fitgirl_decrypt::Error::IllFormedURL)?;
+    let torrent = BASE64_STANDARD.decode(torrent_b64)?;
+    Ok(torrent)
+}
+
+#[tauri::command]
 pub fn torrents_list(state: tauri::State<TorrentSession>) -> Result<TorrentListResponse, ApiError> {
     Ok(state.api()?.api_torrent_list())
 }
@@ -34,6 +48,18 @@ pub async fn torrent_create_from_url(
     state
         .api()?
         .api_add_torrent(AddTorrent::Url(url.into()), opts)
+        .await
+}
+
+#[tauri::command]
+pub async fn torrent_create_from_torrent(
+    state: tauri::State<'_, TorrentSession>,
+    torrent: Vec<u8>,
+    opts: Option<AddTorrentOptions>,
+) -> Result<ApiAddTorrentResponse, ApiError> {
+    state
+        .api()?
+        .api_add_torrent(AddTorrent::TorrentFileBytes(torrent.into()), opts)
         .await
 }
 
