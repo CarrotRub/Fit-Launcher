@@ -23,9 +23,12 @@ use librqbit::{
 };
 
 #[tauri::command]
-pub fn download_torrent_from_paste(paste_link: String) -> Result<Vec<u8>, fitgirl_decrypt::Error> {
+pub async fn download_torrent_from_paste(
+    paste_link: String,
+) -> Result<Vec<u8>, fitgirl_decrypt::Error> {
     let paste = Paste::parse_url(&paste_link)?;
-    let attachment = paste.decrypt()?;
+    let cipherinfo = paste.request_async().await?;
+    let attachment = paste.decrypt(&cipherinfo)?;
     let torrent_b64 = attachment
         .attachment
         .strip_prefix("data:application/x-bittorrent;base64,")

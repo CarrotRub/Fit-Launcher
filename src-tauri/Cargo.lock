@@ -938,8 +938,8 @@ dependencies = [
  "cookie",
  "document-features",
  "idna 1.0.3",
- "indexmap 2.9.0",
  "log",
+ "publicsuffix",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1737,20 +1737,20 @@ dependencies = [
 
 [[package]]
 name = "fitgirl-decrypt"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6454eedf05e0d24d06a2e46cb488c3722496cfb8d97c822637fd8316aea742d"
+checksum = "188f6fe3379f94c0229d23ab776453a6d25d2e448094fce66b2cc0a2c827de09"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
  "bs58",
  "miniz_oxide",
+ "reqwest",
  "ring",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
  "typenum",
- "ureq",
 ]
 
 [[package]]
@@ -4814,6 +4814,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "psl-types"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33cb294fe86a74cbcf50d4445b37da762029549ebeea341421c7c70370f86cac"
+
+[[package]]
+name = "publicsuffix"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f42ea446cab60335f76979ec15e12619a2165b5ae2c12166bef27d283a9fadf"
+dependencies = [
+ "idna 1.0.3",
+ "psl-types",
+]
+
+[[package]]
 name = "qoi"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5216,6 +5232,8 @@ dependencies = [
  "async-compression",
  "base64 0.22.1",
  "bytes",
+ "cookie",
+ "cookie_store",
  "encoding_rs",
  "futures-channel",
  "futures-core",
@@ -5393,7 +5411,6 @@ version = "0.23.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df51b5869f3a441595eac5e8ff14d486ff285f7b8c0df8770e49c3b56351f0f0"
 dependencies = [
- "log",
  "once_cell",
  "ring",
  "rustls-pki-types",
@@ -7248,40 +7265,6 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
-
-[[package]]
-name = "ureq"
-version = "3.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7a3e9af6113ecd57b8c63d3cd76a385b2e3881365f1f489e54f49801d0c83ea"
-dependencies = [
- "base64 0.22.1",
- "cookie_store",
- "flate2",
- "log",
- "percent-encoding",
- "rustls 0.23.26",
- "rustls-pemfile 2.2.0",
- "rustls-pki-types",
- "serde",
- "serde_json",
- "ureq-proto",
- "url",
- "utf-8",
- "webpki-roots",
-]
-
-[[package]]
-name = "ureq-proto"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fadf18427d33828c311234884b7ba2afb57143e6e7e69fda7ee883b624661e36"
-dependencies = [
- "base64 0.22.1",
- "http 1.3.1",
- "httparse",
- "log",
-]
 
 [[package]]
 name = "url"
