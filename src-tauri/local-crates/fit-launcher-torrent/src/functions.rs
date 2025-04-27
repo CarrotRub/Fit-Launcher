@@ -62,17 +62,24 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
 pub async fn aria2_client_from_config(
     config: &FitLauncherConfig,
 ) -> anyhow::Result<aria2_ws::Client> {
-    let FitLauncherConfigAria2 { port, token, .. } = &config.aria2_rpc;
+    let FitLauncherConfigAria2 {
+        port,
+        token,
+        start_daemon,
+    } = &config.aria2_rpc;
     let download_location = &config.default_download_location;
 
-    // we must ship with `aria2c.exe` e.g. on windows,
-    // for native linux, they could install aria2 via package managers.
-    let aria2_daemon = Command::new("aria2c")
-        .arg("--enable-rpc")
-        .arg(format!("--rpc-listen-port={port}"))
-        .current_dir(download_location)
-        .spawn()?;
-    let _ = ARIA2_DAEMON.set(Mutex::new(aria2_daemon));
+    if *start_daemon {
+        // we must ship with `aria2c.exe` e.g. on windows,
+        // for native linux, they could install aria2 via package managers.
+        Command::new("aria2c")
+            .arg("--enable-rpc")
+            .arg(format!("--rpc-listen-port={port}"))
+            .current_dir(download_location)
+            .spawn()
+            .ok()
+            .and_then(|child| ARIA2_DAEMON.set(Mutex::new(child)).ok());
+    }
 
     Ok(aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}"), token.as_deref()).await?)
 }
