@@ -2,7 +2,8 @@ use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter},
     path::Path,
-    sync::Arc,
+    process::{Child, Command},
+    sync::{Arc, OnceLock},
 };
 
 use anyhow::Context;
@@ -12,7 +13,7 @@ use librqbit::{
     Api, ApiError, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig,
     dht::PersistentDhtConfig,
 };
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 
 use tracing::{error, info, warn};
 
@@ -20,6 +21,8 @@ use crate::config::{FitLauncherConfig, FitLauncherConfigAria2};
 
 const ERR_NOT_CONFIGURED: ApiError =
     ApiError::new_from_text(StatusCode::FAILED_DEPENDENCY, "not configured");
+
+pub static ARIA2_DAEMON: OnceLock<Mutex<Child>> = OnceLock::new();
 
 struct StateShared {
     config: FitLauncherConfig,
@@ -59,9 +62,19 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
 pub async fn aria2_client_from_config(
     config: &FitLauncherConfig,
 ) -> anyhow::Result<aria2_ws::Client> {
-    let FitLauncherConfigAria2 { base_url, token } =
-        config.aria2_rpc.as_ref().context("aria2 not configured!")?;
-    Ok(aria2_ws::Client::connect(base_url, token.as_deref()).await?)
+    let FitLauncherConfigAria2 { port, token, .. } = &config.aria2_rpc;
+    let download_location = &config.default_download_location;
+
+    // we must ship with `aria2c.exe` e.g. on windows,
+    // for native linux, they could install aria2 via package managers.
+    let aria2_daemon = Command::new("aria2c")
+        .arg("--enable-rpc")
+        .arg(format!("--rpc-listen-port={port}"))
+        .current_dir(download_location)
+        .spawn()?;
+    let _ = ARIA2_DAEMON.set(Mutex::new(aria2_daemon));
+
+    Ok(aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}"), token.as_deref()).await?)
 }
 
 pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
@@ -152,7 +165,7 @@ impl TorrentSession {
             let aria2_client = aria2_client_from_config(&config)
                 .await
                 .inspect_err(|e| {
-                    warn!(error=?e, "aria2 not configured, skipping");
+                    warn!(error=?e, "aria2 not avaliable: {e}");
                 })
                 .ok();
             let shared = Arc::new(RwLock::new(Some(StateShared {

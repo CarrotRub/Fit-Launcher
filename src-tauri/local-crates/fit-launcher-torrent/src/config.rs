@@ -155,15 +155,17 @@ pub struct FitLauncherConfigUpnp {
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
 pub struct FitLauncherConfigAria2 {
-    pub base_url: String,
+    pub port: u32,
     pub token: Option<String>,
+    pub start_daemon: bool,
 }
 
 impl Default for FitLauncherConfigAria2 {
     fn default() -> Self {
         Self {
-            base_url: "ws://127.0.0.1:6800".into(),
+            port: 6899,
             token: None,
+            start_daemon: true,
         }
     }
 }
@@ -180,7 +182,7 @@ pub struct FitLauncherConfig {
     pub peer_opts: FitLauncherConfigPeerOpts,
     http_api: FitLauncherConfigHttpApi,
 
-    pub aria2_rpc: Option<FitLauncherConfigAria2>,
+    pub aria2_rpc: FitLauncherConfigAria2,
 }
 
 impl Default for FitLauncherConfig {
@@ -199,7 +201,11 @@ impl Default for FitLauncherConfig {
             persistence: Default::default(),
             peer_opts: Default::default(),
             http_api: Default::default(),
-            aria2_rpc: None,
+            aria2_rpc: FitLauncherConfigAria2 {
+                port: 6899,
+                token: None,
+                start_daemon: true,
+            },
         }
     }
 }

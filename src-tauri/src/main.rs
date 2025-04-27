@@ -12,6 +12,7 @@ use fit_launcher_scraping::global::functions::popular_games_scraping_func;
 use fit_launcher_scraping::global::functions::recently_updated_games_scraping_func;
 use fit_launcher_scraping::global::functions::scraping_func;
 use fit_launcher_torrent::functions::TorrentSession;
+use fit_launcher_torrent::functions::ARIA2_DAEMON;
 use serde_json::Value;
 use std::error::Error;
 use tauri::async_runtime::spawn_blocking;
@@ -231,6 +232,9 @@ async fn start() {
               .on_menu_event(|app, event| match event.id.as_ref() {
                 "quit" => {
                   info!("quit menu item was clicked");
+                  if let Some(child) = ARIA2_DAEMON.get() {
+                    let _ = child.lock().kill();
+                  }
                   std::process::exit(0);
                 }
                 "show_app" => {
