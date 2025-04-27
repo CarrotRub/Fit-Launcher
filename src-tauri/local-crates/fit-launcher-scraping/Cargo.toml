@@ -12,7 +12,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true }
 anyhow = { workspace = true }
-scraper = { workspace = true }
+scraper = { workspace = true, features = ["atomic"] }
 kuchiki = { workspace = true }
 regex = { workspace = true }
 select = { workspace = true }

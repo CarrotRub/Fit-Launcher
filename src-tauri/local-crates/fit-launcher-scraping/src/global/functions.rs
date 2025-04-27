@@ -2,6 +2,7 @@ use anyhow::Result;
 use core::str;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream::FuturesOrdered};
+use reqwest::header::RANGE;
 use std::time::Instant;
 use tauri::{Emitter, Manager};
 use tokio::io::AsyncWriteExt;
@@ -31,7 +32,12 @@ pub async fn download_sitemap(
 
 /// Helper function.
 async fn check_url_status(url: &str) -> bool {
-    let response = CUSTOM_DNS_CLIENT.head(url).send().await.unwrap();
+    let response = CUSTOM_DNS_CLIENT
+        .head(url)
+        .header(RANGE, "bytes=0-8")
+        .send()
+        .await
+        .unwrap();
     response.status().is_success()
 }
 
