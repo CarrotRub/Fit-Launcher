@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsStr,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter},
     path::Path,
@@ -61,6 +62,7 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
 
 pub async fn aria2_client_from_config(
     config: &FitLauncherConfig,
+    session_path: impl AsRef<OsStr>,
 ) -> anyhow::Result<aria2_ws::Client> {
     let FitLauncherConfigAria2 {
         port,
@@ -69,12 +71,16 @@ pub async fn aria2_client_from_config(
     } = &config.aria2_rpc;
     let download_location = &config.default_download_location;
 
-    if *start_daemon {
+    // avoid start daemon after spawned
+    if *start_daemon && ARIA2_DAEMON.get().is_none() {
         // we must ship with a modified `aria2c.exe` on windows, with `SUBSYSTEM:WINDOWS`
         // for native linux, they could install aria2 via package managers.
         Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
             .arg("--enable-rpc")
             .arg(format!("--rpc-listen-port={port}"))
+            .arg("--max-connection-per-server=5")
+            .arg("--save-session")
+            .arg(session_path.as_ref())
             .current_dir(download_location)
             .spawn()
             .ok()
@@ -135,15 +141,18 @@ pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> 
 impl TorrentSession {
     pub async fn new() -> Self {
         warn!("Starting Initialization");
-        let config_filename = directories::BaseDirs::new()
+        let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
-            .join("com.fitlauncher.carrotrub")
+            .join("com.fitlauncher.carrotrub");
+
+        let aria2_session = config_dir.join("aria2.session");
+        let config_filename = config_dir
             .join("torrentConfig")
             .join("config.json")
-            .to_str()
-            .unwrap_or("ERROR")
-            .to_owned();
+            .to_string_lossy()
+            .to_string();
+
         if !Path::new(&config_filename).exists() {
             // If it doesn't exist, write the default config
             match write_config(&config_filename, &FitLauncherConfig::default()) {
@@ -169,7 +178,7 @@ impl TorrentSession {
                     warn!(error=?e, "error reading configuration");
                 })
                 .ok();
-            let aria2_client = aria2_client_from_config(&config)
+            let aria2_client = aria2_client_from_config(&config, aria2_session)
                 .await
                 .inspect_err(|e| {
                     warn!(error=?e, "aria2 not avaliable: {e}");
@@ -233,7 +242,15 @@ impl TorrentSession {
         }
 
         let api = api_from_config(&config).await?;
-        let aria2_client = aria2_client_from_config(&config).await.ok();
+
+        let config_dir = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub");
+        let aria2_session = config_dir.join("aria2.session");
+
+        let aria2_client = aria2_client_from_config(&config, aria2_session).await.ok();
+
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }

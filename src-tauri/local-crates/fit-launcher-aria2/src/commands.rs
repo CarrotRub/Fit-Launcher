@@ -41,6 +41,7 @@ pub async fn aria2_start_download(
                 split: Some(1),
                 out: Some(filename),
                 dir,
+                r#continue: Some(true),
                 ..TaskOptions::default()
             }),
             None,
