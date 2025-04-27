@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import PopupModal from "../../components/Popup-Modal/PopupModal";
 import "./Basic-TextInput-PopUp.css";
+import Button from "../../components/UI/Button/Button";
 
 const BasicTextInputPopup = ({ infoTitle, infoMessage, infoPlaceholder, infoFooter, action }) => {
     const [textInputValue, setTextInputValue] = createSignal("");
@@ -35,10 +36,8 @@ const BasicTextInputPopup = ({ infoTitle, infoMessage, infoPlaceholder, infoFoot
                 </div>
 
                 <div className="popup-buttons">
-                    <button id="popup-cancel-button" onClick={closePopup}>
-                        Cancel
-                    </button>
-                    <button
+                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
+                    <Button
                         id="popup-confirm-button"
                         onClick={async () => {
                             if (action) {
@@ -46,9 +45,8 @@ const BasicTextInputPopup = ({ infoTitle, infoMessage, infoPlaceholder, infoFoot
                             }
                             closePopup();
                         }}
-                    >
-                        Confirm
-                    </button>
+                        label="Confirm"
+                    />
                 </div>
             </div>
         </PopupModal>

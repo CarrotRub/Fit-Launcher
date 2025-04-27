@@ -3,6 +3,7 @@ import PopupModal from "../../components/Popup-Modal/PopupModal";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { message } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import Button from "../../components/UI/Button/Button";
 
 const appDir = await appDataDir();
 
@@ -107,12 +108,12 @@ const BasicAddToCollectionPopup = ({ infoTitle, collectionsList, gameObjectInfo 
                     Select one or more collections to add your games to.
                 </div>
                 <div className="popup-buttons">
-                    <button id="popup-cancel-button" onClick={closePopup}>
-                        Cancel
-                    </button>
-                    <button id="popup-confirm-button" onClick={addToCollectionFile}>
-                        Confirm
-                    </button>
+                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
+                    <Button
+                        id="popup-confirm-button"
+                        onClick={addToCollectionFile}
+                        label="Confirm"
+                    />
                 </div>
             </div>
         </PopupModal>

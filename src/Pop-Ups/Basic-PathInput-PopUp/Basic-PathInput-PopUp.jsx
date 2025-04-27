@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import PopupModal from "../../components/Popup-Modal/PopupModal";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./Basic-PathInput-PopUp.css";
+import Button from "../../components/UI/Button/Button";
 
 const BasicPathInputPopup = ({
     infoTitle,
@@ -63,10 +64,8 @@ const BasicPathInputPopup = ({
                 </div>
 
                 <div className="popup-buttons">
-                    <button id="popup-cancel-button" onClick={closePopup}>
-                        Cancel
-                    </button>
-                    <button
+                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
+                    <Button
                         id="popup-confirm-button"
                         onClick={async () => {
                             if (action && currentPath()) {
@@ -74,9 +73,8 @@ const BasicPathInputPopup = ({
                             }
                             closePopup();
                         }}
-                    >
-                        Confirm
-                    </button>
+                        label="Confirm"
+                    />
                 </div>
             </div>
         </PopupModal>

@@ -5,6 +5,7 @@ import { mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
+import Button from "../../components/UI/Button/Button";
 
 const appDir = await appDataDir();
 
@@ -121,12 +122,12 @@ const AddLocalGamePopUp = ({ infoTitle, infoFooter, action }) => {
                         "If you have any issues with this, try to close and open the app. If it still persists, please contact us on Discord or GitHub."}
                 </div>
                 <div className="popup-buttons">
-                    <button id="popup-cancel-button" onClick={() => closePopup()}>
-                        Cancel
-                    </button>
-                    <button id="popup-confirm-button" onClick={handleConfirm}>
-                        Confirm
-                    </button>
+                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
+                    <Button
+                        id="popup-confirm-button"
+                        onClick={handleConfirm}
+                        label="Confirm"
+                    />
                 </div>
             </div>
         </PopupModal>

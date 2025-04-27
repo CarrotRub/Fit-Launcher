@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import PopupModal from "../../components/Popup-Modal/PopupModal";
+import Button from "../../components/UI/Button/Button";
 
 const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
     const [isOpen, setIsOpen] = createSignal(true);
@@ -23,18 +24,15 @@ const BasicChoicePopup = ({ infoTitle, infoMessage, infoFooter, action }) => {
                 </div>
 
                 <div className="popup-buttons">
-                    <button id="popup-cancel-button" onClick={closePopup}>
-                        Cancel
-                    </button>
-                    <button
+                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
+                    <Button
                         id="popup-confirm-button"
                         onClick={() => {
                             if (action) action();
                             closePopup();
                         }}
-                    >
-                        Confirm
-                    </button>
+                        label="Confirm"
+                    />
                 </div>
             </div>
         </PopupModal>

@@ -1,5 +1,6 @@
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import "./PopupModal.css";
+import '../../Pop-Ups/Download-PopUp/Download-PopUp.css';
 
 const PopupModal = (props) => {
     const [isVisible, setIsVisible] = createSignal(false);

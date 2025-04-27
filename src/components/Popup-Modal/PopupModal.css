@@ -59,20 +59,3 @@
     gap: 12px;
     margin-top: 16px;
 }
-
-.popup-buttons button {
-    padding: 8px 16px;
-    font-size: 14px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
-.popup-buttons button:hover {
-    transform: scale(1.05);
-}
-
-.popup-buttons button:active {
-    transform: scale(0.95);
-}

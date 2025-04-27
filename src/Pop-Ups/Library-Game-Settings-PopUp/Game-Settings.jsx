@@ -1,5 +1,7 @@
 import { createSignal, onMount } from "solid-js";
 import PopupModal from "../../components/Popup-Modal/PopupModal";
+import Button from "../../components/UI/Button/Button";
+import PathInput from "../../components/UI/PathInput/PathInput";
 import "./Game-Settings.css";
 
 const GameSettingsLibraryPopUp = ({
@@ -19,12 +21,9 @@ const GameSettingsLibraryPopUp = ({
 
     const closePopup = () => setIsOpen(false);
 
-    const clearExeTextInput = () => setCurrentPath("");
-    const clearFolderTextInput = () => setCurrentFolderPath("");
-
     onMount(() => {
-        let path_exe = userGame?.executableInfo?.executable_path || defaultPath;
-        setCurrentPath(path_exe);
+        const pathExe = userGame?.executableInfo?.executable_path || defaultPath;
+        setCurrentPath(pathExe);
         setCurrentFolderPath(userGame?.torrentOutputFolder?.replace(" [FitGirl Repacks]", ""));
     });
 
@@ -52,67 +51,51 @@ const GameSettingsLibraryPopUp = ({
                     <p innerHTML={infoMessage}></p>
                 </div>
 
-                <div className="popup-game-settings-container">
-                    <p>Path to Executable:</p>
-                    <label className="popup-input-label">
-                        <input
-                            className="popup-game-settings"
-                            placeholder={infoPlaceholder}
-                            style={{ fontSize: "14px" }}
-                            value={currentPath()}
-                            onInput={(e) => setCurrentPath(e.target.value)}
-                        />
-                    </label>
-                    <svg
-                        onClick={clearExeTextInput}
-                        style={{ cursor: "pointer" }}
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="lucide lucide-eraser"
-                    >
-                        <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21m9 0H7M5 11l9 9" />
-                    </svg>
+                <div className="popup-input-container">
+                    <div className="popup-game-settings-container" style={{ display: "flex", flexDirection: "column", width: "100%", gap: "1rem" }}>
+                        <div className="popup-game-settings-input-container" >
+                            <div>
+                                <p>Executable:</p>
+                                <PathInput
+                                    placeholder={infoPlaceholder || "Enter the path to the executable"}
+                                    initialPath={currentPath()}
+                                    isDirectory={false}
+                                    onPathChange={(path) => setCurrentPath(path)}
+                                />
+                            </div>
+                            <div>
+                                <p>Folder:</p>
+                                <PathInput
+                                    placeholder="Enter the path to the folder"
+                                    initialPath={currentFolderPath()}
+                                    isDirectory={true}
+                                    onPathChange={(path) => setCurrentFolderPath(path)}
+                                />
+                                <small>
+                                    <i>
+                                        Sadly, for now, there is no way to get the game's size when adding a
+                                        local game :(
+                                    </i>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <div className="popup-game-settings-container">
-                    <p>
-                        Path to Folder:{" "}
-                        <small>
-                            <i>
-                                Sadly, for now, there is no way to get the game's size when adding a
-                                local game :(
-                            </i>
-                        </small>
-                    </p>
-                </div>
-
                 <div className="popup-footer-container">
                     {infoFooter ||
                         "If you have any issues with this, try to close and open the app. If it still persists, please contact us on Discord (link in the settings page) or on GitHub."}
                 </div>
 
                 <div className="popup-buttons">
-                    <button id="popup-delete-button" onClick={handleDeleteGame}>
-                        Delete
-                    </button>
-                    <button id="popup-cancel-button" onClick={closePopup}>
-                        Cancel
-                    </button>
-                    <button
+                    <Button id="popup-delete-button" onClick={handleDeleteGame} label="Delete Game" />
+                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
+                    <Button
                         id="popup-confirm-button"
                         onClick={() => {
                             closePopup();
                         }}
-                    >
-                        Confirm
-                    </button>
+                        label="Confirm"
+                    />
                 </div>
             </div>
         </PopupModal>
