@@ -87,7 +87,10 @@ pub async fn aria2_client_from_config(
             .and_then(|child| ARIA2_DAEMON.set(Mutex::new(child)).ok());
     }
 
-    Ok(aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}"), token.as_deref()).await?)
+    Ok(
+        aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+            .await?,
+    )
 }
 
 pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
