@@ -70,9 +70,9 @@ pub async fn aria2_client_from_config(
     let download_location = &config.default_download_location;
 
     if *start_daemon {
-        // we must ship with `aria2c.exe` e.g. on windows,
+        // we must ship with a modified `aria2c.exe` on windows, with `SUBSYSTEM:WINDOWS`
         // for native linux, they could install aria2 via package managers.
-        Command::new("aria2c")
+        Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
             .arg("--enable-rpc")
             .arg(format!("--rpc-listen-port={port}"))
             .current_dir(download_location)
