@@ -3,8 +3,8 @@ use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter},
     path::Path,
-    process::{Child, Command},
-    sync::{Arc, OnceLock},
+    process::Command,
+    sync::Arc,
 };
 
 use anyhow::Context;
@@ -14,7 +14,10 @@ use librqbit::{
     Api, ApiError, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig,
     dht::PersistentDhtConfig,
 };
+use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
+
+use tokio::sync::oneshot::{Receiver, Sender, channel};
 
 use tracing::{error, info, warn};
 
@@ -23,7 +26,8 @@ use crate::config::{FitLauncherConfig, FitLauncherConfigAria2};
 const ERR_NOT_CONFIGURED: ApiError =
     ApiError::new_from_text(StatusCode::FAILED_DEPENDENCY, "not configured");
 
-pub static ARIA2_DAEMON: OnceLock<Mutex<Child>> = OnceLock::new();
+pub static ARIA2_DAEMON: Lazy<Mutex<Option<(Sender<()>, Receiver<()>)>>> =
+    Lazy::new(|| Mutex::new(None));
 
 struct StateShared {
     config: FitLauncherConfig,
@@ -72,19 +76,36 @@ pub async fn aria2_client_from_config(
     let download_location = &config.default_download_location;
 
     // avoid start daemon after spawned
-    if *start_daemon && ARIA2_DAEMON.get().is_none() {
+    if *start_daemon && ARIA2_DAEMON.lock().is_none() {
         // we must ship with a modified `aria2c.exe` on windows, with `SUBSYSTEM:WINDOWS`
         // for native linux, they could install aria2 via package managers.
-        Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
+        let mut child = Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
             .arg("--enable-rpc")
             .arg(format!("--rpc-listen-port={port}"))
             .arg("--max-connection-per-server=5")
             .arg("--save-session")
             .arg(session_path.as_ref())
             .current_dir(download_location)
-            .spawn()
-            .ok()
-            .and_then(|child| ARIA2_DAEMON.set(Mutex::new(child)).ok());
+            .spawn()?;
+
+        let client =
+            aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+                .await?;
+        let (close_tx, close_rx) = channel();
+        let (done_tx, done_rx) = channel();
+        tokio::task::spawn(async move {
+            match close_rx.await {
+                Ok(_) => {
+                    let _ = client.shutdown().await;
+                    let _ = child.wait();
+                    let _ = done_tx.send(());
+                }
+                Err(_) => {
+                    error!("close_tx closed unexceptedly, fail to close aria2 gracefully");
+                }
+            }
+        });
+        let _ = ARIA2_DAEMON.lock().replace((close_tx, done_rx));
     }
 
     Ok(

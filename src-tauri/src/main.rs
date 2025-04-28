@@ -223,8 +223,7 @@ async fn start() {
             let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
             let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_i, &show_app_i, &hide_app_i])?;
-            
-            
+
             TrayIconBuilder::new()
               .icon(app.default_window_icon().unwrap().clone())
               .menu(&menu)
@@ -232,8 +231,11 @@ async fn start() {
               .on_menu_event(|app, event| match event.id.as_ref() {
                 "quit" => {
                   info!("quit menu item was clicked");
-                  if let Some(child) = ARIA2_DAEMON.get() {
-                    let _ = child.lock().kill();
+
+                  info!("exiting aria2 gracefully...");
+                  if let Some((close_tx, done_rx)) = ARIA2_DAEMON.lock().take() {
+                    let _ = close_tx.send(());
+                    let _ = done_rx.blocking_recv();
                   }
                   std::process::exit(0);
                 }
