@@ -235,7 +235,7 @@ async fn start() {
                   info!("exiting aria2 gracefully...");
                   if let Some((close_tx, done_rx)) = ARIA2_DAEMON.lock().take() {
                     let _ = close_tx.send(());
-                    let _ = done_rx.blocking_recv();
+                    let _ = std::thread::spawn(move ||done_rx.blocking_recv()).join();
                   }
                   std::process::exit(0);
                 }
