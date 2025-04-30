@@ -43,7 +43,6 @@ reqwest = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
-rayon = { workspace = true }
 
 # Parsing and scraping
 scraper = { workspace = true }
@@ -142,7 +141,7 @@ once_cell = "1.21.3"
 rand = { version = "0.9.1", features = ["small_rng"] }
 futures = "0.3.31"
 futures-util = "0.3"
-rayon = "1.10.0"
+
 # Parsing and scraping
 scraper = "0.23.1"
 kuchiki = "0.8.1"

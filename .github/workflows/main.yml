@@ -33,6 +33,27 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      - name: Get latest aria2 tag
+        id: get-tag
+        shell: bash
+        run: |
+          TAG=$(curl -s https://api.github.com/repos/mokurin000/aria2c-windows-hide-console/releases/latest | jq -r '.tag_name')
+          TAG_VER=$(echo "$TAG" | sed 's/release-//')
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "tag_ver=${TAG_VER}" >> $GITHUB_OUTPUT
+
+      - name: Download binaries
+        shell: bash
+        run: |
+          curl -L -o 64bit.zip "https://github.com/mokurin000/aria2c-windows-hide-console/releases/download/${{ steps.get-tag.outputs.tag }}/aria2-${{ steps.get-tag.outputs.tag_ver }}-win-64bit-build1.zip"
+
+      - name: Extract aria2c.exe
+        shell: powershell
+        run: |
+          Expand-Archive -Path 64bit.zip -DestinationPath .
+          Move-Item aria2-${{ steps.get-tag.outputs.tag_ver }}-win-64bit-build1/aria2c.exe ./src-tauri/binaries/aria2c-x86_64-pc-windows-msvc.exe
+          Remove-Item 64bit.zip
+
       - name: install frontend dependencies
         run: npm install # change this to npm or pnpm depending on which one you use.
 

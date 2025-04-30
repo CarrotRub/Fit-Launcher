@@ -12,6 +12,7 @@ use fit_launcher_scraping::global::functions::popular_games_scraping_func;
 use fit_launcher_scraping::global::functions::recently_updated_games_scraping_func;
 use fit_launcher_scraping::global::functions::scraping_func;
 use fit_launcher_torrent::functions::TorrentSession;
+use fit_launcher_torrent::functions::ARIA2_DAEMON;
 use serde_json::Value;
 use std::error::Error;
 use tauri::async_runtime::spawn_blocking;
@@ -222,8 +223,7 @@ async fn start() {
             let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
             let hide_app_i = MenuItem::with_id(app, "hide_app", "Hide App", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_i, &show_app_i, &hide_app_i])?;
-            
-            
+
             TrayIconBuilder::new()
               .icon(app.default_window_icon().unwrap().clone())
               .menu(&menu)
@@ -231,6 +231,12 @@ async fn start() {
               .on_menu_event(|app, event| match event.id.as_ref() {
                 "quit" => {
                   info!("quit menu item was clicked");
+
+                  info!("exiting aria2 gracefully...");
+                  if let Some((close_tx, done_rx)) = ARIA2_DAEMON.lock().take() {
+                    let _ = close_tx.send(());
+                    let _ = std::thread::spawn(move ||done_rx.blocking_recv()).join();
+                  }
                   std::process::exit(0);
                 }
                 "show_app" => {

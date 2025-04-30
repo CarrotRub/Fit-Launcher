@@ -1,7 +1,9 @@
 use std::{
+    ffi::OsStr,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter},
     path::Path,
+    process::Command,
     sync::Arc,
 };
 
@@ -12,7 +14,10 @@ use librqbit::{
     Api, ApiError, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig,
     dht::PersistentDhtConfig,
 };
-use parking_lot::RwLock;
+use once_cell::sync::Lazy;
+use parking_lot::{Mutex, RwLock};
+
+use tokio::sync::oneshot::{Receiver, Sender, channel};
 
 use tracing::{error, info, warn};
 
@@ -20,6 +25,9 @@ use crate::config::{FitLauncherConfig, FitLauncherConfigAria2};
 
 const ERR_NOT_CONFIGURED: ApiError =
     ApiError::new_from_text(StatusCode::FAILED_DEPENDENCY, "not configured");
+
+pub static ARIA2_DAEMON: Lazy<Mutex<Option<(Sender<()>, Receiver<()>)>>> =
+    Lazy::new(|| Mutex::new(None));
 
 struct StateShared {
     config: FitLauncherConfig,
@@ -58,10 +66,52 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
 
 pub async fn aria2_client_from_config(
     config: &FitLauncherConfig,
+    session_path: impl AsRef<OsStr>,
 ) -> anyhow::Result<aria2_ws::Client> {
-    let FitLauncherConfigAria2 { base_url, token } =
-        config.aria2_rpc.as_ref().context("aria2 not configured!")?;
-    Ok(aria2_ws::Client::connect(base_url, token.as_deref()).await?)
+    let FitLauncherConfigAria2 {
+        port,
+        token,
+        start_daemon,
+    } = &config.aria2_rpc;
+    let download_location = &config.default_download_location;
+
+    // avoid start daemon after spawned
+    if *start_daemon && ARIA2_DAEMON.lock().is_none() {
+        // we must ship with a modified `aria2c.exe` on windows, with `SUBSYSTEM:WINDOWS`
+        // for native linux, they could install aria2 via package managers.
+        let mut child = Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
+            .arg("--enable-rpc")
+            .arg(format!("--rpc-listen-port={port}"))
+            .arg("--max-connection-per-server=5")
+            .arg("--save-session")
+            .arg(session_path.as_ref())
+            .current_dir(download_location)
+            .spawn()?;
+
+        let client =
+            aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+                .await?;
+        let (close_tx, close_rx) = channel();
+        let (done_tx, done_rx) = channel();
+        tokio::task::spawn(async move {
+            match close_rx.await {
+                Ok(_) => {
+                    let _ = client.shutdown().await;
+                    let _ = child.wait();
+                    let _ = done_tx.send(());
+                }
+                Err(_) => {
+                    error!("close_tx closed unexceptedly, fail to close aria2 gracefully");
+                }
+            }
+        });
+        let _ = ARIA2_DAEMON.lock().replace((close_tx, done_rx));
+    }
+
+    Ok(
+        aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+            .await?,
+    )
 }
 
 pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
@@ -115,15 +165,18 @@ pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> 
 impl TorrentSession {
     pub async fn new() -> Self {
         warn!("Starting Initialization");
-        let config_filename = directories::BaseDirs::new()
+        let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
-            .join("com.fitlauncher.carrotrub")
+            .join("com.fitlauncher.carrotrub");
+
+        let aria2_session = config_dir.join("aria2.session");
+        let config_filename = config_dir
             .join("torrentConfig")
             .join("config.json")
-            .to_str()
-            .unwrap_or("ERROR")
-            .to_owned();
+            .to_string_lossy()
+            .to_string();
+
         if !Path::new(&config_filename).exists() {
             // If it doesn't exist, write the default config
             match write_config(&config_filename, &FitLauncherConfig::default()) {
@@ -149,10 +202,10 @@ impl TorrentSession {
                     warn!(error=?e, "error reading configuration");
                 })
                 .ok();
-            let aria2_client = aria2_client_from_config(&config)
+            let aria2_client = aria2_client_from_config(&config, aria2_session)
                 .await
                 .inspect_err(|e| {
-                    warn!(error=?e, "aria2 not configured, skipping");
+                    warn!(error=?e, "aria2 not avaliable: {e}");
                 })
                 .ok();
             let shared = Arc::new(RwLock::new(Some(StateShared {
@@ -213,7 +266,15 @@ impl TorrentSession {
         }
 
         let api = api_from_config(&config).await?;
-        let aria2_client = aria2_client_from_config(&config).await.ok();
+
+        let config_dir = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub");
+        let aria2_session = config_dir.join("aria2.session");
+
+        let aria2_client = aria2_client_from_config(&config, aria2_session).await.ok();
+
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }

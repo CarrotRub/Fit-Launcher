@@ -22,3 +22,4 @@ directories = { workspace = true }
 fit-launcher-ui-automation = { workspace = true }
 fit-launcher-config = { workspace = true }
 fitgirl-decrypt = { workspace = true }
+once_cell = { workspace = true }
