@@ -165,9 +165,17 @@ pub async fn aria2_task_progress(
     let mut completed_length = 0;
     let mut total_length = 0;
     let mut download_speed = 0;
+    let mut completed = 0;
 
     for Task { gid, .. } in tasks {
         let status = aria2_client.tell_status(&gid).await?;
+
+        match status.status {
+            aria2_ws::response::TaskStatus::Complete => {
+                completed += 1;
+            }
+            _ => (),
+        }
 
         download_speed += status.download_speed;
         total_length += status.total_length;
@@ -175,6 +183,7 @@ pub async fn aria2_task_progress(
     }
 
     Ok(TaskProgress {
+        completed,
         download_speed,
         total_length,
         completed_length,
