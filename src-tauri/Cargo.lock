@@ -1633,6 +1633,7 @@ version = "0.1.0"
 dependencies = [
  "aria2-ws",
  "fit-launcher-config",
+ "fit-launcher-ddl",
  "fit-launcher-torrent",
  "serde",
  "tauri",
