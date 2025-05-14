@@ -37,7 +37,10 @@ jobs:
         id: get-tag
         shell: bash
         run: |
-          TAG=$(curl -s https://api.github.com/repos/mokurin000/aria2c-windows-hide-console/releases/latest | jq -r '.tag_name')
+          TAG=$( curl -H "Authorization: Bearer "${{ secrets.GITHUB_TOKEN }} -s \
+              https://api.github.com/repos/mokurin000/aria2c-windows-hide-console/releases/latest |
+              jq -r '.tag_name'
+          )
           TAG_VER=$(echo "$TAG" | sed 's/release-//')
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "tag_ver=${TAG_VER}" >> $GITHUB_OUTPUT
