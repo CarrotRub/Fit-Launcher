@@ -23,9 +23,9 @@
     ]
   },
   "build": {
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run download-binaries && npm run build",
     "frontendDist": "../dist",
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run download-binaries && npm run dev",
     "devUrl": "http://localhost:1420/"
   },
   "productName": "Fit Launcher",
