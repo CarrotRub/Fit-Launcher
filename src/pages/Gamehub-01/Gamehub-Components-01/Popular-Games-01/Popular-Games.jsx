@@ -334,11 +334,10 @@ function PopularGames() {
                 </div>
                 <div
                   className="main-game-info-container"
-                  style={`
-                            background-color : ${infoContainerColor()}; 
+                  style={` 
                             border-color: ${borderColor()};
                             border-style: solid;
-                            border-width: 2px;
+                            border-width: 1px;
                             box-shadow  : 0px 0px 30px 3px ${infoContainerColor()};
                             cursor: pointer;
                             `}

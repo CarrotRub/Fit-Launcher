@@ -6,7 +6,7 @@
     height: fit-content;
     padding-bottom: 40px;
 
-    box-shadow: 0 2px 0 0 var(--accent-color);
+    box-shadow: 0 1px 0 0 var(--accent-color);
 }
 
 .text-category-gamehub {

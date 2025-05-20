@@ -34,30 +34,41 @@ function App() {
         "Le Beau Cyan"
     ];
 
-    onMount(async() => {
+    onMount(async () => {
         const bgElement = document.querySelector(".background-style");
-
+        
         try {
             const bgImageStore = await load('background_store.json', { autoSave: false });
             const imageLink = await bgImageStore.get('background_image');
+            const blurAmount = await bgImageStore.get('blur_amount') || 0; // Default to 0 if not set
             
-            await invoke('allow_dir', {path: imageLink});
-            console.log('done')
-            const blurAmount = await bgImageStore.get('blur_amount');
-            console.log(imageLink)
-            if (imageLink) {
-                bgElement.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
-                const bgBlurElement = document.querySelector(".background-blur-whole")
-                bgBlurElement.style.backdropFilter = `blur(${blurAmount}px)`;
+            console.log('Background image path:', imageLink);
+            
+            if (imageLink && typeof imageLink === 'string' && imageLink.trim().length > 0) {
+                try {
+                    // Only invoke allow_dir if we have a valid path
+                    await invoke('allow_dir', { path: imageLink.trim() });
+                    
+                    bgElement.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
+                    const bgBlurElement = document.querySelector(".background-blur-whole");
+                    bgBlurElement.style.backdropFilter = `blur(${blurAmount}px)`;
+                } catch (invokeError) {
+                    console.error('Error allowing directory access:', invokeError);
+                    fallbackToDefaultBackground(bgElement);
+                }
             } else {
-                bgElement.style.backgroundColor = 'var(--background-color)';
+                fallbackToDefaultBackground(bgElement);
             }
         } catch (error) {
             console.error('Error loading background store:', error);
-            bgElement.style.backgroundColor = 'var(--background-color)';
+            fallbackToDefaultBackground(bgElement);
         }
-    })
-
+    });
+    
+    function fallbackToDefaultBackground(element) {
+        element.style.backgroundImage = '';
+        element.style.backgroundColor = 'var(--background-color)';
+    }
     onMount(async () => {
         try {
             const themesDir = await appDataDir();

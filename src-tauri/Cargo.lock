@@ -1738,9 +1738,9 @@ dependencies = [
 
 [[package]]
 name = "fitgirl-decrypt"
-version = "0.2.0"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "188f6fe3379f94c0229d23ab776453a6d25d2e448094fce66b2cc0a2c827de09"
+checksum = "ab7938539065115d3b668a8919382ce3c4da1be93c256f96bbd568b69e224419"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",

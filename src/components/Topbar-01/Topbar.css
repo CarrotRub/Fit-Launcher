@@ -19,7 +19,7 @@
     padding-top: 16px;
     padding-bottom: 12px;
     /* Border just on the bottom*/
-    box-shadow: 0 2px 0 0 var(--accent-color);
+    box-shadow: 0 1px 0 0 var(--accent-color);
 }
 
 #fitgirl-logo {

@@ -1,9 +1,10 @@
 {
   "name": "fit-launcher",
-  "version": "2.2.0",
+  "version": "2.3.0-1",
   "description": "",
   "type": "module",
   "scripts": {
+    "download-binaries": "powershell -ExecutionPolicy Bypass -File .\\src-tauri\\scripts\\download_build.ps1",
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
