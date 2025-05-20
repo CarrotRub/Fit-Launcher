@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::net::Ipv6Addr;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use tracing::error;
@@ -46,6 +47,11 @@ impl FitLauncherDnsConfig {
             secondary: Some("1.0.0.1".to_string()),
         }
     }
+}
+
+fn parse_ipv6_without_zone(s: &str) -> Option<Ipv6Addr> {
+    let no_zone = s.split('%').next()?;
+    no_zone.parse().ok()
 }
 
 fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
@@ -117,9 +123,14 @@ pub fn new_resolver_with_config(
         }
         Err(_) => {
             // Failed to parse as SocketAddr, assume it's an IP without a port (Probably an IpV4 that's custom because the struct doesn't allow custom ports for UDP)
-            let primary_ip: IpAddr = primary_str
-                .parse()
-                .expect("Invalid primary DNS address in dns.json");
+            let primary_ip: IpAddr = if let Some(ipv6) = parse_ipv6_without_zone(&primary_str) {
+                IpAddr::V6(ipv6)
+            } else {
+                primary_str
+                    .parse()
+                    .expect("Invalid primary DNS address in dns.json")
+            };
+
             SocketAddr::new(primary_ip, 53)
         }
     };
