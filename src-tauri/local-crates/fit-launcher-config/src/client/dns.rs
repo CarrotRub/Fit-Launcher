@@ -238,7 +238,7 @@ pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
 
     // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
     // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
-    let client_builder = ClientBuilder::new().pool_max_idle_per_host(0);
+    let client_builder = ClientBuilder::new();
 
     client_builder
         .build()
