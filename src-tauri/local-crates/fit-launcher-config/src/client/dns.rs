@@ -209,23 +209,36 @@ impl Resolve for HickoryResolverWithProtocol {
 }
 
 // Only ONE custom_dns_client, protocol decided by the DnsConfig file found in the
+// pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
+//     let dns_config = ensure_and_load_dns_config();
+
+//     // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
+//     // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
+//     let mut client_builder = ClientBuilder::new()
+//             .use_rustls_tls()
+//             .gzip(true)
+//             .brotli(true)
+//             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+//             .pool_max_idle_per_host(0);
+
+//     // Conditionally set the custom DNS resolver only if sys_conf is disabled
+//     if !dns_config.system_conf {
+//         client_builder =
+//             client_builder.dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)));
+//     }
+
+//     client_builder
+//         .build()
+//         .expect("Failed to build custom DNS reqwest client")
+// });
+
+//TODO: test for no client.
 pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
-    let dns_config = ensure_and_load_dns_config();
+    // let dns_config = ensure_and_load_dns_config();
 
     // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
     // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
-    let mut client_builder = ClientBuilder::new()
-            .use_rustls_tls()
-            .gzip(true)
-            .brotli(true)
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
-            .pool_max_idle_per_host(0);
-
-    // Conditionally set the custom DNS resolver only if sys_conf is disabled
-    if !dns_config.system_conf {
-        client_builder =
-            client_builder.dns_resolver(Arc::new(HickoryResolverWithProtocol::new(dns_config)));
-    }
+    let client_builder = ClientBuilder::new().pool_max_idle_per_host(0);
 
     client_builder
         .build()

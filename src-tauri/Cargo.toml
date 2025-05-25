@@ -152,6 +152,7 @@ fitgirl-decrypt = { version = "0.3.5", default-features = false, features = [
     "reqwest",
 ] }
 
+# TODO: Add Specta.
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
