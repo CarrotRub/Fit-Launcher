@@ -8,3 +8,5 @@
 
 # to place aria2c.exe during dev
 /aria2c.exe
+
+/downloads

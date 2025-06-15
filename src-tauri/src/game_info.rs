@@ -1,10 +1,11 @@
 use chrono::{DateTime, NaiveDate};
 use serde::Serialize;
+use specta::{specta, Type};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
-#[derive(Serialize)]
+#[derive(Serialize, Type)]
 pub struct ExecutableInfo {
     executable_path: PathBuf,
     executable_last_opened_date: NaiveDate,
@@ -26,7 +27,9 @@ fn dir_size(path: impl Into<PathBuf>) -> io::Result<u64> {
 
     dir_size(fs::read_dir(path.into())?)
 }
+
 #[tauri::command]
+#[specta]
 pub fn executable_info_discovery(
     path_to_exe: PathBuf,
     path_to_folder: PathBuf,

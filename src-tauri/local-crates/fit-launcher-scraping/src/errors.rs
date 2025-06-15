@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::fmt;
 
-#[derive(Debug, thiserror::Error, Serialize, Deserialize)]
+#[derive(Debug, thiserror::Error, Serialize, Deserialize, Type)]
 pub enum ScrapingError {
     #[error("Request Error: {0}")]
     #[serde(skip)]
@@ -25,7 +26,7 @@ pub enum ScrapingError {
     GlobalError(String),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Type)]
 pub struct SingularFetchError {
     message: String,
 }

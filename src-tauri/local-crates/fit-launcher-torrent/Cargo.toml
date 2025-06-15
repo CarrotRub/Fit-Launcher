@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tauri-plugin-shell = { workspace = true }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
+specta = { workspace = true }
 aria2-ws = { workspace = true }
 http = { workspace = true }
 reqwest = { workspace = true }

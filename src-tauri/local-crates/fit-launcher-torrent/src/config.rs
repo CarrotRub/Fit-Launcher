@@ -6,8 +6,9 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use specta::Type;
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigDht {
     pub disable: bool,
@@ -33,7 +34,7 @@ impl Default for FitLauncherConfigDht {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigTcpListen {
     pub disable: bool,
@@ -51,7 +52,7 @@ impl Default for FitLauncherConfigTcpListen {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigPersistence {
     pub disable: bool,
@@ -100,7 +101,7 @@ impl Default for FitLauncherConfigPersistence {
 }
 
 #[serde_as]
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigPeerOpts {
     #[serde_as(as = "serde_with::DurationSeconds")]
@@ -120,7 +121,7 @@ impl Default for FitLauncherConfigPeerOpts {
 }
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigHttpApi {
     pub disable: bool,
@@ -138,7 +139,7 @@ impl Default for FitLauncherConfigHttpApi {
     }
 }
 
-#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigUpnp {
     // rename for backwards compat
@@ -152,7 +153,7 @@ pub struct FitLauncherConfigUpnp {
     pub server_friendly_name: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfigAria2 {
     pub port: u32,
@@ -170,7 +171,7 @@ impl Default for FitLauncherConfigAria2 {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(default)]
 pub struct FitLauncherConfig {
     pub default_download_location: PathBuf,

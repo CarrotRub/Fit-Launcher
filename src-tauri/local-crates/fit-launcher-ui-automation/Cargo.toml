@@ -8,6 +8,7 @@ sysinfo = { workspace = true }
 tauri = { workspace = true }
 tracing = { workspace = true }
 fit-launcher-config = { workspace = true }
+specta = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 uiautomation = { workspace = true }

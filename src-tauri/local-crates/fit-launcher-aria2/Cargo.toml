@@ -10,5 +10,7 @@ fit-launcher-config = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 tauri = { workspace = true }
+specta = { workspace = true }
+tokio = { workspace = true }
 
 fit-launcher-ddl = { path = "../fit-launcher-ddl" }

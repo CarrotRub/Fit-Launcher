@@ -1,5 +1,6 @@
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use scraper::Selector;
+use specta::specta;
 use std::fs;
 use tauri::Manager;
 use tracing::info;
@@ -61,6 +62,7 @@ pub async fn get_sitemaps_website(
 }
 
 #[tauri::command]
+#[specta]
 pub async fn get_singular_game_info(
     app_handle: tauri::AppHandle,
     game_link: String,

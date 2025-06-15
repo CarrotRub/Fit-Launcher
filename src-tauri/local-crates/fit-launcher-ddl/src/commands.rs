@@ -4,24 +4,25 @@ use crate::{
 };
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::StreamExt;
+use specta::specta;
 use std::pin::Pin;
 use tracing::{error, warn};
 
+type HtmlDownloadFuture =
+    Pin<Box<dyn Send + std::future::Future<Output = Result<(String, String), reqwest::Error>>>>;
+
 #[tauri::command]
+#[specta]
 pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<DirectLink> {
     futures::stream::iter(fuckingfast_links)
         // download raw HTML
-        .map(
-            |link| -> Pin<
-                Box<dyn Send + std::future::Future<Output = Result<(String, String), _>>>,
-            > {
-                Box::pin(async move {
-                    let text = CUSTOM_DNS_CLIENT.get(&link).send().await?.text().await?;
-                    let filename = link.split_once('#').unwrap_or_default().1.to_string();
-                    Ok::<(String, String), reqwest::Error>((text, filename))
-                })
-            },
-        )
+        .map(|link| -> HtmlDownloadFuture {
+            Box::pin(async move {
+                let text = CUSTOM_DNS_CLIENT.get(&link).send().await?.text().await?;
+                let filename = link.split_once('#').unwrap_or_default().1.to_string();
+                Ok::<(String, String), reqwest::Error>((text, filename))
+            })
+        })
         // limit max concurrency to avoid `rate limit` error
         .buffer_unordered(2)
         // send to tokio thread pool
@@ -49,6 +50,7 @@ pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<Dire
 }
 
 #[tauri::command]
+#[specta]
 pub async fn get_datahoster_links(
     game_link: String,
     datahoster_name: String,

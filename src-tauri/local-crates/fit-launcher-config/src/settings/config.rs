@@ -1,5 +1,7 @@
 use directories::BaseDirs;
 use serde::Serialize;
+use specta::Type;
+use specta::specta;
 use std::fmt;
 use std::fs;
 use tracing::error;
@@ -10,7 +12,7 @@ use crate::client::dns::FitLauncherDnsConfig;
 use super::creation::GamehubSettings;
 use super::creation::InstallationSettings;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Type)]
 pub struct SettingsConfigurationError {
     message: String,
 }
@@ -48,6 +50,7 @@ impl From<serde_json::Error> for SettingsConfigurationError {
 }
 
 #[tauri::command]
+#[specta]
 pub fn get_installation_settings() -> InstallationSettings {
     let base_dirs = BaseDirs::new()
         .ok_or_else(|| error!("Failed to determine base directories"))
@@ -74,6 +77,7 @@ pub fn get_installation_settings() -> InstallationSettings {
 }
 
 #[tauri::command]
+#[specta]
 pub fn get_gamehub_settings() -> GamehubSettings {
     let base_dirs = BaseDirs::new()
         .ok_or_else(|| error!("Failed to determine base directories"))
@@ -100,6 +104,7 @@ pub fn get_gamehub_settings() -> GamehubSettings {
 }
 
 #[tauri::command]
+#[specta]
 pub fn get_dns_settings() -> FitLauncherDnsConfig {
     let base_dirs = BaseDirs::new()
         .ok_or_else(|| error!("Failed to determine base directories"))
@@ -126,6 +131,7 @@ pub fn get_dns_settings() -> FitLauncherDnsConfig {
 }
 
 #[tauri::command]
+#[specta]
 pub fn change_installation_settings(
     settings: InstallationSettings,
 ) -> Result<(), SettingsConfigurationError> {
@@ -149,6 +155,7 @@ pub fn change_installation_settings(
 }
 
 #[tauri::command]
+#[specta]
 pub fn change_gamehub_settings(
     settings: GamehubSettings,
 ) -> Result<(), SettingsConfigurationError> {
@@ -172,6 +179,7 @@ pub fn change_gamehub_settings(
 }
 
 #[tauri::command]
+#[specta]
 pub fn change_dns_settings(
     settings: FitLauncherDnsConfig,
 ) -> Result<(), SettingsConfigurationError> {
@@ -195,6 +203,7 @@ pub fn change_dns_settings(
 }
 
 #[tauri::command]
+#[specta]
 pub fn reset_installation_settings() -> Result<(), SettingsConfigurationError> {
     let base_dirs = BaseDirs::new().ok_or_else(|| SettingsConfigurationError {
         message: "Failed to determine base directories".to_string(),
@@ -216,6 +225,7 @@ pub fn reset_installation_settings() -> Result<(), SettingsConfigurationError> {
 }
 
 #[tauri::command]
+#[specta]
 pub fn reset_gamehub_settings() -> Result<(), SettingsConfigurationError> {
     let base_dirs = BaseDirs::new().ok_or_else(|| SettingsConfigurationError {
         message: "Failed to determine base directories".to_string(),
@@ -236,6 +246,7 @@ pub fn reset_gamehub_settings() -> Result<(), SettingsConfigurationError> {
 }
 
 #[tauri::command]
+#[specta]
 pub fn reset_dns_settings() -> Result<(), SettingsConfigurationError> {
     let base_dirs = BaseDirs::new().ok_or_else(|| SettingsConfigurationError {
         message: "Failed to determine base directories".to_string(),
@@ -256,6 +267,7 @@ pub fn reset_dns_settings() -> Result<(), SettingsConfigurationError> {
 }
 
 #[tauri::command]
+#[specta]
 pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
     let persistence_session_path = directories::BaseDirs::new()
         .expect("Could not determine base directories")
@@ -285,6 +297,7 @@ pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
 }
 
 #[tauri::command]
+#[specta]
 pub fn open_logs_directory() -> Result<(), String> {
     let path = directories::BaseDirs::new()
         .expect("Could not determine base directories")

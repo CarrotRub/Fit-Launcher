@@ -4,17 +4,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import "./Basic-PathInput-PopUp.css";
 import Button from "../../components/UI/Button/Button";
 
-const BasicPathInputPopup = ({
-    infoTitle,
-    infoMessage,
-    infoPlaceholder,
-    defaultPath,
-    fileType,
-    multipleFiles,
-    isDirectory,
-    infoFooter,
-    action,
-}) => {
+const BasicPathInputPopup = (props: PopupPathInputProps<[string]>) => {
     const [currentPath, setCurrentPath] = createSignal("");
     const [isOpen, setIsOpen] = createSignal(true);
 
@@ -23,10 +13,10 @@ const BasicPathInputPopup = ({
     const openFileDialog = async () => {
         try {
             const chosenPath = await open({
-                directory: isDirectory,
-                multiple: multipleFiles,
-                filters: [{ name: fileType[0], extensions: fileType }],
-                defaultPath,
+                directory: props.isDirectory,
+                multiple: props.multipleFiles,
+                filters: [{ name: props.fileType[0], extensions: props.fileType }],
+                defaultPath: props.defaultPath,
             });
             if (chosenPath) setCurrentPath(chosenPath);
         } catch (error) {
@@ -36,21 +26,21 @@ const BasicPathInputPopup = ({
 
     return (
         <PopupModal isOpen={isOpen()} onClose={closePopup}>
-            <div className="popup-content">
-                <div className="popup-text-title">
-                    <p className="popup-main-title">{infoTitle || "Fill the input :)"}</p>
+            <div class="popup-content">
+                <div class="popup-text-title">
+                    <p class="popup-main-title">{props.infoTitle || "Fill the input :)"}</p>
                 </div>
 
-                <div className="popup-text-container">
-                    <p innerHTML={infoMessage}></p>
+                <div class="popup-text-container">
+                    <p innerHTML={props.infoMessage}></p>
                 </div>
 
-                <div className="popup-path-input-container">
-                    <label className="popup-input-label">
+                <div class="popup-path-input-container">
+                    <label class="popup-input-label">
                         <input
-                            className="popup-path-input"
-                            placeholder={infoPlaceholder}
-                            style={{ fontSize: "14px" }}
+                            class="popup-path-input"
+                            placeholder={props.infoPlaceholder}
+                            style={{ "font-size": "14px" }}
                             value={currentPath()}
                             onInput={(e) => setCurrentPath(e.target.value)}
                         />
@@ -58,18 +48,18 @@ const BasicPathInputPopup = ({
                     </label>
                 </div>
 
-                <div className="popup-footer-container">
-                    {infoFooter ||
+                <div class="popup-footer-container">
+                    {props.infoFooter ||
                         "If you have any issues with this, try to close and open the app. If it still persists, please contact us on Discord or GitHub."}
                 </div>
 
-                <div className="popup-buttons">
+                <div class="popup-buttons">
                     <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
                     <Button
                         id="popup-confirm-button"
                         onClick={async () => {
-                            if (action && currentPath()) {
-                                await action(currentPath());
+                            if (props.action && currentPath()) {
+                                await props.action?.(currentPath());
                             }
                             closePopup();
                         }}

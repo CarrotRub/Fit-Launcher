@@ -16,18 +16,19 @@ use futures::future::join_all;
 use lru::LruCache;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use specta::{specta, Type};
 use tauri::{Manager, State, Window};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 
-#[derive(Clone, serde::Serialize)]
+#[derive(Clone, serde::Serialize, Type)]
 pub struct Payload {
     pub message: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 struct Game {
     title: String,
     img: String,
@@ -127,6 +128,7 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
 type ImageCache = Arc<Mutex<LruCache<String, Vec<String>>>>;
 
 #[tauri::command]
+#[specta]
 pub async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
 }
@@ -138,6 +140,7 @@ struct CachedGameImages {
 }
 
 #[tauri::command]
+#[specta]
 pub async fn get_games_images(
     app_handle: tauri::AppHandle,
     game_link: String,
@@ -218,7 +221,7 @@ pub struct FileContent {
     content: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Type)]
 pub struct CustomError {
     message: String,
 }
@@ -256,6 +259,7 @@ impl From<std::io::Error> for CustomError {
 }
 
 #[tauri::command]
+#[specta]
 pub async fn close_splashscreen(window: Window) {
     // Close splashscreen
     window

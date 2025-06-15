@@ -1,12 +1,3 @@
-use std::{
-    ffi::OsStr,
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter},
-    path::Path,
-    process::Command,
-    sync::Arc,
-};
-
 use anyhow::Context;
 use aria2_ws::Client;
 use http::StatusCode;
@@ -16,12 +7,28 @@ use librqbit::{
 };
 use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
+use std::{
+    ffi::OsStr,
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter},
+    path::Path,
+    process::Command,
+    sync::Arc,
+    time::Duration,
+};
 
-use tokio::sync::oneshot::{Receiver, Sender, channel};
+use tokio::{
+    sync::oneshot::{Receiver, Sender, channel},
+    time::sleep,
+};
 
+use tauri_plugin_shell::ShellExt;
 use tracing::{error, info, warn};
 
-use crate::config::{FitLauncherConfig, FitLauncherConfigAria2};
+use crate::{
+    config::{FitLauncherConfig, FitLauncherConfigAria2},
+    errors::TorrentApiError,
+};
 
 const ERR_NOT_CONFIGURED: ApiError =
     ApiError::new_from_text(StatusCode::FAILED_DEPENDENCY, "not configured");
@@ -73,45 +80,83 @@ pub async fn aria2_client_from_config(
         token,
         start_daemon,
     } = &config.aria2_rpc;
+
     let download_location = &config.default_download_location;
 
-    // avoid start daemon after spawned
     if *start_daemon && ARIA2_DAEMON.lock().is_none() {
-        // we must ship with a modified `aria2c.exe` on windows, with `SUBSYSTEM:WINDOWS`
-        // for native linux, they could install aria2 via package managers.
+        #[cfg(not(debug_assertions))]
         let mut child = Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
             .arg("--enable-rpc")
             .arg(format!("--rpc-listen-port={port}"))
+            .arg("--bt-load-saved-metadata=true")
             .arg("--max-connection-per-server=5")
             .arg("--save-session")
             .arg(session_path.as_ref())
             .current_dir(download_location)
             .spawn()?;
 
-        let client =
-            aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
-                .await?;
+        #[cfg(debug_assertions)]
+        let mut child = Command::new(if cfg!(windows) {
+            "../../binaries/aria2c-x86_64-pc-windows-msvc"
+        } else {
+            "aria2c"
+        })
+        .arg("--enable-rpc")
+        .arg(format!("--rpc-listen-port={port}"))
+        .arg("--bt-save-metadata=true")
+        .arg("--bt-load-saved-metadata=true")
+        .arg("--max-connection-per-server=5")
+        .arg("--save-session")
+        .arg(session_path.as_ref())
+        .current_dir(download_location)
+        .spawn()?;
+
+        let client = 'retry: {
+            let mut last_err = None;
+            for _ in 0..10 {
+                match aria2_ws::Client::connect(
+                    &format!("ws://127.0.0.1:{port}/jsonrpc"),
+                    token.as_deref(),
+                )
+                .await
+                {
+                    Ok(client) => break 'retry Ok(client),
+                    Err(e) => {
+                        last_err = Some(e);
+                        sleep(Duration::from_millis(300)).await;
+                    }
+                }
+            }
+            Err(anyhow::anyhow!(
+                "aria2c failed to start after retries: {:?}",
+                last_err
+            ))
+        }?;
+
         let (close_tx, close_rx) = channel();
         let (done_tx, done_rx) = channel();
+
+        let client_clone = client.clone();
         tokio::task::spawn(async move {
             match close_rx.await {
                 Ok(_) => {
-                    let _ = client.shutdown().await;
+                    let _ = client_clone.shutdown().await;
                     let _ = child.wait();
                     let _ = done_tx.send(());
                 }
                 Err(_) => {
-                    error!("close_tx closed unexceptedly, fail to close aria2 gracefully");
+                    error!("close_tx closed unexpectedly, fail to close aria2 gracefully");
                 }
             }
         });
+
         let _ = ARIA2_DAEMON.lock().replace((close_tx, done_rx));
+        return Ok(client);
     }
 
-    Ok(
-        aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
-            .await?,
-    )
+    aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+        .await
+        .context("Could not connect to already running aria2 RPC server")
 }
 
 pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
@@ -202,12 +247,18 @@ impl TorrentSession {
                     warn!(error=?e, "error reading configuration");
                 })
                 .ok();
-            let aria2_client = aria2_client_from_config(&config, aria2_session)
-                .await
-                .inspect_err(|e| {
-                    warn!(error=?e, "aria2 not avaliable: {e}");
-                })
-                .ok();
+
+            let aria2_client = match aria2_client_from_config(&config, aria2_session).await {
+                Ok(c) => {
+                    println!("Client Found");
+                    Some(c)
+                }
+                Err(e) => {
+                    error!("Failed to connect to aria2: {:#}", e);
+                    None
+                }
+            };
+
             let shared = Arc::new(RwLock::new(Some(StateShared {
                 config,
                 api,
@@ -248,7 +299,7 @@ impl TorrentSession {
             .context("aria2 rpc server not configured")
     }
 
-    pub async fn configure(&self, config: FitLauncherConfig) -> Result<(), ApiError> {
+    pub async fn configure(&self, config: FitLauncherConfig) -> Result<(), TorrentApiError> {
         {
             let g = self.shared.read();
             if let Some(shared) = g.as_ref() {
@@ -265,7 +316,9 @@ impl TorrentSession {
             api.session().stop().await;
         }
 
-        let api = api_from_config(&config).await?;
+        let api = api_from_config(&config)
+            .await
+            .map_err(|e| TorrentApiError::ApiConfigError(e.to_string()))?;
 
         let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
@@ -273,7 +326,11 @@ impl TorrentSession {
             .join("com.fitlauncher.carrotrub");
         let aria2_session = config_dir.join("aria2.session");
 
-        let aria2_client = aria2_client_from_config(&config, aria2_session).await.ok();
+        let aria2_client = Some(
+            aria2_client_from_config(&config, aria2_session)
+                .await
+                .map_err(|e| TorrentApiError::Aria2StartupError(e.to_string()))?,
+        );
 
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);

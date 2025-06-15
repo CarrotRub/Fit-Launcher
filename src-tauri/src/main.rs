@@ -14,6 +14,8 @@ use fit_launcher_scraping::global::functions::scraping_func;
 use fit_launcher_torrent::functions::TorrentSession;
 use fit_launcher_torrent::functions::ARIA2_DAEMON;
 use serde_json::Value;
+use specta::specta;
+use tauri_helper::specta_collect_commands;
 use std::error::Error;
 use tauri::async_runtime::spawn_blocking;
 use tauri::menu::Menu;
@@ -138,6 +140,7 @@ async fn perform_network_request(app_handle: tauri::AppHandle) {
 }
 
 #[tauri::command]
+#[specta]
 fn allow_dir(app: tauri::AppHandle, path: std::path::PathBuf) -> Result<(), String> {
     use tauri_plugin_fs::FsExt;
     use std::fs;
@@ -166,6 +169,9 @@ async fn start() {
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
         NonZeroUsize::new(30).unwrap(),
     )));
+
+    let builder: tauri_specta::Builder =
+    tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
 
     tauri::Builder
         ::default()
@@ -410,8 +416,8 @@ async fn start() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri_helper::tauri_collect_commands!())
-        .manage(image_cache) // Make the cache available to commands
-        .manage(TorrentSession::new().await) // Make the torrent state session available to commands
+        .manage(image_cache)
+        .manage(TorrentSession::new().await)
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

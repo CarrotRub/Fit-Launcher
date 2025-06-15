@@ -1,9 +1,10 @@
 use directories::BaseDirs;
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::{fs, io::Write};
 use tracing::error;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct InstallationSettings {
     pub auto_clean: bool,
     pub auto_install: bool,
@@ -24,7 +25,7 @@ impl Default for InstallationSettings {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct GamehubSettings {
     nsfw_censorship: bool,
     auto_get_colors_popular_games: bool,

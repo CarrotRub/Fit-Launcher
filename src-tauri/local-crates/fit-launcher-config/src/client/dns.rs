@@ -8,6 +8,7 @@ use reqwest::{
     dns::{Addrs, Name, Resolve, Resolving},
 };
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -16,7 +17,7 @@ use std::sync::Arc;
 use tracing::error;
 use tracing::info;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct FitLauncherDnsConfig {
     system_conf: bool,
     protocol: String,
