@@ -1,8 +1,7 @@
 use anyhow::Context;
 use aria2_ws::Client;
-use http::StatusCode;
 use librqbit::{
-    Api, ApiError, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig,
+    Api, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig,
     dht::PersistentDhtConfig,
 };
 use once_cell::sync::Lazy;
@@ -22,7 +21,6 @@ use tokio::{
     time::sleep,
 };
 
-use tauri_plugin_shell::ShellExt;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -30,15 +28,12 @@ use crate::{
     errors::TorrentApiError,
 };
 
-const ERR_NOT_CONFIGURED: ApiError =
-    ApiError::new_from_text(StatusCode::FAILED_DEPENDENCY, "not configured");
+type AriaDaemonType = Lazy<Mutex<Option<(Sender<()>, Receiver<()>)>>>;
 
-pub static ARIA2_DAEMON: Lazy<Mutex<Option<(Sender<()>, Receiver<()>)>>> =
-    Lazy::new(|| Mutex::new(None));
+pub static ARIA2_DAEMON: AriaDaemonType = Lazy::new(|| Mutex::new(None));
 
 struct StateShared {
     config: FitLauncherConfig,
-    api: Option<Api>,
     aria2_client: Option<Client>,
 }
 
@@ -88,7 +83,6 @@ pub async fn aria2_client_from_config(
         let mut child = Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
             .arg("--enable-rpc")
             .arg(format!("--rpc-listen-port={port}"))
-            .arg("--bt-load-saved-metadata=true")
             .arg("--max-connection-per-server=5")
             .arg("--save-session")
             .arg(session_path.as_ref())
@@ -103,8 +97,6 @@ pub async fn aria2_client_from_config(
         })
         .arg("--enable-rpc")
         .arg(format!("--rpc-listen-port={port}"))
-        .arg("--bt-save-metadata=true")
-        .arg("--bt-load-saved-metadata=true")
         .arg("--max-connection-per-server=5")
         .arg("--save-session")
         .arg(session_path.as_ref())
@@ -223,7 +215,6 @@ impl TorrentSession {
             .to_string();
 
         if !Path::new(&config_filename).exists() {
-            // If it doesn't exist, write the default config
             match write_config(&config_filename, &FitLauncherConfig::default()) {
                 Ok(_) => info!(
                     "Default config written successfully to: {}",
@@ -241,12 +232,6 @@ impl TorrentSession {
                 ),
                 Err(e) => error!("Error writing default config: {}", e),
             }
-            let api = api_from_config(&config)
-                .await
-                .inspect_err(|e| {
-                    warn!(error=?e, "error reading configuration");
-                })
-                .ok();
 
             let aria2_client = match aria2_client_from_config(&config, aria2_session).await {
                 Ok(c) => {
@@ -261,7 +246,6 @@ impl TorrentSession {
 
             let shared = Arc::new(RwLock::new(Some(StateShared {
                 config,
-                api,
                 aria2_client,
             })));
 
@@ -277,17 +261,6 @@ impl TorrentSession {
         }
     }
 
-    pub(crate) fn api(&self) -> Result<Api, ApiError> {
-        let g = self.shared.read();
-        if g.is_none() {
-            warn!("Shared state is uninitialized");
-        }
-        match g.as_ref().and_then(|s| s.api.as_ref()) {
-            Some(api) => Ok(api.clone()),
-            None => Err(ERR_NOT_CONFIGURED),
-        }
-    }
-
     pub fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
         let g = self.shared.read();
         if g.is_none() {
@@ -300,26 +273,6 @@ impl TorrentSession {
     }
 
     pub async fn configure(&self, config: FitLauncherConfig) -> Result<(), TorrentApiError> {
-        {
-            let g = self.shared.read();
-            if let Some(shared) = g.as_ref() {
-                if shared.api.is_some() && shared.config == config {
-                    // The config didn't change, and the API is running, nothing to do.
-                    return Ok(());
-                }
-            }
-        }
-
-        let existing = self.shared.write().as_mut().and_then(|s| s.api.take());
-
-        if let Some(api) = existing {
-            api.session().stop().await;
-        }
-
-        let api = api_from_config(&config)
-            .await
-            .map_err(|e| TorrentApiError::ApiConfigError(e.to_string()))?;
-
         let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
@@ -339,14 +292,12 @@ impl TorrentSession {
         let mut g = self.shared.write();
         *g = Some(StateShared {
             config,
-            api: Some(api),
             aria2_client,
         });
         Ok(())
     }
 
     pub async fn get_config(&self) -> FitLauncherConfig {
-        // Attempt to acquire the read lock
         let g = self.shared.read();
         if let Some(shared) = g.as_ref() {
             shared.config.clone()

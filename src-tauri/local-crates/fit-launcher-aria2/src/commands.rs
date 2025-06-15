@@ -39,7 +39,7 @@ pub async fn aria2_start_download(
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    aria2_add_uri(&aria2_client, url, dir, filename).await
+    aria2_add_uri(&aria2_client, url, dir, Some(filename)).await
 }
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
@@ -152,7 +152,13 @@ pub async fn aria2_task_spawn(
     let mut results = Vec::with_capacity(direct_links.len());
 
     for DirectLink { url, filename } in direct_links {
-        let result = aria2_add_uri(&aria2_client, url.clone(), dir.clone(), filename.clone()).await;
+        let result = aria2_add_uri(
+            &aria2_client,
+            url.clone(),
+            dir.clone(),
+            Some(filename.clone()),
+        )
+        .await;
 
         match result {
             Ok(gid) => results.push(AriaTaskResult {

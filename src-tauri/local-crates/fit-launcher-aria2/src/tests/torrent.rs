@@ -10,9 +10,8 @@ async fn add_torrent() -> Result<(), Box<dyn std::error::Error>> {
 
     let magnet = "magnet:?xt=urn:btih:a492f8b92a25b0399c87715fc228c864ac5a7bfb&dn=archlinux-2025.06.01-x86_64.iso";
     let dir = Some("./downloads".to_string());
-    let filename = "arch_test.iso";
 
-    aria2_add_uri(&client, magnet.to_string(), dir, filename.to_string()).await?;
+    aria2_add_uri(&client, magnet.to_string(), dir, None).await?;
 
     Ok(())
 }
@@ -24,15 +23,8 @@ async fn download_torrent() -> Result<(), Box<dyn std::error::Error>> {
 
     let magnet = "magnet:?xt=urn:btih:a492f8b92a25b0399c87715fc228c864ac5a7bfb&dn=archlinux-2025.06.01-x86_64.iso";
     let dir = Some("./downloads".to_string());
-    let filename = "arch_test.iso";
 
-    let gid = aria2_add_uri(
-        &client,
-        magnet.to_string(),
-        dir.clone(),
-        filename.to_string(),
-    )
-    .await?;
+    let gid = aria2_add_uri(&client, magnet.to_string(), dir.clone(), None).await?;
     println!("Started download with GID: {}", gid);
 
     let start_time = std::time::Instant::now();

@@ -1698,6 +1698,8 @@ dependencies = [
  "fit-launcher-config",
  "futures",
  "kuchiki",
+ "once_cell",
+ "rand 0.9.1",
  "regex",
  "reqwest",
  "scraper",

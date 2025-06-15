@@ -3,7 +3,7 @@ name = "fit-launcher"
 version = "0.0.1"
 description = "FitLauncher"
 authors = ["CarrotRub"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

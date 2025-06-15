@@ -11,10 +11,9 @@ use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
 
-use crate::errors::SingularFetchError;
+use crate::errors::ScrapingError;
+use crate::global::functions::download_sitemap;
 use crate::structs::SingularGame;
-
-use super::functions::download_sitemap;
 
 #[tokio::main]
 pub async fn get_sitemaps_website(
@@ -66,7 +65,7 @@ pub async fn get_sitemaps_website(
 pub async fn get_singular_game_info(
     app_handle: tauri::AppHandle,
     game_link: String,
-) -> Result<(), SingularFetchError> {
+) -> Result<(), ScrapingError> {
     let start_time = Instant::now();
 
     let mut searched_game: Vec<SingularGame> = Vec::new();

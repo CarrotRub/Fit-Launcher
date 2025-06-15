@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct SingularGame {
     pub title: String,
     pub img: String,
@@ -10,7 +11,7 @@ pub struct SingularGame {
     pub tag: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct Game {
     pub title: String,
     pub img: String,
@@ -20,7 +21,7 @@ pub struct Game {
     pub tag: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Type)]
 pub struct GamePage {
     pub game_title: String,
     pub game_main_image: String,
@@ -30,9 +31,4 @@ pub struct GamePage {
     pub game_secondary_images: Vec<String>,
     pub game_tags: String,
     pub game_href: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct GameImages {
-    my_all_images: Vec<String>,
 }

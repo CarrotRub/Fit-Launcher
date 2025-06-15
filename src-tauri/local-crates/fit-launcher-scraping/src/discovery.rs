@@ -1,274 +1,229 @@
-use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-//TODO: Add a checker to not get all the games everytime, needs to be out before the update
-use futures::{StreamExt, future::join_all, stream};
-use scraper::{Html, Selector, selectable::Selectable};
-use tauri::async_runtime::spawn_blocking;
-use tokio::{fs, task};
-
 use crate::{errors::ScrapingError, structs::GamePage};
+use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
+use futures::{StreamExt, stream};
+use once_cell::sync::Lazy;
+use rand::{prelude::*, rng, thread_rng};
+// TODO: Add check cuz everytime is too much
 
-/// Helper function.
-async fn check_url_status(url: &str) -> anyhow::Result<bool> {
-    let response = CUSTOM_DNS_CLIENT.head(url).send().await?;
-    Ok(response.status().is_success())
+use scraper::{Html, Selector};
+use serde_with::chrono::{self, DateTime, Utc};
+use tokio::fs;
+
+const TARGET: usize = 100; // keep exactly this many
+const BATCH: usize = 10; // add/drop this many per cycle
+const REFRESH_DAYS: i64 = 2; // age threshold
+
+// selectors cached once
+macro_rules! sel {
+    ($s:literal) => {
+        &*Lazy::new(|| Selector::parse($s).unwrap())
+    };
 }
 
-fn parse_image_links(body: &str, start: usize) -> anyhow::Result<Vec<String>> {
-    let document = Html::parse_document(body);
-    let mut images = Vec::new();
-
-    for p_index in start..=5 {
-        let selector = Selector::parse(&format!(
-            ".entry-content > p:nth-of-type({}) img[src]",
-            p_index
-        ))
-        .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
-
-        for element in document.select(&selector) {
-            if let Some(src) = element.value().attr("src") {
-                images.push(src.to_string());
-            }
-
-            if images.len() >= 5 {
-                return Ok(images); // Stop once we collect 5 images
-            }
-        }
-    }
-
-    Ok(images)
-}
-
-async fn process_image_link(src_link: String) -> anyhow::Result<String> {
-    if src_link.contains("jpg.240p.") {
-        let primary_image = src_link.replace("240p", "1080p");
-        if check_url_status(&primary_image).await.unwrap_or(false) {
-            return Ok(primary_image);
-        }
-
-        let fallback_image = primary_image.replace("jpg.1080p.", "");
-        if check_url_status(&fallback_image).await.unwrap_or(false) {
-            return Ok(fallback_image);
-        }
-    }
-
-    Err(anyhow::anyhow!("No valid image found for {}", src_link))
-}
-
-async fn fetch_image_links(initial_images: Vec<String>) -> anyhow::Result<Vec<String>> {
-    // Spawn tasks for each image processing
-    let tasks: Vec<_> = initial_images
-        .into_iter()
-        .map(|img_link| {
-            task::spawn(async move {
-                match process_image_link(img_link).await {
-                    Ok(img) => Some(img),
-                    Err(_) => None,
-                }
-            })
-        })
-        .collect();
-
-    let results = join_all(tasks).await;
-
-    // Collect successful, non-None results
-    let mut processed = Vec::new();
-    results.into_iter().for_each(|res| {
-        if let Ok(Some(img)) = res {
-            processed.push(img);
-        }
-    });
-
-    Ok(processed)
-}
-
-async fn parse_and_process_page(body: String) -> Vec<GamePage> {
-    let document = Html::parse_document(&body);
-
-    let article_selector = Selector::parse("article").unwrap();
-    let entry_title_selector = Selector::parse(".entry-title a").unwrap();
-    let image_selector = Selector::parse(".entry-content .alignleft").unwrap();
-    let desc_selector = Selector::parse("div.entry-content").unwrap();
-    let magnet_selector = Selector::parse("a[href*='magnet']").unwrap();
-    let torrent_paste_selector = Selector::parse("a[href*='.torrent file only']").unwrap();
-    let tag_selector = Selector::parse(".entry-content p strong:first-of-type").unwrap();
-    let hreflink_selector = Selector::parse(".entry-title > a").unwrap();
-
-    let articles: Vec<_> = spawn_blocking(move || {
-        document
-            .select(&article_selector)
-            .filter_map(|article_elem| {
-                let entry_title_sel_value = entry_title_selector.clone();
-                let entry_image_sel_value = image_selector.clone();
-                let entry_desc_sel_value = desc_selector.clone();
-                let entry_magnetlink_sel_value = magnet_selector.clone();
-                let entry_torrentpaste_sel_value = torrent_paste_selector.clone();
-                let entry_tag_sel_value = tag_selector.clone();
-                let entry_href_sel_value = hreflink_selector.clone();
-                let title = article_elem
-                    .select(&entry_title_sel_value)
-                    .next()
-                    .and_then(|e| e.text().next())
-                    .unwrap_or("")
-                    .to_string();
-
-                let img = article_elem
-                    .select(&entry_image_sel_value)
-                    .next()
-                    .and_then(|e| e.value().attr("src"))
-                    .unwrap_or("")
-                    .to_string();
-
-                let desc_elem = article_elem.select(&entry_desc_sel_value).next();
-                let desc = desc_elem
-                    .as_ref()
-                    .map(|e| e.text().collect::<String>())
-                    .unwrap_or_default();
-
-                let magnet_link = desc_elem
-                    .as_ref()
-                    .and_then(|e| e.select(&entry_magnetlink_sel_value).next())
-                    .and_then(|e| e.value().attr("href"))
-                    .unwrap_or("")
-                    .to_string();
-
-                let torrent_paste_link = desc_elem
-                    .as_ref()
-                    .and_then(|e| e.select(&entry_torrentpaste_sel_value).next())
-                    .and_then(|e| e.value().attr("href"))
-                    .unwrap_or("")
-                    .to_string();
-
-                let tag = article_elem
-                    .select(&entry_tag_sel_value)
-                    .next()
-                    .and_then(|e| e.text().next())
-                    .unwrap_or("Unknown")
-                    .to_string();
-
-                let href = article_elem
-                    .select(&entry_href_sel_value)
-                    .next()
-                    .and_then(|e| e.value().attr("href"))
-                    .unwrap_or("")
-                    .to_string();
-                let initial_images = parse_image_links(&article_elem.html(), 3).unwrap_or_default();
-
-                if img.contains("imageban") {
-                    Some(GamePage {
-                        game_title: title,
-                        game_main_image: img,
-                        game_description: desc,
-                        game_magnetlink: magnet_link,
-                        game_torrent_paste_link: torrent_paste_link,
-                        game_secondary_images: initial_images,
-                        game_href: href,
-                        game_tags: tag,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
-    })
-    .await
-    .unwrap();
-
-    let results: Vec<GamePage> = stream::iter(articles)
-        .map(
-            |GamePage {
-                 game_title,
-                 game_main_image,
-                 game_description,
-                 game_magnetlink,
-                 game_torrent_paste_link,
-                 game_secondary_images: initial_images,
-                 game_tags,
-                 game_href,
-             }| async move {
-                GamePage {
-                    game_title,
-                    game_main_image,
-                    game_description,
-                    game_magnetlink,
-                    game_torrent_paste_link,
-                    game_secondary_images: fetch_image_links(initial_images)
-                        .await
-                        .unwrap_or_default(),
-                    game_tags,
-                    game_href,
-                }
-            },
-        )
-        .buffer_unordered(5)
-        .collect()
-        .await;
-
-    results
-}
-
-#[tokio::main]
-pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
-    let mut list_games_pages: Vec<GamePage> = Vec::new();
-
-    // Collect results
-    let results: Vec<Result<Vec<GamePage>, String>> = stream::iter(1..=10)
-        .map(|page_number| async move {
-            let url = format!(
-                "https://fitgirl-repacks.site/category/lossless-repack/page/{}",
-                page_number
-            );
-
-            match CUSTOM_DNS_CLIENT.get(&url).send().await {
-                Ok(res) if res.status().is_success() => match res.text().await {
-                    Ok(text) => Ok(parse_and_process_page(text).await),
-                    Err(_) => Err(format!("Failed to parse text for page {}", page_number)),
-                },
-                Ok(res) => Err(format!(
-                    "Page {} returned unsuccessful status: {}",
-                    page_number,
-                    res.status()
-                )),
-                Err(err) => Err(format!("Failed to fetch page {}: {:?}", page_number, err)),
-            }
-        })
-        .buffer_unordered(5)
-        .collect()
-        .await;
-
-    // Process each result
-    for result in results {
-        match result {
-            Ok(parsed_pages) => {
-                list_games_pages.extend(parsed_pages);
-            }
-            Err(err_msg) => {
-                eprintln!("{}", err_msg);
-            }
-        }
-    }
-
-    println!("Processed {} game pages.", list_games_pages.len());
-
-    // Asynchronous directory creation and file writing
-    let discovery_file_path = directories::BaseDirs::new()
-        .expect("Could not determine base directories")
-        .config_dir()
-        .join("com.fitlauncher.carrotrub")
-        .join("tempGames")
-        .join("discovery")
-        .join("games_list.json");
-
-    if let Some(parent_dir) = discovery_file_path.parent() {
-        fs::create_dir_all(parent_dir)
-            .await
-            .expect("Failed to create directories for discovery file path");
-    }
-
-    let json_data = serde_json::to_string_pretty(&list_games_pages)
-        .expect("Failed to serialize game pages to JSON");
-    fs::write(discovery_file_path, json_data)
+async fn head_ok(url: &str) -> bool {
+    CUSTOM_DNS_CLIENT
+        .head(url)
+        .send()
         .await
-        .expect("Failed to write discovery file");
+        .map(|r| r.status().is_success())
+        .unwrap_or(false)
+}
 
+async fn fix_img(src: &str) -> String {
+    if !src.contains("jpg.240p.") {
+        return src.into();
+    }
+    let hi = src.replace("240p", "1080p");
+    if head_ok(&hi).await {
+        return hi;
+    }
+    let mid = hi.replace("jpg.1080p.", "");
+    if head_ok(&mid).await {
+        return mid;
+    }
+    src.into()
+}
+
+fn parse_article(a: scraper::element_ref::ElementRef) -> Option<GamePage> {
+    let img = a
+        .select(sel!(".entry-content .alignleft"))
+        .next()?
+        .value()
+        .attr("src")?;
+    if !img.contains("imageban") {
+        return None;
+    }
+
+    let title = a.select(sel!(".entry-title a")).next()?.text().collect();
+    let desc_el = a.select(sel!("div.entry-content")).next()?;
+
+    let magnet = desc_el
+        .select(sel!("a[href*='magnet']"))
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .unwrap_or("")
+        .to_string();
+    let tor_paste = desc_el
+        .select(sel!("a[href*='.torrent file only']"))
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .unwrap_or("")
+        .to_string();
+    let tag = a
+        .select(sel!(".entry-content p strong:first-of-type"))
+        .next()
+        .map(|e| e.text().collect())
+        .unwrap_or_else(|| "Unknown".into());
+    let href = a
+        .select(sel!(".entry-title > a"))
+        .next()?
+        .value()
+        .attr("href")?
+        .to_string();
+
+    let mut secondary = Vec::new();
+    for p in 3..=5 {
+        let sel =
+            Selector::parse(&format!(".entry-content > p:nth-of-type({}) img[src]", p)).unwrap();
+        for img_el in a.select(&sel) {
+            if let Some(s) = img_el.value().attr("src") {
+                secondary.push(s.to_string());
+                if secondary.len() == 5 {
+                    break;
+                }
+            }
+        }
+    }
+
+    Some(GamePage {
+        game_title: title,
+        game_main_image: img.into(),
+        game_description: desc_el.text().collect(),
+        game_magnetlink: magnet,
+        game_torrent_paste_link: tor_paste,
+        game_secondary_images: secondary,
+        game_href: href,
+        game_tags: tag,
+    })
+}
+
+async fn fetch_page(n: u32) -> Result<Vec<GamePage>, ScrapingError> {
+    let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{n}");
+    let body = CUSTOM_DNS_CLIENT
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?
+        .text()
+        .await
+        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
+
+    let doc = Html::parse_document(&body);
+    let mut games = Vec::new();
+    for art in doc.select(sel!("article")) {
+        if let Some(pg) = parse_article(art) {
+            games.push(pg);
+        }
+    }
+    Ok(games)
+}
+
+fn discovery_dir() -> std::path::PathBuf {
+    directories::BaseDirs::new()
+        .unwrap()
+        .config_dir()
+        .join("com.fitlauncher.carrotrub/tempGames/discovery")
+}
+fn json_path() -> std::path::PathBuf {
+    discovery_dir().join("games_list.json")
+}
+fn meta_path() -> std::path::PathBuf {
+    discovery_dir().join("games_meta.json")
+}
+
+async fn read_meta_ts() -> Option<DateTime<Utc>> {
+    let bytes = fs::read(meta_path()).await.ok()?;
+    serde_json::from_slice::<String>(&bytes)
+        .ok()
+        .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+}
+async fn write_meta_ts() {
+    let _ = fs::write(
+        meta_path(),
+        serde_json::to_vec(&Utc::now().to_rfc3339()).unwrap(),
+    )
+    .await;
+}
+
+pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
+    fs::create_dir_all(discovery_dir()).await.ok();
+
+    let mut queue: Vec<GamePage> = if let Ok(bytes) = fs::read(json_path()).await {
+        serde_json::from_slice(&bytes).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    let too_old = match read_meta_ts().await {
+        Some(ts) => Utc::now() - ts > chrono::Duration::days(REFRESH_DAYS),
+        None => true,
+    };
+
+    if queue.len() >= TARGET && !too_old {
+        queue.shuffle(&mut rng());
+        fs::write(json_path(), serde_json::to_vec_pretty(&queue).unwrap())
+            .await
+            .unwrap();
+        println!("cache fresh (<{REFRESH_DAYS} days) – shuffled only");
+        return Ok(());
+    }
+
+    use std::collections::HashSet;
+    let mut have: HashSet<String> = queue.iter().map(|g| g.game_title.clone()).collect();
+
+    let mut page = 1;
+    while queue.len() < TARGET && page <= 10 {
+        let mut fresh = Vec::<GamePage>::new();
+
+        while fresh.len() < BATCH && page <= 10 {
+            let mut page_games = fetch_page(page).await?;
+            for g in page_games.drain(..) {
+                if have.insert(g.game_title.clone()) {
+                    fresh.push(g);
+                    if fresh.len() == BATCH {
+                        break;
+                    }
+                }
+            }
+            page += 1;
+        }
+
+        if fresh.is_empty() {
+            break;
+        }
+
+        for g in &mut fresh {
+            g.game_secondary_images = stream::iter(g.game_secondary_images.clone())
+                .map(|s| async move { fix_img(&s).await })
+                .buffer_unordered(5)
+                .collect::<Vec<_>>()
+                .await;
+        }
+
+        queue.splice(0..0, fresh);
+        if queue.len() > TARGET {
+            queue.truncate(TARGET)
+        }
+        queue.shuffle(&mut rng());
+
+        fs::write(json_path(), serde_json::to_vec_pretty(&queue).unwrap())
+            .await
+            .unwrap();
+        println!("wrote batch, queue size now {}", queue.len());
+    }
+
+    write_meta_ts().await;
+    println!("queue ready with {} games", queue.len());
     Ok(())
 }

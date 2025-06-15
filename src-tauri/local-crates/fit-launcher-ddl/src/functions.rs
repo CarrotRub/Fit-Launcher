@@ -10,7 +10,7 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
         .map_err(|e| {
             eprintln!("Failed to get response from URL: {}", &url);
             eprintln!("Error is: {}", e);
-            ScrapingError::ReqwestError(e)
+            ScrapingError::ReqwestError(e.to_string())
         })
         .expect("Error getting response from URL, please check the logs.");
 
@@ -30,7 +30,7 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
         .await
         .map_err(|e| {
             eprintln!("Failed to get a body from URL: {}", &url);
-            ScrapingError::ReqwestError(e)
+            ScrapingError::ReqwestError(e.to_string())
         })
         .unwrap();
 
