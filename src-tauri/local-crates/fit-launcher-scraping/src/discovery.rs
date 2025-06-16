@@ -1,4 +1,4 @@
-use crate::{errors::ScrapingError, structs::GamePage};
+use crate::{errors::ScrapingError, structs::DiscoveryGame};
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream};
 use once_cell::sync::Lazy;
@@ -44,7 +44,7 @@ async fn fix_img(src: &str) -> String {
     src.into()
 }
 
-fn parse_article(a: scraper::element_ref::ElementRef) -> Option<GamePage> {
+fn parse_article(a: scraper::element_ref::ElementRef) -> Option<DiscoveryGame> {
     let img = a
         .select(sel!(".entry-content .alignleft"))
         .next()?
@@ -95,7 +95,7 @@ fn parse_article(a: scraper::element_ref::ElementRef) -> Option<GamePage> {
         }
     }
 
-    Some(GamePage {
+    Some(DiscoveryGame {
         game_title: title,
         game_main_image: img.into(),
         game_description: desc_el.text().collect(),
@@ -107,7 +107,7 @@ fn parse_article(a: scraper::element_ref::ElementRef) -> Option<GamePage> {
     })
 }
 
-async fn fetch_page(n: u32) -> Result<Vec<GamePage>, ScrapingError> {
+async fn fetch_page(n: u32) -> Result<Vec<DiscoveryGame>, ScrapingError> {
     let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{n}");
     let body = CUSTOM_DNS_CLIENT
         .get(&url)
@@ -159,7 +159,7 @@ async fn write_meta_ts() {
 pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
     fs::create_dir_all(discovery_dir()).await.ok();
 
-    let mut queue: Vec<GamePage> = if let Ok(bytes) = fs::read(json_path()).await {
+    let mut queue: Vec<DiscoveryGame> = if let Ok(bytes) = fs::read(json_path()).await {
         serde_json::from_slice(&bytes).unwrap_or_default()
     } else {
         Vec::new()
@@ -184,7 +184,7 @@ pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
 
     let mut page = 1;
     while queue.len() < TARGET && page <= 10 {
-        let mut fresh = Vec::<GamePage>::new();
+        let mut fresh = Vec::<DiscoveryGame>::new();
 
         while fresh.len() < BATCH && page <= 10 {
             let mut page_games = fetch_page(page).await?;

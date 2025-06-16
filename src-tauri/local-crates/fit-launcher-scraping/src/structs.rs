@@ -22,7 +22,7 @@ pub struct Game {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Type)]
-pub struct GamePage {
+pub struct DiscoveryGame {
     pub game_title: String,
     pub game_main_image: String,
     pub game_description: String,

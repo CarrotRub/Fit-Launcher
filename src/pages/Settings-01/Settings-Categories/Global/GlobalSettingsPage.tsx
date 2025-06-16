@@ -1,6 +1,5 @@
 import { createSignal, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";
-import "./GlobalSettingsPage.css";
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 import CacheSettings from "./CacheSettings/CacheSettings";
@@ -13,17 +12,16 @@ import type {
   GamehubSettings,
   InstallationSettings
 } from "../../../../bindings";
-import { GlobalSettings, GlobalSettingsPart, SettingsPart } from "../../../../types/settings/types";
-
+import { GlobalSettings, GlobalSettingsPart } from "../../../../types/settings/types";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
   const selectedPart = () =>
     (props.settingsPart.replace("global-", "") || "display") as
-      | "display"
-      | "dns"
-      | "install"
-      | "cache";
+    | "display"
+    | "dns"
+    | "install"
+    | "cache";
 
   async function getCurrentSettings() {
     try {
@@ -121,7 +119,6 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
           break;
       }
 
-      // Re-fetch settings (optional: replace with better reactivity if needed)
       window.location.reload();
     } catch (error: unknown) {
       await message("Error resetting settings: " + String(error), {
@@ -133,7 +130,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
   return (
     <Show when={globalSettings()} fallback={<p>Loading...</p>}>
-      <div class="torrenting-page">
+      <div class="flex flex-col gap-6 h-full p-3 justify-between">
         {{
           display: (
             <DisplayPart
@@ -157,12 +154,18 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
           cache: <CacheSettings />,
         }[selectedPart()] || <p>Invalid or unsupported settings part.</p>}
 
-        <div class="global-settings-buttons-container">
-          <button class="reset-settings-button" onClick={handleResetSettings}>
-            <span>Reset To Default</span>
+        <div class="flex flex-row self-end gap-3 mr-[10%]">
+          <button
+            class="w-[8vw] min-w-fit h-[4vw] flex items-center justify-center bg-[var(--secondary-30-selected-color)] rounded-md mb-6 hover:scale-95 active:bg-[var(--primary-color)] transition"
+            onClick={handleResetSettings}
+          >
+            <span class="text-[16px] text-[var(--accent-color)]">Reset To Default</span>
           </button>
-          <button class="save-settings-button" onClick={handleOnSave}>
-            <span>Save</span>
+          <button
+            class="w-[8vw] min-w-fit h-[4vw] flex items-center justify-center bg-[var(--secondary-30-selected-color)] rounded-md mb-6 hover:scale-95 active:bg-[var(--primary-color)] transition"
+            onClick={handleOnSave}
+          >
+            <span class="text-[16px] text-[var(--accent-color)]">Save</span>
           </button>
         </div>
       </div>

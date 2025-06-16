@@ -1,3 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: rgba(187, 114, 160, 1);
+  --color-primary: rgba(194, 158, 209, 1);
+  --color-secondary: rgba(110, 53, 103, 1);
+  --color-secondary-30: rgba(110, 53, 103, 0.3);
+  --color-secondary-20: rgba(110, 53, 103, 0.2);
+  --color-text: rgba(236, 224, 240, 1);
+  --color-muted: rgba(236, 224, 240, 0.5);
+  --color-background: rgba(11, 7, 14, 1);
+  --color-background-70: rgba(11, 7, 14, 0.7);
+  --color-background-30: rgba(11, 7, 14, 0.3);
+  --color-popup-background: rgba(15, 9, 18, 1);
+  --color-resume-accent: rgba(100, 163, 168, 1);
+  --color-warning-orange: rgba(230, 93, 0, 1);
+}
+
+/* ------------- YOUR “default-dark-purple” PALETTE ------------- */
+@layer base {
+  :root[data-theme="default-dark-purple"] {
+    --color-accent: rgba(187, 114, 160, 1);
+    --color-primary: rgba(194, 158, 209, 1);
+    --color-secondary: rgba(110, 53, 103, 1);
+    --color-secondary-30: rgba(110, 53, 103, 0.3);
+    --color-secondary-20: rgba(110, 53, 103, 0.2);
+    --color-text: rgba(236, 224, 240, 1);
+    --color-muted: rgba(236, 224, 240, 0.5);
+    --color-background: rgba(11, 7, 14, 1);
+    --color-background-70: rgba(11, 7, 14, 0.7);
+    --color-background-30: rgba(11, 7, 14, 0.3);
+    --color-popup-background: rgba(15, 9, 18, 1);
+    --color-resume-accent: rgba(100, 163, 168, 1);
+    --color-warning-orange: rgba(230, 93, 0, 1);
+  }
+
+  :root[data-theme="forest-dark-green"] {
+    --color-accent: rgba(34, 102, 58, 1);
+    --color-primary: rgba(46, 139, 87, 1);
+    --color-secondary: rgba(20, 70, 40, 1);
+    --color-secondary-30: rgba(20, 70, 40, 0.3);
+    --color-secondary-20: rgba(20, 70, 40, 0.2);
+    --color-text: rgba(230, 240, 230, 1);
+    --color-muted: rgba(200, 220, 200, 0.5);
+    --color-background: rgba(14, 13, 13, 1);
+    --color-background-70: rgba(14, 13, 13, 0.7);
+    --color-background-30: rgba(14, 13, 13, 0.3);
+    --color-popup-background: rgba(5, 15, 9, 1);
+    --color-resume-accent: rgba(76, 154, 102, 1);
+    --color-warning-orange: rgba(200, 100, 50, 1);
+  }
+
+  :root[data-theme="ocean-dark-blue"] {
+    --color-accent: rgba(34, 58, 102, 1);
+    --color-primary: rgba(46, 87, 139, 1);
+    --color-secondary: rgba(20, 40, 70, 1);
+    --color-secondary-30: rgba(20, 40, 70, 0.3);
+    --color-secondary-20: rgba(20, 40, 70, 0.2);
+    --color-text: rgba(230, 240, 250, 1);
+    --color-muted: rgba(200, 210, 230, 0.5);
+    --color-background: rgba(13, 14, 30, 1);
+    --color-background-70: rgba(13, 14, 30, 0.7);
+    --color-background-30: rgba(13, 14, 30, 0.3);
+    --color-popup-background: rgba(9, 15, 25, 1);
+    --color-resume-accent: rgba(76, 102, 201, 1);
+    --color-warning-orange: rgba(200, 100, 50, 1);
+  }
+
+  :root[data-theme="desert-light-beige"] {
+    --color-accent: rgba(127, 111, 90, 1);
+    --color-primary: rgba(240, 220, 180, 1);
+    --color-secondary: rgba(190, 160, 120, 1);
+    --color-secondary-30: rgba(190, 160, 120, 0.3);
+    --color-secondary-20: rgba(190, 160, 120, 0.2);
+    --color-text: rgba(60, 40, 20, 1);
+    --color-muted: rgba(36, 29, 23, 0.5);
+    --color-background: rgba(245, 245, 220, 1);
+    --color-background-70: rgba(245, 245, 220, 0.7);
+    --color-background-30: rgba(245, 245, 220, 0.3);
+    --color-popup-background: rgba(230, 220, 200, 1);
+    --color-resume-accent: rgba(210, 180, 140, 1);
+    --color-warning-orange: rgba(200, 100, 50, 1);
+  }
+
+  :root[data-theme="dark-orange-mead"] {
+    --color-accent: rgba(180, 85, 20, 1);
+    --color-primary: rgba(200, 100, 30, 1);
+    --color-secondary: rgba(140, 65, 15, 1);
+    --color-secondary-30: rgba(140, 65, 15, 0.3);
+    --color-secondary-20: rgba(140, 65, 15, 0.2);
+    --color-text: rgba(240, 220, 200, 1);
+    --color-muted: rgba(220, 200, 180, 0.5);
+    --color-background: rgba(16, 10, 6, 1);
+    --color-background-70: rgba(25, 15, 10, 0.7);
+    --color-background-30: rgba(25, 15, 10, 0.3);
+    --color-popup-background: rgba(20, 10, 5, 1);
+    --color-resume-accent: rgba(200, 100, 50, 1);
+    --color-warning-orange: rgba(163, 66, 22, 1);
+  }
+
+  :root[data-theme="le-beau-cyan"] {
+    --color-accent: rgba(0, 128, 128, 1);
+    --color-primary: rgba(64, 224, 208, 1);
+    --color-secondary: rgba(0, 102, 102, 1);
+    --color-secondary-30: rgba(0, 102, 102, 0.3);
+    --color-secondary-20: rgba(0, 102, 102, 0.2);
+    --color-text: rgba(240, 255, 255, 1);
+    --color-muted: rgba(200, 240, 240, 0.5);
+    --color-background: rgba(10, 20, 25, 1);
+    --color-background-70: rgba(10, 20, 25, 0.7);
+    --color-background-30: rgba(10, 20, 25, 0.3);
+    --color-popup-background: rgba(5, 15, 20, 1);
+    --color-resume-accent: rgba(0, 204, 204, 1);
+    --color-warning-orange: rgba(255, 127, 80, 1);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+}
+
 .background-style {
   position: absolute;
   top: 0px;

@@ -19,6 +19,7 @@
     "@solid-primitives/storage": "^4.2.1",
     "@solid-primitives/workers": "^0.3.0",
     "@solidjs/router": "^0.14.1",
+    "@tailwindcss/vite": "^4.1.10",
     "@tanstack/solid-virtual": "^3.0.4",
     "@tauri-apps/api": "2.1.1",
     "@tauri-apps/plugin-process": "^2.2.0",
@@ -33,10 +34,14 @@
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.10",
     "@tauri-apps/cli": "^2.1.0",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "@tauri-apps/plugin-fs": "2.0.3",
     "@types/node": "^24.0.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^4.1.10",
     "typescript": "^5.8.3",
     "vite": "^5.4.2",
     "vite-plugin-solid": "^2.8.0",

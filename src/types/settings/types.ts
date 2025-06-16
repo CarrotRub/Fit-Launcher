@@ -51,3 +51,7 @@ export type SettingsContextType = {
   activeGroup: Accessor<SettingsGroup>;
   setActiveGroup: Setter<SettingsGroup>;
 };
+
+export type SettingsTypes =
+  | GlobalSettings[keyof GlobalSettings]
+  | TorrentSettings[keyof TorrentSettings];

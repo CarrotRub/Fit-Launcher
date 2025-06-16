@@ -41,6 +41,9 @@ pub enum ScrapingError {
 
     #[error("Timeout Error: {0}")]
     TimeoutError(String),
+
+    #[error("I/O Error: {0}")]
+    IOError(String),
 }
 
 impl From<reqwest::Error> for ScrapingError {
@@ -54,12 +57,8 @@ impl From<serde_json::Error> for ScrapingError {
         ScrapingError::FileJSONError(error.to_string())
     }
 }
-
 impl From<std::io::Error> for ScrapingError {
     fn from(error: std::io::Error) -> Self {
-        ScrapingError::CreatingFileError(CreatingFileErrorStruct {
-            source: error.to_string(),
-            fn_name: "unknown".into(),
-        })
+        ScrapingError::IOError(error.to_string())
     }
 }
