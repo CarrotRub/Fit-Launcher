@@ -167,6 +167,17 @@ async fn start() {
     let builder: tauri_specta::Builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
 
+    #[cfg(debug_assertions)]
+    {
+        use specta_typescript::Typescript;
+
+        builder
+            .export(
+                Typescript::default().bigint(specta_typescript::BigIntExportBehavior::Number),
+                "../src/bindings.ts",
+            )
+            .expect("should work");
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -234,7 +245,9 @@ async fn start() {
                         info!("exiting aria2 gracefully...");
                         if let Some((close_tx, done_rx)) = ARIA2_DAEMON.lock().take() {
                             let _ = close_tx.send(());
-                            let _ = std::thread::spawn(move || done_rx.blocking_recv()).join();
+                            std::thread::spawn(move || {
+                                let _ = done_rx.blocking_recv(); // wait in background
+                            });
                         }
                         std::process::exit(0);
                     }

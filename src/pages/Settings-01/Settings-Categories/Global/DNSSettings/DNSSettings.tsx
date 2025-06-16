@@ -2,8 +2,14 @@ import { Show } from "solid-js"
 import '../GlobalSettingsPage.css'
 import { confirm } from "@tauri-apps/plugin-dialog";
 import { exit } from "@tauri-apps/plugin-process";
+import { FitLauncherDnsConfig } from "../../../../../bindings";
+import { SettingsSectionProps } from "../../../../../types/settings/types";
 
-export default function DNSPart({ settings, handleTextCheckChange, handleSwitchCheckChange }) {
+export default function DNSPart({
+  settings,
+  handleTextCheckChange,
+  handleSwitchCheckChange,
+}: SettingsSectionProps<FitLauncherDnsConfig>){
     async function warnDNSSystemConf() {
         const confirm_sys = await confirm("Please remember that you will have to save first and then restart FitLauncher for the changes to be made.\n Do you want to restart now or later ?  (if you do not restart now, you will have to quit the app from taskbar too).\n Keep in mind that if it makes the app slow down revert to the default settings. ",{title:'FitLauncher', kind: 'warning'})
         if( confirm_sys ) {
@@ -12,34 +18,34 @@ export default function DNSPart({ settings, handleTextCheckChange, handleSwitchC
     }
 
     return (
-        <Show when={settings} placeholder={<p>Loading</p>} >
-            <div className="global-page-group" id="global-display">
-                <p className="global-page-group-title">DNS Settings</p>
-                <ul className="global-page-group-list">
+        <Show when={settings} fallback={<p>Loading</p>} >
+            <div class="global-page-group" id="global-display">
+                <p class="global-page-group-title">DNS Settings</p>
+                <ul class="global-page-group-list">
                     <li>
                         <span>Use your system's default DNS Settings :</span>
-                        <label className="switch">
+                        <label class="switch">
                             <input
                                 type="checkbox"
                                 checked={settings.system_conf}
                                 onChange={async () => {
-                                    handleSwitchCheckChange("dns.system_conf")
+                                    handleSwitchCheckChange?.("dns.system_conf")
                                     await warnDNSSystemConf();
                                 }}
                             />
-                            <span className="switch-slider round"></span>
+                            <span class="switch-slider round"></span>
                         </label>
                     </li>
 
                     <li>
                         <span>Primary DNS Address <small><i>(IpV4)</i></small>: </span>
-                        <div className="settings-path-container">
+                        <div class="settings-path-container">
                             <input
                                 type="text"
-                                className="settings-path-input"
-                                value={settings.primary}
+                                class="settings-path-input"
+                                value={settings.primary || "1.1.1.1"}
                                 onInput={(e) =>
-                                    handleTextCheckChange(`dns.primary`, e.target.value)
+                                    handleTextCheckChange?.(`dns.primary`, e.target.value)
                                 }
                                 disabled={settings.system_conf}
                             />
@@ -47,13 +53,13 @@ export default function DNSPart({ settings, handleTextCheckChange, handleSwitchC
                     </li>
                     <li>
                         <span>Secondary DNS Address <small><i>(IpV4)</i></small>: </span>
-                        <div className="settings-path-container">
+                        <div class="settings-path-container">
                             <input
                                 type="text"
-                                className="settings-path-input"
-                                value={settings.secondary}
+                                class="settings-path-input"
+                                value={settings.secondary || "1.1.1.1"}
                                 onInput={(e) =>
-                                    handleTextCheckChange(`dns.secondary`, e.target.value)
+                                    handleTextCheckChange?.(`dns.secondary`, e.target.value)
                                 }
                                 disabled={settings.system_conf}
                             />

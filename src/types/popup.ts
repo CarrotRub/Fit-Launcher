@@ -12,3 +12,7 @@ interface PopupPathInputProps<T extends any[] = any[]> extends PopupProps<T> {
   multipleFiles: boolean;
   isDirectory: boolean;
 }
+
+interface AddToCollectionProps<T extends any[] = any[]> extends PopupProps<T> {
+  collectionsList: string[];
+}

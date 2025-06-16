@@ -2,10 +2,10 @@ import { createEffect, onMount, createSignal, onCleanup } from "solid-js";
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen, emit } from '@tauri-apps/api/event';
 import {  A, useLocation } from "@solidjs/router";
-import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../functions/dataStoreGlobal";
 import './Topbar.css'
 import { invoke } from "@tauri-apps/api/core";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
+import { globalTorrentsInfo } from "../functions/dataStoreGlobal";
 const appWindow = getCurrentWebviewWindow()
 
 function Topbar() {
