@@ -158,7 +158,7 @@ function HorizontalImagesCarousel({
 
     return (
         <Show when={imagesList().length > 0}>
-            <div class="relative w-4/5 xl:w-3/5 mx-auto py-4 px-8 flex flex-col items-center justify-center mt-8 border border-accent rounded-md transition-transform will-change-transform">
+            <div class="relative w-[70%]  mx-auto py-4 px-8 flex flex-col items-center justify-center mt-8 border border-accent rounded-md transition-transform will-change-transform">
                 <label class="absolute top-0 right-0 cursor-pointer select-none z-10">
                     <input
                         type="checkbox"

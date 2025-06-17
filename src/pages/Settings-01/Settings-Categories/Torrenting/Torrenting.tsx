@@ -4,10 +4,15 @@ import {
   Show,
   type JSX
 } from "solid-js";
-import "./Torrenting.css";
+
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
-import { TorrentSettings, TorrentSettingsPart } from "../../../../types/settings/types";
+import { SettingsSectionProps, TorrentSettings, TorrentSettingsPart } from "../../../../types/settings/types";
+import DHTPart from "./DHTPart/DHTPart";
+import Button from "../../../../components/UI/Button/Button";
+import TCPPart from "./TCPPart/TCPPart";
+import PersistencePart from "./PersistencePart/PersistencePart";
+import PeerOptsPart from "./PeerOptsPart/PeerOptsPart";
 
 
 function TorrentingPage(props: { settingsPart: TorrentSettingsPart }): JSX.Element {
@@ -76,202 +81,42 @@ function TorrentingPage(props: { settingsPart: TorrentSettingsPart }): JSX.Eleme
 
   return (
     <Show when={globalTorrentConfig()} fallback={<p>Loading...</p>}>
-      <div class="torrenting-page">
+      <div class="flex flex-col gap-6 h-full w-auto p-3 justify-between">
         {{
           dht: (
             <DHTPart
-              config={globalTorrentConfig()!}
-              handleCheckChange={handleSwitchCheckChange}
+              settings={() => globalTorrentConfig()?.dht!}
+              handleSwitchCheckChange={handleSwitchCheckChange}
             />
           ),
           tcp: (
             <TCPPart
-              config={globalTorrentConfig()!}
+              settings={() => globalTorrentConfig()?.tcp_listen!}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           persistence: (
             <PersistencePart
-              config={globalTorrentConfig()!}
+              settings={() => globalTorrentConfig()?.persistence!}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           "peer-opts": (
-            <PeerOptsParts
-              config={globalTorrentConfig()!}
+            <PeerOptsPart
+              settings={() => globalTorrentConfig()?.peer_opts!}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
           )
         }[selectedPart()] ?? <p>Invalid or Unsupported Part</p>}
-        <button class="save-settings-button" onClick={handleOnSave}>
-          <span>Save</span>
-        </button>
+
+        <div class="flex flex-row self-end gap-3 ">
+          <Button onClick={handleOnSave} label="Save" variant="solid" />
+        </div>
       </div>
     </Show>
-  );
-}
-
-
-// ============================= COMPONENTS ============================= //
-
-type SectionProps = {
-  config: TorrentSettings;
-  handleCheckChange?: (path: string) => void;
-  handleSwitchCheckChange?: (path: string) => void;
-  handleTextCheckChange?: (path: string, val: string | number) => void;
-};
-
-function DHTPart({ config, handleCheckChange }: SectionProps): JSX.Element {
-  return (
-    <div class="torrenting-page-group" id="torrenting-dht">
-      <p class="torrenting-page-group-title">DHT</p>
-      <ul class="torrenting-page-group-list">
-        <li>
-          <span>Disable DHT:</span>
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={config.dht.disable}
-              onChange={() => handleCheckChange?.("dht.disable")}
-            />
-            <span class="switch-slider round" />
-          </label>
-        </li>
-        <li>
-          <span>Disable DHT Persistence:</span>
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={config.dht.disable_persistence}
-              onChange={() => handleCheckChange?.("dht.disable_persistence")}
-            />
-            <span class="switch-slider round" />
-          </label>
-        </li>
-        <li>
-          <span>DHT Persistence File Path:</span>
-          <div class="settings-path-container">
-            <span class="settings-path-text">{config.dht.persistence_filename}</span>
-          </div>
-        </li>
-      </ul>
-    </div>
-  );
-}
-
-function TCPPart({ config, handleSwitchCheckChange, handleTextCheckChange }: SectionProps): JSX.Element {
-  return (
-    <div class="torrenting-page-group">
-      <p class="torrenting-page-group-title">TCP</p>
-      <ul class="torrenting-page-group-list">
-        <li>
-          <span>Disable TCP:</span>
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={config.tcp_listen.disable}
-              onChange={() => handleSwitchCheckChange?.("tcp_listen.disable")}
-            />
-            <span class="switch-slider round" />
-          </label>
-        </li>
-        <li>
-          <span>TCP Minimum Port:</span>
-          <div class="settings-path-container">
-            <input
-              type="number"
-              class="settings-path-input"
-              value={config.tcp_listen.min_port}
-              onInput={(e) => handleTextCheckChange?.("tcp_listen.min_port", Number(e.currentTarget.value))}
-            />
-          </div>
-        </li>
-        <li>
-          <span>TCP Maximum Port:</span>
-          <div class="settings-path-container">
-            <input
-              type="number"
-              class="settings-path-input"
-              value={config.tcp_listen.max_port}
-              onInput={(e) => handleTextCheckChange?.("tcp_listen.max_port", Number(e.currentTarget.value))}
-            />
-          </div>
-        </li>
-      </ul>
-    </div>
-  );
-}
-
-function PersistencePart({ config, handleSwitchCheckChange }: SectionProps): JSX.Element {
-  return (
-    <div class="torrenting-page-group">
-      <p class="torrenting-page-group-title">Persistence</p>
-      <ul class="torrenting-page-group-list">
-        <li>
-          <span>Disable Session Persistence:</span>
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={config.persistence.disable}
-              onChange={() => handleSwitchCheckChange?.("persistence.disable")}
-            />
-            <span class="switch-slider round" />
-          </label>
-        </li>
-        <li>
-          <span>Enable FastResume:</span>
-          <label class="switch">
-            <input
-              type="checkbox"
-              checked={config.persistence.fastresume}
-              onChange={() => handleSwitchCheckChange?.("persistence.fastresume")}
-            />
-            <span class="switch-slider round" />
-          </label>
-        </li>
-        <li>
-          <span>Session Persistence Path:</span>
-          <div class="settings-path-container">
-            <span class="settings-path-text">{config.persistence.folder}</span>
-          </div>
-        </li>
-      </ul>
-    </div>
-  );
-}
-
-function PeerOptsParts({ config, handleTextCheckChange }: SectionProps): JSX.Element {
-  return (
-    <div class="torrenting-page-group">
-      <p class="torrenting-page-group-title">Peers Options</p>
-      <ul class="torrenting-page-group-list">
-        <li>
-          <span>Connect Timeout:</span>
-          <div class="settings-path-container">
-            <input
-              type="number"
-              class="settings-path-input"
-              value={config.peer_opts.connect_timeout.secs}
-              onInput={(e) => handleTextCheckChange?.("peer_opts.connect_timeout", Number(e.currentTarget.value))}
-            />
-          </div>
-        </li>
-        <li>
-          <span>Read/Write Timeout:</span>
-          <div class="settings-path-container">
-            <input
-              type="number"
-              class="settings-path-input"
-              value={config.peer_opts.read_write_timeout.secs}
-              onInput={(e) => handleTextCheckChange?.("peer_opts.read_write_timeout", Number(e.currentTarget.value))}
-            />
-          </div>
-        </li>
-      </ul>
-    </div>
   );
 }
 

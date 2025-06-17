@@ -8,9 +8,28 @@ import { load } from "@tauri-apps/plugin-store";
 import { defaultThemes } from "../../../../../types/theme";
 import type { GamehubSettings } from "../../../../../bindings";
 import { SettingsSectionProps } from "../../../../../types/settings/types";
+import LoadingPage from "../../../../LoadingPage-01/LoadingPage";
+import PageGroup from "../../Components/PageGroup";
+import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
+import LabelDropdownSettings from "../../Components/UI/LabelDropdown/LabelDropdown";
+import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
+import LabelRangeSettings from "../../Components/UI/LabelRange/LabelRange";
 
 
 export default function DisplayPart({
+  settings,
+  handleSwitchCheckChange
+}: SettingsSectionProps<GamehubSettings>) {
+  return (
+    <Show when={settings} fallback={<LoadingPage />}>
+      <PageGroup title="Display Settings">
+        <DisplayPartContent settings={settings} handleSwitchCheckChange={handleSwitchCheckChange} />
+      </PageGroup>
+    </Show>
+  )
+}
+
+function DisplayPartContent({
   settings,
   handleSwitchCheckChange
 }: SettingsSectionProps<GamehubSettings>) {
@@ -61,7 +80,7 @@ export default function DisplayPart({
       });
     }
   });
-
+  //TODO: Add this to theme ts api
   async function applyTheme(themeName: string) {
     const themeKey = themeName.replace(/\s+/g, "-").toLowerCase();
     const isDefault = defaultThemes
@@ -215,74 +234,47 @@ export default function DisplayPart({
   });
 
   return (
-    <Show when={settings} fallback={<p>Loading...</p>}>
-      <div class="global-page-group" id="global-display">
-        <p class="global-page-group-title">App Settings</p>
-        <ul class="global-page-group-list">
-          <li>
-            <span>Hide NSFW Content:</span>
-            <label class="switch">
-              <input
-                type="checkbox"
-                checked={settings.nsfw_censorship}
-                onChange={() => handleSwitchCheckChange?.("display.nsfw_censorship")}
-              />
-              <span class="switch-slider round" />
-            </label>
-          </li>
-          <li>
-            <span>Automatically Get Colors <small><i>(Popular Games)</i></small>:</span>
-            <label class="switch">
-              <input
-                type="checkbox"
-                checked={settings.auto_get_colors_popular_games}
-                onChange={() => handleSwitchCheckChange?.("display.auto_get_colors_popular_games")}
-              />
-              <span class="switch-slider round" />
-            </label>
-          </li>
-          <li>
-            <span>Change Themes <small><i>(Coming soon...)</i></small>:</span>
-            <Select
-              class="theme-dropdown"
-              options={[...defaultThemes, ...newThemes()]}
-              placeholder={currentTheme()}
-              onChange={async (selected) => {
-                const themeKey = selected.replace(/\s+/g, "-").toLowerCase();
-                await applyTheme(themeKey);
-                setCurrentTheme(selected);
-              }}
-            />
-            <button class="plus-button-settings" onClick={handleAddTheme}>
-              <span>+</span>
-            </button>
-          </li>
-          <li>
-            <span>Add Background Image:</span>
-            <button class="go-to-logs-settings-button" onClick={handleAddBackgroundImage}>
-              <span>Set Background Image</span>
-            </button>
-            <button class="plus-button-settings" disabled={!bgApplied()} onClick={handleRemoveBackground}>
-              <span>-</span>
-            </button>
-          </li>
-          <li>
-            <span>Change Background Blur:</span>
-            <div class="slidecontainer">
-              <input
-                type="range"
-                min="0"
-                max="50"
-                value={blurAmount()}
-                class="slider"
-                id="myRange"
-                onInput={(e) => setBlurAmount(parseInt((e.target as HTMLInputElement).value))}
-              />
-              <span>{blurAmount()} pixels</span>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </Show>
+    <>
+      <LabelCheckboxSettings
+        text="Hide NSFW Content"
+        typeText="Hides any NSFW content everywhere except in downloaded games"
+        action={() => handleSwitchCheckChange?.("display.nsfw_censorship")}
+        checked={settings().nsfw_censorship} />
+      <LabelCheckboxSettings
+        text="Automatically Get Colors"
+        typeText="Gets the color of the games in Popular Games, can slow down the process."
+        action={() => handleSwitchCheckChange?.("display.auto_get_colors_popular_games")}
+        checked={settings().auto_get_colors_popular_games} />
+      <LabelDropdownSettings
+        text="Change Themes"
+        typeText="Change themes as you want, you can even add your own !"
+        list={[...defaultThemes, ...newThemes()]}
+        activeItem={currentTheme()}
+        onListChange={async (selected) => {
+          const themeKey = selected.replace(/\s+/g, "-").toLowerCase();
+          await applyTheme(themeKey);
+          setCurrentTheme(selected);
+        }}
+        placeholder={currentTheme()}
+        action={handleAddTheme}
+        variants="bordered"
+      />
+      <LabelButtonSettings
+        text="Add Background Image"
+        typeText="Disabled for now, too unpredictable"
+        action={handleAddBackgroundImage}
+        buttonLabel="+"
+        disabled={true}
+      />
+      <LabelRangeSettings
+        text="Change Background Blur"
+        typeText="Only work when an image is chosen"
+        min={0}
+        max={50}
+        value={blurAmount()}
+        onInput={(e) => setBlurAmount(e.valueOf())}
+        disabled={true}
+      />
+    </>
   );
 }

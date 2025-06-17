@@ -14,8 +14,9 @@ export type SettingsHandlers = {
   handleSwitchCheckChange?: (key: string) => void | Promise<void>;
   handleTextCheckChange?: (...args: any[]) => void | Promise<void>;
 };
+
 export type SettingsSectionProps<T> = SettingsHandlers & {
-  settings: T;
+  settings: Accessor<T>;
 };
 
 export type GlobalSettings = {

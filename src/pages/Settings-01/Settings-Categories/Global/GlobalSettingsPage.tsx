@@ -138,27 +138,27 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
         {{
           display: (
             <DisplayPart
-              settings={globalSettings()!.display}
+              settings={() => globalSettings()!.display}
               handleSwitchCheckChange={handleSwitchCheckChange}
             />
           ),
           dns: (
             <DNSPart
-              settings={globalSettings()!.dns}
+              settings={() => globalSettings()!.dns}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           install: (
             <InstallSettingsPart
-              settings={globalSettings()!.installation_settings}
+              settings={() => globalSettings()!.installation_settings}
               handleSwitchCheckChange={handleSwitchCheckChange}
             />
           ),
           cache: <CacheSettings />,
         }[selectedPart()] || <p>Invalid or unsupported settings part.</p>}
 
-        <div class="flex flex-row self-end gap-3 mr-[10%]">
+        <div class="flex flex-row self-end gap-3 ">
           <Button onClick={handleResetSettings} label="Reset To Default" variant="bordered" />
           <Button onClick={handleOnSave} label="Save" variant="solid" />
         </div>

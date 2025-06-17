@@ -7,7 +7,7 @@ import { SettingsSectionProps } from "../../../../../types/settings/types";
 import PageGroup from "../../Components/PageGroup";
 import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
 import LoadingPage from "../../../../LoadingPage-01/LoadingPage";
-import LabelInputAddress from "../../Components/UI/InputAddress/InputAddress";
+import LabelInputAddress from "../../Components/UI/LabelInputAddress/LabelInputAddress";
 
 export default function DNSPart({
     settings,
@@ -49,21 +49,21 @@ function DNSContent({
         <>
             <LabelCheckboxSettings
                 text="Use your system's default DNS Settings:"
-                checked={settings.system_conf}
+                checked={settings().system_conf}
                 action={async () => {
                     handleSwitchCheckChange?.("dns.system_conf");
                     await warnDNSSystemConf();
                 }}
             />
 
-            <LabelInputAddress text="Primary DNS Address" typeText="IpV4" value={settings.primary || "1.1.1.1"}
+            <LabelInputAddress text="Primary DNS Address" typeText="IpV4" value={settings()?.primary || "1.1.1.1"}
                 action={(e) => handleTextCheckChange?.("dns.primary", e.target.value)}
-                disabled={settings.system_conf} />
+                disabled={settings().system_conf} />
 
 
-            <LabelInputAddress text="Secondary DNS Address" typeText="IpV4" value={settings.secondary || "1.0.0.1"}
+            <LabelInputAddress text="Secondary DNS Address" typeText="IpV4" value={settings().secondary || "1.0.0.1"}
                 action={(e) => handleTextCheckChange?.("dns.secondary", e.target.value)}
-                disabled={settings.system_conf} />
+                disabled={settings().system_conf} />
 
 
         </>

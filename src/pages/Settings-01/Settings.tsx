@@ -88,7 +88,7 @@ function SettingsSidebar(): JSX.Element {
         <p class="text-sm text-muted mt-1">Configure your application preferences</p>
       </div>
 
-      <div class="flex flex-col gap-1 px-2 py-4">
+      <div class="flex flex-col gap-1 pr-2 py-4">
         <div class="mb-4">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Global</h2>
           <ul class="space-y-1">
@@ -120,7 +120,7 @@ function SidebarLink(props: { id: string; label: string; icon: (props: any) => J
       <a
         id={props.id}
         onClick={props.onClick}
-        class="settings-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-muted transition-colors duration-200 hover:bg-secondary-20 border-l-2 border-l-transparent"
+        class="settings-link flex items-center gap-3 px-4 py-2.5 rounded-r-sm text-muted transition-colors duration-200 hover:bg-secondary-20 border-l-2 border-l-transparent"
       >
         <Icon size={18} class="opacity-80" />
         <span class="text-sm font-medium">{props.label}</span>

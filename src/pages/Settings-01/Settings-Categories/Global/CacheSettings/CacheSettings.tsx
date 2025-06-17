@@ -127,6 +127,13 @@ function CacheContent() {
 
   return (
     <>
+      <LabelButtonSettings text="Check for Updates"
+        typeText="This might take some time so please be patient !"
+        action={handleCheckUpdate}
+        buttonLabel="Check!"
+        disabled={updateClicked()}
+      />
+
       <LabelButtonSettings text="Clear All Cache Files"
         typeText="This will remove image cache and all torrent-related cache, DHT, and session data"
         action={handleClearCache}
@@ -139,13 +146,6 @@ function CacheContent() {
         action={handleGoToLogs}
         buttonLabel="Go!"
         disabled={false}
-      />
-
-      <LabelButtonSettings text="Check for Updates"
-        typeText="This might take some time so please be patient !"
-        action={handleCheckUpdate}
-        buttonLabel="Check!"
-        disabled={updateClicked()}
       />
     </>
   )

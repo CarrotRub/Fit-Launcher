@@ -1,15 +1,5 @@
 import { JSX } from "solid-js";
-
-interface ButtonProps {
-  id?: string;
-  class?: string;
-  onClick: (e: MouseEvent) => void | Promise<void>;
-  label: string | JSX.Element;
-  disabled?: boolean;
-  variant?: "glass" | "solid" | "bordered";
-  size?: "sm" | "md" | "lg";
-  icon?: JSX.Element;
-}
+import { ButtonProps } from "../../../types/components/types";
 
 const Button = (props: ButtonProps) => {
   return (
@@ -32,8 +22,8 @@ const Button = (props: ButtonProps) => {
           : props.variant === "bordered"
             ? "bg-transparent hover:bg-secondary-20/40 border-accent/60 text-text hover:border-accent"
             : `bg-accent/90 hover:bg-accent 
-               border-accent/80 
-               text-background`
+               border-primary/80 
+               text-text`
         }
         ${props.class}
       `}
