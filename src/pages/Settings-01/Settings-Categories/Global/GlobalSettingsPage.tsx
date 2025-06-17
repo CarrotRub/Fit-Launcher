@@ -13,6 +13,9 @@ import type {
   InstallationSettings
 } from "../../../../bindings";
 import { GlobalSettings, GlobalSettingsPart } from "../../../../types/settings/types";
+import { GlobalSettingsApi } from "../../../../api/settings/api";
+import LoadingPage from "../../../LoadingPage-01/LoadingPage";
+import Button from "../../../../components/UI/Button/Button";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
@@ -25,9 +28,10 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
   async function getCurrentSettings() {
     try {
-      const dns = await invoke<FitLauncherDnsConfig>("get_dns_settings");
-      const installation_settings = await invoke<InstallationSettings>("get_installation_settings");
-      const display = await invoke<GamehubSettings>("get_gamehub_settings");
+      let glob_settings_inst = new GlobalSettingsApi();
+      const dns = await glob_settings_inst.getDnsSettings();
+      const installation_settings = await glob_settings_inst.getInstallationSettings();
+      const display = await glob_settings_inst.getGamehubSettings();
 
       setGlobalSettings({ dns, installation_settings, display });
     } catch (error: unknown) {
@@ -129,8 +133,8 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
   }
 
   return (
-    <Show when={globalSettings()} fallback={<p>Loading...</p>}>
-      <div class="flex flex-col gap-6 h-full p-3 justify-between">
+    <Show when={globalSettings()} fallback={<LoadingPage />}>
+      <div class="flex flex-col gap-6 h-full w-auto p-3 justify-between">
         {{
           display: (
             <DisplayPart
@@ -155,18 +159,8 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
         }[selectedPart()] || <p>Invalid or unsupported settings part.</p>}
 
         <div class="flex flex-row self-end gap-3 mr-[10%]">
-          <button
-            class="w-[8vw] min-w-fit h-[4vw] flex items-center justify-center bg-[var(--secondary-30-selected-color)] rounded-md mb-6 hover:scale-95 active:bg-[var(--primary-color)] transition"
-            onClick={handleResetSettings}
-          >
-            <span class="text-[16px] text-[var(--accent-color)]">Reset To Default</span>
-          </button>
-          <button
-            class="w-[8vw] min-w-fit h-[4vw] flex items-center justify-center bg-[var(--secondary-30-selected-color)] rounded-md mb-6 hover:scale-95 active:bg-[var(--primary-color)] transition"
-            onClick={handleOnSave}
-          >
-            <span class="text-[16px] text-[var(--accent-color)]">Save</span>
-          </button>
+          <Button onClick={handleResetSettings} label="Reset To Default" variant="bordered" />
+          <Button onClick={handleOnSave} label="Save" variant="solid" />
         </div>
       </div>
     </Show>

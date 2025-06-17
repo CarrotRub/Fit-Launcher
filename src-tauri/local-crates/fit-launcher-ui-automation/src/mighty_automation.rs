@@ -90,13 +90,12 @@ mod checklist_automation {
 
 #[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
-    use fit_launcher_config::settings::config::get_installation_settings;
+    use crate::mighty::windows_controls_processes;
+    use fit_launcher_config::commands::get_installation_settings;
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::{thread, time};
     use tracing::{error, info};
-
-    use crate::mighty::windows_controls_processes;
 
     #[allow(dead_code)]
     #[deprecated(note = "please use `start_executable_components_args` instead")]

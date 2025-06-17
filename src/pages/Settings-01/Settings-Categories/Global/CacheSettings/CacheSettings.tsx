@@ -1,12 +1,23 @@
 import { createSignal } from "solid-js";
 import type { JSX } from "solid-js";
-import "../GlobalSettingsPage.css";
 import { invoke } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
+import PageGroup from "../../Components/PageGroup";
+import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
 
-function CacheSettings(): JSX.Element {
+export default function CacheSettings(): JSX.Element {
+
+
+  return (
+    <PageGroup title="Cache & Logs Settings">
+      <CacheContent />
+    </PageGroup>
+  );
+}
+
+function CacheContent() {
   const [updateClicked, setUpdateClicked] = createSignal<boolean>(false);
 
   async function handleClearCache() {
@@ -115,46 +126,27 @@ function CacheSettings(): JSX.Element {
   }
 
   return (
-    <div class="global-page-group" id="global-display">
-      <p class="global-page-group-title">Cache & Logs Settings</p>
-      <ul class="global-page-group-list">
-        <li>
-          <span>
-            Clear All Cache Files{" "}
-            <small>
-              <i>
-                (This will remove image cache and all torrent-related cache, DHT, and session data.)
-              </i>
-            </small>
-            :
-          </span>
-          <button class="clear-cache-settings-button" onClick={handleClearCache}>
-            <span>Clear</span>
-          </button>
-        </li>
-        <li>
-          <span>
-            Go To Logs{" "}
-            <small>
-              <i>
-                (Please do not share this with anyone except FitLauncher's moderation team!)
-              </i>
-            </small>
-            :
-          </span>
-          <button class="go-to-logs-settings-button" onClick={handleGoToLogs}>
-            <span>Go!</span>
-          </button>
-        </li>
-        <li>
-          <span>Check for Updates:</span>
-          <button class="go-to-logs-settings-button" onClick={handleCheckUpdate}>
-            <span>Check!</span>
-          </button>
-        </li>
-      </ul>
-    </div>
-  );
-}
+    <>
+      <LabelButtonSettings text="Clear All Cache Files"
+        typeText="This will remove image cache and all torrent-related cache, DHT, and session data"
+        action={handleClearCache}
+        buttonLabel="Clear"
+        disabled={false}
+      />
 
-export default CacheSettings;
+      <LabelButtonSettings text="Go To Logs"
+        typeText="Please do not share this with anyone except FitLauncher's moderation team!"
+        action={handleGoToLogs}
+        buttonLabel="Go!"
+        disabled={false}
+      />
+
+      <LabelButtonSettings text="Check for Updates"
+        typeText="This might take some time so please be patient !"
+        action={handleCheckUpdate}
+        buttonLabel="Check!"
+        disabled={updateClicked()}
+      />
+    </>
+  )
+}

@@ -1,5 +1,4 @@
 import { createSignal, onMount, createEffect, Show } from "solid-js";
-import '../GlobalSettingsPage.css';
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { message, open } from "@tauri-apps/plugin-dialog";
 import { Select } from "@thisbeyond/solid-select";
@@ -176,10 +175,10 @@ export default function DisplayPart({
     await store.set('background_image', targetPath);
     await store.set('blur_amount', blurAmount());
 
-    const link = await store.get<string>('background_image') ;
+    const link = await store.get<string>('background_image');
     if (link) {
-        bgEl.style.backgroundImage = `url(${convertFileSrc(link)})`;
-        blurEl.style.backdropFilter = `blur(${blurAmount()}px)`;
+      bgEl.style.backgroundImage = `url(${convertFileSrc(link)})`;
+      blurEl.style.backdropFilter = `blur(${blurAmount()}px)`;
     }
   }
 
