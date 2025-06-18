@@ -13,7 +13,7 @@ use std::time::Instant;
 
 use crate::errors::ScrapingError;
 use crate::global::functions::download_sitemap;
-use crate::structs::SingularGame;
+use crate::structs::Game;
 
 #[tokio::main]
 pub async fn get_sitemaps_website(
@@ -68,7 +68,7 @@ pub async fn get_singular_game_info(
 ) -> Result<(), ScrapingError> {
     let start_time = Instant::now();
 
-    let mut searched_game: Vec<SingularGame> = Vec::new();
+    let mut searched_game: Vec<Game> = Vec::new();
 
     let url = game_link.as_str();
     let game_res = CUSTOM_DNS_CLIENT.get(url).send().await?;
@@ -104,7 +104,7 @@ pub async fn get_singular_game_info(
         .map(|elem| elem.text().collect::<String>())
         .unwrap_or_else(|| "Unknown".to_string()); // Collecting the tag
 
-    let singular_searched_game = SingularGame {
+    let singular_searched_game = Game {
         title: title.to_string(),
         img: image_src.to_string(),
         desc: description,

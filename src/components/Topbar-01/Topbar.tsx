@@ -60,21 +60,25 @@ export default function Topbar() {
   });
 
   return (
-    <div class="flex items-center justify-between w-full h-16 px-4 bg-popup-background border-b border-secondary-20">
+    <div
+      class="w-full h-16 px-4 flex items-center justify-between bg-popup-background border-b border-secondary-20 select-none"
+      data-tauri-drag-region
+    >
       {/* Logo */}
       <img
         src='/Square310x310Logo.png'
         alt='fitgirl repack logo'
         class="w-8 h-8 rounded-md object-cover"
+        style="-webkit-app-region: no-drag;"
       />
 
       {/* Right Section - Searchbar */}
-      <div class="flex-1 max-w-xl ml-4">
+      <div class="flex-1 max-w-fit ml-4" style="-webkit-app-region: no-drag;">
         <Searchbar isTopBar={true} />
       </div>
 
       {/* Middle Section - Navigation Links */}
-      <div class="flex items-center gap-1 h-full">
+      <div class="flex items-center gap-1 h-full" style="-webkit-app-region: no-drag;">
         <A
           href="/"
           class={`flex items-center gap-2 px-4 h-full transition-colors ${isActive("/") ? "text-accent border-b-2 border-accent" : "text-muted hover:text-text"
@@ -128,7 +132,7 @@ export default function Topbar() {
       </div>
 
       {/* Left Section - Logo and Window Controls */}
-      <div class="flex items-center gap-6">
+      <div class="flex items-center gap-6" style="-webkit-app-region: no-drag;">
         {/* Window Controls */}
         <div data-tauri-drag-region class="flex items-center gap-2">
           <button

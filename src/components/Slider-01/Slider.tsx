@@ -28,11 +28,18 @@ const Slider = (props: SliderProps): JSX.Element => {
         const gradient = document.querySelector<HTMLDivElement>(`#${sliderId} .image-slider-gradient`);
         const skipperRight = document.querySelector<HTMLDivElement>(`#${sliderId} .skipper.right`);
 
-        const distance = 192;
-        const offset = -currentIndex() * distance;
+        const itemWidth = 192; // each card
+        const spacing = 16;     // the gap-4 (1rem = 16px)
+        const totalWidth = props.images.length * (itemWidth + spacing) - spacing;
+        const offset = -currentIndex() * (itemWidth + spacing);
         const containerWidth = container?.offsetWidth || 0;
-        const visibleWidth = Math.abs(offset) + window.innerWidth;
 
+        // Translate slider
+        if (container) {
+            container.style.transform = `translateX(${offset}px)`;
+        }
+
+        // Mask gradient
         if (gradient) {
             gradient.style.webkitMaskImage = currentIndex() > 0
                 ? `linear-gradient(to right, var(--background-color) 0%, transparent 30%, transparent 70%, var(--background-color) 100%)`
@@ -40,17 +47,20 @@ const Slider = (props: SliderProps): JSX.Element => {
             gradient.style.maskImage = gradient.style.webkitMaskImage;
         }
 
-        if (container) {
-            container.style.transform = `translateX(${offset}px)`;
-            if (visibleWidth >= containerWidth && gradient) {
-                if (skipperRight) skipperRight.style.display = 'none';
+        // Hide right button if end reached
+        const reachedEnd = Math.abs(offset) + containerWidth >= totalWidth;
+
+        if (reachedEnd && skipperRight) {
+            skipperRight.style.display = 'none';
+            if (gradient) {
                 gradient.style.webkitMaskImage = `linear-gradient(to left, transparent 70%, var(--background-color) 100%)`;
                 gradient.style.maskImage = gradient.style.webkitMaskImage;
-            } else if (skipperRight?.style.display === 'none') {
-                skipperRight.style.display = 'flex';
             }
+        } else if (skipperRight?.style.display === 'none') {
+            skipperRight.style.display = 'flex';
         }
     });
+
 
     return (
         <>

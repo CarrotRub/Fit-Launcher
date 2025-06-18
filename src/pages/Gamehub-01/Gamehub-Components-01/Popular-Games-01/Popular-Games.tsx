@@ -84,7 +84,6 @@ export default function PopularGames() {
 
   return (
     <div class="relative w-full" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-      {/* Loading State */}
       <Show when={loading()}>
         <LoadingPage />
       </Show>
@@ -107,31 +106,19 @@ export default function PopularGames() {
             />
           </div>
 
-          {/* Navigation Arrows */}
-          <Show when={games().length > 1}>
+          {/* Game Content */}
+          <div class="relative z-10 h-full flex items-center justify-center p-6 w-full mx-4 gap-4">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setSelected(prev => (prev - 1 + games().length) % games().length);
               }}
-              class="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
+              class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
             >
-              <ChevronLeft size={24} class="text-text" stroke-width={1.5} />
+              <ChevronLeft size={20} class="text-text" stroke-width={1.5} />
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelected(prev => (prev + 1) % games().length);
-              }}
-              class="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
-            >
-              <ChevronRight size={24} class="text-text" stroke-width={1.5} />
-            </button>
-          </Show>
 
-          {/* Game Content */}
-          <div class="relative z-10 h-full flex flex-col justify-end p-6 w-fit">
-            <div class="bg-background/90 backdrop-blur-sm rounded-xl p-6 border border-secondary-20/50 shadow-xl">
+            <div class="w-full max-w-4xl max-h-[650px] gap-8 flex flex-col justify-between bg-background/90 backdrop-blur-sm rounded-xl p-6 border border-secondary-20/50 shadow-xl">
               {/* Title */}
               <div class="mb-4">
                 <h2 class="text-3xl font-bold text-text leading-tight">
@@ -141,7 +128,7 @@ export default function PopularGames() {
               </div>
 
               {/* Details Grid */}
-              <div class="grid grid-cols-2 gap-4 mb-6">
+              <div class="grid grid-cols-2 gap-4">
                 <div class="flex items-start gap-3">
                   <div class="p-2 bg-accent/10 rounded-lg">
                     <Star size={18} class="text-accent" stroke-width={1.5} />
@@ -183,12 +170,22 @@ export default function PopularGames() {
               {/* View Button */}
               <button
                 onClick={() => handleGameClick(current())}
-                class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-background font-medium rounded-lg transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-accent/30"
+                class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-text font-medium rounded-lg transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-accent/30"
               >
                 View Game Details
                 <ArrowRight size={18} class="transition-transform group-hover:translate-x-1" />
               </button>
             </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelected(prev => (prev + 1) % games().length);
+              }}
+              class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
+            >
+              <ChevronRight size={24} class="text-text" stroke-width={1.5} />
+            </button>
+
           </div>
 
           {/* Pagination Dots */}

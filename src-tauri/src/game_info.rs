@@ -1,18 +1,11 @@
 use chrono::{DateTime, NaiveDate};
+use fit_launcher_library::structs::ExecutableInfo;
 use serde::Serialize;
-use specta::{specta, Type};
+use specta::{Type, specta};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs, io};
 
-#[derive(Serialize, Type)]
-pub struct ExecutableInfo {
-    executable_path: PathBuf,
-    executable_last_opened_date: NaiveDate,
-    executable_play_time: String,
-    executable_installed_date: NaiveDate,
-    executable_disk_size: u64,
-}
 fn dir_size(path: impl Into<PathBuf>) -> io::Result<u64> {
     fn dir_size(mut dir: fs::ReadDir) -> io::Result<u64> {
         dir.try_fold(0, |acc, file| {
@@ -48,22 +41,28 @@ pub fn executable_info_discovery(
     }
 
     // Get the installed date (creation time or fallback to modified time)
-    let executable_installed_date = metadata
-        .created()
-        .ok()
-        .and_then(system_time_to_naive_date)
-        .or_else(|| metadata.modified().ok().and_then(system_time_to_naive_date))
-        .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
+    let executable_installed_date = Some(
+        metadata
+            .created()
+            .ok()
+            .and_then(system_time_to_naive_date)
+            .or_else(|| metadata.modified().ok().and_then(system_time_to_naive_date))
+            .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap())
+            .to_string(),
+    );
 
     // Get the last opened date (accessed time)
-    let executable_last_opened_date = metadata
-        .accessed()
-        .ok()
-        .and_then(system_time_to_naive_date)
-        .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
+    let executable_last_opened_date = Some(
+        metadata
+            .accessed()
+            .ok()
+            .and_then(system_time_to_naive_date)
+            .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap())
+            .to_string(),
+    );
 
     // Set the executable play time (placeholder value as it can't be determined from metadata)
-    let executable_play_time = "Coming Soon...".to_string();
+    let executable_play_time = 0;
 
     Some(ExecutableInfo {
         executable_path: path_to_exe,

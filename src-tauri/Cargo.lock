@@ -1598,6 +1598,7 @@ dependencies = [
  "fit-launcher-aria2",
  "fit-launcher-config",
  "fit-launcher-ddl",
+ "fit-launcher-library",
  "fit-launcher-scraping",
  "fit-launcher-torrent",
  "fit-launcher-ui-automation",
@@ -1686,6 +1687,19 @@ dependencies = [
  "specta",
  "tauri",
  "thiserror 2.0.12",
+ "tracing",
+]
+
+[[package]]
+name = "fit-launcher-library"
+version = "0.1.0"
+dependencies = [
+ "directories 6.0.0",
+ "fit-launcher-scraping",
+ "serde",
+ "serde_json",
+ "specta",
+ "tauri",
  "tracing",
 ]
 

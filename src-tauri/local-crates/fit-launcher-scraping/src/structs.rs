@@ -2,16 +2,6 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 #[derive(Debug, Serialize, Deserialize, Type)]
-pub struct SingularGame {
-    pub title: String,
-    pub img: String,
-    pub desc: String,
-    pub magnetlink: String,
-    pub href: String,
-    pub tag: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct Game {
     pub title: String,
     pub img: String,

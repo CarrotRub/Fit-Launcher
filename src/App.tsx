@@ -7,6 +7,8 @@ import Topbar from './components/Topbar-01/Topbar';
 
 import '@fontsource-variable/mulish';
 import '@fontsource-variable/lexend';
+import '@fontsource/bai-jamjuree'
+
 import './App.css';
 
 import { check } from '@tauri-apps/plugin-updater';
@@ -101,12 +103,15 @@ function App() {
       base="/"
       root={(props) => {
         return (
-          <div class="flex flex-col w-full h-screen bg-background text-text text-categories">
+          <div class="flex flex-col w-full h-screen bg-background text-text font-titles">
             <div class="background-style absolute inset-0 bg-cover bg-center -z-2 pointer-events-none">
               <div class="background-blur-whole absolute inset-0 -z-1 pointer-events-none"></div>
             </div>
+
             <Topbar />
-            <div class="flex-1 overflow-y-auto no-scrollbar">{props.children}</div>
+            <div class="flex-1 overflow-y-auto no-scrollbar">
+              {props.children}
+            </div>
           </div>
         );
       }}

@@ -15,6 +15,7 @@
     "@fontsource-variable/lexend": "^5.1.1",
     "@fontsource-variable/mulish": "^5.1.0",
     "@fontsource-variable/overpass": "^5.1.1",
+    "@fontsource/bai-jamjuree": "^5.2.6",
     "@solid-primitives/i18n": "^2.1.1",
     "@solid-primitives/storage": "^4.2.1",
     "@solid-primitives/workers": "^0.3.0",

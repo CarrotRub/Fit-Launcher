@@ -16,3 +16,5 @@ interface PopupPathInputProps<T extends any[] = any[]> extends PopupProps<T> {
 interface AddToCollectionProps<T extends any[] = any[]> extends PopupProps<T> {
   collectionsList: string[];
 }
+
+export type AddLocalGamePopUpProps<T extends any[] = any[]> = PopupProps<T>;
