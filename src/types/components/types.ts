@@ -13,6 +13,8 @@ export interface DropdownProps {
   onListChange: (item: string) => Promise<void>;
   onChange?: () => void;
   placeholder?: string;
+  removableList?: string[];
+  onRemove?: (item: string) => Promise<void> | void;
 }
 
 export interface ButtonProps {

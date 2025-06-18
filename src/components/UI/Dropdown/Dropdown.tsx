@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-solid";
+import { ChevronDown, X } from "lucide-solid";
 import { createSignal, Show } from "solid-js";
 import { DropdownProps } from "../../../types/components/types";
 
@@ -6,6 +6,7 @@ import { DropdownProps } from "../../../types/components/types";
 export default function Dropdown(props: DropdownProps) {
     const [isOpen, setIsOpen] = createSignal(false);
     const [isAnimating, setIsAnimating] = createSignal(false);
+    const [hoveredItem, setHoveredItem] = createSignal<string | null>(null);
 
     const handleSelection = async (item: string) => {
         setIsAnimating(true);
@@ -16,7 +17,7 @@ export default function Dropdown(props: DropdownProps) {
     };
 
     return (
-        <div class="relative w-fit">
+        <div class="relative w-full max-w-xs">
             <button
                 onClick={() => setIsOpen(!isOpen())}
                 class={`
@@ -42,7 +43,7 @@ export default function Dropdown(props: DropdownProps) {
             <Show when={isOpen()}>
                 <div
                     class={`
-                            absolute z-50 mt-1.5 w-fit max-h-64 overflow-auto
+                            absolute z-50 mt-1.5 w-full max-h-64 overflow-auto
                             bg-popup-background border border-secondary-30 rounded-lg
                             shadow-lg shadow-background/50 backdrop-blur-sm
                             transition-opacity duration-200 no-scrollbar
@@ -50,26 +51,53 @@ export default function Dropdown(props: DropdownProps) {
                     `}
 
                 >
-                    <ul class="py-1.5 divide-y divide-secondary-20/50">
-                        {props.list.map((item) => (
-                            <li>
-                                <button
-                                    onClick={() => handleSelection(item)}
-                                    class={`
-                    w-full text-left px-4 py-2.5 text-sm
-                    transition-colors duration-150
-                    ${item === props.activeItem
-                                            ? "bg-accent/10 text-accent font-medium"
-                                            : "text-text hover:bg-secondary-20/30"
-                                        }
-                    ${isAnimating() ? "opacity-80" : "opacity-100"}
-                  `}
+                    <ul class="group max-w-full divide-y divide-secondary-20/50">
+                        {props.list.map((item) => {
+                            const isRemovable = props.removableList?.includes(item);
+                            const isActive = item === props.activeItem;
+                            return (
+                                <li
+                                    class="relative group flex justify-between min-w-full"
+                                    onMouseEnter={() => setHoveredItem(item)}
+                                    onMouseLeave={() => setHoveredItem(null)}
                                 >
-                                    {item}
-                                </button>
-                            </li>
-                        ))}
+                                    <button
+                                        onClick={() => handleSelection(item)}
+                                        class={`
+                                          w-full flex items-center justify-between  
+                                          text-sm transition-all duration-200
+                                          ${isActive
+                                                ? "bg-accent/10 text-accent font-medium"
+                                                : "text-text hover:bg-secondary-20/20"}
+                                          ${isAnimating() ? "opacity-80" : "opacity-100"}
+                                        `}
+                                    >
+                                        <span class="truncate text-left flex-1 min-w-0 py-2.5 pl-4">{item}</span>
+
+                                        <Show when={isRemovable}>
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    await props.onRemove?.(item);
+                                                }}
+                                                class="p-2 h-full border-l-1 border-secondary-20/50 transition-all duration-200 text-muted hover:text-primary hover:bg-accent/30"
+                                                title="Remove"
+                                            >
+                                                <X size={14} class="transition-transform hover:scale-110" />
+                                            </button>
+                                        </Show>
+                                    </button>
+
+                                    {isActive && (
+                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
+                                    )}
+                                </li>
+
+                            );
+
+                        })}
                     </ul>
+
                 </div>
             </Show>
         </div>
