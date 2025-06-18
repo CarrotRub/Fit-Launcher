@@ -1,6 +1,7 @@
 use directories::BaseDirs;
 use specta::specta;
 use std::fs;
+use std::path::PathBuf;
 use tracing::error;
 use tracing::info;
 
@@ -89,6 +90,54 @@ pub fn get_dns_settings() -> FitLauncherDnsConfig {
         .unwrap_or("{}".to_string());
 
     serde_json::from_str::<FitLauncherDnsConfig>(&file_content).unwrap_or_default()
+}
+
+#[tauri::command]
+#[specta]
+pub fn get_installation_settings_path() -> PathBuf {
+    let base_dirs = BaseDirs::new()
+        .ok_or_else(|| error!("Failed to determine base directories"))
+        .unwrap();
+
+    base_dirs
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig")
+        .join("settings")
+        .join("installation")
+        .join("installation.json")
+}
+
+#[tauri::command]
+#[specta]
+pub fn get_gamehub_settings_path() -> PathBuf {
+    let base_dirs = BaseDirs::new()
+        .ok_or_else(|| error!("Failed to determine base directories"))
+        .unwrap();
+
+    base_dirs
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig")
+        .join("settings")
+        .join("gamehub")
+        .join("gamehub.json")
+}
+
+#[tauri::command]
+#[specta]
+pub fn get_dns_settings_path() -> PathBuf {
+    let base_dirs = BaseDirs::new()
+        .ok_or_else(|| error!("Failed to determine base directories"))
+        .unwrap();
+
+    base_dirs
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig")
+        .join("settings")
+        .join("dns")
+        .join("dns.json")
 }
 
 #[tauri::command]

@@ -43,7 +43,7 @@ function SettingsContent(): JSX.Element {
   };
 
   return (
-    <div class="bg-popup-background rounded-b-xl border border-secondary-20 p-6 min-h-full shadow-lg">
+    <div class="bg-popup-background border-l border-secondary-20 p-6 min-h-full shadow-lg">
       {contentMap[activeGroup()]?.() ?? <p class="text-text">Invalid group</p>}
     </div>
   );
@@ -83,7 +83,7 @@ function SettingsSidebar(): JSX.Element {
 
   return (
     <div class="bg-popup-background border-r border-secondary-20 h-full w-fit flex flex-col overflow-y-auto">
-      <div class="p-6 pb-2 border-b border-secondary-20">
+      <div class="p-4 border-b border-secondary-20">
         <h1 class="text-2xl font-bold text-text">Settings</h1>
         <p class="text-sm text-muted mt-1">Configure your application preferences</p>
       </div>

@@ -13,7 +13,6 @@ export default function Dropdown(props: DropdownProps) {
         await props.onListChange(item);
         setIsOpen(false);
         setTimeout(() => setIsAnimating(false), 150);
-        props.onChange?.();
     };
 
     return (
@@ -23,7 +22,7 @@ export default function Dropdown(props: DropdownProps) {
                 class={`
           w-fit flex items-center justify-between gap-2
           py-2.5 px-4 rounded-lg border
-          transition-all duration-200   
+          transition-all duration-200 
           ${isOpen()
                         ? "border-accent bg-background-70 shadow-sm"
                         : "border-accent/60 bg-background hover:bg-background-70"}

@@ -11,16 +11,16 @@ export interface DropdownProps {
   list: string[];
   activeItem?: string;
   onListChange: (item: string) => Promise<void>;
-  onChange?: () => void;
   placeholder?: string;
   removableList?: string[];
   onRemove?: (item: string) => Promise<void> | void;
+  buttonClass?: string;
 }
 
 export interface ButtonProps {
   id?: string;
   class?: string;
-  onClick: (e: MouseEvent) => void | Promise<void>;
+  onClick: (e: MouseEvent) => any | Promise<any>;
   label: string | JSX.Element;
   disabled?: boolean;
   variant?: ButtonVariants;
@@ -64,4 +64,11 @@ export interface IpAddressInputProps {
   value: string;
   onInput?: (value: number, ...args: any[]) => void | Promise<void>;
   disabled?: boolean;
+}
+
+export interface SliderProps {
+  images: string[];
+  titles: string[];
+  hrefs: string[];
+  filePath?: string;
 }

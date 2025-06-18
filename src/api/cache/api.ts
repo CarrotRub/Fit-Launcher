@@ -6,8 +6,9 @@ import {
   Result,
   ScrapingError,
 } from "../../bindings";
+import { GlobalSettingsApi } from "../settings/api";
 
-class GamesCacheAPI {
+export class GamesCacheAPI {
   private cache = new Map<string, unknown>();
 
   async getNewlyAddedGames(): Promise<Result<Game[], ScrapingError>> {
@@ -29,31 +30,84 @@ class GamesCacheAPI {
     return await this.getCached("discovery", commands.getDiscoveryGames);
   }
 
+  async removeNSFW<T extends { tag?: string; game_tags?: string }>(
+    gameList: T[]
+  ): Promise<T[]> {
+    let settingsInst = new GlobalSettingsApi();
+    let nsfw = (await settingsInst.getGamehubSettings()).nsfw_censorship;
+    if (nsfw) {
+      return gameList.filter((game) =>
+        typeof game.tag === "string"
+          ? !game.tag.includes("Adult")
+          : typeof game.game_tags === "string"
+          ? !game.game_tags.includes("Adult")
+          : true
+      );
+    } else {
+      return gameList;
+    }
+  }
+
+  async getNewlyAddedGamesPath(): Promise<string> {
+    return await this.getCached(
+      "newlyAddedPath",
+      commands.getNewlyAddedGamesPath
+    );
+  }
+
+  async getPopularGamesPath(): Promise<string> {
+    return await this.getCached(
+      "popularGamesPath",
+      commands.getPopularGamesPath
+    );
+  }
+
+  async getRecentlyUpdatedGamesPath(): Promise<string> {
+    return await this.getCached(
+      "recentlyUpdatedPath",
+      commands.getRecentlyUpdatedGamesPath
+    );
+  }
+
   /** Retrieve, cache and return the result of the fetcher function */
   private async getCached<T>(
     key: string,
     fetcher: () => Promise<Result<T, ScrapingError>>
-  ): Promise<Result<T, ScrapingError>> {
+  ): Promise<Result<T, ScrapingError>>;
+
+  /** Retrieve, cache and return the result of the fetcher function */
+  private async getCached<T>(
+    key: string,
+    fetcher: () => Promise<T>
+  ): Promise<T>;
+
+  /** Retrieve, cache and return the result of the fetcher function */
+  private async getCached<T>(
+    key: string,
+    fetcher: () => Promise<T> | Promise<Result<T, ScrapingError>>
+  ): Promise<T | Result<T, ScrapingError>> {
     const cached = this.cache.get(key);
     if (cached) {
-      return cached as Result<T, ScrapingError>;
+      return cached as T | Result<T, ScrapingError>;
     }
 
     const result = await fetcher();
 
-    if (result.status === "ok") {
-      this.cache.set(key, result);
-    } else {
-      await message(
-        result.error.data.toString() ??
-          "An unknown error occurred while fetching data.",
-        {
-          title: "Fetch Error",
-          kind: "error",
-        }
-      );
+    // If the result is a Result object, check its status
+    if (typeof result === "object" && result !== null && "status" in result) {
+      const resultTyped = result as Result<T, ScrapingError>;
+      if (resultTyped.status === "ok") {
+        this.cache.set(key, resultTyped);
+      } else {
+        await message(
+          resultTyped.error.data.toString() ?? "An unknown error occurred.",
+          { title: "Fetch Error", kind: "error" }
+        );
+      }
+      return resultTyped;
     }
 
+    this.cache.set(key, result);
     return result;
   }
 }

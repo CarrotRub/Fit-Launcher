@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme {
+  --font-mulish-variable: "Mulish Variable", sans-serif;
+
   --color-accent: rgba(187, 114, 160, 1);
   --color-primary: rgba(194, 158, 209, 1);
   --color-secondary: rgba(110, 53, 103, 1);
@@ -130,25 +132,13 @@
 
 }
 
-.background-style {
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  z-index: -2;
-  pointer-events: none;
-}
+@layer components {
+  .text-categories {
+    font-family: var(--font-mulish-variable);
+    line-height: normal;
+    letter-spacing: 0;
+  }
 
-.background-blur-whole {
-  position: absolute;
-  top: 0px;
-  left: 0px;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
 }
 
 body {
@@ -162,5 +152,6 @@ html,
 body,
 #root {
   height: 100vh;
+  width: 100vw;
   margin: 0;
 }
