@@ -132,7 +132,7 @@ pub async fn aria2_client_from_config(
         tokio::task::spawn(async move {
             match close_rx.await {
                 Ok(_) => {
-                    let _ = client_clone.shutdown().await;
+                    let _ = client_clone.force_shutdown().await;
                     let _ = child.wait();
                     let _ = done_tx.send(());
                 }

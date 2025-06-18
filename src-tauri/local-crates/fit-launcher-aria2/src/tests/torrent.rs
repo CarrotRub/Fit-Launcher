@@ -1,9 +1,10 @@
-use fit_launcher_torrent::functions::TorrentSession;
+#![allow(unused)]
+use fit_launcher_torrent::{download_torrent_from_paste, functions::TorrentSession};
 
-use crate::aria2::aria2_add_uri;
+use crate::aria2::{aria2_add_torrent, aria2_add_uri};
 
 #[tokio::test]
-async fn add_torrent() -> Result<(), Box<dyn std::error::Error>> {
+async fn add_magnet() -> Result<(), Box<dyn std::error::Error>> {
     let session = TorrentSession::new().await;
 
     let client = session.aria2_client()?;
@@ -17,7 +18,7 @@ async fn add_torrent() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-async fn download_torrent() -> Result<(), Box<dyn std::error::Error>> {
+async fn download_magnet() -> Result<(), Box<dyn std::error::Error>> {
     let session = TorrentSession::new().await;
     let client = session.aria2_client()?;
 
@@ -28,7 +29,7 @@ async fn download_torrent() -> Result<(), Box<dyn std::error::Error>> {
     println!("Started download with GID: {}", gid);
 
     let start_time = std::time::Instant::now();
-    let duration = std::time::Duration::from_secs(15);
+    let duration = std::time::Duration::from_secs(60);
 
     while start_time.elapsed() < duration {
         let status = client.tell_status(&gid).await?;
@@ -61,6 +62,23 @@ async fn download_torrent() -> Result<(), Box<dyn std::error::Error>> {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
-    println!("30 second timeout reached. Download may still be in progress.");
+    println!("60 second timeout reached. Download may still be in progress.");
+    Ok(())
+}
+
+#[tokio::test]
+async fn add_torrent() -> Result<(), Box<dyn std::error::Error>> {
+    let session = TorrentSession::new().await;
+
+    let client = session.aria2_client()?;
+
+    let torrent = download_torrent_from_paste("https://paste.fitgirl-repacks.site/?9c702e154b3d2a4e#AuZBuL1J8pkVaQKazQvTfbtW1CUUg42F4qqzotnmbp5K".into())
+        .await
+        .unwrap();
+    let dir = Some("./downloads".to_string());
+    eprintln!("downloaded torrent!");
+
+    aria2_add_torrent(&client, torrent, dir).await?;
+
     Ok(())
 }

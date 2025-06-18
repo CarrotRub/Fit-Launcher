@@ -3,7 +3,7 @@ use fit_launcher_ddl::DirectLink;
 use specta::specta;
 
 use crate::{
-    aria2::aria2_add_uri,
+    aria2::{aria2_add_torrent, aria2_add_uri},
     error::Aria2Error,
     structs::{AriaTask, AriaTaskProgress, AriaTaskResult},
 };
@@ -40,6 +40,20 @@ pub async fn aria2_start_download(
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     aria2_add_uri(&aria2_client, url, dir, Some(filename)).await
+}
+
+#[tauri::command]
+#[specta]
+pub async fn aria2_start_torrent(
+    state: tauri::State<'_, TorrentSession>,
+    torrent: Vec<u8>,
+    dir: Option<String>,
+) -> Result<String, Aria2Error> {
+    let aria2_client = state
+        .aria2_client()
+        .map_err(|_| Aria2Error::NotConfigured)?;
+
+    aria2_add_torrent(&aria2_client, torrent, dir).await
 }
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
