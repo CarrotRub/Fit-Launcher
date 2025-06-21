@@ -23,3 +23,23 @@ pub async fn aria2_add_uri(
         )
         .await?)
 }
+
+pub async fn aria2_add_torrent(
+    aria2_client: &Client,
+    torrent: Vec<u8>,
+    dir: Option<String>,
+) -> Result<String, Aria2Error> {
+    Ok(aria2_client
+        .add_torrent(
+            torrent,
+            None,
+            Some(TaskOptions {
+                dir,
+                r#continue: Some(true),
+                ..TaskOptions::default()
+            }),
+            None,
+            None,
+        )
+        .await?)
+}
