@@ -146,7 +146,7 @@ tracing-subscriber = { version = "0.3.18", features = [
     "ansi",
 ] }
 tracing-appender = "0.2.3"
-tokio = { version = "1.40.0", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 serde = { version = "1.0.209", features = ["derive"] }
 serde_json = "1.0.127"
 serde_with = "3.12.0"
@@ -187,3 +187,7 @@ fitgirl-decrypt = { git = "https://github.com/CarrotRub/fitgirl-decrypt", branch
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+# Optimize all dependencies even in debug/test builds
+[profile.dev.package."*"]
+opt-level = 2
