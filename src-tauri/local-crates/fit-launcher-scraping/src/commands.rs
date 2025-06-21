@@ -2,7 +2,7 @@ use std::{fs::File, io::Read, path::PathBuf};
 
 use specta::specta;
 use tauri::{AppHandle, Manager};
-use tokio::fs as tokio_fs;
+use tokio::{fs as tokio_fs, io::AsyncWriteExt};
 use tracing::error;
 
 use crate::{
@@ -24,7 +24,7 @@ fn discovery_dir(app: &AppHandle) -> PathBuf {
     get_app_subdir(app, &["tempGames", "discovery"])
 }
 
-fn games_dir(app: &AppHandle) -> PathBuf {
+pub fn games_dir(app: &AppHandle) -> PathBuf {
     get_app_subdir(app, &["tempGames"])
 }
 
@@ -32,7 +32,7 @@ fn discovery_file_path(app: &AppHandle, file: &str) -> PathBuf {
     discovery_dir(app).join(file)
 }
 
-fn game_file_path(app: &AppHandle, filename: &str) -> PathBuf {
+pub fn game_file_path(app: &AppHandle, filename: &str) -> PathBuf {
     games_dir(app).join(filename)
 }
 
@@ -73,11 +73,55 @@ pub fn get_discovery_games(app: AppHandle) -> Result<Vec<DiscoveryGame>, Scrapin
 async fn get_games_from_file(app: &AppHandle, filename: &str) -> Result<Vec<Game>, ScrapingError> {
     let file_path = game_file_path(app, filename);
 
+    if let Some(parent) = file_path.parent() {
+        if !parent.exists() {
+            tokio_fs::create_dir_all(parent)
+                .await
+                .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+        }
+    }
+
+    if !file_path.exists() {
+        let mut file = tokio_fs::File::create(&file_path)
+            .await
+            .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+        file.write_all(b"[]")
+            .await
+            .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+    }
+
     let json = tokio_fs::read_to_string(&file_path)
         .await
         .map_err(|e| ScrapingError::IOError(e.to_string()))?;
 
     serde_json::from_str(&json).map_err(|e| ScrapingError::FileJSONError(e.to_string()))
+}
+
+async fn get_game_from_file(app: &AppHandle, filename: &str) -> Result<Game, ScrapingError> {
+    let file_path = game_file_path(app, filename);
+
+    if let Some(parent) = file_path.parent() {
+        if !parent.exists() {
+            tokio_fs::create_dir_all(parent)
+                .await
+                .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+        }
+    }
+
+    if !file_path.exists() {
+        let mut file = tokio_fs::File::create(&file_path)
+            .await
+            .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+        file.write_all(b"{}")
+            .await
+            .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+    }
+
+    let json = tokio_fs::read_to_string(&file_path)
+        .await
+        .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+
+    serde_json::from_str::<Game>(&json).map_err(|e| ScrapingError::FileJSONError(e.to_string()))
 }
 
 #[tauri::command]
@@ -96,6 +140,12 @@ pub async fn get_popular_games(app: AppHandle) -> Result<Vec<Game>, ScrapingErro
 #[specta]
 pub async fn get_recently_updated_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
     get_games_from_file(&app, "recently_updated_games.json").await
+}
+
+#[tauri::command]
+#[specta]
+pub async fn get_singular_game_local(app: AppHandle) -> Result<Game, ScrapingError> {
+    get_game_from_file(&app, "singular_game_temp.json").await
 }
 
 // JSON path getters for each file

@@ -3,36 +3,33 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { commands, DiscoveryGame } from '../../bindings';
 import LoadingPage from '../LoadingPage-01/LoadingPage';
+import Button from '../../components/UI/Button/Button';
+import { GamesCacheAPI } from '../../api/cache/api';
+import { LibraryAPI } from '../../api/library/api';
 const LazyGameObject = lazy(() => import("./Discovery-Components/GameObject"));
 
+const gameCacheInst = new GamesCacheAPI();
+const libraryInst = new LibraryAPI();
+
 async function fetchDiscoveryGames(): Promise<{ games: DiscoveryGame[]; toDownloadLater: Set<string> }> {
-  const appDir = await appDataDir();
-  const settingsPath = await join(appDir, 'fitgirlConfig', 'settings', 'gamehub', 'gamehub.json');
-  const settingsContent = await readTextFile(settingsPath);
-  const settings = JSON.parse(settingsContent);
-  const hideNSFW = settings.nsfw_censorship;
-
-
-  const result = await commands.getDiscoveryGames();
-  const filteredGames = result.status === 'ok'
-    ? hideNSFW
-      ? result.data.filter(game => !game.game_tags.includes('Adult'))
-      : result.data
-    : [];
-
-  const gamesToDownloadPath = await join(appDir, 'library', 'games_to_download.json');
-  let toDownloadLater = new Set<string>();
-
   try {
-    const fileContent = await readTextFile(gamesToDownloadPath);
-    const data = JSON.parse(fileContent) as { title: string }[];
-    toDownloadLater = new Set(data.map(d => d.title));
-  } catch {
-    console.warn("No file yet")
-  }
+    const resultGame = await gameCacheInst.getDiscoveryGames();
+    const downloadLaterList = await libraryInst.getGamesToDownload();
+    const toDownloadLater = new Set(downloadLaterList.map(g => g.title));
 
-  return { games: filteredGames, toDownloadLater };
+    if (resultGame.status === "ok") {
+      const filteredGames = await gameCacheInst.removeNSFW(resultGame.data);
+      return { games: filteredGames, toDownloadLater };
+    } else {
+      console.warn("Failed to get discovery games from cache.");
+      return { games: [], toDownloadLater };
+    }
+  } catch (error) {
+    console.error("Error fetching discovery games:", error);
+    throw error;
+  }
 }
+
 
 function DiscoveryPage(): JSX.Element {
   const [currentPage, setCurrentPage] = createSignal(0);
@@ -48,7 +45,7 @@ function DiscoveryPage(): JSX.Element {
 
   return (
     <Suspense fallback={<LoadingPage />}>
-      <div class="flex flex-col gap-4 w-full grow overflow-y-auto no-scrollbar">
+      <div class="flex flex-col py-8 gap-4 w-full grow overflow-y-auto no-scrollbar">
 
         <For each={visibleGames()}>
           {(game) => (
@@ -59,26 +56,16 @@ function DiscoveryPage(): JSX.Element {
           )}
         </For>
       </div>
-      <div class="flex justify-center items-center gap-4 ">
-        <button
-          onClick={() => setCurrentPage(p => Math.max(p - 1, 0))}
-          disabled={currentPage() === 0}
-          class="px-4 py-2 bg-gray-800 text-white rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
+      <div class="flex justify-center items-center gap-4 my-8">
+        <Button label="Previous" disabled={currentPage() === 0} onClick={() => setCurrentPage(p => Math.max(p - 1, 0))} />
+
         <span class="text-text">Page {currentPage() + 1}</span>
-        <button
-          onClick={() => {
-            const total = gamesResource()?.games.length ?? 0;
-            const maxPage = Math.floor((total - 1) / 25);
-            setCurrentPage(p => Math.min(p + 1, maxPage));
-          }}
-          disabled={(currentPage() + 1) * 25 >= (gamesResource()?.games.length ?? 0)}
-          class="px-4 py-2 bg-gray-800 text-text rounded disabled:opacity-50"
-        >
-          Next
-        </button>
+
+        <Button label="Next" disabled={(currentPage() + 1) * 25 >= (gamesResource()?.games.length ?? 0)} onClick={() => {
+          const total = gamesResource()?.games.length ?? 0;
+          const maxPage = Math.floor((total - 1) / 25);
+          setCurrentPage(p => Math.min(p + 1, maxPage));
+        }} />
       </div>
     </Suspense>
   );

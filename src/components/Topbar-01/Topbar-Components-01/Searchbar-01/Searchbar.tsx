@@ -9,6 +9,7 @@ import { Search, X, Sparkles } from "lucide-solid";
 interface SearchbarProps {
   isTopBar?: boolean;
   setSearchValue?: (value: string) => void;
+  class?: string;
 }
 
 export default function Searchbar(props: SearchbarProps) {
@@ -21,6 +22,8 @@ export default function Searchbar(props: SearchbarProps) {
   const [searchResults, setSearchResults] = createSignal<string[]>([]);
   const [showDragonBallSVG, setShowDragonBallSVG] = createSignal(false);
   const [isFocused, setIsFocused] = createSignal(false);
+  const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
+
 
   onMount(() => {
     const urlParameter = getUrlParameter("url");
@@ -49,7 +52,7 @@ export default function Searchbar(props: SearchbarProps) {
       const requests = [];
       const dirPath = await appDataDir();
 
-      for (let i = 1; i <= 6; i++) {
+      for (let i = 1; i <= 10; i++) {
         const sitemapURL = await join(dirPath, "sitemaps", `post-sitemap${i}.xml`);
         const converted = convertFileSrc(sitemapURL);
         requests.push(fetch(converted));
@@ -79,7 +82,8 @@ export default function Searchbar(props: SearchbarProps) {
         return title.includes(query.toUpperCase().trim());
       });
 
-      setSearchResults(results.slice(0, 5));
+      setSearchResults(results.slice(0, 25));
+
     } catch (err) {
       console.error("Failed to fetch sitemap data:", err);
     }
@@ -122,6 +126,12 @@ export default function Searchbar(props: SearchbarProps) {
     }
   }
 
+  createEffect(() => {
+    searchTerm();
+    setHighlightedIndex(-1);
+  });
+
+
   return (
     <div class="relative w-full max-w-sm mx-auto">
       {/* Search Bar */}
@@ -147,16 +157,45 @@ export default function Searchbar(props: SearchbarProps) {
           onInput={handleInputChange}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          tabIndex={1}
           autocomplete="off"
+          onKeyDown={(e) => {
+            const results = searchResults();
+            const index = highlightedIndex();
+
+            if (e.key === "Tab") {
+              e.preventDefault();
+              if (results[index]) {
+                handleGoToGamePage(results[index]);
+              }
+            }
+
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setHighlightedIndex((prev) => Math.min(prev + 1, results.length - 1));
+            }
+
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+            }
+
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (results[index]) handleGoToGamePage(results[index]);
+            }
+          }}
           class={`
-            w-full py-3 pl-12 pr-10 bg-background
-            text-text placeholder:text-muted/60
-            focus:outline-none
-          `}
+    w-full py-3 pl-12 pr-10 bg-background
+    text-text placeholder:text-muted/60
+    focus:outline-none
+  `}
         />
+
 
         <Show when={searchTerm().length > 0}>
           <button
+            tabIndex={-1}
             onClick={clearSearch}
             class={`
               absolute right-3 p-1 rounded-full
@@ -178,30 +217,44 @@ export default function Searchbar(props: SearchbarProps) {
       {/* Search Results */}
       <Show when={searchResults().length > 0}>
         <div class={`
-          absolute z-50 mt-2 w-full
+          absolute z-80 mt-2 w-full
+          max-h-60 overflow-y-auto
           bg-popup-background border border-secondary-20 rounded-xl
-          shadow-lg overflow-hidden
+          shadow-lg no-scrollbar
           transition-all duration-300
           ${isFocused() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'}
         `}>
           <ul class="py-1 divide-y divide-secondary-20/30">
             <For each={searchResults()}>
-              {(result) => (
-                <li>
-                  <button
-                    onClick={() => handleGoToGamePage(result)}
-                    class={`
-                      w-full text-left px-4 py-3
-                      text-sm text-text hover:bg-secondary-20/20
-                      transition-colors duration-200
-                      flex items-center gap-2
-                    `}
-                  >
-                    <Search size={14} class="text-muted flex-shrink-0" />
-                    <span class="truncate">{capitalizeTitle(getTitleFromUrl(result))}</span>
-                  </button>
-                </li>
-              )}
+              {(result, index) => {
+                let itemRef: HTMLButtonElement | undefined;
+
+                createEffect(() => {
+                  if (index() === highlightedIndex() && itemRef) {
+                    itemRef.scrollIntoView({ block: "nearest" });
+                  }
+                });
+
+                return (
+                  <li>
+                    <button
+                      ref={itemRef}
+                      onClick={() => handleGoToGamePage(result)}
+                      class={`
+                        w-full text-left px-4 py-3
+                        text-sm text-text transition-colors duration-200
+                        flex items-center gap-2
+                        ${index() === highlightedIndex()
+                          ? 'bg-secondary-20/30 text-accent'
+                          : 'hover:bg-secondary-20/20'}
+                      `}
+                    >
+                      <Search size={14} class="text-muted flex-shrink-0" />
+                      <span class="truncate">{capitalizeTitle(getTitleFromUrl(result))}</span>
+                    </button>
+                  </li>
+                );
+              }}
             </For>
           </ul>
         </div>

@@ -4,8 +4,8 @@ use std::{
     fmt,
     path::Path,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     time::Instant,
 };
@@ -16,7 +16,7 @@ use futures::future::join_all;
 use lru::LruCache;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
-use specta::{specta, Type};
+use specta::{Type, specta};
 use tauri::{Manager, State, Window};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
@@ -26,15 +26,6 @@ static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 #[derive(Clone, serde::Serialize, Type)]
 pub struct Payload {
     pub message: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Type)]
-struct Game {
-    title: String,
-    img: String,
-    desc: String,
-    magnetlink: String,
-    href: String,
 }
 
 /// Helper function.
@@ -138,15 +129,14 @@ struct CachedGameImages {
     game_link: String,
     images: Vec<String>,
 }
-
 #[tauri::command]
 #[specta]
 pub async fn get_games_images(
     app_handle: tauri::AppHandle,
     game_link: String,
     image_cache: State<'_, ImageCache>,
-) -> Result<(), CustomError> {
-    let now = Instant::now();
+) -> Result<Vec<String>, CustomError> {
+    let start = Instant::now();
 
     let cache_file_path = app_handle
         .path()
@@ -154,35 +144,36 @@ pub async fn get_games_images(
         .unwrap_or_default()
         .join("image_cache.json");
 
-    // Acquire the lock and merge cache from file
-    let mut cache = image_cache.lock().await;
-    merge_cache_from_file(&cache_file_path, &mut cache).await?;
+    {
+        let mut cache = image_cache.lock().await;
+        merge_cache_from_file(&cache_file_path, &mut cache).await?;
 
-    // Check if the game link is already cached
-    if let Some(image_list) = cache.get(&game_link) {
-        if !image_list.is_empty() {
-            // Images already exist in cache, no need to fetch
-            return Ok(());
+        if let Some(image_list) = cache.get(&game_link) {
+            if !image_list.is_empty() {
+                return Ok(image_list.clone());
+            }
+            warn!(
+                "Cached list for '{}' is empty. Fetching anew...",
+                &game_link
+            );
         }
-        warn!(
-            "The list of {} is empty, it will get images again",
-            &game_link
-        );
     }
 
-    drop(cache); // Release lock before performing network operations
+    if STOP_FLAG.load(Ordering::Relaxed) {
+        return Err(anyhow::anyhow!("Scraping cancelled").into());
+    }
 
-    // Fetch image sources
+    // Fetch fresh images
     let image_srcs = scrape_image_srcs(&game_link).await?;
 
-    // Save fetched data back to the cache
-    let mut cache = image_cache.lock().await;
-    cache.put(game_link.clone(), image_srcs.clone());
-    save_cache_to_file(&cache_file_path, &cache).await?;
+    {
+        let mut cache = image_cache.lock().await;
+        cache.put(game_link.clone(), image_srcs.clone());
+        save_cache_to_file(&cache_file_path, &cache).await?;
+    }
 
-    info!("Time elapsed to find images: {:?}", now.elapsed());
-
-    Ok(())
+    info!("Image fetch completed in {:?}", start.elapsed());
+    Ok(image_srcs)
 }
 
 async fn merge_cache_from_file(

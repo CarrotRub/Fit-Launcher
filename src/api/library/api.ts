@@ -1,9 +1,11 @@
 import {
   commands,
+  DiscoveryGame,
   DownloadedGame,
   ExecutableInfo,
   Game,
   GameCollection,
+  InstallationInfo,
   Result,
 } from "../../bindings";
 
@@ -16,6 +18,22 @@ export class LibraryAPI {
   }
   async getGamesToDownload(): Promise<Game[]> {
     return await commands.getGamesToDownload();
+  }
+
+  async addGameToCollection(
+    collectionName: string,
+    gameData: Game
+  ): Promise<Result<null, string>> {
+    return await commands.addGameToCollection(collectionName, gameData);
+  }
+  async createCollection(
+    collectionName: string,
+    gamesList: Game[] | null
+  ): Promise<Result<null, string>> {
+    return await commands.createCollection(collectionName, gamesList);
+  }
+  async addDownloadedGame(game: DownloadedGame): Promise<Result<null, string>> {
+    return await commands.addDownloadedGame(game);
   }
   async removeDownloadedGame(gameTitle: string): Promise<Result<null, string>> {
     return await commands.removeDownloadedGame(gameTitle);
@@ -48,5 +66,51 @@ export class LibraryAPI {
       gameTitle,
       exec_info
     );
+  }
+  downloadedGameToGame(game: DownloadedGame): Game {
+    return {
+      title: game.title,
+      img: game.img,
+      desc: game.desc,
+      magnetlink: game.magnetlink,
+      href: game.href,
+      tag: game.tag,
+    };
+  }
+  discoveryGameToGame(game: DiscoveryGame): Game {
+    return {
+      title: game.game_title,
+      img: game.game_main_image,
+      desc: game.game_description,
+      magnetlink: game.game_magnetlink,
+      href: game.game_href,
+      tag: game.game_tags,
+    };
+  }
+  gameToDownloadedGame(game: Game): DownloadedGame {
+    const executableInfo: ExecutableInfo = {
+      executable_path: "",
+      executable_last_opened_date: null,
+      executable_play_time: 0,
+      executable_installed_date: null,
+      executable_disk_size: 0,
+    };
+
+    const installationInfo: InstallationInfo = {
+      output_folder: "",
+      download_folder: "",
+      file_list: [],
+    };
+
+    return {
+      title: game.title,
+      img: game.img,
+      desc: game.desc,
+      magnetlink: game.magnetlink,
+      href: game.href,
+      tag: game.tag,
+      executable_info: executableInfo,
+      installation_info: installationInfo,
+    };
   }
 }

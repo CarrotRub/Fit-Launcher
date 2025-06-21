@@ -1,3 +1,4 @@
+import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { JSX } from "solid-js";
 
 export type ButtonVariants = "glass" | "solid" | "bordered";
@@ -21,7 +22,7 @@ export interface ButtonProps {
   id?: string;
   class?: string;
   onClick: (e: MouseEvent) => any | Promise<any>;
-  label: string | JSX.Element;
+  label?: string | JSX.Element;
   disabled?: boolean;
   variant?: ButtonVariants;
   size?: "sm" | "md" | "lg";
@@ -38,17 +39,22 @@ export interface RangeSliderProps {
 }
 
 export interface PathInputProps {
+  value?: string;
   placeholder?: string;
   initialPath?: string;
   isDirectory?: boolean;
+  multipleFiles?: boolean;
+  filters?: DialogFilter[];
   onPathChange?: (path: string, isValid: boolean) => void;
   isValidPath?: boolean;
   class?: string;
 }
 
-export interface PathTextProps {
-  path: string;
+export interface TextInputProps {
+  value: string;
   class?: string;
+  disabled?: boolean;
+  onInput?: (value: string) => void;
 }
 
 export interface NumericalInputProps {

@@ -24,7 +24,7 @@ fn dir_size(path: impl Into<PathBuf>) -> io::Result<u64> {
 #[tauri::command]
 #[specta]
 pub fn executable_info_discovery(
-    path_to_exe: PathBuf,
+    path_to_exe: String,
     path_to_folder: PathBuf,
 ) -> Option<ExecutableInfo> {
     let metadata = fs::metadata(&path_to_exe).ok()?;
@@ -33,7 +33,6 @@ pub fn executable_info_discovery(
 
     let executable_disk_size = total_size;
 
-    // Helper function to convert SystemTime to NaiveDate
     fn system_time_to_naive_date(system_time: SystemTime) -> Option<NaiveDate> {
         let duration_since_epoch = system_time.duration_since(UNIX_EPOCH).ok()?;
         DateTime::from_timestamp(duration_since_epoch.as_secs() as i64, 0)

@@ -3,7 +3,7 @@ import { FitLauncherConfigDht } from "../../../../../bindings";
 import { SettingsSectionProps } from "../../../../../types/settings/types";
 import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
 import PageGroup from "../../Components/PageGroup";
-import LabelPathTextSettings from "../../Components/UI/LabelPathText/LabelPathText";
+import LabelTextInputSettings from "../../Components/UI/LabelTextInput/LabelTextInput";
 
 export default function DHTPart({
     settings,
@@ -21,9 +21,10 @@ export default function DHTPart({
                 checked={settings().disable_persistence}
                 action={() => handleSwitchCheckChange?.("dht.disable_persistence")}
             />
-            <LabelPathTextSettings
+            <LabelTextInputSettings
                 text="DHT Persistence File Path"
-                path={settings().persistence_filename}
+                value={settings().persistence_filename}
+                disabled={true}
             />
         </PageGroup>
 

@@ -1,43 +1,31 @@
-import { createSignal } from "solid-js";
-import PopupModal from "../../components/Popup-Modal/PopupModal";
+import { Show } from "solid-js";
 import Button from "../../components/UI/Button/Button";
+import { ModalPopupProps, PopupProps } from "../../types/popup";
+import { Modal } from "../Modal/Modal";
+import { render } from "solid-js/web";
 
-const BasicChoicePopup = (props: PopupProps) => {
-    
-    const [isOpen, setIsOpen] = createSignal(true);
+export default function createBasicChoicePopup(props: PopupProps) {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
 
-    const closePopup = () => setIsOpen(false);
+    const destroy = () => {
+        render(() => null, container);
+        container.remove();
+    };
 
-    return (
-        <PopupModal isOpen={isOpen()} onClose={closePopup}>
-            <div class="popup-content">
-                <div class="popup-text-title">
-                    <p class="popup-main-title">{props.infoTitle || "Please choose :)"}</p>
+    render(
+        () => (
+            <Modal {...props} onConfirm={async () => props.action?.()} onClose={destroy}>
+                <div class="space-y-4">
+                    <Show when={props.infoMessage}>
+                        <div class="text-text ">
+                            <p innerHTML={props.infoMessage!}></p>
+                        </div>
+                    </Show>
                 </div>
-
-                <div class="popup-text-container">
-                    <p innerHTML={props.infoMessage}></p>
-                </div>
-
-                <div class="popup-footer-container">
-                    {props.infoFooter ||
-                        "If you have any issues with this, try to close and open the app. If it still persists, please contact us on Discord or GitHub."}
-                </div>
-
-                <div class="popup-buttons">
-                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
-                    <Button
-                        id="popup-confirm-button"
-                        onClick={() => {
-                            if (props.action) props.action();
-                            closePopup();
-                        }}
-                        label="Confirm"
-                    />
-                </div>
-            </div>
-        </PopupModal>
+            </Modal>
+        ),
+        container
     );
-};
+}
 
-export default BasicChoicePopup;

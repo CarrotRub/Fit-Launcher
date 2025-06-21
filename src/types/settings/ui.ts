@@ -48,9 +48,10 @@ export type SettingsRangeLabelProps = SettingsLabelProps &
 
 export type SettingsPathInputLabelProps = SettingsLabelProps & PathInputProps;
 
-export type SettingsPathTextLabelProps = SettingsLabelProps &
+export type SettingsTextInputLabelProps = SettingsLabelProps &
   Omit<SettingsLabelProps, "action"> & {
-    path: string;
+    value: string;
+    disabled?: boolean;
   };
 
 export type SettingsNumericalInputLabelProps = SettingsLabelProps &

@@ -1,74 +1,52 @@
-import { createSignal } from "solid-js";
-import PopupModal from "../../components/Popup-Modal/PopupModal";
-import { open } from "@tauri-apps/plugin-dialog";
-import "./Basic-PathInput-PopUp.css";
-import Button from "../../components/UI/Button/Button";
+import { createSignal, Show } from "solid-js";
+import PathInput from "../../components/UI/PathInput/PathInput";
+import { PopupPathInputProps } from "../../types/popup";
+import { Modal } from "../Modal/Modal";
+import { render } from "solid-js/web";
 
-const BasicPathInputPopup = (props: PopupPathInputProps<[string]>) => {
-    const [currentPath, setCurrentPath] = createSignal("");
-    const [isOpen, setIsOpen] = createSignal(true);
 
-    const closePopup = () => setIsOpen(false);
 
-    const openFileDialog = async () => {
-        try {
-            const chosenPath = await open({
-                directory: props.isDirectory,
-                multiple: props.multipleFiles,
-                filters: [{ name: props.fileType[0], extensions: props.fileType }],
-                defaultPath: props.defaultPath,
-            });
-            if (chosenPath) setCurrentPath(chosenPath);
-        } catch (error) {
-            console.error("Error opening dialog:", error);
-        }
+export default function createPathInputPopup(props: PopupPathInputProps<[string]>) {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+
+    const destroy = () => {
+        render(() => null, container);
+        container.remove();
     };
 
-    return (
-        <PopupModal isOpen={isOpen()} onClose={closePopup}>
-            <div class="popup-content">
-                <div class="popup-text-title">
-                    <p class="popup-main-title">{props.infoTitle || "Fill the input :)"}</p>
-                </div>
+    render(
+        () => {
+            const [textInputValue, setTextInputValue] = createSignal("");
+            const closePopup = () => destroy();
 
-                <div class="popup-text-container">
-                    <p innerHTML={props.infoMessage}></p>
-                </div>
+            const handleConfirm = async () => {
+                if (props.action) {
+                    console.log("Text is", textInputValue())
+                    await props.action(textInputValue());
+                }
+                closePopup();
+            };
 
-                <div class="popup-path-input-container">
-                    <label class="popup-input-label">
-                        <input
-                            class="popup-path-input"
-                            placeholder={props.infoPlaceholder}
-                            style={{ "font-size": "14px" }}
-                            value={currentPath()}
-                            onInput={(e) => setCurrentPath(e.target.value)}
-                        />
-                        <button onClick={openFileDialog}>Browse</button>
-                    </label>
-                </div>
+            return (
+                <Modal {...props} onConfirm={handleConfirm} onClose={destroy}>
+                    <div class="space-y-6">
+                        <Show when={props.infoMessage}>
+                            {props.infoMessage && (
+                                <p class="text-sm text-muted" innerHTML={props.infoMessage}></p>
+                            )}
 
-                <div class="popup-footer-container">
-                    {props.infoFooter ||
-                        "If you have any issues with this, try to close and open the app. If it still persists, please contact us on Discord or GitHub."}
-                </div>
-
-                <div class="popup-buttons">
-                    <Button id="popup-cancel-button" onClick={closePopup} label="Cancel" />
-                    <Button
-                        id="popup-confirm-button"
-                        onClick={async () => {
-                            if (props.action && currentPath()) {
-                                await props.action?.(currentPath());
-                            }
-                            closePopup();
-                        }}
-                        label="Confirm"
-                    />
-                </div>
-            </div>
-        </PopupModal>
+                            <PathInput
+                                onPathChange={(path, isValid) => setTextInputValue(path)}
+                                value={textInputValue()}
+                                {...props}
+                            />
+                        </Show>
+                    </div>
+                </Modal>
+            );
+        },
+        container
     );
-};
+}
 
-export default BasicPathInputPopup;

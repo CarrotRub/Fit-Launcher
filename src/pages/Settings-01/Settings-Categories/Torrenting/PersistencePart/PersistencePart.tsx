@@ -3,7 +3,7 @@ import { FitLauncherConfigPersistence } from "../../../../../bindings";
 import { SettingsSectionProps } from "../../../../../types/settings/types";
 import PageGroup from "../../Components/PageGroup";
 import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
-import LabelPathTextSettings from "../../Components/UI/LabelPathText/LabelPathText";
+import LabelTextInputSettings from "../../Components/UI/LabelTextInput/LabelTextInput";
 
 export default function DHTPart({
     settings,
@@ -21,9 +21,10 @@ export default function DHTPart({
                 checked={settings().fastresume || false}
                 action={() => handleSwitchCheckChange?.("persistence.fastresume")}
             />
-            <LabelPathTextSettings
+            <LabelTextInputSettings
                 text="Session Persistence Path"
-                path={settings().folder || "No persistence path"}
+                value={settings().folder || "No persistence path"}
+                disabled={true}
             />
         </PageGroup>
 

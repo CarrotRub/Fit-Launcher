@@ -1,9 +1,9 @@
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use scraper::Selector;
+use scraper::{Html, Selector};
 use specta::specta;
 use std::fs;
 use tauri::Manager;
-use tracing::info;
+use tracing::{error, info};
 
 use anyhow::Result;
 use std::fs::File;
@@ -12,6 +12,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::errors::ScrapingError;
+use crate::game_file_path;
 use crate::global::functions::download_sitemap;
 use crate::structs::Game;
 
@@ -68,74 +69,80 @@ pub async fn get_singular_game_info(
 ) -> Result<(), ScrapingError> {
     let start_time = Instant::now();
 
-    let mut searched_game: Vec<Game> = Vec::new();
-
     let url = game_link.as_str();
-    let game_res = CUSTOM_DNS_CLIENT.get(url).send().await?;
+    let response = CUSTOM_DNS_CLIENT.get(url).send().await.map_err(|e| {
+        error!("Failed to fetch URL: {}", e);
+        ScrapingError::HttpStatusCodeError(e.to_string())
+    })?;
 
-    let game_body = game_res.text().await?;
-    let game_doc = scraper::Html::parse_document(&game_body);
+    let body = response.text().await.map_err(|e| {
+        error!("Failed to read response body: {}", e);
+        ScrapingError::HttpStatusCodeError(e.to_string())
+    })?;
 
-    let title_selector = scraper::Selector::parse(".entry-title").unwrap();
-    let images_selector = scraper::Selector::parse(".entry-content > p > a > img").unwrap();
-    let description_selector = Selector::parse("div.entry-content").unwrap();
-    let magnetlink_selector = scraper::Selector::parse("a[href*='magnet']").unwrap();
-    let tag_selector = scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap();
+    let doc = Html::parse_document(&body);
 
-    let title_elem = game_doc.select(&title_selector).next();
-    let description_elem = game_doc.select(&description_selector).next();
-    let magnetlink_elem = game_doc.select(&magnetlink_selector).next();
-    let image_elem = game_doc.select(&images_selector).next();
-    let tag_elem = game_doc.select(&tag_selector).next();
+    let title_selector = Selector::parse(".entry-title").unwrap();
+    let image_selector = Selector::parse(".entry-content > p > a > img").unwrap();
+    let desc_selector = Selector::parse("div.entry-content").unwrap();
+    let magnet_selector = Selector::parse("a[href*='magnet']").unwrap();
+    let tag_selector = Selector::parse(".entry-content p strong:first-of-type").unwrap();
 
-    let title = title_elem
-        .map(|elem| elem.text().collect::<String>())
+    let title = doc
+        .select(&title_selector)
+        .next()
+        .map(|e| e.text().collect::<String>())
         .unwrap_or_default();
-    let description = description_elem
-        .map(|elem| elem.text().collect::<String>())
-        .unwrap_or_default();
-    let magnetlink = magnetlink_elem
-        .and_then(|elem| elem.value().attr("href"))
-        .unwrap_or_default();
-    let image_src = image_elem
-        .and_then(|elem| elem.value().attr("src"))
-        .unwrap_or_default();
-    let tag = tag_elem
-        .map(|elem| elem.text().collect::<String>())
-        .unwrap_or_else(|| "Unknown".to_string()); // Collecting the tag
 
-    let singular_searched_game = Game {
-        title: title.to_string(),
-        img: image_src.to_string(),
-        desc: description,
-        magnetlink: magnetlink.to_string(),
+    let desc = doc
+        .select(&desc_selector)
+        .next()
+        .map(|e| e.text().collect::<String>())
+        .unwrap_or_default();
+
+    let magnet = doc
+        .select(&magnet_selector)
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .unwrap_or_default()
+        .to_string();
+
+    let img = doc
+        .select(&image_selector)
+        .next()
+        .and_then(|e| e.value().attr("src"))
+        .unwrap_or_default()
+        .to_string();
+
+    let tag = doc
+        .select(&tag_selector)
+        .next()
+        .map(|e| e.text().collect::<String>())
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    let game = Game {
+        title,
+        img,
+        desc,
+        magnetlink: magnet,
         href: url.to_string(),
-        tag: tag.to_string(),
+        tag,
     };
 
-    searched_game.push(singular_searched_game);
+    let path = game_file_path(&app_handle, "singular_game_temp.json");
+    let json = serde_json::to_string_pretty(&game).map_err(|e| {
+        error!("Failed to serialize game JSON: {}", e);
+        ScrapingError::FileJSONError(e.to_string())
+    })?;
 
-    let json_data = serde_json::to_string_pretty(&searched_game)?;
-    let mut binding = app_handle.path().app_data_dir().unwrap();
+    tokio::fs::write(&path, json).await.map_err(|e| {
+        error!("Failed to write game to file: {}", e);
+        ScrapingError::IOError(e.to_string())
+    })?;
 
-    match Path::new(&binding).exists() {
-        true => (),
-        false => {
-            fs::create_dir_all(&binding)?;
-        }
-    }
-    binding.push("tempGames");
-    binding.push("singular_game_temp.json");
-
-    let mut file = File::create(binding).expect("File could not be created !");
-
-    file.write_all(json_data.as_bytes())?;
-
-    let end_time = Instant::now();
-    let duration_time_process = end_time - start_time;
     info!(
-        "Data has been written to singular_game_temp.json. Time was : {:#?}",
-        duration_time_process
+        "Game data written to singular_game_temp.json in {:#?}",
+        start_time.elapsed()
     );
 
     Ok(())

@@ -44,7 +44,6 @@ pub(crate) fn convert_legacy_downloads(
                 output_folder: legacy.torrentOutputFolder,
                 download_folder: legacy.torrentDownloadFolder,
                 file_list: legacy.torrentFileList,
-                executable_info: legacy.executableInfo,
             },
         })
         .collect()

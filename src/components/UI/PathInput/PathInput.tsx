@@ -1,76 +1,72 @@
-import { createEffect, createSignal, JSX } from "solid-js";
-import { exists } from "@tauri-apps/plugin-fs";
-import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen, CheckCircle2, XCircle } from "lucide-solid";
+import { CheckCircle2, FolderOpen, XCircle } from "lucide-solid";
 import Button from "../Button/Button";
+import { open } from "@tauri-apps/plugin-dialog";
+import { exists } from "@tauri-apps/plugin-fs";
+import { createSignal } from "solid-js";
 import { PathInputProps } from "../../../types/components/types";
 
 export default function PathInput(props: PathInputProps) {
-    const [currentPath, setCurrentPath] = createSignal(props.initialPath || "");
-    const [localIsValid, setLocalIsValid] = createSignal(false);
     const [isFocused, setIsFocused] = createSignal(false);
-
-    createEffect(() => {
-        setCurrentPath(props.initialPath || "");
-        validatePath(props.initialPath || "");
-    });
+    const [isValid, setIsValid] = createSignal(false);
 
     const validatePath = async (path: string) => {
         if (!path) {
-            setLocalIsValid(false);
+            setIsValid(false);
             props.onPathChange?.(path, false);
             return false;
         }
 
         try {
             const pathExists = await exists(path);
-            setLocalIsValid(pathExists);
+            setIsValid(pathExists);
             props.onPathChange?.(path, pathExists);
             return pathExists;
         } catch (error) {
             console.error("Validation error:", error);
-            setLocalIsValid(false);
+            setIsValid(false);
             props.onPathChange?.(path, false);
             return false;
         }
     };
 
+
     const openFileDialog = async () => {
         try {
             const selected = await open({
                 directory: props.isDirectory,
-                defaultPath: currentPath() || undefined,
+                filters: props.filters,
+                multiple: props.multipleFiles,
+                defaultPath: props.value || undefined,
             });
 
             if (selected) {
-                const isValid = await validatePath(selected);
-                if (isValid) setCurrentPath(selected);
+                await validatePath(selected);
             }
         } catch (error) {
             console.error("File dialog error:", error);
         }
     };
 
-    const displayValidation = typeof props.isValidPath !== "undefined" ? props.isValidPath : localIsValid();
+    const displayValidation = () =>
+        typeof props.isValidPath !== "undefined" ? props.isValidPath : isValid();
+
 
     return (
         <div class={`relative w-full ${props.class || ""}`}>
-            <div class={`
-        flex items-center gap-2 w-full
-        border rounded-lg overflow-hidden
-        transition-all duration-200
-        ${isFocused() ? "border-accent ring-2 ring-accent/20" : "border-secondary-20"}
-        ${displayValidation ? "bg-background" : "bg-background-70"}
-      `}>
+            <div
+                class={`
+          flex items-center gap-2 w-full
+          border rounded-lg overflow-hidden
+          transition-all duration-200
+          ${isFocused() ? "border-accent ring-2 ring-accent/20" : "border-secondary-20"}
+          ${displayValidation() ? "bg-background" : "bg-background-70"}
+        `}
+            >
                 <input
                     type="text"
                     placeholder={props.placeholder || "Enter a path"}
-                    value={currentPath()}
-                    onInput={async (e) => {
-                        const newPath = e.currentTarget.value;
-                        setCurrentPath(newPath);
-                        await validatePath(newPath);
-                    }}
+                    value={props.value}
+                    onInput={async (e) => { props.onPathChange?.(e.currentTarget.value, false); await validatePath(e.currentTarget.value); }}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     class={`
@@ -88,24 +84,24 @@ export default function PathInput(props: PathInputProps) {
                         label=""
                         class="px-2 text-muted hover:text-accent"
                     />
-
                     <div class="h-6 w-6 flex items-center justify-center">
-                        {displayValidation ? (
+                        {displayValidation() ? (
                             <CheckCircle2 size={20} class="text-accent" />
                         ) : (
-                            <XCircle size={20} class="text-warning-orange" />
+                            <XCircle size={20} class="text-primary" />
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Animated focus highlight */}
-            <div class={`
-        absolute inset-0 -z-10 rounded-lg
-        bg-gradient-to-r from-accent/10 to-primary/10
-        opacity-0 transition-opacity duration-300
-        ${isFocused() ? "opacity-100" : ""}
-      `}></div>
+            <div
+                class={`
+          absolute inset-0 -z-10 rounded-lg
+          bg-gradient-to-r from-accent/10 to-primary/10
+          opacity-0 transition-opacity duration-300
+          ${isFocused() ? "opacity-100" : ""}
+        `}
+            ></div>
         </div>
     );
-};
+}

@@ -1,15 +1,18 @@
-import { createSignal, onMount, Show, JSX } from 'solid-js';
-
+import { createSignal, onMount, Show, JSX, For } from 'solid-js';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
 import { useNavigate } from '@solidjs/router';
 import type { DiscoveryGame } from '../../../../bindings';
 import { commands } from '../../../../bindings';
-import { CircleArrowLeft, CircleArrowRight, Star } from 'lucide-solid';
+import { CircleArrowLeft, CircleArrowRight, Star, Info, Languages, HardDrive, Tags, Factory, ChevronLeft, ChevronRight } from 'lucide-solid';
+import Button from '../../../../components/UI/Button/Button';
+import { LibraryAPI } from '../../../../api/library/api';
 
-// todo: make a subcrate that handles library logic
 const defaultPath: string = await commands.getNewlyAddedGamesPath();
+const library = new LibraryAPI();
+
+//todo: fix tags
 
 function HorizontalImagesCarousel({
     gameItemObject,
@@ -18,34 +21,33 @@ function HorizontalImagesCarousel({
     gameItemObject: DiscoveryGame;
     preloadedDownloadLater: boolean;
 }): JSX.Element {
-
     const navigate = useNavigate();
-
     const [clicked, setClicked] = createSignal(false);
     const [imagesList, setImagesList] = createSignal<string[]>([]);
     const [currentImage, setCurrentImage] = createSignal(0);
     const [isThrottled, setIsThrottled] = createSignal(false);
     const [isToDownloadLater, setToDownloadLater] = createSignal(preloadedDownloadLater);
-
     const [gameCompanies, setCompanies] = createSignal('N/A');
     const [gameLanguages, setLanguage] = createSignal('N/A');
     const [originalSize, setOriginalSize] = createSignal('N/A');
     const [repackSize, setRepackSize] = createSignal('N/A');
 
+    async function checkIfInDownloadLater(title: string) {
+        try {
+            const list = await library.getGamesToDownload();
+            const exists = list.some((g) => g.title === title);
+            setToDownloadLater(exists);
+        } catch (err) {
+            console.error("Error checking download later list", err);
+            setToDownloadLater(false);
+        }
+    }
+
     onMount(async () => {
-        const appDir = await appDataDir();
-        const userToDownloadGamesPath = await join(appDir, 'library', 'games_to_download.json');
+        checkIfInDownloadLater(gameItemObject.game_title)
         setImagesList(gameItemObject.game_secondary_images);
         extractDetails(gameItemObject.game_description);
 
-        try {
-            const fileContent = await readTextFile(userToDownloadGamesPath);
-            const currentData: { title: string }[] = JSON.parse(fileContent);
-            const gameExists = currentData.some(game => game.title === gameItemObject.game_title);
-            setToDownloadLater(gameExists);
-        } catch {
-            setToDownloadLater(false);
-        }
     });
 
     function throttle(callback: () => void, delay: number) {
@@ -107,37 +109,14 @@ function HorizontalImagesCarousel({
         };
     }
 
-    async function handleAddToDownloadLater(gameData: DiscoveryGame, isChecked: boolean) {
-        const appDir = await appDataDir();
-        const filePath = await join(appDir, 'library', 'games_to_download.json');
-        const libraryDir = await join(appDir, 'library');
-
-        try {
-            await mkdir(libraryDir, { recursive: true });
-        } catch (error) {
-            console.error('Error creating directory:', error);
+    async function handleAddToDownloadLater(gameData: DiscoveryGame, checked: boolean) {
+        if (!gameData) return;
+        if (checked) {
+            await library.addGameToCollection("games_to_download", library.discoveryGameToGame(gameData));
+        } else {
+            await library.removeGameToDownload(gameData.game_title);
         }
 
-        let currentData: any[] = [];
-        try {
-            const content = await readTextFile(filePath);
-            currentData = JSON.parse(content);
-        } catch { }
-
-        const transformed = transformGameData(gameData);
-        const gameExists = currentData.some(g => g.title === transformed.title);
-
-        if (isChecked && !gameExists) {
-            currentData.push(transformed);
-        } else if (!isChecked && gameExists) {
-            currentData = currentData.filter(g => g.title !== transformed.title);
-        }
-
-        try {
-            await writeTextFile(filePath, JSON.stringify(currentData, null, 2));
-        } catch (err) {
-            console.error('Error writing to file', err);
-        }
     }
 
     async function handleCheckboxChange(e: Event) {
@@ -158,29 +137,17 @@ function HorizontalImagesCarousel({
 
     return (
         <Show when={imagesList().length > 0}>
-            <div class="relative w-[70%]  mx-auto py-4 px-8 flex flex-col items-center justify-center mt-8 border border-accent rounded-md transition-transform will-change-transform">
-                <label class="absolute top-0 right-0 cursor-pointer select-none z-10">
-                    <input
-                        type="checkbox"
-                        checked={isToDownloadLater()}
-                        onChange={handleCheckboxChange}
-
-                        class="absolute opacity-0 h-0 w-0"
-                    />
-                    <Star class="w-12 h-12 fill-neutral-500 hover:scale-110 transition-transform " style={{
-                        fill: isToDownloadLater() ? 'var(--color-accent)' : '#666'
-                    }} stroke-width={0} />
-                </label>
-
-                <div class="relative flex justify-center h-80 w-full overflow-hidden mb-4 will-change-transform">
+            <div class="relative w-full flex flex-col gap-4 max-w-6xl mx-auto p-6 bg-popup rounded-xl shadow-2xl border border-secondary-20 transition-all will-change-transform hover:shadow-accent/20">
+                {/* 3D Carousel */}
+                <div class="relative flex justify-center h-96 w-full overflow-hidden  will-change-transform perspective-1000">
                     {imagesList().map((image, index) => (
                         <div
-                            class={`absolute top-0 w-[40%] h-full flex items-center justify-center transition-all duration-500 ${getSlideClass(index) === 'active'
-                                ? 'translate-x-0 scale-140 opacity-100 z-30'
+                            class={`absolute top-0 w-[45%] origin-center h-full flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${getSlideClass(index) === 'active'
+                                ? 'translate-x-0 scale-110 opacity-100 z-30 rotate-y-0'
                                 : getSlideClass(index) === 'left'
-                                    ? '-translate-x-[110%] scale-95 opacity-60 z-20'
+                                    ? '-translate-x-[110%] scale-95 opacity-70 z-20 rotate-y-12'
                                     : getSlideClass(index) === 'right'
-                                        ? 'translate-x-[110%] scale-95 opacity-60 z-20'
+                                        ? 'translate-x-[110%] scale-95 opacity-70 z-20 -rotate-y-12'
                                         : 'opacity-0 pointer-events-none z-10'
                                 }`}
                         >
@@ -188,7 +155,7 @@ function HorizontalImagesCarousel({
                                 src={image}
                                 alt={`Slide ${index}`}
                                 loading="lazy"
-                                class="w-full h-50 rounded-xl object-cover shadow-lg cursor-pointer transition-transform hover:scale-105"
+                                class="w-full h-full rounded-xl object-cover shadow-xl cursor-pointer transition-transform duration-300 hover:scale-105 hover:shadow-accent/20"
                                 onClick={() =>
                                     handleGoToGamePage(
                                         gameItemObject.game_title,
@@ -201,46 +168,100 @@ function HorizontalImagesCarousel({
                     ))}
                 </div>
 
-                <div class="absolute top-1/2 w-full flex justify-between transform -translate-y-1/2 pointer-events-none z-40">
-                    <div
-                        class="text-accent p-1 cursor-pointer pointer-events-auto flex hover:scale-110 transition-transform"
+                {/* Navigation Arrows */}
+                <div class="w-full flex justify-between transform pointer-events-none z-40 px-2">
+
+                    <button
                         onClick={prevSlide}
+                        class="w-10 h-10 pointer-events-auto flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
                     >
-                        <CircleArrowLeft stroke-width={1} />
-                    </div>
-                    <div
-                        class="text-accent p-1 cursor-pointer pointer-events-auto flex hover:scale-110 transition-transform"
+                        <ChevronLeft size={20} class="text-text" stroke-width={1.5} />
+                    </button>
+
+                    <button
                         onClick={nextSlide}
+                        class="w-10 h-10 pointer-events-auto flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
                     >
-                        <CircleArrowRight stroke-width={1} />
+                        <ChevronRight size={20} class="text-text" stroke-width={1.5} />
+                    </button>
+
+                </div>
+                <Show when={imagesList().length > 1}>
+                    <div class="flex flex-row self-center gap-2 z-30">
+                        <For each={imagesList()}>
+                            {(_, index) => (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setCurrentImage(index()); // you likely already have this signal
+                                    }}
+                                    class={`w-3 h-3 rounded-full transition-all duration-300 ${currentImage() === index()
+                                        ? 'bg-accent w-6 scale-125 shadow-sm shadow-accent/50'
+                                        : 'bg-secondary-20 hover:bg-accent/50'
+                                        }`}
+                                />
+                            )}
+                        </For>
+                    </div>
+                </Show>
+
+                {/* Game Info */}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-secondary-20">
+                    <div>
+                        <h2 class="text-2xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent mb-1">
+                            {extractMainTitle(gameItemObject.game_title)}
+                        </h2>
+                        <p class="text-muted italic text-sm mb-4">
+                            {gameItemObject.game_title}
+                        </p>
+
+                        <div class="flex items-center gap-2 text-sm text-muted mb-2">
+                            <Tags class="w-4 h-4" />
+                            <span class="font-medium">Tags:</span>
+                            <span>{gameItemObject.game_tags || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2 text-sm">
+                            <HardDrive class="w-4 h-4 text-accent" />
+                            <span class="font-medium">Repack Size:</span>
+                            <span class="text-muted">{repackSize()}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <HardDrive class="w-4 h-4 text-accent" />
+                            <span class="font-medium">Original Size:</span>
+                            <span class="text-muted">{originalSize()}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <Languages class="w-4 h-4 text-accent" />
+                            <span class="font-medium">Languages:</span>
+                            <span class="text-muted">{gameLanguages()}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <Factory class="w-4 h-4 text-accent" />
+                            <span class="font-medium">Companies:</span>
+                            <span class="text-muted">{gameCompanies()}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex flex-row justify-between w-full gap-2 pt-4 relative">
-                    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-4/5 h-px bg-accent" />
-                    <div class="flex flex-col">
-                        <p class="text-lg font-semibold font-mulish">
-                            {extractMainTitle(gameItemObject.game_title)}
-                        </p>
-                        <p class="text-sm italic text-muted font-light font-mulish">
-                            {gameItemObject.game_title}
-                        </p>
-                        <p class="mt-4">
-                            <b>Tags:</b>{' '}
-                            <span class="italic font-light">{gameItemObject.game_tags}</span>
-                        </p>
-                    </div>
-                    <div class="flex flex-col text-right">
-                        <p>
-                            <b>Repack Size:</b>{' '}
-                            <span class="italic font-light">{repackSize()}</span>
-                        </p>
-                        <p>
-                            <b>Original Size:</b>{' '}
-                            <span class="italic font-light">{originalSize()}</span>
-                        </p>
-                    </div>
-                </div>
+                <label class="absolute bottom-4 right-4 cursor-pointer select-none z-10 group">
+                    <input
+                        type="checkbox"
+                        checked={isToDownloadLater()}
+                        onChange={handleCheckboxChange}
+                        class="absolute opacity-0 h-0 w-0"
+                    />
+                    <Star
+                        class="w-10 h-10 transition-all duration-300 group-hover:scale-110"
+                        classList={{
+                            'fill-accent text-accent/80': isToDownloadLater(),
+                            'fill-secondary-20 text-muted hover:fill-accent/30': !isToDownloadLater()
+                        }}
+                        stroke-width={1.5}
+                    />
+                </label>
             </div>
         </Show>
     );

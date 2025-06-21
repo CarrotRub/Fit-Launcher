@@ -1,6 +1,7 @@
 import { message } from "@tauri-apps/plugin-dialog";
 import {
   commands,
+  CustomError,
   DiscoveryGame,
   Game,
   Result,
@@ -28,6 +29,25 @@ export class GamesCacheAPI {
 
   async getDiscoveryGames(): Promise<Result<DiscoveryGame[], ScrapingError>> {
     return await this.getCached("discovery", commands.getDiscoveryGames);
+  }
+
+  async getSingularGameLocal(): Promise<Result<Game, ScrapingError>> {
+    return await this.getCached(
+      "singularGameLocal",
+      commands.getSingularGameLocal
+    );
+  }
+
+  async getSingularGameInfo(
+    gameLink: string
+  ): Promise<Result<null, ScrapingError>> {
+    return commands.getSingularGameInfo(gameLink);
+  }
+
+  async getGameImages(
+    gameLink: string
+  ): Promise<Result<string[], CustomError>> {
+    return await commands.getGamesImages(gameLink);
   }
 
   async removeNSFW<T extends { tag?: string; game_tags?: string }>(
