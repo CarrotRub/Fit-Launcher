@@ -23,17 +23,14 @@ use tokio::{
 
 use tracing::{error, info, warn};
 
-use crate::{
-    config::{FitLauncherConfig, FitLauncherConfigAria2},
-    errors::TorrentApiError,
-};
+use crate::{FitLauncherConfigV2, config::FitLauncherConfigAria2, errors::TorrentApiError};
 
 type AriaDaemonType = Lazy<Mutex<Option<(Sender<()>, Receiver<()>)>>>;
 
 pub static ARIA2_DAEMON: AriaDaemonType = Lazy::new(|| Mutex::new(None));
 
 struct StateShared {
-    config: FitLauncherConfig,
+    config: FitLauncherConfigV2,
     aria2_client: Option<Client>,
 }
 
@@ -42,14 +39,13 @@ pub struct TorrentSession {
     shared: Arc<RwLock<Option<StateShared>>>,
 }
 
-fn read_config(path: &str) -> anyhow::Result<FitLauncherConfig> {
+fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
     let rdr = BufReader::new(File::open(path)?);
-    let mut config: FitLauncherConfig = serde_json::from_reader(rdr)?;
-    config.persistence.fix_backwards_compat();
-    Ok(config)
+    let cfg: FitLauncherConfigV2 = serde_json::from_reader(rdr)?;
+    Ok(cfg)
 }
 
-fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
+fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> {
     std::fs::create_dir_all(Path::new(path).parent().context("no parent")?)
         .context("error creating dirs")?;
     let tmp = format!("{}.tmp", path);
@@ -66,27 +62,89 @@ fn write_config(path: &str, config: &FitLauncherConfig) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn build_aria2_args(cfg: &FitLauncherConfigV2, session_path: &Path) -> Vec<String> {
+    let mut a = Vec::<String>::new();
+
+    // RPC ------------------------------------------------------------------
+    a.push("--enable-rpc".into());
+    a.push(format!("--rpc-listen-port={}", cfg.rpc.port));
+    if let Some(tok) = &cfg.rpc.token {
+        a.push(format!("--rpc-secret={tok}"));
+    }
+
+    // General --------------------------------------------------------------
+    a.push(format!("--dir={}", cfg.general.download_dir.display()));
+    a.push(format!(
+        "--max-concurrent-downloads={}",
+        cfg.general.concurrent_downloads
+    ));
+
+    // Transfer limits ------------------------------------------------------
+    if let Some(v) = cfg.limits.max_overall_download {
+        a.push(format!("--max-overall-download-limit={v}"));
+    }
+    if let Some(v) = cfg.limits.max_overall_upload {
+        a.push(format!("--max-overall-upload-limit={v}"));
+    }
+    if let Some(v) = cfg.limits.max_download {
+        a.push(format!("--max-download-limit={v}"));
+    }
+    if let Some(v) = cfg.limits.max_upload {
+        a.push(format!("--max-upload-limit={v}"));
+    }
+
+    // Network --------------------------------------------------------------
+    a.push(format!(
+        "--max-connection-per-server={}",
+        cfg.network.max_connection_per_server
+    ));
+    a.push(format!("--split={}", cfg.network.split));
+    a.push(format!("--min-split-size={}", cfg.network.min_split_size));
+    a.push(format!(
+        "--connect-timeout={}",
+        cfg.network.connect_timeout.as_secs()
+    ));
+    a.push(format!("--timeout={}", cfg.network.rw_timeout.as_secs()));
+
+    // BitTorrent -----------------------------------------------------------
+    if !cfg.bittorrent.enable_dht {
+        a.push("--enable-dht=false".into());
+    }
+    a.push(format!("--listen-port={}", cfg.bittorrent.listen_port));
+    a.push(format!("--bt-max-peers={}", cfg.bittorrent.max_peers));
+    if let Some(r) = cfg.bittorrent.seed_ratio {
+        a.push(format!("--seed-ratio={r}"));
+    }
+    if let Some(t) = cfg.bittorrent.seed_time {
+        a.push(format!("--seed-time={t}"));
+    }
+
+    // Session persistence --------------------------------------------------
+    a.push("--save-session".into());
+    a.push(session_path.display().to_string());
+
+    a
+}
+
 pub async fn aria2_client_from_config(
-    config: &FitLauncherConfig,
+    config: &FitLauncherConfigV2,
     session_path: impl AsRef<OsStr>,
 ) -> anyhow::Result<aria2_ws::Client> {
     let FitLauncherConfigAria2 {
         port,
         token,
         start_daemon,
-    } = &config.aria2_rpc;
+    } = &config.rpc;
 
-    let download_location = &config.default_download_location;
+    let download_location = &config.general.download_dir;
 
     if *start_daemon && ARIA2_DAEMON.lock().is_none() {
         #[cfg(not(debug_assertions))]
-        let mut child = Command::new(if cfg!(windows) { "./aria2c" } else { "aria2c" })
-            .arg("--enable-rpc")
-            .arg(format!("--rpc-listen-port={port}"))
-            .arg("--max-connection-per-server=5")
-            .arg("--save-session")
-            .arg(session_path.as_ref())
-            .current_dir(download_location)
+        let exec = if cfg!(windows) { "./aria2c" } else { "aria2c" };
+        #[cfg(not(debug_assertions))]
+        let mut child = Command::new(exec)
+            .args(build_aria2_args(config, session_path.as_ref()))
+            .current_dir(&config.general.download_dir)
             .spawn()?;
 
         #[cfg(debug_assertions)]
@@ -151,54 +209,6 @@ pub async fn aria2_client_from_config(
         .context("Could not connect to already running aria2 RPC server")
 }
 
-pub async fn api_from_config(config: &FitLauncherConfig) -> anyhow::Result<Api> {
-    config
-        .validate()
-        .context("error validating configuration")?;
-    let persistence = if config.persistence.disable {
-        None
-    } else {
-        Some(SessionPersistenceConfig::Json {
-            folder: if config.persistence.folder == Path::new("") {
-                None
-            } else {
-                Some(config.persistence.folder.clone())
-            },
-        })
-    };
-    let session = Session::new_with_opts(
-        config.default_download_location.clone(),
-        SessionOptions {
-            disable_dht: config.dht.disable,
-            disable_dht_persistence: config.dht.disable_persistence,
-            dht_config: Some(PersistentDhtConfig {
-                config_filename: Some(config.dht.persistence_filename.clone()),
-                ..Default::default()
-            }),
-            persistence,
-            peer_opts: Some(PeerConnectionOptions {
-                connect_timeout: Some(config.peer_opts.connect_timeout),
-                read_write_timeout: Some(config.peer_opts.read_write_timeout),
-                ..Default::default()
-            }),
-            listen_port_range: if !config.tcp_listen.disable {
-                Some(config.tcp_listen.min_port..config.tcp_listen.max_port)
-            } else {
-                None
-            },
-            enable_upnp_port_forwarding: !config.upnp.disable_tcp_port_forward,
-            fastresume: config.persistence.fastresume,
-            ..Default::default()
-        },
-    )
-    .await
-    .context("couldn't set up librqbit session")?;
-
-    let api = Api::new(session.clone(), None, None);
-
-    Ok(api)
-}
-
 impl TorrentSession {
     pub async fn new() -> Self {
         warn!("Starting Initialization");
@@ -215,7 +225,7 @@ impl TorrentSession {
             .to_string();
 
         if !Path::new(&config_filename).exists() {
-            match write_config(&config_filename, &FitLauncherConfig::default()) {
+            match write_config(&config_filename, &FitLauncherConfigV2::default()) {
                 Ok(_) => info!(
                     "Default config written successfully to: {}",
                     &config_filename
@@ -272,7 +282,7 @@ impl TorrentSession {
             .context("aria2 rpc server not configured")
     }
 
-    pub async fn configure(&self, config: FitLauncherConfig) -> Result<(), TorrentApiError> {
+    pub async fn configure(&self, config: FitLauncherConfigV2) -> Result<(), TorrentApiError> {
         let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
@@ -297,7 +307,7 @@ impl TorrentSession {
         Ok(())
     }
 
-    pub async fn get_config(&self) -> FitLauncherConfig {
+    pub async fn get_config(&self) -> FitLauncherConfigV2 {
         let g = self.shared.read();
         if let Some(shared) = g.as_ref() {
             shared.config.clone()
@@ -305,7 +315,7 @@ impl TorrentSession {
             warn!(
                 "Tried to somehow get config before any initialization, has returned default config"
             );
-            FitLauncherConfig::default()
+            FitLauncherConfigV2::default()
         }
     }
 }

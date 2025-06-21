@@ -1,6 +1,6 @@
 import {
   commands,
-  FitLauncherConfig,
+  FitLauncherConfigV2,
   FitLauncherDnsConfig,
   GamehubSettings,
   InstallationSettings,
@@ -20,10 +20,15 @@ export class GlobalSettingsApi {
   }
 }
 
-export class TorrentSettingsApi {
-  async getTorrentSettings(): Promise<
-    Result<FitLauncherConfig, TorrentApiError>
+export class DownloadSettingsApi {
+  async getDownloadSettings(): Promise<
+    Result<FitLauncherConfigV2, TorrentApiError>
   > {
-    return await commands.getTorrentFullSettings();
+    return await commands.getDownloadSettings();
+  }
+  async changeDownloadSettings(
+    config: FitLauncherConfigV2
+  ): Promise<Result<null, TorrentApiError>> {
+    return await commands.changeDownloadSettings(config);
   }
 }

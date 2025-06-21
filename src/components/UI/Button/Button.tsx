@@ -9,7 +9,7 @@ const Button = (props: ButtonProps) => {
       disabled={props.disabled}
       class={`
         relative overflow-hidden
-        px-6 py-2.5 rounded-lg font-medium
+        px-6 py-2.5 ${props.notRounded ? "rounded-none" : "rounded-lg"} font-medium
         transition-all duration-200 ease-out
         active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100
         border

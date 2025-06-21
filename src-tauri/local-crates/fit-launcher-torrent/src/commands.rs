@@ -3,20 +3,15 @@ use std::{path::PathBuf, str::FromStr};
 
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::prelude::*;
-use http::StatusCode;
-use librqbit::ApiError;
 
 use specta::specta;
 use tracing::{error, info};
 
-use crate::config::FitLauncherConfig;
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
 use fit_launcher_ui_automation::mighty_automation::windows_ui_automation;
 
 use super::*;
-
-use librqbit::api::EmptyJsonResponse;
 
 #[tauri::command]
 #[specta]
@@ -36,17 +31,17 @@ pub async fn download_torrent_from_paste(
 
 #[tauri::command]
 #[specta]
-pub async fn get_torrent_full_settings(
+pub async fn get_download_settings(
     state: tauri::State<'_, TorrentSession>,
-) -> Result<FitLauncherConfig, TorrentApiError> {
+) -> Result<FitLauncherConfigV2, TorrentApiError> {
     Ok(state.get_config().await)
 }
 
 #[tauri::command]
 #[specta]
-pub async fn change_torrent_config(
+pub async fn change_download_settings(
     state: tauri::State<'_, TorrentSession>,
-    config: FitLauncherConfig,
+    config: FitLauncherConfigV2,
 ) -> Result<(), TorrentApiError> {
     state.configure(config).await?;
     Ok(())
@@ -59,7 +54,7 @@ pub async fn config_change_only_path(
     download_path: String,
 ) -> Result<(), TorrentApiError> {
     let mut current_config = state.get_config().await;
-    current_config.default_download_location = PathBuf::from(download_path);
+    current_config.general.download_dir = PathBuf::from(download_path);
 
     state.configure(current_config).await
 }

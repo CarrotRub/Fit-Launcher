@@ -1,5 +1,5 @@
 import { createSignal, onMount, type JSX } from "solid-js";
-import TorrentingPage from "./Settings-Categories/Torrenting/Torrenting";
+import DownloadConfigurationPage from "./Settings-Categories/Download/Download";
 import GlobalSettingsPage from "./Settings-Categories/Global/GlobalSettingsPage";
 
 import {
@@ -10,14 +10,20 @@ import {
   Network,
   Server,
   Save,
-  Users
+  Users,
+  Gauge,
+  Magnet,
+  Cpu,
+  Monitor,
+  HardDriveDownload,
+  Archive
 } from "lucide-solid";
 
 import type {
   SettingsPart,
   GlobalSettingsPart,
-  TorrentSettingsPart,
-  SettingsGroup
+  SettingsGroup,
+  DownloadSettingsPart
 } from "../../types/settings/types";
 import { SettingsProvider, useSettingsContext } from "./SettingsContext";
 
@@ -39,7 +45,7 @@ function SettingsContent(): JSX.Element {
 
   const contentMap: Record<SettingsGroup, () => JSX.Element> = {
     global: () => <GlobalSettingsPage settingsPart={activeCategory() as GlobalSettingsPart} />,
-    torrent: () => <TorrentingPage settingsPart={activeCategory() as TorrentSettingsPart} />
+    torrent: () => <DownloadConfigurationPage settingsPart={activeCategory() as DownloadSettingsPart} />
   };
 
   return (
@@ -90,24 +96,26 @@ function SettingsSidebar(): JSX.Element {
 
       <div class="flex flex-col gap-1 pr-2 py-4">
         <div class="mb-4">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Global</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Global Configuration</h2>
           <ul class="space-y-1">
-            <SidebarLink id="settings-display" label="App Settings" icon={Settings} onClick={() => handleActivateElem("settings-display", "global-display")} />
-            <SidebarLink id="settings-dns" label="DNS Settings" icon={Globe} onClick={() => handleActivateElem("settings-dns", "global-dns")} />
-            <SidebarLink id="settings-install" label="Install Settings" icon={Package2} onClick={() => handleActivateElem("settings-install", "global-install")} />
-            <SidebarLink id="settings-cache" label="Cache & Logs" icon={Database} onClick={() => handleActivateElem("settings-cache", "global-cache")} />
+            <SidebarLink id="settings-display" label="App Settings" icon={Monitor} onClick={() => handleActivateElem("settings-display", "global-display")} />
+            <SidebarLink id="settings-dns" label="DNS Settings" icon={Network} onClick={() => handleActivateElem("settings-dns", "global-dns")} />
+            <SidebarLink id="settings-install" label="Install Settings" icon={HardDriveDownload} onClick={() => handleActivateElem("settings-install", "global-install")} />
+            <SidebarLink id="settings-cache" label="Cache & Logs" icon={Archive} onClick={() => handleActivateElem("settings-cache", "global-cache")} />
           </ul>
         </div>
 
-        <div class="mb-2">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Torrenting</h2>
+        <div class="mb-4">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Download Configuration</h2>
           <ul class="space-y-1">
-            <SidebarLink id="settings-dht" label="DHT" icon={Network} onClick={() => handleActivateElem("settings-dht", "dht")} />
-            <SidebarLink id="settings-tcp" label="TCP" icon={Server} onClick={() => handleActivateElem("settings-tcp", "tcp")} />
-            <SidebarLink id="settings-persistence" label="Persistence" icon={Save} onClick={() => handleActivateElem("settings-persistence", "persistence")} />
-            <SidebarLink id="settings-peers-opts" label="Peers Options" icon={Users} onClick={() => handleActivateElem("settings-peers-opts", "peer-opts")} />
+            <SidebarLink id="settings-general" label="General" icon={Settings} onClick={() => handleActivateElem("settings-general", "general")} />
+            <SidebarLink id="settings-limits" label="Transfer Limits" icon={Gauge} onClick={() => handleActivateElem("settings-limits", "limits")} />
+            <SidebarLink id="settings-network" label="Network" icon={Globe} onClick={() => handleActivateElem("settings-network", "network")} />
+            <SidebarLink id="settings-bittorrent" label="Bittorrent" icon={Magnet} onClick={() => handleActivateElem("settings-bittorrent", "bittorrent")} />
+            <SidebarLink id="settings-rpc" label="Aria2 RPC" icon={Cpu} onClick={() => handleActivateElem("settings-rpc", "rpc")} />
           </ul>
         </div>
+
       </div>
     </div>
   );

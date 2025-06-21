@@ -1,13 +1,14 @@
 import { Accessor, Setter } from "solid-js";
 import {
-  FitLauncherConfig,
-  FitLauncherConfigDht,
-  FitLauncherConfigPeerOpts,
-  FitLauncherConfigPersistence,
-  FitLauncherConfigTcpListen,
+  Bittorrent,
+  Connection,
+  FitLauncherConfigAria2,
+  FitLauncherConfigV2,
   FitLauncherDnsConfig,
   GamehubSettings,
+  General,
   InstallationSettings,
+  TransferLimits,
 } from "../../bindings";
 
 export type SettingsHandlers = {
@@ -25,14 +26,15 @@ export type GlobalSettings = {
   display: GamehubSettings;
 };
 
-export type TorrentSettings = Pick<
-  FitLauncherConfig,
-  "dht" | "tcp_listen" | "persistence" | "peer_opts"
+export type DownloadSettings = Pick<
+  FitLauncherConfigV2,
+  "general" | "limits" | "network" | "bittorrent" | "rpc"
 > & {
-  dht: FitLauncherConfigDht;
-  tcp_listen: FitLauncherConfigTcpListen;
-  persistence: FitLauncherConfigPersistence;
-  peer_opts: FitLauncherConfigPeerOpts;
+  general: General;
+  limits: TransferLimits;
+  network: Connection;
+  bittorrent: Bittorrent;
+  rpc: FitLauncherConfigAria2;
 };
 
 export type GlobalSettingsPart =
@@ -41,9 +43,14 @@ export type GlobalSettingsPart =
   | "global-install"
   | "global-cache";
 
-export type TorrentSettingsPart = "dht" | "tcp" | "persistence" | "peer-opts";
+export type DownloadSettingsPart =
+  | "general"
+  | "limits"
+  | "network"
+  | "bittorrent"
+  | "rpc";
 
-export type SettingsPart = GlobalSettingsPart | TorrentSettingsPart;
+export type SettingsPart = GlobalSettingsPart | DownloadSettingsPart;
 
 export type SettingsGroup = "global" | "torrent";
 export type SettingsContextType = {
@@ -55,4 +62,4 @@ export type SettingsContextType = {
 
 export type SettingsTypes =
   | GlobalSettings[keyof GlobalSettings]
-  | TorrentSettings[keyof TorrentSettings];
+  | DownloadSettings[keyof DownloadSettings];

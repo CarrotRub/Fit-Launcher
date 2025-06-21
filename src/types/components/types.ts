@@ -27,6 +27,7 @@ export interface ButtonProps {
   variant?: ButtonVariants;
   size?: "sm" | "md" | "lg";
   icon?: JSX.Element;
+  notRounded?: boolean;
 }
 
 export interface RangeSliderProps {
@@ -62,8 +63,10 @@ export interface NumericalInputProps {
   min?: number;
   max?: number;
   step?: number;
+  valueType?: string;
   onInput: (value: number) => void | Promise<void>;
   class?: string;
+  zeroIsInfinite?: boolean;
 }
 
 export interface IpAddressInputProps {
