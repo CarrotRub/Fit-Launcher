@@ -24,6 +24,9 @@ export default function GeneralSettingsPart({
                 onPathChange={(newPath, isValid) => {
                     setPath(newPath);
                     setValid(isValid);
+                    if (isValid) {
+                        handleTextCheckChange?.("general.download_dir", newPath)
+                    }
                 }}
             />
             <LabelNumericalInput

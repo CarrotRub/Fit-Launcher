@@ -7,6 +7,7 @@ import {
   NumericalInputProps,
   PathInputProps,
   RangeSliderProps,
+  TextInputProps,
 } from "../components/types";
 
 export type PageGroupProps = {
@@ -49,6 +50,7 @@ export type SettingsRangeLabelProps = SettingsLabelProps &
 export type SettingsPathInputLabelProps = SettingsLabelProps & PathInputProps;
 
 export type SettingsTextInputLabelProps = SettingsLabelProps &
+  TextInputProps &
   Omit<SettingsLabelProps, "action"> & {
     value: string;
     disabled?: boolean;

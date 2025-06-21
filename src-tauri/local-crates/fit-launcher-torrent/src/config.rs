@@ -81,9 +81,7 @@ impl Default for LegacyPersistence {
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type, Debug, Default)]
 #[serde(default)]
 pub struct LegacyPeerOpts {
-    #[serde_as(as = "serde_with::DurationSeconds")]
     pub connect_timeout: Duration,
-    #[serde_as(as = "serde_with::DurationSeconds")]
     pub read_write_timeout: Duration,
 }
 
@@ -178,9 +176,7 @@ pub struct Connection {
     pub max_connection_per_server: u32,
     pub split: u32,
     pub min_split_size: u64,
-    #[serde_as(as = "serde_with::DurationSeconds")]
     pub connect_timeout: Duration,
-    #[serde_as(as = "serde_with::DurationSeconds")]
     pub rw_timeout: Duration,
 }
 

@@ -13,6 +13,9 @@ import Button from "../../../../components/UI/Button/Button";
 import LoadingPage from "../../../LoadingPage-01/LoadingPage";
 import { DownloadSettingsApi } from "../../../../api/settings/api";
 import TransferLimitsPart from "./TransferLimits/TransferLimits";
+import NetworkPart from "./Network/NetworkPart";
+import BittorrentPart from "./Bittorrent/BittorrentPart";
+import AriaPart from "./AriaPart/AriaPart";
 
 const downloadConfigAPI = new DownloadSettingsApi();
 
@@ -62,6 +65,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
     });
   };
 
+
   const handleOnSave = async () => {
     const config = globalTorrentConfig();
     if (!config) return;
@@ -73,7 +77,8 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
         kind: "info",
       });
     } else {
-      await message("Error saving settings: " + result.error, {
+      console.error(result.error)
+      await message("Error saving settings: " + JSON.stringify(result.error), {
         title: "FitLauncher",
         kind: "error",
       });
@@ -98,21 +103,23 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
             />
           ),
           network: (
-            <GeneralSettingsPart
-              settings={() => globalTorrentConfig()?.general!}
+            <NetworkPart
+              settings={() => globalTorrentConfig()?.network!}
               handleSwitchCheckChange={handleSwitchCheckChange}
             />
           ),
           bittorrent: (
-            <GeneralSettingsPart
-              settings={() => globalTorrentConfig()?.general!}
+            <BittorrentPart
+              settings={() => globalTorrentConfig()?.bittorrent!}
               handleSwitchCheckChange={handleSwitchCheckChange}
+              handleTextCheckChange={handleTextCheckChange}
             />
           ),
           rpc: (
-            <GeneralSettingsPart
-              settings={() => globalTorrentConfig()?.general!}
+            <AriaPart
+              settings={() => globalTorrentConfig()?.rpc!}
               handleSwitchCheckChange={handleSwitchCheckChange}
+              handleTextCheckChange={handleTextCheckChange}
             />
           )
         }[selectedPart()] ?? <p>Invalid or Unsupported Part</p>}

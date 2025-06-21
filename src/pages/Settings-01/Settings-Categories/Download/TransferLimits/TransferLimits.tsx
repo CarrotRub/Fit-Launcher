@@ -23,6 +23,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unit
             />
 
             <LabelNumericalInput
@@ -34,6 +35,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unit
             />
 
             <LabelNumericalInput
@@ -45,6 +47,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unit
             />
 
             <LabelNumericalInput
@@ -56,6 +59,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unit
             />
 
 

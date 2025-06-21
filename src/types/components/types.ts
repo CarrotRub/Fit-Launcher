@@ -8,13 +8,13 @@ export interface CheckboxProps {
   action?: () => void | Promise<void>;
 }
 
-export interface DropdownProps {
-  list: string[];
-  activeItem?: string;
-  onListChange: (item: string) => Promise<void>;
+export interface DropdownProps<T = string> {
+  list: T[];
+  activeItem?: T;
+  onListChange: (item: T) => Promise<void>;
   placeholder?: string;
-  removableList?: string[];
-  onRemove?: (item: string) => Promise<void> | void;
+  removableList?: T[];
+  onRemove?: (item: T) => Promise<void> | void;
   buttonClass?: string;
 }
 
@@ -67,6 +67,7 @@ export interface NumericalInputProps {
   onInput: (value: number) => void | Promise<void>;
   class?: string;
   zeroIsInfinite?: boolean;
+  unit?: boolean;
 }
 
 export interface IpAddressInputProps {

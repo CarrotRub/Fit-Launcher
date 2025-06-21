@@ -3,12 +3,12 @@ import { createSignal, Show } from "solid-js";
 import { DropdownProps } from "../../../types/components/types";
 
 
-export default function Dropdown(props: DropdownProps) {
+export default function Dropdown<T extends string | number>(props: DropdownProps<T>) {
     const [isOpen, setIsOpen] = createSignal(false);
     const [isAnimating, setIsAnimating] = createSignal(false);
-    const [hoveredItem, setHoveredItem] = createSignal<string | null>(null);
+    const [hoveredItem, setHoveredItem] = createSignal<T | null>(null);
 
-    const handleSelection = async (item: string) => {
+    const handleSelection = async (item: T) => {
         setIsAnimating(true);
         await props.onListChange(item);
         setIsOpen(false);
@@ -29,49 +29,49 @@ export default function Dropdown(props: DropdownProps) {
         `}
             >
                 <span class="truncate text-text">
-                    {props.activeItem || props.placeholder || "Select an option"}
+                    {props.activeItem ?? props.placeholder ?? "Select an option"}
                 </span>
                 <ChevronDown
                     size={16}
-                    class={`transition-transform duration-200 ${isOpen() ? "rotate-180 text-accent" : "text-muted"
-                        }`}
+                    class={`transition-transform duration-200 ${isOpen() ? "rotate-180 text-accent" : "text-muted"}`}
                 />
             </button>
 
-            {/* Dropdown Menu */}
             <Show when={isOpen()}>
                 <div
                     class={`
-                            absolute z-50 mt-1.5 w-full max-h-64 overflow-auto
-                            bg-popup-background border border-secondary-30 rounded-lg
-                            shadow-lg shadow-background/50 backdrop-blur-sm
-                            transition-opacity duration-200 no-scrollbar
-                            ${isAnimating() ? "opacity-90" : "opacity-100"}
-                    `}
-
+            absolute z-50 mt-1.5 w-full max-h-64 overflow-auto
+            bg-popup-background border border-secondary-30 rounded-lg
+            shadow-lg shadow-background/50 backdrop-blur-sm
+            transition-opacity duration-200 no-scrollbar
+            ${isAnimating() ? "opacity-90" : "opacity-100"}
+          `}
                 >
                     <ul class="group max-w-full divide-y divide-secondary-20/50">
                         {props.list.map((item) => {
                             const isRemovable = props.removableList?.includes(item);
                             const isActive = item === props.activeItem;
+
                             return (
                                 <li
                                     class="relative group flex justify-between min-w-full"
-                                    onMouseEnter={() => setHoveredItem(item)}
+                                    onMouseEnter={() => setHoveredItem(() => item)}
                                     onMouseLeave={() => setHoveredItem(null)}
                                 >
                                     <button
                                         onClick={() => handleSelection(item)}
                                         class={`
-                                          w-full flex items-center justify-between  
-                                          text-sm transition-all duration-200
-                                          ${isActive
+                      w-full flex items-center justify-between  
+                      text-sm transition-all duration-200
+                      ${isActive
                                                 ? "bg-accent/10 text-accent font-medium"
                                                 : "text-text hover:bg-secondary-20/20"}
-                                          ${isAnimating() ? "opacity-80" : "opacity-100"}
-                                        `}
+                      ${isAnimating() ? "opacity-80" : "opacity-100"}
+                    `}
                                     >
-                                        <span class="truncate text-left flex-1 min-w-0 py-2.5 pl-4">{item}</span>
+                                        <span class="truncate text-left flex-1 min-w-0 py-2.5 pl-4">
+                                            {String(item)}
+                                        </span>
 
                                         <Show when={isRemovable}>
                                             <button
@@ -87,16 +87,11 @@ export default function Dropdown(props: DropdownProps) {
                                         </Show>
                                     </button>
 
-                                    {isActive && (
-                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent" />
-                                    )}
+                                    {isActive && <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent" />}
                                 </li>
-
                             );
-
                         })}
                     </ul>
-
                 </div>
             </Show>
         </div>

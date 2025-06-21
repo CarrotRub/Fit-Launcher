@@ -45,7 +45,7 @@ function DiscoveryPage(): JSX.Element {
 
   return (
     <Suspense fallback={<LoadingPage />}>
-      <div class="flex flex-col py-8 gap-4 w-full grow overflow-y-auto no-scrollbar">
+      <div class="flex flex-col bg-gradient-to-br from-background to-background-70 py-8 gap-4 w-full grow overflow-y-auto no-scrollbar">
 
         <For each={visibleGames()}>
           {(game) => (
