@@ -78,7 +78,7 @@ async fn add_torrent() -> Result<(), Box<dyn std::error::Error>> {
     let dir = Some("./downloads".to_string());
     eprintln!("downloaded torrent!");
 
-    aria2_add_torrent(&client, torrent, dir).await?;
+    aria2_add_torrent(&client, torrent, dir, vec![]).await?;
 
     Ok(())
 }

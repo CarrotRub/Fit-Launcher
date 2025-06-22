@@ -4,11 +4,13 @@ use std::{path::PathBuf, str::FromStr};
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::prelude::*;
 
+use librqbit_core::torrent_metainfo::torrent_from_bytes;
 use specta::specta;
 use tracing::{error, info};
 
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
+use crate::model::FileInfo;
 use fit_launcher_ui_automation::mighty_automation::windows_ui_automation;
 
 use super::*;
@@ -20,13 +22,46 @@ pub async fn download_torrent_from_paste(
 ) -> Result<Vec<u8>, fitgirl_decrypt::Error> {
     let paste = Paste::parse_url(&paste_link)?;
     let cipherinfo = paste.request_async().await?;
-    let attachment = paste.decrypt(&cipherinfo)?;
+
+    let attachment = tokio::task::spawn_blocking(move || {
+        let paste = Paste::parse_url(&paste_link).unwrap();
+        paste.decrypt(&cipherinfo)
+    })
+    .await
+    .expect("join error")
+    .map_err(|_| fitgirl_decrypt::Error::DecompressError)?;
+
     let torrent_b64 = attachment
         .attachment
         .strip_prefix("data:application/x-bittorrent;base64,")
-        .ok_or(fitgirl_decrypt::Error::IllFormedURL)?;
-    let torrent = BASE64_STANDARD.decode(torrent_b64)?;
+        .ok_or(fitgirl_decrypt::Error::IllFormedURL)?
+        .to_string();
+    let torrent = tokio::task::spawn_blocking(move || BASE64_STANDARD.decode(torrent_b64))
+        .await
+        .expect("Join error")?;
     Ok(torrent)
+}
+
+#[tauri::command]
+#[specta]
+pub async fn list_torrent_files(torrent: Vec<u8>) -> Result<Vec<FileInfo>, String> {
+    let torrent =
+        torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
+
+    Ok(torrent
+        .info
+        .iter_file_details()
+        .map_err(|e| e.to_string())?
+        .enumerate()
+        .map(|(idx, detail)| -> anyhow::Result<FileInfo> {
+            Ok(FileInfo {
+                file_name: detail.filename.to_pathbuf()?,
+                length: detail.len,
+                file_index: idx + 1,
+            })
+        })
+        .flatten()
+        .collect())
 }
 
 #[tauri::command]

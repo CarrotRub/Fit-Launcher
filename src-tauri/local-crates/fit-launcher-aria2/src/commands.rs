@@ -19,7 +19,7 @@ use fit_launcher_torrent::functions::TorrentSession;
 /// >
 /// > when not specified, aria2 will follow its startup options
 ///
-/// filename:
+/// `filename`:
 /// > aria2 will ignore the filename suggestion from URL or `Content-Disposition`,
 /// >
 /// > instead use this filename
@@ -42,18 +42,21 @@ pub async fn aria2_start_download(
     aria2_add_uri(&aria2_client, url, dir, Some(filename)).await
 }
 
+/// `selected_files`: list of torrent metadata files index
+///     when left empty, does nothing.
 #[tauri::command]
 #[specta]
 pub async fn aria2_start_torrent(
     state: tauri::State<'_, TorrentSession>,
     torrent: Vec<u8>,
     dir: Option<String>,
+    selected_files: Vec<usize>,
 ) -> Result<String, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    aria2_add_torrent(&aria2_client, torrent, dir).await
+    aria2_add_torrent(&aria2_client, torrent, dir, selected_files).await
 }
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
