@@ -2,7 +2,7 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
 import { Play, Settings, Star, Info, Trash2 } from "lucide-solid";
 import { DownloadedGame, Game, ExecutableInfo, commands, GameCollection } from "../../../bindings";
-import { LibraryAPI } from "../../../api/library/api";
+import { LibraryApi } from "../../../api/library/api";
 import BasicPathInputPopup from "../../../Pop-Ups/Basic-PathInput-PopUp/Basic-PathInput-PopUp";
 import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { render } from "solid-js/web";
@@ -12,7 +12,7 @@ import createPathInputPopup from "../../../Pop-Ups/Basic-PathInput-PopUp/Basic-P
 import createAddToCollectionPopup from "../../../Pop-Ups/Basic-AddToCollection-PopUp/Basic-AddToCollection-PopUp";
 import { formatDate, formatDiskSize, formatPlayTime } from "../../../helpers/format";
 
-const api = new LibraryAPI();
+const api = new LibraryApi();
 
 //TODO: Delete item icon
 

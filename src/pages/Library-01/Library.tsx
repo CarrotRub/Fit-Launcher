@@ -19,13 +19,13 @@ import {
 } from 'lucide-solid';
 import Button from "../../components/UI/Button/Button";
 import CreateBasicTextInputPopup from "../../Pop-Ups/Basic-TextInput-PopUp/Basic-TextInput-PopUp";
-import { LibraryAPI } from "../../api/library/api";
+import { LibraryApi } from "../../api/library/api";
 import { DownloadedGame, Game, GameCollection } from "../../bindings";
 import createAddLocalGamePopup from "../../Pop-Ups/Add-Local-Game-PopUp/Add-Local-Game-PopUp";
-import { GamesCacheAPI } from "../../api/cache/api";
+import { GamesCacheApi } from "../../api/cache/api";
 
-const libraryAPI = new LibraryAPI();
-const cacheAPI = new GamesCacheAPI();
+const libraryAPI = new LibraryApi();
+const cacheAPI = new GamesCacheApi();
 
 function Library() {
   const [collectionList, setCollectionList] = createSignal<Record<string, Game[]>>({});

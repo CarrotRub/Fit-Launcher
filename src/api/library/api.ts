@@ -9,7 +9,7 @@ import {
   Result,
 } from "../../bindings";
 
-export class LibraryAPI {
+export class LibraryApi {
   async getDownloadedGames(): Promise<DownloadedGame[]> {
     return await commands.getDownloadedGames();
   }

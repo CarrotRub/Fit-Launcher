@@ -13,9 +13,9 @@ import './App.css';
 
 import { check } from '@tauri-apps/plugin-updater';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
-import { ThemeManagerAPI } from './api/theme/api';
+import { ThemeManagerApi } from './api/theme/api';
 
-const themeManager = new ThemeManagerAPI();
+const themeManager = new ThemeManagerApi();
 
 function App() {
   onMount(async () => {

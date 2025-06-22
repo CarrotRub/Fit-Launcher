@@ -1,7 +1,6 @@
-import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
+import { Component, createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 import { appCacheDir, appDataDir, join } from "@tauri-apps/api/path";
 import { mkdir, readTextFile, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import './Downloads-Page.css';
 import { invoke } from "@tauri-apps/api/core";
 import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../../components/functions/dataStoreGlobal";
 import { makePersisted } from "@solid-primitives/storage";
@@ -14,10 +13,12 @@ const appDir = await appDataDir();
 
 
 
-function DownloadPage() {
-    const [downloadingTorrents, setDownloadingTorrents] = createSignal([]);
-    const [torrentStats, setTorrentStats] = createSignal({});
-    const [toDeleteTorrentIdxList, setToDeleteTorrentIdxList] = createSignal([]);
+const DownloadPage: Component = () => {
+    const [downloadingTorrents, setDownloadingTorrents] = createSignal<any[]>([]);
+    const [torrentStats, setTorrentStats] = createSignal<Record<string, any>>({});
+    const [toDeleteTorrentIdxList, setToDeleteTorrentIdxList] = createSignal<number[]>([]);
+
+
 
     function handleCheckboxChange(torrentIdx, isChecked) {
         setToDeleteTorrentIdxList((prevList) =>
@@ -145,44 +146,44 @@ function DownloadPage() {
     async function addGameToDownloadedGames(gameData) {
         let currentData = { games: [] };
         const userDownloadedGames = await join(appDir, 'library', 'downloadedGames', 'downloaded_games.json');
-      
+
         // Ensure the directory exists
         try {
-          let toDownloadDirPath = await join(appDir, 'library', 'downloadedGames');
-          await mkdir(toDownloadDirPath, { recursive: true });
+            let toDownloadDirPath = await join(appDir, 'library', 'downloadedGames');
+            await mkdir(toDownloadDirPath, { recursive: true });
         } catch (error) {
-          console.error('Error creating directory:', error);
+            console.error('Error creating directory:', error);
         }
-      
+
         // Read and parse the current file contents
         let fileContent = [];
         try {
-          const existingData = await readTextFile(userDownloadedGames);
-          fileContent = JSON.parse(existingData) || [];
+            const existingData = await readTextFile(userDownloadedGames);
+            fileContent = JSON.parse(existingData) || [];
         } catch (error) {
-          console.warn('File does not exist or is empty. Creating a new one.');
+            console.warn('File does not exist or is empty. Creating a new one.');
         }
-      
+
         // Ensure the content is an array
         if (!Array.isArray(fileContent)) {
-          throw new Error('File content is not an array, cannot append.');
+            throw new Error('File content is not an array, cannot append.');
         }
-      
+
         // CHECK FOR DUPLICATES HERE
         // Use a unique property to identify if the game is already in the file.
         const alreadyInIndex = fileContent.findIndex(
-          (item) => item.torrentIdx === gameData.torrentIdx
+            (item) => item.torrentIdx === gameData.torrentIdx
         );
-      
+
         if (alreadyInIndex === -1) {
-          // Only push to the array if it's not already there
-          fileContent.push(gameData);
-      
-          // Write the updated array back to the file
-          await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2));
-          console.log('New data appended successfully!');
+            // Only push to the array if it's not already there
+            fileContent.push(gameData);
+
+            // Write the updated array back to the file
+            await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2));
+            console.log('New data appended successfully!');
         } else {
-          console.log(`Game with torrentIdx "${gameData.torrentIdx}" already in downloaded_games.json`);
+            console.log(`Game with torrentIdx "${gameData.torrentIdx}" already in downloaded_games.json`);
         }
     }
 
@@ -261,9 +262,9 @@ function DownloadPage() {
         console.warn(downloadingTorrents())
     })
     return (
-        <div className="downloads-page content-page">
-            <div className="downloads-page-action-bar">
-                <button className="downloads-page-delete-all" onClick={handleDeleteTorrents}>
+        <div class="downloads-page content-page">
+            <div class="downloads-page-action-bar">
+                <button class="downloads-page-delete-all" onClick={handleDeleteTorrents}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m-6 5v6m4-6v6" /></svg>
                 </button>
             </div>
@@ -274,7 +275,7 @@ function DownloadPage() {
                     )}
                 </For>
             ) : (
-                <div className="no-downloads">Nothing is currently downloading...</div>
+                <div class="no-downloads">Nothing is currently downloading...</div>
             )}
         </div>
     );
@@ -299,20 +300,20 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
     }, torrentStats())
 
     return (
-        <div className="downloading-game-item" key={torrent.torrentIdx}>
-            <div className="downloading-main-info-game">
+        <div class="downloading-game-item" key={torrent.torrentIdx}>
+            <div class="downloading-main-info-game">
                 <img
-                    className="downloading-game-image"
+                    class="downloading-game-image"
                     src={torrent.torrentExternInfo.img}
                     alt={torrent.torrentExternInfo.title}
                 />
-                <div className="downloading-game-title">
+                <div class="downloading-game-title">
                     <p style={`max-width: 30ch;`}>{torrent.torrentExternInfo.title}</p>
                 </div>
             </div>
-            <div className="downloading-secondary-info-game">
-                <div className="downloading-download-info">
-                    <div className="downloading-download-info-upload-speed">
+            <div class="downloading-secondary-info-game">
+                <div class="downloading-download-info">
+                    <div class="downloading-download-info-upload-speed">
                         <p style={`
                             color: var(--non-selected-text-color);
                             font-size: 14px
@@ -324,7 +325,7 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
                             <b>{torrentStats()?.live?.upload_speed?.human_readable}</b>
                         </p>
                     </div>
-                    <div className="downloading-download-info-download-speed">
+                    <div class="downloading-download-info-download-speed">
                         <p style={`
                             color: var(--non-selected-text-color);
                             font-size: 14px
@@ -338,8 +339,8 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
                     </div>
 
                 </div>
-                <div className="downloading-download-bar-container">
-                    <div className="downloading-download-bar-info-container">
+                <div class="downloading-download-bar-container">
+                    <div class="downloading-download-bar-info-container">
                         <p>
                             {torrentStats()?.finished ? (
                                 'Done'
@@ -353,12 +354,12 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
                             )
                             }
                         </p>
-                        <p className="downloading-download-bar-download-percentage">
+                        <p class="downloading-download-bar-download-percentage">
                             {numberPercentage()}% DOWNLOADED
                         </p>
                     </div>
-                    <div className="downloading-download-bar">
-                        <div className="downloading-download-bar-active" style={{
+                    <div class="downloading-download-bar">
+                        <div class="downloading-download-bar-active" style={{
                             'width': gamePercentage()
                         }}>
 
@@ -366,9 +367,9 @@ function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
                     </div>
                 </div>
                 <Dynamic component={ActionButtonDownload} gameState={torrentState} torrentStats={torrentStats} torrentIdx={torrent.torrentIdx} />
-                <label className="custom-checkbox-download">
+                <label class="custom-checkbox-download">
                     <input type="checkbox" onChange={(e) => onCheckboxChange(torrent.torrentIdx, e.target.checked)} />
-                    <span className="checkbox-mark-download"></span>
+                    <span class="checkbox-mark-download"></span>
                 </label>
 
             </div>
@@ -430,7 +431,7 @@ function ActionButtonDownload({ gameState, torrentStats, torrentIdx }) {
 
     return (
         <button
-            className="downloading-action-button"
+            class="downloading-action-button"
             onClick={() => handleTorrentAction()}
             style={{
                 'background-color': buttonColor()

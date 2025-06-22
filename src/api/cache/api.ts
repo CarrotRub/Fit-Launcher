@@ -9,7 +9,7 @@ import {
 } from "../../bindings";
 import { GlobalSettingsApi } from "../settings/api";
 
-export class GamesCacheAPI {
+export class GamesCacheApi {
   private cache = new Map<string, unknown>();
 
   async getNewlyAddedGames(): Promise<Result<Game[], ScrapingError>> {

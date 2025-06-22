@@ -10,8 +10,8 @@ import Button from "../../components/UI/Button/Button";
 import { Modal } from "../Modal/Modal";
 import { AddLocalGamePopUpProps } from "../../types/popup";
 import { ExecutableInfo, DownloadedGame } from "../../bindings";
-import { GamesCacheAPI } from "../../api/cache/api";
-import { LibraryAPI } from "../../api/library/api";
+import { GamesCacheApi } from "../../api/cache/api";
+import { LibraryApi } from "../../api/library/api";
 
 export default function createAddLocalGamePopup(props: AddLocalGamePopUpProps) {
   const container = document.createElement("div");
@@ -22,8 +22,8 @@ export default function createAddLocalGamePopup(props: AddLocalGamePopUpProps) {
     container.remove();
   };
 
-  const cache = new GamesCacheAPI();
-  const library = new LibraryAPI();
+  const cache = new GamesCacheApi();
+  const library = new LibraryApi();
   const [searchValue, setSearchValue] = createSignal("");
 
   const handleConfirm = async () => {

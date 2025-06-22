@@ -14,7 +14,7 @@ import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckb
 import LabelDropdownSettings from "../../Components/UI/LabelDropdown/LabelDropdown";
 import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
 import LabelRangeSettings from "../../Components/UI/LabelRange/LabelRange";
-import { ThemeManagerAPI } from "../../../../../api/theme/api";
+import { ThemeManagerApi } from "../../../../../api/theme/api";
 
 
 export default function DisplayPart({
@@ -31,7 +31,7 @@ export default function DisplayPart({
 }
 
 
-const themeAPI = new ThemeManagerAPI();
+const themeAPI = new ThemeManagerApi();
 
 function DisplayPartContent({
   settings,

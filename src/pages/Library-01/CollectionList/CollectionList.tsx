@@ -6,11 +6,11 @@ import { message } from "@tauri-apps/plugin-dialog";
 import { Game } from "../../../bindings";
 import { CollectionListProps } from "../../../types/library/type";
 import { setDownloadGamePageInfo } from "../../../components/functions/dataStoreGlobal";
-import { LibraryAPI } from "../../../api/library/api";
+import { LibraryApi } from "../../../api/library/api";
 import { ChevronDown, ChevronUp, Trash2, X, ChevronRight } from "lucide-solid";
 import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 
-const api = new LibraryAPI();
+const api = new LibraryApi();
 
 export default function CollectionList(props: CollectionListProps) {
     const [gamesList, setGamesList] = createSignal<Game[]>([]);

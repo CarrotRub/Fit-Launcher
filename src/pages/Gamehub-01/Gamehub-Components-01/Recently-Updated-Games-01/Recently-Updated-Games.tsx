@@ -1,9 +1,9 @@
 import { createSignal, onMount } from 'solid-js';
 import Slider from '../../../../components/Slider-01/Slider';
 import type { Game } from '../../../../bindings';
-import { GamesCacheAPI } from '../../../../api/cache/api';
+import { GamesCacheApi } from '../../../../api/cache/api';
 
-const gameCacheInst = new GamesCacheAPI();
+const gameCacheInst = new GamesCacheApi();
 const gamePath = await gameCacheInst.getRecentlyUpdatedGamesPath();
 
 async function parseRecentlyUpdatedGameData(): Promise<Game[]> {

@@ -13,7 +13,7 @@ import { defaultThemes } from "../../types/theme";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { load } from "@tauri-apps/plugin-store";
 
-export class ThemeManagerAPI {
+export class ThemeManagerApi {
   private readonly themeRegex = /^[a-z0-9-]{1,40}$/;
   private readonly blockRegex =
     /:root\[data-theme="([a-z0-9-]{1,40})"\]\s*{([^}]+)}/;

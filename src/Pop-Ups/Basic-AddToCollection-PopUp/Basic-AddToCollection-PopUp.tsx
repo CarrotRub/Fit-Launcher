@@ -3,7 +3,7 @@ import { message } from "@tauri-apps/plugin-dialog";
 import Button from "../../components/UI/Button/Button";
 import { AddToCollectionProps } from "../../types/popup";
 import { Modal } from "../Modal/Modal";
-import { LibraryAPI } from "../../api/library/api";
+import { LibraryApi } from "../../api/library/api";
 import LabelCheckboxSettings from "../../pages/Settings-01/Settings-Categories/Components/UI/LabelCheckbox/LabelCheckbox";
 import { GameCollection } from "../../bindings";
 import { render } from "solid-js/web";
@@ -11,7 +11,7 @@ import { render } from "solid-js/web";
 const createAddToCollectionPopup = (props: AddToCollectionProps) => {
   const [selectedCollections, setSelectedCollections] = createSignal<string[]>([]);
   const [availableCollections, setAvailableCollections] = createSignal<GameCollection[]>([]);
-  const api = new LibraryAPI();
+  const api = new LibraryApi();
 
   const container = document.createElement("div");
   document.body.appendChild(container);

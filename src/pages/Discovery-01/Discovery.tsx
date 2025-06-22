@@ -4,12 +4,12 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { commands, DiscoveryGame } from '../../bindings';
 import LoadingPage from '../LoadingPage-01/LoadingPage';
 import Button from '../../components/UI/Button/Button';
-import { GamesCacheAPI } from '../../api/cache/api';
-import { LibraryAPI } from '../../api/library/api';
+import { GamesCacheApi } from '../../api/cache/api';
+import { LibraryApi } from '../../api/library/api';
 const LazyGameObject = lazy(() => import("./Discovery-Components/GameObject"));
 
-const gameCacheInst = new GamesCacheAPI();
-const libraryInst = new LibraryAPI();
+const gameCacheInst = new GamesCacheApi();
+const libraryInst = new LibraryApi();
 
 async function fetchDiscoveryGames(): Promise<{ games: DiscoveryGame[]; toDownloadLater: Set<string> }> {
   try {

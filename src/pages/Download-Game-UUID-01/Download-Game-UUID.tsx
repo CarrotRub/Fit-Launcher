@@ -2,15 +2,15 @@ import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
 import DownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
-import { LibraryAPI } from "../../api/library/api";
-import { GamesCacheAPI } from "../../api/cache/api";
+import { LibraryApi } from "../../api/library/api";
+import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
 import { ArrowLeft, Bookmark, BookmarkCheck, Clock, Download, Factory, Gamepad2, HardDrive, Info, Languages, Loader2, Tags } from "lucide-solid";
 import { formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 
-const library = new LibraryAPI();
-const cache = new GamesCacheAPI();
+const library = new LibraryApi();
+const cache = new GamesCacheApi();
 
 const DownloadGameUUIDPage = () => {
   const [gameInfo, setGameInfo] = createSignal<DownloadedGame>();

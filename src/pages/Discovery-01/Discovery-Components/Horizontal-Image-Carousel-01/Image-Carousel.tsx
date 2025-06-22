@@ -7,10 +7,10 @@ import type { DiscoveryGame } from '../../../../bindings';
 import { commands } from '../../../../bindings';
 import { CircleArrowLeft, CircleArrowRight, Star, Info, Languages, HardDrive, Tags, Factory, ChevronLeft, ChevronRight } from 'lucide-solid';
 import Button from '../../../../components/UI/Button/Button';
-import { LibraryAPI } from '../../../../api/library/api';
+import { LibraryApi } from '../../../../api/library/api';
 
 const defaultPath: string = await commands.getNewlyAddedGamesPath();
-const library = new LibraryAPI();
+const library = new LibraryApi();
 
 //todo: fix tags
 

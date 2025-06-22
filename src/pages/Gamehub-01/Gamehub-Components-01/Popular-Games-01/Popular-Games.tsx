@@ -1,13 +1,13 @@
 import { createSignal, onMount, createEffect, onCleanup, Show, For } from 'solid-js';
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from '@solidjs/router';
-import { GamesCacheAPI } from '../../../../api/cache/api';
+import { GamesCacheApi } from '../../../../api/cache/api';
 import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
 import { Game } from '../../../../bindings';
 import { ChevronLeft, ChevronRight, Star, HardDrive, Languages, Building2, ArrowRight } from 'lucide-solid';
 import LoadingPage from '../../../LoadingPage-01/LoadingPage';
 
-const gameCacheInst = new GamesCacheAPI();
+const gameCacheInst = new GamesCacheApi();
 const popularGamesPath = await gameCacheInst.getPopularGamesPath();
 
 async function parsePopularGames(): Promise<Game[]> {
