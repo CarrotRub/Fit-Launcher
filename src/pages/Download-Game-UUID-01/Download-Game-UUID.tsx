@@ -1,13 +1,15 @@
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
-import { downloadGamePageInfo } from "../../components/functions/dataStoreGlobal";
-import DownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { useNavigate, useParams } from "@solidjs/router";
+import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
 import { ArrowLeft, Bookmark, BookmarkCheck, Clock, Download, Factory, Gamepad2, HardDrive, Info, Languages, Loader2, Tags } from "lucide-solid";
 import { formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
+import Button from "../../components/UI/Button/Button";
+import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
+import { GameDetails, GamePageState } from "../../types/game";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -19,26 +21,30 @@ const DownloadGameUUIDPage = () => {
   const [loading, setLoading] = createSignal(true);
   const [isToDownloadLater, setToDownloadLater] = createSignal(false);
   const [showPopup, setShowPopup] = createSignal(false);
-
-  const [genreTags, setGenreTags] = createSignal("N/A");
-  const [gameCompanies, setCompanies] = createSignal("N/A");
-  const [gameLanguages, setLanguage] = createSignal("N/A");
-  const [originalSize, setOriginalSize] = createSignal("N/A");
-  const [repackSize, setRepackSize] = createSignal("N/A");
+  const [gameDetails, setGameDetails] = createSignal<GameDetails>({
+    tags: "N/A",
+    companies: "N/A",
+    language: "N/A",
+    originalSize: "N/A",
+    repackSize: "N/A"
+  });
 
   const navigate = useNavigate();
+  const params = useParams();
 
   let backgroundCycleIntervalID: number;
 
-  const { gameHref, gameTitle } = downloadGamePageInfo;
+  const location = useLocation<GamePageState>();
+  const { gameHref, gameTitle, filePath } = location.state || {};
 
-  async function fetchGame() {
+  async function fetchGame(gameHref: string) {
     try {
       setLoading(true);
       await cache.getSingularGameInfo(gameHref);
-      const res = await cache.getSingularGameLocal();
+      const res = await cache.getSingularGameLocal(gameHref);
       if (res.status === "ok") {
         const game = library.gameToDownloadedGame(res.data);
+        console.log(game)
         setGameInfo(game);
         extractDetails(game.desc);
         checkIfInDownloadLater(game.title);
@@ -49,6 +55,19 @@ const DownloadGameUUIDPage = () => {
       setLoading(false);
     }
   }
+
+  async function fetchImages(gameHref: string) {
+    try {
+      const images = await cache.getGameImages(gameHref);
+      if (images.status === "ok") {
+        setAdditionalImages(images.data);
+        startBackgroundCycle();
+      }
+    } catch {
+      console.warn("No additional images available");
+    }
+  }
+
 
   async function checkIfInDownloadLater(title: string) {
     try {
@@ -62,13 +81,22 @@ const DownloadGameUUIDPage = () => {
   }
 
   function extractDetails(description?: string) {
-    const match = (label: string) => description?.match(new RegExp(`${label}:\\s*([^\\n]+)`));
-    setGenreTags(match("Genres/Tags")?.[1]?.trim() ?? "N/A");
-    setCompanies(match("Company")?.[1]?.trim() ?? match("Companies")?.[1]?.trim() ?? "N/A");
-    setLanguage(match("Languages")?.[1]?.trim() ?? "N/A");
-    setOriginalSize(match("Original Size")?.[1]?.trim() ?? "N/A");
-    setRepackSize(match("Repack Size")?.[1]?.trim() ?? "N/A");
+    const match = (label: string) =>
+      description?.match(new RegExp(`${label}:\\s*([^\\n]+)`));
+
+    const details: GameDetails = {
+      tags: match("Genres/Tags")?.[1]?.trim() ?? "N/A",
+      companies: match("Company")?.[1]?.trim()
+        ?? match("Companies")?.[1]?.trim()
+        ?? "N/A",
+      language: match("Languages")?.[1]?.trim() ?? "N/A",
+      originalSize: match("Original Size")?.[1]?.trim() ?? "N/A",
+      repackSize: match("Repack Size")?.[1]?.trim() ?? "N/A"
+    };
+
+    setGameDetails(details);
   }
+
 
   function cutDescription(desc?: string): string {
     if (!desc) return "Description not available";
@@ -77,6 +105,7 @@ const DownloadGameUUIDPage = () => {
   }
 
   function startBackgroundCycle() {
+    clearInterval(backgroundCycleIntervalID)
     backgroundCycleIntervalID = setInterval(() => {
       setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
     }, 5000);
@@ -107,21 +136,18 @@ const DownloadGameUUIDPage = () => {
     await toggleDownloadLater(checked);
   };
 
-  const handleDownloadClick = () => setShowPopup(true);
-  const closePopup = () => setShowPopup(false);
   const handleReturn = () => navigate(localStorage.getItem("latestGlobalHref") || "/");
 
-  onMount(async () => {
-    await fetchGame();
-    try {
-      const images = await cache.getGameImages(gameHref);
-      if (images.status === "ok") {
-        setAdditionalImages(images.data);
-        startBackgroundCycle();
-      }
 
-    } catch {
-      console.warn("No additional images available");
+  createEffect(() => {
+    const state = location.state;
+    if (state?.gameHref) {
+      setLoading(true);
+      setGameInfo(undefined);
+      setAdditionalImages([]);
+      console.log(state.gameHref)
+      fetchGame(state.gameHref);
+      fetchImages(state.gameHref);
     }
   });
 
@@ -129,16 +155,17 @@ const DownloadGameUUIDPage = () => {
     clearInterval(backgroundCycleIntervalID);
   });
 
+  function handleDownloadPopup() {
+    createDownloadPopup({
+      infoTitle: "Download Game",
+      infoMessage: `Do you want to download ${gameInfo()!.title}`,
+      downloadedGame: gameInfo()!,
+      gameDetails: gameDetails(),
+    })
+  }
+
   return (
     <div class="min-h-screen min-w-screen bg-background text-text">
-      {/* {showPopup() && gameInfo() && (
-        <DownloadPopup
-          badClosePopup={() => setShowPopup(false)}
-          gameTitle={extractMainTitle(gameTitle)}
-          gameMagnet={gameInfo()?.magnetlink}
-          externFullGameInfo={gameInfo()}
-        />
-      )} */}
 
       {loading() ? (
         <LoadingPage />
@@ -177,23 +204,22 @@ const DownloadGameUUIDPage = () => {
             {/* Game Title */}
             <div class="absolute bottom-4 left-4 right-4 z-10">
               <h1 class="text-2xl font-bold truncate">
-                {extractMainTitle(gameInfo().title)}
+                {extractMainTitle(gameInfo()!.title)}
               </h1>
               <p class="text-sm text-muted truncate">
-                {gameInfo()?.title}
+                {gameInfo()!.title}
               </p>
             </div>
           </div>
 
-          <div class="flex w-full flex-col items-center justify-center p-4">
+          <div class="flex w-full flex-col items-center justify-center p-4 gap-6">
             {/* Download Button */}
-            <button
-              onClick={handleDownloadClick}
-              class=" w-full max-w-4xl mb-6 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-accent hover:bg-accent/90 text-background font-medium transition-colors shadow-md"
-            >
-              <Download class="w-5 h-5" />
-              <span>Download Now</span>
-            </button>
+            <Button
+              icon={<Download class="size-5" />}
+              label="Download Now"
+              onClick={handleDownloadPopup}
+              class="w-full max-w-4xl"
+            />
 
             {/* Game Info Grid */}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -219,35 +245,35 @@ const DownloadGameUUIDPage = () => {
                     <Tags class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
                       <p class="text-xs text-muted">Genres/Tags</p>
-                      <p class="text-sm font-medium">{genreTags()}</p>
+                      <p class="text-sm font-medium">{gameDetails().tags}</p>
                     </div>
                   </div>
                   <div class="flex items-start gap-2">
                     <Factory class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
                       <p class="text-xs text-muted">Company</p>
-                      <p class="text-sm font-medium">{gameCompanies()}</p>
+                      <p class="text-sm font-medium">{gameDetails().companies}</p>
                     </div>
                   </div>
                   <div class="flex items-start gap-2">
                     <Languages class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
                       <p class="text-xs text-muted">Languages</p>
-                      <p class="text-sm font-medium">{gameLanguages()}</p>
+                      <p class="text-sm font-medium">{gameDetails().language}</p>
                     </div>
                   </div>
                   <div class="flex items-start gap-2">
                     <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
                       <p class="text-xs text-muted">Original Size</p>
-                      <p class="text-sm font-medium">{originalSize()}</p>
+                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
                     </div>
                   </div>
                   <div class="flex items-start gap-2">
                     <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
                       <p class="text-xs text-muted">Repack Size</p>
-                      <p class="text-sm font-medium">{repackSize()}</p>
+                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
                     </div>
                   </div>
                 </div>

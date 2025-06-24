@@ -3,7 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import { render } from "solid-js/web";
 import BasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { message } from "@tauri-apps/plugin-dialog";
-import { Game } from "../../../bindings";
+import { commands, Game } from "../../../bindings";
 import { CollectionListProps } from "../../../types/library/type";
 import { setDownloadGamePageInfo } from "../../../components/functions/dataStoreGlobal";
 import { LibraryApi } from "../../../api/library/api";
@@ -36,12 +36,13 @@ export default function CollectionList(props: CollectionListProps) {
             .join(' ');
     }
 
-    async function handleGameClick(title: string, filePath: string, href: string) {
+    async function handleGameClick(gameTitle: string, filePath: string, gameHref: string) {
         if (!clicked() && props.collectionName === "games_to_download") {
             setClicked(true);
-            const uuid = crypto.randomUUID();
-            setDownloadGamePageInfo({ gameTitle: title, gameHref: href, filePath });
-            window.location.href = `/game/${uuid}`;
+            const uuid = await commands.hashUrl(gameHref);
+            navigate(`/game/${uuid}`, {
+                state: { gameHref, gameTitle, filePath }
+            });
         }
     }
 

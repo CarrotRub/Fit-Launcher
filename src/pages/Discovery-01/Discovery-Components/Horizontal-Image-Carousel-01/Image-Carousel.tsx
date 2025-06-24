@@ -126,12 +126,13 @@ function HorizontalImagesCarousel({
         await handleAddToDownloadLater(gameItemObject, isChecked);
     }
 
-    function handleGoToGamePage(title: string, filePath: string, href: string) {
+    async function handleGoToGamePage(gameTitle: string, filePath: string, gameHref: string) {
         if (!clicked()) {
             setClicked(true);
-            const uuid = crypto.randomUUID();
-            setDownloadGamePageInfo({ gameTitle: title, gameHref: href, filePath });
-            window.location.href = `/game/${uuid}`;
+            const uuid = await commands.hashUrl(gameHref);
+            navigate(`/game/${uuid}`, {
+                state: { gameHref, gameTitle, filePath }
+            });
         }
     }
 
@@ -156,8 +157,8 @@ function HorizontalImagesCarousel({
                                 alt={`Slide ${index}`}
                                 loading="lazy"
                                 class="w-full h-full rounded-xl object-cover shadow-xl cursor-pointer transition-transform duration-300 hover:scale-105 hover:shadow-accent/20"
-                                onClick={() =>
-                                    handleGoToGamePage(
+                                onClick={async () =>
+                                    await handleGoToGamePage(
                                         gameItemObject.game_title,
                                         defaultPath,
                                         gameItemObject.game_href

@@ -5,6 +5,7 @@ import {
   GamehubSettings,
   InstallationSettings,
   Result,
+  SettingsConfigurationError,
   TorrentApiError,
 } from "../../bindings";
 
@@ -17,6 +18,21 @@ export class GlobalSettingsApi {
   }
   async getInstallationSettings(): Promise<InstallationSettings> {
     return await commands.getInstallationSettings();
+  }
+  async setGamehubSettings(
+    settings: GamehubSettings
+  ): Promise<Result<null, SettingsConfigurationError>> {
+    return await commands.changeGamehubSettings(settings);
+  }
+  async setDnsSettings(
+    settings: FitLauncherDnsConfig
+  ): Promise<Result<null, SettingsConfigurationError>> {
+    return await commands.changeDnsSettings(settings);
+  }
+  async setInstallationSettings(
+    settings: InstallationSettings
+  ): Promise<Result<null, SettingsConfigurationError>> {
+    return await commands.changeInstallationSettings(settings);
   }
 }
 

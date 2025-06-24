@@ -2,6 +2,7 @@ use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use scraper::{Html, Selector};
 use specta::specta;
 use std::fs;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use tauri::Manager;
 use tracing::{error, info};
 
@@ -12,9 +13,9 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::errors::ScrapingError;
-use crate::game_file_path;
 use crate::global::functions::download_sitemap;
 use crate::structs::Game;
+use crate::{game_file_path, singular_game_path};
 
 #[tokio::main]
 pub async fn get_sitemaps_website(
@@ -59,6 +60,14 @@ pub async fn get_sitemaps_website(
     }
 
     Ok(())
+}
+
+#[tauri::command]
+#[specta]
+pub fn hash_url(url: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    url.hash(&mut hasher);
+    hasher.finish()
 }
 
 #[tauri::command]
@@ -128,8 +137,10 @@ pub async fn get_singular_game_info(
         href: url.to_string(),
         tag,
     };
+    let hash = hash_url(url);
+    let filename = format!("singular_game_{}.json", hash);
+    let path = singular_game_path(&app_handle, &filename);
 
-    let path = game_file_path(&app_handle, "singular_game_temp.json");
     let json = serde_json::to_string_pretty(&game).map_err(|e| {
         error!("Failed to serialize game JSON: {}", e);
         ScrapingError::FileJSONError(e.to_string())
@@ -141,7 +152,8 @@ pub async fn get_singular_game_info(
     })?;
 
     info!(
-        "Game data written to singular_game_temp.json in {:#?}",
+        "Game data written to singular_game_{}.json in {:#?}",
+        hash,
         start_time.elapsed()
     );
 

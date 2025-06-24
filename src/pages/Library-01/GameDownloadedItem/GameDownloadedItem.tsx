@@ -11,6 +11,7 @@ import Button from "../../../components/UI/Button/Button";
 import createPathInputPopup from "../../../Pop-Ups/Basic-PathInput-PopUp/Basic-PathInput-PopUp";
 import createAddToCollectionPopup from "../../../Pop-Ups/Basic-AddToCollection-PopUp/Basic-AddToCollection-PopUp";
 import { formatDate, formatDiskSize, formatPlayTime } from "../../../helpers/format";
+import { useNavigate } from "@solidjs/router";
 
 const api = new LibraryApi();
 
@@ -28,14 +29,17 @@ export default function GameDownloadedItem(props: {
   const [clicked, setClicked] = createSignal(false);
   const [hoveredGame, setHoveredGame] = createSignal<string | null>(null);
   const [expandedGame, setExpandedGame] = createSignal<string | null>(null);
+  const navigate = useNavigate();
 
-  const handleGameClick = (title: string, href: string) => {
+  async function handleGameClick(gameTitle: string, gameHref: string) {
     if (!clicked()) {
       setClicked(true);
-      const uuid = crypto.randomUUID();
-      window.location.href = `/game/${uuid}`;
+      const uuid = await commands.hashUrl(gameHref);
+      navigate(`/game/${uuid}`, {
+        state: { gameHref, gameTitle, filePath: "" }
+      });
     }
-  };
+  }
 
   const getExecutableInfo = async (path: string, folder: string) => {
     try {
@@ -144,7 +148,7 @@ export default function GameDownloadedItem(props: {
               {(game) => (
                 <div
                   class={`
-                    w-1/6
+                    w-[30%] xl:w-[20%]
                     flex-shrink-0 flex flex-col
                     rounded-xl bg-gradient-to-b from-background-30/20 to-background-30/10
                     backdrop-blur-sm border border-secondary-20

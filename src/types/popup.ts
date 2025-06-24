@@ -5,6 +5,7 @@ import {
   PathInputProps,
   TextInputProps,
 } from "./components/types";
+import { GameDetails } from "./game";
 
 export type PopupTypeVariant = "warning" | "error" | "success" | "info";
 
@@ -36,7 +37,12 @@ export type AddToCollectionProps<T extends any[] = any[]> = PopupProps<T> &
     action?: (addedTo: string[]) => void | Promise<void>;
   };
 
-export type AddLocalGamePopUpProps<T extends any[] = any[]> = PopupProps<T> &
+export type AddLocalGamePopupProps<T extends any[] = any[]> = PopupProps<T> &
   Omit<PopupProps, "action"> & {
     action?: (game: DownloadedGame) => void | Promise<void>;
   };
+
+export type DownloadPopupProps<T extends any[] = any[]> = PopupProps<T> & {
+  downloadedGame: DownloadedGame;
+  gameDetails: GameDetails;
+};

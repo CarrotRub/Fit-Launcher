@@ -5,6 +5,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
 import { setDownloadGamePageInfo } from "../../../functions/dataStoreGlobal";
 import { Search, X, Sparkles } from "lucide-solid";
+import { commands } from "../../../../bindings";
 
 interface SearchbarProps {
   isTopBar?: boolean;
@@ -105,23 +106,20 @@ export default function Searchbar(props: SearchbarProps) {
     value ? showResults(value) : clearSearch();
   }
 
-  async function handleGoToGamePage(href: string) {
+  async function handleGoToGamePage(gameHref: string) {
     if (!clicked()) {
       setClicked(true);
 
       if (isTopBar && navigate) {
-        const uuid = crypto.randomUUID();
-        setDownloadGamePageInfo({
-          gameTitle: "",
-          gameHref: href,
-          filePath: ""
+        const uuid = await commands.hashUrl(gameHref);
+        navigate(`/game/${uuid}`, {
+          state: { gameHref, gameTitle: "", filePath: "" }
         });
-        window.location.href = `/game/${uuid}`;
         clearSearch();
       } else if (!isTopBar && setSearchValue) {
-        setSearchTerm(capitalizeTitle(getTitleFromUrl(href)));
+        setSearchTerm(capitalizeTitle(getTitleFromUrl(gameHref)));
         setSearchResults([]);
-        setSearchValue(href);
+        setSearchValue(gameHref);
       }
     }
   }

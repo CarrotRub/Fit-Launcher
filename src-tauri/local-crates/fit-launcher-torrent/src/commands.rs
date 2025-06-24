@@ -53,14 +53,13 @@ pub async fn list_torrent_files(torrent: Vec<u8>) -> Result<Vec<FileInfo>, Strin
         .iter_file_details()
         .map_err(|e| e.to_string())?
         .enumerate()
-        .map(|(idx, detail)| -> anyhow::Result<FileInfo> {
+        .flat_map(|(idx, detail)| -> anyhow::Result<FileInfo> {
             Ok(FileInfo {
                 file_name: detail.filename.to_pathbuf()?,
                 length: detail.len,
                 file_index: idx + 1,
             })
         })
-        .flatten()
         .collect())
 }
 

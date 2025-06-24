@@ -4,7 +4,6 @@ import { NumericalInputProps } from "../../../types/components/types";
 
 export default function NumericalInput(props: NumericalInputProps) {
     const [isFocused, setIsFocused] = createSignal(false);
-    const [isHovered, setIsHovered] = createSignal(false);
 
     const handleChange = (e: InputEvent) => {
         const raw = (e.currentTarget as HTMLInputElement).value;
@@ -33,7 +32,7 @@ export default function NumericalInput(props: NumericalInputProps) {
                 relative overflow-hidden rounded-lg border
                 transition-all duration-200 flex items-center
                 ${isFocused() ? "border-accent ring-2 ring-accent/20" : "border-secondary-20"}
-                ${isHovered() ? "bg-background-70" : "bg-background"}
+              bg-background-70
             `}>
                 <input
                     type="text"
@@ -41,8 +40,6 @@ export default function NumericalInput(props: NumericalInputProps) {
                     onInput={handleChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
                     class={`
                       flex-1 py-2.5 pr-2 pl-4 bg-transparent
                       text-text placeholder:text-muted/60
@@ -64,7 +61,7 @@ export default function NumericalInput(props: NumericalInputProps) {
                     absolute right-[2px] top-0 h-full flex flex-col
                     border-l border-secondary-20
                     transition-opacity duration-150
-                    ${isHovered() || isFocused() ? "opacity-100" : "opacity-0"}
+                    opacity-100
                 `}>
                     <button
                         onClick={() => props.onInput(props.value + (props.step || 1))}

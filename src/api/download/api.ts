@@ -1,1 +1,3 @@
-export class DownloadManagerApi {}
+export class DownloadManagerApi {
+  async getListDownloading(): Promise<Aria> {}
+}

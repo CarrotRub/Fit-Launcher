@@ -7,6 +7,7 @@ use tracing::error;
 
 use crate::{
     errors::ScrapingError,
+    hash_url,
     structs::{DiscoveryGame, Game},
 };
 
@@ -26,6 +27,14 @@ fn discovery_dir(app: &AppHandle) -> PathBuf {
 
 pub fn games_dir(app: &AppHandle) -> PathBuf {
     get_app_subdir(app, &["tempGames"])
+}
+
+fn singular_game_dir(app: &AppHandle) -> PathBuf {
+    get_app_subdir(app, &["tempGames", "hashes"])
+}
+
+pub fn singular_game_path(app: &AppHandle, file: &str) -> PathBuf {
+    singular_game_dir(app).join(file)
 }
 
 fn discovery_file_path(app: &AppHandle, file: &str) -> PathBuf {
@@ -97,8 +106,29 @@ async fn get_games_from_file(app: &AppHandle, filename: &str) -> Result<Vec<Game
     serde_json::from_str(&json).map_err(|e| ScrapingError::FileJSONError(e.to_string()))
 }
 
-async fn get_game_from_file(app: &AppHandle, filename: &str) -> Result<Game, ScrapingError> {
-    let file_path = game_file_path(app, filename);
+#[tauri::command]
+#[specta]
+pub async fn get_newly_added_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
+    get_games_from_file(&app, "newly_added_games.json").await
+}
+
+#[tauri::command]
+#[specta]
+pub async fn get_popular_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
+    get_games_from_file(&app, "popular_games.json").await
+}
+
+#[tauri::command]
+#[specta]
+pub async fn get_recently_updated_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
+    get_games_from_file(&app, "recently_updated_games.json").await
+}
+
+#[tauri::command]
+#[specta]
+pub async fn get_singular_game_local(app: AppHandle, url: &str) -> Result<Game, ScrapingError> {
+    let filename = format!("singular_game_{}.json", hash_url(url));
+    let file_path = singular_game_path(&app, &filename);
 
     if let Some(parent) = file_path.parent() {
         if !parent.exists() {
@@ -122,30 +152,6 @@ async fn get_game_from_file(app: &AppHandle, filename: &str) -> Result<Game, Scr
         .map_err(|e| ScrapingError::IOError(e.to_string()))?;
 
     serde_json::from_str::<Game>(&json).map_err(|e| ScrapingError::FileJSONError(e.to_string()))
-}
-
-#[tauri::command]
-#[specta]
-pub async fn get_newly_added_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
-    get_games_from_file(&app, "newly_added_games.json").await
-}
-
-#[tauri::command]
-#[specta]
-pub async fn get_popular_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
-    get_games_from_file(&app, "popular_games.json").await
-}
-
-#[tauri::command]
-#[specta]
-pub async fn get_recently_updated_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
-    get_games_from_file(&app, "recently_updated_games.json").await
-}
-
-#[tauri::command]
-#[specta]
-pub async fn get_singular_game_local(app: AppHandle) -> Result<Game, ScrapingError> {
-    get_game_from_file(&app, "singular_game_temp.json").await
 }
 
 // JSON path getters for each file

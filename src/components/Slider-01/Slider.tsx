@@ -4,6 +4,7 @@ import { setDownloadGamePageInfo } from '../functions/dataStoreGlobal';
 import { CircleArrowLeft, CircleArrowRight, MoveRight } from 'lucide-solid';
 import { SliderProps } from '../../types/components/types';
 import Button from '../UI/Button/Button';
+import { commands } from '../../bindings';
 
 const Slider = (props: SliderProps): JSX.Element => {
     const navigate = useNavigate();
@@ -11,14 +12,16 @@ const Slider = (props: SliderProps): JSX.Element => {
     const [currentIndex, setCurrentIndex] = createSignal(0);
     const sliderId = `slider-${crypto.randomUUID()}`;
 
-    const handleImageClick = (title: string, filePath: string, href: string) => {
+    async function handleImageClick(gameTitle: string, filePath: string, gameHref: string) {
         if (!clicked()) {
             setClicked(true);
-            const uuid = crypto.randomUUID();
-            setDownloadGamePageInfo({ gameTitle: title, gameHref: href, filePath });
-            window.location.href = `/game/${uuid}`;
+            const uuid = await commands.hashUrl(gameHref);
+            navigate(`/game/${uuid}`, {
+                state: { gameHref, gameTitle, filePath }
+            });
         }
     };
+
 
     const goPrevious = () => setCurrentIndex(prev => Math.max(prev - 1, 0));
     const goNext = () => setCurrentIndex(prev => Math.min(prev + 1, props.images.length - 1));

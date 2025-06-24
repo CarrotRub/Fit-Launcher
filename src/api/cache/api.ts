@@ -31,10 +31,12 @@ export class GamesCacheApi {
     return await this.getCached("discovery", commands.getDiscoveryGames);
   }
 
-  async getSingularGameLocal(): Promise<Result<Game, ScrapingError>> {
-    return await this.getCached(
-      "singularGameLocal",
-      commands.getSingularGameLocal
+  async getSingularGameLocal(
+    url: string
+  ): Promise<Result<Game, ScrapingError>> {
+    let hash = await commands.hashUrl(url);
+    return await this.getCached(`singularGameLocal:${hash}`, () =>
+      commands.getSingularGameLocal(url)
     );
   }
 
@@ -42,6 +44,10 @@ export class GamesCacheApi {
     gameLink: string
   ): Promise<Result<null, ScrapingError>> {
     return commands.getSingularGameInfo(gameLink);
+  }
+
+  async getGameHash(url: string): Promise<number> {
+    return await commands.hashUrl(url);
   }
 
   async getGameImages(

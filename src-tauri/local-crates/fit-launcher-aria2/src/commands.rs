@@ -138,6 +138,19 @@ pub async fn aria2_get_status(
     Ok(status)
 }
 
+#[tauri::command]
+#[specta]
+pub async fn aria2_get_list(
+    state: tauri::State<'_, TorrentSession>,
+) -> Result<Vec<Status>, Aria2Error> {
+    let aria2_client = state
+        .aria2_client()
+        .map_err(|_| Aria2Error::NotConfigured)?;
+
+    let status = aria2_client.tell_active().await?;
+    Ok(status)
+}
+
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.getVersion
 #[tauri::command]
 #[specta]

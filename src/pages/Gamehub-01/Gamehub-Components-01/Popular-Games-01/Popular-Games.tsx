@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from '@solidjs/router';
 import { GamesCacheApi } from '../../../../api/cache/api';
 import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
-import { Game } from '../../../../bindings';
+import { commands, Game } from '../../../../bindings';
 import { ChevronLeft, ChevronRight, Star, HardDrive, Languages, Building2, ArrowRight } from 'lucide-solid';
 import LoadingPage from '../../../LoadingPage-01/LoadingPage';
 
@@ -69,14 +69,11 @@ export default function PopularGames() {
     };
   }
 
-  function handleGameClick(game: Game) {
-    const uuid = crypto.randomUUID();
-    setDownloadGamePageInfo({
-      gameTitle: game.title,
-      gameHref: game.href,
-      filePath: popularGamesPath
+  async function handleGameClick(game: Game) {
+    const uuid = await commands.hashUrl(game.href);
+    navigate(`/game/${uuid}`, {
+      state: { gameHref: game.href, gameTitle: game.title, filePath: popularGamesPath }
     });
-    navigate(`/game/${uuid}`);
   }
 
   const current = () => games()[selected()] ?? {};
@@ -169,7 +166,7 @@ export default function PopularGames() {
 
               {/* View Button */}
               <button
-                onClick={() => handleGameClick(current())}
+                onClick={async () => await handleGameClick(current())}
                 class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-text font-medium rounded-lg transition-all duration-300 hover:scale-[1.02] shadow-lg shadow-accent/30"
               >
                 View Game Details

@@ -19,6 +19,8 @@ import Button from "../../../../components/UI/Button/Button";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
+  const settingsInst = new GlobalSettingsApi();
+
   const selectedPart = () =>
     (props.settingsPart.replace("global-", "") || "display") as
     | "display"
@@ -46,19 +48,21 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
     getCurrentSettings();
   });
 
+
+
   async function handleOnSave() {
     const settings = globalSettings();
     if (!settings) return console.error("No settings to save");
 
     try {
       if (settings.dns) {
-        await invoke("change_dns_settings", { settings: settings.dns });
+        await settingsInst.setDnsSettings(settings.dns);
       }
       if (settings.installation_settings) {
-        await invoke("change_installation_settings", { settings: settings.installation_settings });
+        await settingsInst.setInstallationSettings(settings.installation_settings);
       }
       if (settings.display) {
-        await invoke("change_gamehub_settings", { settings: settings.display });
+        await settingsInst.setGamehubSettings(settings.display);
       }
 
       await message("Settings saved successfully!", {

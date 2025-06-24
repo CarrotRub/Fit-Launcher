@@ -38,7 +38,7 @@ function DisplayPartContent({
   handleSwitchCheckChange
 }: SettingsSectionProps<GamehubSettings>) {
   const [newThemes, setNewThemes] = createSignal<string[]>([]);
-  const [currentTheme, setCurrentTheme] = createSignal<string>("Default Dark Purple");
+  const [currentTheme, setCurrentTheme] = createSignal<string>("Dark Purple");
   const [blurAmount, setBlurAmount] = createSignal<number>(5);
   const [bgApplied, setBgApplied] = createSignal<boolean>(false);
 
@@ -56,7 +56,7 @@ function DisplayPartContent({
       const savedThemeKey = localStorage.getItem("theme");
       const savedThemeDisplay = savedThemeKey
         ? savedThemeKey.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-        : "Default Dark Purple";
+        : "Dark Purple";
       setCurrentTheme(savedThemeDisplay);
     } catch (err) {
       console.error("Failed to initialize display settings", err);
@@ -110,7 +110,7 @@ function DisplayPartContent({
           // If the current theme was just removed, reset to default
           if (currentTheme() === themeName) {
             await themeAPI.revertToDefault();
-            setCurrentTheme("Default Dark Purple");
+            setCurrentTheme("Dark Purple");
           }
         }}
       />

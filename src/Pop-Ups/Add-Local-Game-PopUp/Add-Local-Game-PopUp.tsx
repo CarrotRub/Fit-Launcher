@@ -8,12 +8,12 @@ import { invoke } from "@tauri-apps/api/core";
 import Searchbar from "../../components/Topbar-01/Topbar-Components-01/Searchbar-01/Searchbar";
 import Button from "../../components/UI/Button/Button";
 import { Modal } from "../Modal/Modal";
-import { AddLocalGamePopUpProps } from "../../types/popup";
+import { AddLocalGamePopupProps } from "../../types/popup";
 import { ExecutableInfo, DownloadedGame } from "../../bindings";
 import { GamesCacheApi } from "../../api/cache/api";
 import { LibraryApi } from "../../api/library/api";
 
-export default function createAddLocalGamePopup(props: AddLocalGamePopUpProps) {
+export default function createAddLocalGamePopup(props: AddLocalGamePopupProps) {
   const container = document.createElement("div");
   document.body.appendChild(container);
 

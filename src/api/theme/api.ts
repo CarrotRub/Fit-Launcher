@@ -87,7 +87,7 @@ export class ThemeManagerApi {
   }
 
   public async revertToDefault(): Promise<void> {
-    const fallback = "default-dark-purple";
+    const fallback = "dark-purple";
     document.documentElement.setAttribute("data-theme", fallback);
     localStorage.setItem("theme", fallback);
   }

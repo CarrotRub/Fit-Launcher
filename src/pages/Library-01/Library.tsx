@@ -233,7 +233,7 @@ function Library() {
 
 
         {/* Downloaded Games List */}
-        <div class="flex-1 overflow-y-auto p-8 no-scrollbar mb-6 h-full">
+        <div class="flex-1 overflow-y-auto p-8 no-scrollbar h-full">
           {collectionList()["downloaded_games"]?.length > 0 ? (
             <div>
               <GameDownloadedItem

@@ -64,9 +64,8 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
                             e.preventDefault();
                             closePopup();
                         }}
-                        class="p-1 rounded-full hover:bg-secondary-20 transition-colors duration-200 text-muted hover:text-text"
                     >
-                        <X class="w-5 h-5" />
+                        <X class="w-5 h-5 text-muted hover:text-primary transition-colors duration-200" />
                     </button>
                 </div>
 
