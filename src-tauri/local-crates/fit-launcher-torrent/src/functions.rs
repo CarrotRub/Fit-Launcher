@@ -1,9 +1,5 @@
 use anyhow::Context;
 use aria2_ws::Client;
-use librqbit::{
-    Api, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig,
-    dht::PersistentDhtConfig,
-};
 use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
 use std::{

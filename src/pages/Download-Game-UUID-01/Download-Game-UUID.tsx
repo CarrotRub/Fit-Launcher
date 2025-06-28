@@ -4,12 +4,13 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, Clock, Download, Factory, Gamepad2, HardDrive, Info, Languages, Loader2, Tags } from "lucide-solid";
+import { ArrowLeft, Bookmark, BookmarkCheck, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
 import { formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
 import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { GameDetails, GamePageState } from "../../types/game";
+import { DownloadType } from "../../types/popup";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -155,12 +156,13 @@ const DownloadGameUUIDPage = () => {
     clearInterval(backgroundCycleIntervalID);
   });
 
-  function handleDownloadPopup() {
+  function handleDownloadPopup(downloadType: DownloadType) {
     createDownloadPopup({
       infoTitle: "Download Game",
       infoMessage: `Do you want to download ${gameInfo()!.title}`,
       downloadedGame: gameInfo()!,
       gameDetails: gameDetails(),
+      downloadType
     })
   }
 
@@ -214,12 +216,20 @@ const DownloadGameUUIDPage = () => {
 
           <div class="flex w-full flex-col items-center justify-center p-4 gap-6">
             {/* Download Button */}
-            <Button
-              icon={<Download class="size-5" />}
-              label="Download Now"
-              onClick={handleDownloadPopup}
-              class="w-full max-w-4xl"
-            />
+            <div class="flex flex-row gap-4 w-[80%]">
+              <Button
+                icon={<Magnet class="size-5" />}
+                label="Bittorrent Download"
+                onClick={() => handleDownloadPopup("bittorrent")}
+                class="w-full max-w-4xl"
+              />
+              <Button
+                icon={<Globe class="size-5" />}
+                label="Direct Download"
+                onClick={() => handleDownloadPopup("direct_download")}
+                class="w-full max-w-4xl"
+              />
+            </div>
 
             {/* Game Info Grid */}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

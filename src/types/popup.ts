@@ -7,6 +7,7 @@ import {
 } from "./components/types";
 import { GameDetails } from "./game";
 
+export type DownloadType = "bittorrent" | "direct_download";
 export type PopupTypeVariant = "warning" | "error" | "success" | "info";
 
 export type PopupProps<T extends unknown[] = []> = {
@@ -45,4 +46,5 @@ export type AddLocalGamePopupProps<T extends any[] = any[]> = PopupProps<T> &
 export type DownloadPopupProps<T extends any[] = any[]> = PopupProps<T> & {
   downloadedGame: DownloadedGame;
   gameDetails: GameDetails;
+  downloadType: DownloadType;
 };

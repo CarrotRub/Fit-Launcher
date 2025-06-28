@@ -79,12 +79,12 @@ function DisplayPartContent({
         action={() => handleSwitchCheckChange?.("display.nsfw_censorship")}
         checked={settings().nsfw_censorship}
       />
-      <LabelCheckboxSettings
+      {/* <LabelCheckboxSettings
         text="Automatically Get Colors"
         typeText="Gets the color of the games in Popular Games, can slow down the process."
         action={() => handleSwitchCheckChange?.("display.auto_get_colors_popular_games")}
         checked={settings().auto_get_colors_popular_games}
-      />
+      /> */}
       <LabelDropdownSettings
         text="Change Themes"
         typeText="Change themes as you want, you can even add your own!"

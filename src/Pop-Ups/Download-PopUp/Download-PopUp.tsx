@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show, Component } from "solid-js";
+import { createSignal, onMount, Show, Component, For } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
 import { render } from "solid-js/web";
 import {
@@ -7,6 +7,7 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  Settings,
 } from "lucide-solid";
 import { DownloadPopupProps } from "../../types/popup";
 import { DownloadSettingsApi, GlobalSettingsApi } from "../../api/settings/api";
@@ -15,6 +16,7 @@ import { InstallationSettings } from "../../bindings";
 import { Modal } from "../Modal/Modal";
 import createLastStepDownloadPopup from "./LastStep";
 import { invoke } from "@tauri-apps/api/core";
+import Checkbox from "../../components/UI/Checkbox/Checkbox";
 
 const downloadSettingsInst = new DownloadSettingsApi();
 const settingsInst = new GlobalSettingsApi();
@@ -41,6 +43,13 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
       directx_install: false,
       microsoftcpp_install: false
     });
+    const checkboxOptions = [
+      ["Automatic Cleaning", "auto_clean"],
+      ["Automatic Installation", "auto_install"],
+      ["Limit to 2GB RAM", "two_gb_limit"],
+      ["Install DirectX", "directx_install"],
+      ["Install Microsoft C++", "microsoftcpp_install"]
+    ] as const;
 
     const handleCheckboxChange = async (key: keyof InstallationSettings, value: boolean) => {
       const newSettings = { ...installationSettings(), [key]: value };
@@ -97,8 +106,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
             <div class="space-y-6">
               {/* Download Path */}
               <div>
-                <label class="block text-sm font-medium text-text mb-2 items-center gap-2">
-                  <HardDrive class="size-4" />
+                <label class="block text-sm font-medium text-muted mb-2 items-center gap-2">
                   Download Location
                 </label>
                 <PathInput
@@ -146,90 +154,28 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
               {/* Installation Options */}
               <div class="space-y-3">
-                <h3 class="text-sm font-medium text-text flex items-center gap-2">
-                  <Library class="w-4 h-4" />
+                <h3 class="text-sm font-medium text-muted flex items-center gap-2">
+                  <Settings class="w-4 h-4 text-accent" />
                   Installation Options
                 </h3>
-                <div class="space-y-2 pl-6">
-                  <label class="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={installationSettings().auto_clean}
-                      onChange={(e) => handleCheckboxChange("auto_clean", e.currentTarget.checked)}
-                      class="sr-only"
-                    />
-                    <div class={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${installationSettings().auto_clean
-                      ? 'bg-accent border-accent'
-                      : 'border-secondary-20 group-hover:border-secondary-30'
-                      }`}>
-                      {installationSettings().auto_clean && <Check class="w-3 h-3 text-background" />}
-                    </div>
-                    <span class="text-sm text-text">Automatic Cleaning</span>
-                  </label>
-
-                  <label class="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={installationSettings().auto_install}
-                      onChange={(e) => handleCheckboxChange("auto_install", e.currentTarget.checked)}
-                      class="sr-only"
-                    />
-                    <div class={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${installationSettings().auto_install
-                      ? 'bg-accent border-accent'
-                      : 'border-secondary-20 group-hover:border-secondary-30'
-                      }`}>
-                      {installationSettings().auto_install && <Check class="w-3 h-3 text-background" />}
-                    </div>
-                    <span class="text-sm text-text">Automatic Installation</span>
-                  </label>
-
-                  <label class="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={installationSettings().two_gb_limit}
-                      onChange={(e) => handleCheckboxChange("two_gb_limit", e.currentTarget.checked)}
-                      class="sr-only"
-                    />
-                    <div class={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${installationSettings().two_gb_limit
-                      ? 'bg-accent border-accent'
-                      : 'border-secondary-20 group-hover:border-secondary-30'
-                      }`}>
-                      {installationSettings().two_gb_limit && <Check class="w-3 h-3 text-background" />}
-                    </div>
-                    <span class="text-sm text-text">Limit to 2GB RAM</span>
-                  </label>
-
-                  <label class="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={installationSettings().directx_install}
-                      onChange={(e) => handleCheckboxChange("directx_install", e.currentTarget.checked)}
-                      class="sr-only"
-                    />
-                    <div class={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${installationSettings().directx_install
-                      ? 'bg-accent border-accent'
-                      : 'border-secondary-20 group-hover:border-secondary-30'
-                      }`}>
-                      {installationSettings().directx_install && <Check class="w-3 h-3 text-background" />}
-                    </div>
-                    <span class="text-sm text-text">Install DirectX</span>
-                  </label>
-
-                  <label class="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={installationSettings().microsoftcpp_install}
-                      onChange={(e) => handleCheckboxChange("microsoftcpp_install", e.currentTarget.checked)}
-                      class="sr-only"
-                    />
-                    <div class={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${installationSettings().microsoftcpp_install
-                      ? 'bg-accent border-accent'
-                      : 'border-secondary-20 group-hover:border-secondary-30'
-                      }`}>
-                      {installationSettings().microsoftcpp_install && <Check class="w-3 h-3 text-background" />}
-                    </div>
-                    <span class="text-sm text-text">Install Microsoft C++</span>
-                  </label>
+                <div class="space-y-2 bg-popup/50  px-4 py-3 rounded-lg border border-secondary-20 backdrop-blur-sm shadow-sm">
+                  <For each={checkboxOptions}>
+                    {([labelText, key]) => (
+                      <label
+                        class="flex items-center justify-between gap-3 cursor-pointer w-full py-2 px-3 rounded-md transition-all  hover:bg-secondary-20/30 border border-transparent hover:border-accent"
+                      >
+                        <span class="text-sm text-text group-hover:text-primary transition-colors">
+                          {labelText}
+                        </span>
+                        <Checkbox
+                          checked={installationSettings()[key]}
+                          action={(e) =>
+                            handleCheckboxChange(key, e.currentTarget.checked)
+                          }
+                        />
+                      </label>
+                    )}
+                  </For>
                 </div>
               </div>
             </div>

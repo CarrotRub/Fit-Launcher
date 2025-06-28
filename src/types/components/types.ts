@@ -5,7 +5,7 @@ export type ButtonVariants = "glass" | "solid" | "bordered";
 
 export interface CheckboxProps {
   checked: boolean;
-  action?: () => void | Promise<void>;
+  action?: (...args: any[]) => void | Promise<void>;
 }
 
 export interface DropdownProps<T = string> {

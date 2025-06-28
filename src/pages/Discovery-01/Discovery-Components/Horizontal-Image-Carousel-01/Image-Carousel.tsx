@@ -143,7 +143,7 @@ function HorizontalImagesCarousel({
                 <div class="relative flex justify-center h-96 w-full overflow-hidden  will-change-transform perspective-1000">
                     {imagesList().map((image, index) => (
                         <div
-                            class={`absolute top-0 w-[45%] origin-center h-full flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${getSlideClass(index) === 'active'
+                            class={`absolute top-0 aspect-auto  origin-center h-full flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${getSlideClass(index) === 'active'
                                 ? 'translate-x-0 scale-110 opacity-100 z-30 rotate-y-0'
                                 : getSlideClass(index) === 'left'
                                     ? '-translate-x-[110%] scale-95 opacity-70 z-20 rotate-y-12'
@@ -156,7 +156,7 @@ function HorizontalImagesCarousel({
                                 src={image}
                                 alt={`Slide ${index}`}
                                 loading="lazy"
-                                class="w-full h-full rounded-xl object-cover shadow-xl cursor-pointer transition-transform duration-300 hover:scale-105 hover:shadow-accent/20"
+                                class="w-full h-[80%] rounded-xl object-cover shadow-lg cursor-pointer transition-transform duration-300 hover:scale-102 hover:shadow-secondary-30"
                                 onClick={async () =>
                                     await handleGoToGamePage(
                                         gameItemObject.game_title,

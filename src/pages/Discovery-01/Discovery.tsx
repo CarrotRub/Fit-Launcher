@@ -42,6 +42,7 @@ function DiscoveryPage(): JSX.Element {
     const start = currentPage() * 25;
     return games.slice(start, start + 25);
   };
+  //todo: add note from steam_api
 
   return (
     <Suspense fallback={<LoadingPage />}>
