@@ -133,16 +133,28 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
             .and_then(|e| e.value().attr("href"));
 
         let tag = article
-            .select(&scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap())
-            .next()
-            .map(|e| e.text().collect::<String>());
+            .select(&scraper::Selector::parse(".entry-content p").unwrap())
+            .find_map(|p| {
+                let text = p.text().collect::<String>();
+                if text.trim_start().starts_with("Genres/Tags:") {
+                    Some(
+                        p.select(&scraper::Selector::parse("a").unwrap())
+                            .map(|a| a.text().collect::<String>())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    )
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default();
 
         let magnet = article
             .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
             .next()
             .and_then(|e| e.value().attr("href"));
 
-        if let (Some(title), Some(img), Some(desc), Some(href), Some(tag), Some(magnet)) =
+        if let (Some(title), Some(img), Some(desc), Some(href), tag, Some(magnet)) =
             (title, img, desc, href, tag, magnet)
         {
             if img.contains("imageban") {
@@ -228,9 +240,20 @@ async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
         .unwrap_or_default();
 
     let tag = doc
-        .select(&scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap())
-        .next()
-        .map(|e| e.text().collect())
+        .select(&scraper::Selector::parse(".entry-content p").unwrap())
+        .find_map(|p| {
+            let text = p.text().collect::<String>();
+            if text.trim_start().starts_with("Genres/Tags:") {
+                Some(
+                    p.select(&scraper::Selector::parse("a").unwrap())
+                        .map(|a| a.text().collect::<String>())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            } else {
+                None
+            }
+        })
         .unwrap_or_default();
 
     let mut img_url = None;
@@ -333,9 +356,20 @@ async fn scrape_recent_update(link: &str) -> Result<Game, ScrapingError> {
         .unwrap_or_default();
 
     let tag = doc
-        .select(&scraper::Selector::parse(".entry-content p strong:first-of-type").unwrap())
-        .next()
-        .map(|e| e.text().collect())
+        .select(&scraper::Selector::parse(".entry-content p").unwrap())
+        .find_map(|p| {
+            let text = p.text().collect::<String>();
+            if text.trim_start().starts_with("Genres/Tags:") {
+                Some(
+                    p.select(&scraper::Selector::parse("a").unwrap())
+                        .map(|a| a.text().collect::<String>())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            } else {
+                None
+            }
+        })
         .unwrap_or_default();
 
     Ok(Game {

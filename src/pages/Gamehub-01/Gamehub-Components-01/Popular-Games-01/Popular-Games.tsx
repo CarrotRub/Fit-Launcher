@@ -2,7 +2,6 @@ import { createSignal, onMount, createEffect, onCleanup, Show, For } from 'solid
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from '@solidjs/router';
 import { GamesCacheApi } from '../../../../api/cache/api';
-import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
 import { commands, Game } from '../../../../bindings';
 import { ChevronLeft, ChevronRight, Star, HardDrive, Languages, Building2, ArrowRight } from 'lucide-solid';
 import LoadingPage from '../../../LoadingPage-01/LoadingPage';

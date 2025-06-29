@@ -16,7 +16,7 @@ import {
   Minus
 } from "lucide-solid";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
-import { globalTorrentsInfo } from "../functions/dataStoreGlobal";
+import { TorrentApi } from "../../api/bittorrent/api";
 
 const appWindow = getCurrentWebviewWindow();
 
@@ -25,15 +25,9 @@ export default function Topbar() {
   const [notificationMessage, setNotificationMessage] = createSignal('');
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
-
+  const torrentApi = new TorrentApi();
   function handleWindowClose() {
-    const { torrents } = globalTorrentsInfo;
-    torrents.forEach(async (torrent) => {
-      const { torrentIdx } = torrent;
-      await invoke('torrent_action_pause', { id: torrentIdx })
-        .then(() => console.log(`Paused torrent with idx: ${torrentIdx}`))
-        .catch((error) => console.error(`Failed to pause torrent with idx: ${torrentIdx}`, error));
-    });
+    //todo: add pause all torrent
     appWindow.hide();
   }
 

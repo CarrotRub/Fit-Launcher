@@ -59,19 +59,18 @@ export class GamesCacheApi {
   async removeNSFW<T extends { tag?: string; game_tags?: string }>(
     gameList: T[]
   ): Promise<T[]> {
-    let settingsInst = new GlobalSettingsApi();
-    let nsfw = (await settingsInst.getGamehubSettings()).nsfw_censorship;
-    if (nsfw) {
-      return gameList.filter((game) =>
-        typeof game.tag === "string"
-          ? !game.tag.includes("Adult")
-          : typeof game.game_tags === "string"
-          ? !game.game_tags.includes("Adult")
-          : true
-      );
-    } else {
-      return gameList;
-    }
+    const settingsInst = new GlobalSettingsApi();
+    const nsfw =
+      (await settingsInst.getGamehubSettings()).nsfw_censorship ?? false;
+
+    if (!nsfw) return gameList;
+
+    const isNSFW = (text: unknown) =>
+      typeof text === "string" && text.toLowerCase().includes("adult");
+
+    return gameList.filter(
+      (game) => !isNSFW(game.tag) && !isNSFW(game.game_tags)
+    );
   }
 
   async getNewlyAddedGamesPath(): Promise<string> {
