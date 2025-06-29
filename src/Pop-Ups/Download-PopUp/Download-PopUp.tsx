@@ -36,6 +36,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
     const [isPathValid, setIsPathValid] = createSignal(false);
     const [isFinalStep, setIsFinalStep] = createSignal(false);
     const [isInitialized, setIsInitialized] = createSignal(false);
+
     const [installationSettings, setInstallationSettings] = createSignal<InstallationSettings>({
       auto_clean: false,
       auto_install: false,
@@ -51,8 +52,10 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
       ["Install Microsoft C++", "microsoftcpp_install"]
     ] as const;
 
-    const handleCheckboxChange = async (key: keyof InstallationSettings, value: boolean) => {
-      const newSettings = { ...installationSettings(), [key]: value };
+    async function handleCheckboxChange(key: keyof InstallationSettings) {
+      const current = installationSettings();
+      const newSettings = { ...current, [key]: !current[key] };
+
       setInstallationSettings(newSettings);
 
       const result = await settingsInst.setInstallationSettings(newSettings);
@@ -64,6 +67,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
         });
       }
     };
+
 
 
     onMount(async () => {
@@ -170,7 +174,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                         <Checkbox
                           checked={installationSettings()[key]}
                           action={(e) =>
-                            handleCheckboxChange(key, e.currentTarget.checked)
+                            handleCheckboxChange(key)
                           }
                         />
                       </label>

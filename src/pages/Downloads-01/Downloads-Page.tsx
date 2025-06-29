@@ -123,7 +123,7 @@ const DownloadPage: Component = () => {
     return (
         <div class="min-h-screen  bg-background  p-6">
             {/* Header with glass effect */}
-            <div class="sticky top-0 z-10 bg-popup/80 backdrop-blur-sm rounded-xl p-4 mb-6 border border-secondary-20 shadow-sm">
+            <div class="sticky top-0 z-10 bg-popup/80 backdrop-blur-sm mx-auto rounded-xl max-w-7xl p-4 mb-6 border border-secondary-20 shadow-sm">
                 <div class="flex justify-between items-center max-w-7xl mx-auto">
                     <h1 class="text-2xl font-bold flex items-center gap-3">
                         <CloudDownload class="w-6 h-6 text-accent" />

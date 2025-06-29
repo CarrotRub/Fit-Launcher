@@ -166,6 +166,7 @@ export class TorrentApi {
   }
 
   async getTotalDownloadSpeed(): Promise<Result<GlobalStat, Aria2Error>> {
+    //todo: use this later for total download speed
     return await commands.aria2GlobalStat();
   }
 }
