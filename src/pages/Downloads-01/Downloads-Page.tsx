@@ -1,462 +1,375 @@
-import { Component, createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
-import { appCacheDir, appDataDir, join } from "@tauri-apps/api/path";
-import { mkdir, readTextFile, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
-import { invoke } from "@tauri-apps/api/core";
-import { globalTorrentsInfo, setGlobalTorrentsInfo } from "../../components/functions/dataStoreGlobal";
+import { Component, createEffect, createSignal, For, onMount } from "solid-js";
+import { Dynamic } from "solid-js/web";
 import { makePersisted } from "@solid-primitives/storage";
-import { Dynamic, render } from "solid-js/web";
-import BasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { message } from "@tauri-apps/plugin-dialog";
+import { DownloadedGame, Status, TaskStatus } from "../../bindings";
+import { TorrentApi } from "../../api/bittorrent/api";
+import { LibraryApi } from "../../api/library/api";
+import {
+    Trash2, Pause, Play, Check, Download as DownloadIcon,
+    Upload, HardDrive, ArrowDown, ArrowUp,
+    CloudDownload,
+    Gamepad2
+} from "lucide-solid";
+import Button from "../../components/UI/Button/Button";
+import { useNavigate } from "@solidjs/router";
 
-const cacheDir = await appCacheDir();
-const appDir = await appDataDir();
-
-
+const torrentApi = new TorrentApi();
+const libraryApi = new LibraryApi();
 
 const DownloadPage: Component = () => {
-    const [downloadingTorrents, setDownloadingTorrents] = createSignal<any[]>([]);
-    const [torrentStats, setTorrentStats] = createSignal<Record<string, any>>({});
-    const [toDeleteTorrentIdxList, setToDeleteTorrentIdxList] = createSignal<number[]>([]);
+    const navigate = useNavigate();
+    const [downloading, setDownloading] = createSignal<{ game: DownloadedGame; status?: Status }[]>([]);
 
 
+    async function refreshDownloads() {
+        const activeRes = await torrentApi.getTorrentListActive();
+        const waitingRes = await torrentApi.getTorrentListWaiting();
 
-    function handleCheckboxChange(torrentIdx, isChecked) {
-        setToDeleteTorrentIdxList((prevList) =>
-            isChecked ? [...prevList, torrentIdx] : prevList.filter((idx) => idx !== torrentIdx)
-        );
+        if (activeRes.status !== "ok" && waitingRes.status !== "ok") return;
 
-        console.warn(toDeleteTorrentIdxList(), torrentIdx)
-    }
+        const combined = [
+            ...(activeRes.status === "ok" ? activeRes.data : []),
+            ...(waitingRes.status === "ok" ? waitingRes.data : [])
+        ];
 
-    function deleteSelectedGames() {
-        const torrentIdxList = toDeleteTorrentIdxList();
-        if (torrentIdxList.length === 0) {
-            console.log("No torrents selected for deletion.");
-            return;
+        const statusMap = new Map<string, Status>();
+        for (const status of combined) {
+            const key = status.following ?? status.gid;
+            statusMap.set(key, status);
         }
 
-        const { torrents } = globalTorrentsInfo;
+        const entries: { game: DownloadedGame; status?: Status }[] = [];
 
-        torrents.forEach(async (torrent) => {
-            const { torrentIdx } = torrent;
-            if (torrentIdxList.includes(torrentIdx)) {
-                await invoke('torrent_action_delete', { id: torrentIdx })
-                    .then(() => {
-                        console.log(`Deleted torrent with idx: ${torrentIdx}`);
-                    })
-                    .catch((error) => {
-                        console.error(`Failed to delete torrent with idx: ${torrentIdx}`, error);
-                    });
+        for (const [savedGid, games] of torrentApi.gameList.entries()) {
+            const status =
+                statusMap.get(savedGid) ||
+                [...statusMap.values()].find(s => s.gid === savedGid || s.following === savedGid);
+
+            for (const game of games) {
+                entries.push({
+                    game: structuredClone(game),
+                    status: status ? structuredClone(status) : undefined,
+                });
             }
-        });
-
-        setGlobalTorrentsInfo("torrents", torrents.filter(torrent => !torrentIdxList.includes(torrent.torrentIdx)));
-        setDownloadingTorrents(torrents.filter(torrent => !torrentIdxList.includes(torrent.torrentIdx)))
-        setToDeleteTorrentIdxList([]);
-    }
-
-    function extractMainTitle(title) {
-        return title
-            ?.replace(/(?: - |, | )?(Digital Deluxe|Ultimate Edition|Deluxe Edition)\s*[:\-]?.*|(?: - |, ).*/, '')
-            ?.replace(/\s*[:\-]\s*$/, '')
-            ?.replace(/\(.*?\)/g, '')
-            ?.replace(/\s*[:\–]\s*$/, '')
-            ?.replace(/[\–].*$/, '');
-    }
-
-    function handleDeleteTorrents() {
-        const torrentIdxList = toDeleteTorrentIdxList();
-        const pageContent = document.querySelector(".downloads-page");
-
-        if (torrentIdxList.length === 0) {
-            render(
-                () => (
-                    <BasicChoicePopup
-                        infoTitle={"Nothing to download"}
-                        infoMessage={"Nothing there"} // Pass the generated message
-                        infoFooter={''}
-                        action={null}
-                    />
-                ),
-                pageContent
-            );
-            return;
         }
 
-        const gameTitles = [];
+        setDownloading(entries);
+    }
 
-        downloadingTorrents().forEach((torrent) => {
-            const { torrentIdx } = torrent;
-            if (torrentIdxList.includes(torrentIdx)) {
-                gameTitles.push(torrent.torrentExternInfo?.title || `Unknown Title \n(idx: ${torrentIdx})`);
-            }
-        })
 
-        // const torrent = torrents.find((t) => t.torrentIdx === torrentIdx);
-        // if (torrent) {
-        //     gameTitles.push(torrent.torrentExternInfo?.gameTitle || `Unknown Title \n(idx: ${torrentIdx})`);
-        // }
 
-        // Create the message string
-        const infoMessage = `The following games will be deleted:<br />${gameTitles.join("<br />- ")}`;
 
-        render(
-            () => (
-                <BasicChoicePopup
-                    infoTitle={"Are you sure about that?"}
-                    infoMessage={infoMessage} // Pass the generated message
-                    infoFooter={''}
-                    action={deleteSelectedGames}
-                />
-            ),
-            pageContent
-        );
+    async function checkFinishedDownloads() {
+        const updates = downloading().filter(d => d.status?.status === "complete" && d.status?.completedLength === d.status?.totalLength);
+
+        for (const { game, status } of updates) {
+            if (!status) continue;
+
+            await libraryApi.addDownloadedGame(game);
+            torrentApi.gameList.delete(status.gid);
+        }
+
+        await refreshDownloads();
     }
 
     onMount(async () => {
-        // try {
-        //     // Read and parse the session.json file
-        //     const sessionData = JSON.parse(await readTextFile(sessionJSON));
-        //     const sessionInfoHashes = Object.values(sessionData.torrents).map(
-        //         (torrent) => torrent.info_hash
-        //     );
+        await torrentApi.loadGameListFromDisk();
 
-        //     // Filter globalTorrentsInfo to retain only torrents with matching info_hash
-        //     const filteredTorrents = globalTorrentsInfo.torrents.filter((torrent) =>
-        //         sessionInfoHashes.includes(torrent.torrentIdx)
-        //     );
+        const statusRes = await torrentApi.getTorrentListActive();
+        const statusMap = new Map<string, Status>();
 
-        //     // Update globalTorrentsInfo with the filtered torrents
-        //     setGlobalTorrentsInfo((prev) => ({
-        //         ...prev,
-        //         torrents: filteredTorrents,
-        //     }));
-
-        //     // Update downloadingTorrents signal
-        //     setDownloadingTorrents(filteredTorrents);
-        // } catch (error) {
-        //     console.error("Error during initialization:", error);
-        // }
+        if (statusRes.status === "ok") {
+            for (const status of statusRes.data) {
+                if (status.following) {
+                    statusMap.set(status.following, status);
+                } else {
+                    statusMap.set(status.gid, status);
+                }
 
 
-        setDownloadingTorrents(globalTorrentsInfo.torrents);
-        // Fetch stats for each torrent
-    });
 
-    async function addGameToDownloadedGames(gameData) {
-        let currentData = { games: [] };
-        const userDownloadedGames = await join(appDir, 'library', 'downloadedGames', 'downloaded_games.json');
-
-        // Ensure the directory exists
-        try {
-            let toDownloadDirPath = await join(appDir, 'library', 'downloadedGames');
-            await mkdir(toDownloadDirPath, { recursive: true });
-        } catch (error) {
-            console.error('Error creating directory:', error);
-        }
-
-        // Read and parse the current file contents
-        let fileContent = [];
-        try {
-            const existingData = await readTextFile(userDownloadedGames);
-            fileContent = JSON.parse(existingData) || [];
-        } catch (error) {
-            console.warn('File does not exist or is empty. Creating a new one.');
-        }
-
-        // Ensure the content is an array
-        if (!Array.isArray(fileContent)) {
-            throw new Error('File content is not an array, cannot append.');
-        }
-
-        // CHECK FOR DUPLICATES HERE
-        // Use a unique property to identify if the game is already in the file.
-        const alreadyInIndex = fileContent.findIndex(
-            (item) => item.torrentIdx === gameData.torrentIdx
-        );
-
-        if (alreadyInIndex === -1) {
-            // Only push to the array if it's not already there
-            fileContent.push(gameData);
-
-            // Write the updated array back to the file
-            await writeTextFile(userDownloadedGames, JSON.stringify(fileContent, null, 2));
-            console.log('New data appended successfully!');
-        } else {
-            console.log(`Game with torrentIdx "${gameData.torrentIdx}" already in downloaded_games.json`);
-        }
-    }
-
-    onMount(async () => {
-        const intervals = new Map(); // Map to keep track of intervals for each torrentIdx
-        console.log(intervals)
-        // Iterate over downloading torrents
-        downloadingTorrents().forEach((torrent) => {
-            const { torrentIdx } = torrent;
-            const { torrents } = globalTorrentsInfo;
-            // Avoid creating multiple intervals for the same torrentIdx
-            if (!intervals.has(torrentIdx)) {
-                const intervalId = setInterval(async () => {
-                    try {
-                        // Fetch stats and update reactively
-                        if (torrentIdx !== '') {
-                            const stats = await invoke('torrent_stats', { id: torrentIdx });
-
-                            // Update stats reactively
-                            setTorrentStats((prevStats) => {
-                                return {
-                                    ...prevStats,
-                                    [torrentIdx]: {
-                                        ...prevStats[torrentIdx],
-                                        ...stats,
-                                    },
-                                };
-                            });
-
-                            if (stats.finished) {
-
-                                try {
-                                    await addGameToDownloadedGames(torrent)
-                                } catch (error) {
-                                    console.error('Error adding games to downloaded games :', error);
-                                }
-
-
-                                // Clear the interval for the finished torrent
-                                clearInterval(intervalId);
-                                intervals.delete(torrentIdx);
-
-                                console.log("This torrent is done:", torrentIdx);
-
-
-                                // Remove the finished torrent
-                                setGlobalTorrentsInfo("torrents", (prevTorrents) =>
-                                    prevTorrents.filter((torrent) => torrent.torrentIdx !== torrentIdx)
-                                );
-                                setDownloadingTorrents((prevTorrents) =>
-                                    prevTorrents.filter((torrent) => torrent.torrentIdx !== torrentIdx)
-                                );
-
-                                let install_settings = await invoke('get_installation_settings');
-
-                                if (install_settings.auto_install) {
-                                    await invoke('run_automate_setup_install', { id: torrentIdx });
-                                    await invoke('torrent_action_forget', { id: torrentIdx });
-                                }
-
-                            }
-                        }
-                    } catch (error) {
-                        console.error(`Error fetching stats for torrent ${torrentIdx}:`, error);
-                    }
-                }, 500); // Fetch stats every 500ms
-
-                intervals.set(torrentIdx, intervalId);
             }
-        });
+        }
 
+        const entries: { game: DownloadedGame; status?: Status }[] = [];
 
+        for (const [gid, games] of torrentApi.gameList.entries()) {
+            const status = statusMap.get(gid);
+            for (const game of games) {
+                entries.push({
+                    game: structuredClone(game),
+                    status: status ? structuredClone(status) : undefined,
+                });
+            }
+        }
+
+        setDownloading(entries);
+
+        setInterval(() => {
+            refreshDownloads();
+            checkFinishedDownloads();
+        }, 1000);
     });
 
-    createEffect(() => {
-        console.warn(downloadingTorrents())
-    })
+    const formatSpeed = (bytes?: number) => {
+        if (!bytes) return "-";
+        if (bytes < 1024) return `${bytes} B/s`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB/s`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB/s`;
+    };
+
+
     return (
-        <div class="downloads-page content-page">
-            <div class="downloads-page-action-bar">
-                <button class="downloads-page-delete-all" onClick={handleDeleteTorrents}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2m-6 5v6m4-6v6" /></svg>
-                </button>
+        <div class="min-h-screen  bg-background  p-6">
+            {/* Header with glass effect */}
+            <div class="sticky top-0 z-10 bg-popup/80 backdrop-blur-sm rounded-xl p-4 mb-6 border border-secondary-20 shadow-sm">
+                <div class="flex justify-between items-center max-w-7xl mx-auto">
+                    <h1 class="text-2xl font-bold flex items-center gap-3">
+                        <CloudDownload class="w-6 h-6 text-accent" />
+                        <span class="bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                            DOWNLOAD MANAGER
+                        </span>
+                    </h1>
+
+                    <Button
+
+                        size="sm"
+                        label="CLEAR ALL"
+                        icon={<Trash2 class="w-4 h-4" />}
+                        onClick={async () => torrentApi.removeAllTorrents()}
+                    />
+                </div>
             </div>
-            {downloadingTorrents().length > 0 && Object.keys(torrentStats()).length > 0 ? (
-                <For each={downloadingTorrents()}>
-                    {(torrent) => (
-                        <Dynamic component={DownloadingGameItem} torrent={torrent} stats={torrentStats} onCheckboxChange={handleCheckboxChange} />
-                    )}
-                </For>
-            ) : (
-                <div class="no-downloads">Nothing is currently downloading...</div>
-            )}
+
+            {/* Main Content */}
+            <div class="max-w-7xl mx-auto">
+                {/* Stats Bar */}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
+                        <div class="flex items-center gap-3">
+                            <HardDrive class="w-5 h-5 text-accent" />
+                            <div>
+                                <p class="text-sm text-muted">Active Downloads</p>
+                                {
+                                    downloading().filter(d => d.status?.status === "active").length
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
+                        <div class="flex items-center gap-3">
+                            <ArrowDown class="w-5 h-5 text-green-500" />
+                            <div>
+                                <p class="text-sm text-muted">Total Download Speed</p>
+                                <p class="text-xl font-semibold">
+                                    {formatSpeed(downloading().reduce((acc, item) => acc + (item.status?.downloadSpeed ?? 0), 0))}
+
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
+                        <div class="flex items-center gap-3">
+                            <ArrowUp class="w-5 h-5 text-blue-500" />
+                            <div>
+                                <p class="text-sm text-muted">Total Upload Speed</p>
+                                <p class="text-xl font-semibold">
+                                    {formatSpeed(downloading().reduce((acc, item) => acc + (item.status?.uploadSpeed ?? 0), 0))}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Downloads List */}
+                {downloading().length > 0 ? (
+                    <div class="space-y-3">
+                        <For each={downloading()}>
+                            {(item) => (
+                                <Dynamic component={DownloadingGameItem} game={item.game} status={item.status} />
+                            )}
+                        </For>
+                    </div>
+                ) : (
+                    <div class="flex flex-col items-center justify-center py-16 text-center bg-popup/30 backdrop-blur-sm rounded-2xl border border-dashed border-secondary-20">
+                        <div class="relative mb-6">
+                            <DownloadIcon class="w-16 h-16 text-accent animate-pulse" />
+
+                        </div>
+                        <h3 class="text-2xl font-medium text-text mb-2">No Active Downloads</h3>
+                        <p class="text-muted max-w-md mb-6">
+                            Your active downloads will appear here. Start downloading games to see them!
+                        </p>
+                        <Button
+                            label="Browse Games"
+                            icon={<Gamepad2 class="w-5 h-5" />}
+                            onClick={() => navigate('/discovery-page')}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     );
-}
+};
 
-function DownloadingGameItem({ torrent, stats, onCheckboxChange }) {
-    const torrentStats = () => stats()[torrent.torrentIdx] || {};
-    const [gamePercentage, setGamePercentage] = makePersisted(createSignal('0.5%'));
-    const [torrentState, setTorrentState] = createSignal('initializing')
-    const [numberPercentage, setNumberPercentage] = createSignal(1)
+function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
+    const [progress, setProgress] = makePersisted(createSignal("0%"));
+    const [numberProgress, setNumberProgress] = createSignal(0);
 
-    createEffect(async () => {
-        let percentage100 = (torrentStats().progress_bytes / torrentStats().total_bytes) * 100;
+    createEffect(() => {
+        const completed = props.status?.completedLength ?? 0;
+        const total = props.status?.totalLength ?? 1;
+        const percent = total > 0 ? (completed / total) * 100 : 0;
+        setNumberProgress(Math.floor(percent));
+        setProgress(`${percent.toFixed(1)}%`);
+    });
 
-        setNumberPercentage(percentage100.toFixed(0))
-        setGamePercentage(percentage100 + '%')
-        setTorrentState(torrentStats().state)
+    function formatSpeed(bytes?: number): string {
+        if (!bytes || bytes <= 0) return "-";
+        if (bytes < 1024) return `${bytes} B/s`;
+        if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB/s`;
+        if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB/s`;
+        return `${(bytes / 1024 ** 3).toFixed(1)} GB/s`;
+    }
 
-        if (torrentStats().error) {
-            await message(torrentStats().error, { title: 'FitLauncher', kind: 'error' })
-        }
-    }, torrentStats())
+
+    function formatBytes(bytes?: number): string {
+        if (!bytes || bytes <= 0) return "-";
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+        if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+        return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+    }
+
 
     return (
-        <div class="downloading-game-item" key={torrent.torrentIdx}>
-            <div class="downloading-main-info-game">
-                <img
-                    class="downloading-game-image"
-                    src={torrent.torrentExternInfo.img}
-                    alt={torrent.torrentExternInfo.title}
-                />
-                <div class="downloading-game-title">
-                    <p style={`max-width: 30ch;`}>{torrent.torrentExternInfo.title}</p>
+        <div class="bg-popup rounded-xl border border-secondary-20 overflow-hidden transition-all hover:border-accent/50">
+            <div class="flex flex-col md:flex-row">
+                {/* Game Info */}
+                <div class="flex items-center p-4 md:w-1/3">
+                    <img
+                        src={props.game.img}
+                        alt={props.game.title}
+                        class="w-16 h-16 rounded-lg object-cover mr-4"
+                    />
+                    <div>
+                        <h3 class="font-medium line-clamp-2">{props.game.title}</h3>
+                        <div class="flex items-center gap-2 mt-1 text-sm text-muted">
+                            <HardDrive class="w-4 h-4" />
+                            <span>{formatBytes(props.status?.totalLength)} total</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="downloading-secondary-info-game">
-                <div class="downloading-download-info">
-                    <div class="downloading-download-info-upload-speed">
-                        <p style={`
-                            color: var(--non-selected-text-color);
-                            font-size: 14px
-                            `}
-                        >
-                            UPLOAD
-                        </p>
-                        <p style={`font-size: 16px`}>
-                            <b>{torrentStats()?.live?.upload_speed?.human_readable}</b>
-                        </p>
-                    </div>
-                    <div class="downloading-download-info-download-speed">
-                        <p style={`
-                            color: var(--non-selected-text-color);
-                            font-size: 14px
-                            `}
-                        >
-                            DOWNLOAD
-                        </p>
-                        <p style={`font-size: 16px; margin: 0; padding:0;`}>
-                            <b>{torrentStats()?.live?.download_speed?.human_readable}</b>
-                        </p>
-                    </div>
 
-                </div>
-                <div class="downloading-download-bar-container">
-                    <div class="downloading-download-bar-info-container">
-                        <p>
-                            {torrentStats()?.finished ? (
-                                'Done'
-                            ) : torrentStats()?.live?.time_remaining ? (
-                                <>
-                                    <b>{torrentStats().live.time_remaining.human_readable}</b>
-                                    <span style={{ color: 'var(--non-selected-text-color)' }}> remaining</span>
-                                </>
-                            ) : (
-                                'Nothing'
-                            )
-                            }
-                        </p>
-                        <p class="downloading-download-bar-download-percentage">
-                            {numberPercentage()}% DOWNLOADED
-                        </p>
-                    </div>
-                    <div class="downloading-download-bar">
-                        <div class="downloading-download-bar-active" style={{
-                            'width': gamePercentage()
-                        }}>
+                {/* Download Stats */}
+                <div class="flex flex-row items-center w-full border-t-0 border-l border-secondary-20 p-4 md:w-2/3">
+                    <div class="flex flex-row items-center justify-center gap-4 w-full">
+                        {/* Speed Indicators */}
+                        <div class="flex gap-6 justify-center">
+                            <div class="flex items-center gap-2">
+                                <ArrowDown class="w-5 h-5 text-green-500" />
+                                <div>
+                                    <p class="text-xs text-muted">DOWNLOAD</p>
+                                    <p class="font-medium">{formatSpeed(props.status?.downloadSpeed)}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <ArrowUp class="w-5 h-5 text-blue-500" />
+                                <div>
+                                    <p class="text-xs text-muted">UPLOAD</p>
+                                    <p class="font-medium">{formatSpeed(props.status?.uploadSpeed)}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div class="flex-1 ">
+                            <div class="flex justify-between text-xs text-muted mb-1">
+                                <span>
+                                    {props.status?.status === "complete"
+                                        ? "Completed"
+                                        : props.status
+                                            ? "Downloading..."
+                                            : "Waiting..."}
+                                </span>
+                                <span>{numberProgress()}%</span>
+                            </div>
+                            <div class="w-full h-2 bg-secondary-20 rounded-full overflow-hidden">
+                                <div
+                                    class="h-full bg-gradient-to-r from-accent to-primary transition-all duration-300"
+                                    style={{ width: progress() }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div class="ml-auto justify-center">
+                            <DownloadActionButton status={props.status!} />
 
                         </div>
                     </div>
                 </div>
-                <Dynamic component={ActionButtonDownload} gameState={torrentState} torrentStats={torrentStats} torrentIdx={torrent.torrentIdx} />
-                <label class="custom-checkbox-download">
-                    <input type="checkbox" onChange={(e) => onCheckboxChange(torrent.torrentIdx, e.target.checked)} />
-                    <span class="checkbox-mark-download"></span>
-                </label>
-
             </div>
         </div>
     );
 }
 
-function ActionButtonDownload({ gameState, torrentStats, torrentIdx }) {
-    const [buttonColor, setButtonColor] = createSignal('var(--secondary-color)');
-    const [globalState, setGlobalState] = createSignal(gameState())
-    const [gameDone, setGameDone] = createSignal(false);
-
-    async function handleTorrentAction() {
-        try {
-            if (globalState() === 'live' && !gameDone()) {
-                await invoke('torrent_action_pause', { id: torrentIdx })
-            } else if (globalState() === 'paused' && !gameDone()) {
-                await invoke('torrent_action_start', { id: torrentIdx })
-            } else if (globalState() === 'initializing' && !gameDone()) {
-                console.log("nothing")
-            } else if (gameDone()) {
-                console.log('already done')
-            } else {
-                await message(torrentStats()?.error, { title: 'FitLauncher', kind: 'error' })
-            }
-        } catch (error) {
-            console.error(`Failed to pause/resume torrent ${torrentIdx()}:`, error);
+function DownloadActionButton({ status }: { status?: Status }) {
+    const [buttonState, setButtonState] = createSignal<"pause" | "resume" | "complete">("pause");
+    onMount(() => {
+        if (status === undefined) {
+            setButtonState("resume")
         }
-    }
-
-    // React to changes in gameState
+    })
     createEffect(() => {
-        const state = gameState();
-        setGlobalState(state)
-        switch (state) {
-            case 'live':
-                setButtonColor('var(--secondary-color)');
+        if (!status) return setButtonState("resume");
+
+        switch (status.status) {
+            case "paused":
+            case "waiting":
+                setButtonState("resume");
                 break;
-            case 'paused':
-                setButtonColor('var(--resume-button-accent-color)');
+            case "active":
+                setButtonState("pause");
                 break;
-            case 'initializing':
-                setButtonColor('var(--non-selected-text-color)');
+            case "complete":
+                setButtonState("complete");
                 break;
             default:
-                setButtonColor('red');
+                setButtonState("resume");
         }
     });
 
-    createEffect(() => {
-        const gameStats = torrentStats();
-        setGameDone(gameStats.finished)
-        if (gameStats.finished) {
-            console.log("done")
-            setButtonColor('var(--primary-color)')
+
+
+    async function toggle() {
+        const gid = status?.gid ?? "";
+        if (!gid) return;
+
+        if (!status || status.status === "waiting" || status.status === "paused") {
+            const result = await torrentApi.resumeTorrent(gid);
+            if (result.status === "ok") {
+            }
+        } else if (status.status === "active") {
+            await torrentApi.pauseTorrent(gid);
         }
-    })
+    }
 
 
     return (
-        <button
-            class="downloading-action-button"
-            onClick={() => handleTorrentAction()}
-            style={{
-                'background-color': buttonColor()
-            }}
-        >
-            {globalState() === 'paused' && !gameDone() ? (
-                <>
-                    <svg width="21" xmlns="http://www.w3.org/2000/svg" height="21" viewBox="1874.318 773.464 24.364 24.364" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1874.5" y="773.646" width="24" height="24" transform="rotate(90.875 1886.5 785.646)" class="frame-background" /></g><g class="frame-children"><g class="fills"><rect rx="0" ry="0" x="1874.5" y="773.646" width="24" height="24" transform="rotate(90.875 1886.5 785.646)" class="frame-background" /></g><g class="frame-children"><path d="m1894.606 778.769-8.152 9.877-7.846-10.121z" style="fill:#ece0f0;fill-opacity:1" class="fills" /><g stroke-linecap="round" stroke-linejoin="round" class="strokes"><path d="m1894.606 778.769-8.152 9.877-7.846-10.121z" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape" /></g><path d="m1893.392 792.752-13.998-.214" style="fill:none" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><path d="m1893.392 792.752-13.998-.214" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape" /></g></g></g></svg>
-                    <p>RESUME</p>
-                </>
-            ) : globalState() === 'live' && !gameDone() ? (
-                <>
-                    <svg width="21" xmlns="http://www.w3.org/2000/svg" height="21" viewBox="1885 553.52 24 24" style="-webkit-print-color-adjust::exact" fill="none"><g class="fills"><rect rx="0" ry="0" x="1885" y="553.52" width="24" height="24" class="frame-background" /></g><g class="frame-children"><rect rx="0" ry="0" x="1891" y="557.52" width="4" height="16" style="fill:#ece0f0;fill-opacity:1" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><rect rx="0" ry="0" x="1891" y="557.52" width="4" height="16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape" /></g><rect rx="0" ry="0" x="1899" y="557.52" width="4" height="16" style="fill:#ece0f0;fill-opacity:1" class="fills" /><g stroke-linejoin="round" stroke-linecap="round" class="strokes"><rect rx="0" ry="0" x="1899" y="557.52" width="4" height="16" style="fill:none;fill-opacity:none;stroke-width:2;stroke:#ece0f0;stroke-opacity:1" class="stroke-shape" /></g></g></svg>
-                    <p>PAUSE</p>
-                </>
-            ) : globalState() === 'initializing' && !gameDone() ? (
-                'INITIALIZING...'
-            ) : gameDone() ? (
-                'DONE'
-            ) : (
-                'ERROR'
-            )}
-        </button>
+        <>
+            <Button variant="bordered" onClick={toggle} label={buttonState().toUpperCase()}
+                icon={buttonState() === "complete" ? (
+                    <Check class="w-5 h-5" />
+                ) : buttonState() === "pause" ? (
+                    <Pause class="w-5 h-5" />
+                ) : (
+                    <Play class="w-5 h-5" />
+                )}
+            />
+        </>
     );
 }
-
 
 export default DownloadPage;

@@ -97,17 +97,7 @@ function HorizontalImagesCarousel({
         setRepackSize(repackSizeMatch?.[1]?.trim() ?? 'N/A');
     }
 
-    function transformGameData(gameData: DiscoveryGame) {
-        return {
-            title: gameData.game_title,
-            img: gameData.game_main_image,
-            desc: gameData.game_description,
-            magnetlink: gameData.game_magnetlink,
-            href: gameData.game_href,
-            tag: gameData.game_tags,
-            filePath: defaultPath
-        };
-    }
+
 
     async function handleAddToDownloadLater(gameData: DiscoveryGame, checked: boolean) {
         if (!gameData) return;

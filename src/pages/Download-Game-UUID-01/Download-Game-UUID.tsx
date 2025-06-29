@@ -157,12 +157,14 @@ const DownloadGameUUIDPage = () => {
   });
 
   function handleDownloadPopup(downloadType: DownloadType) {
+    let onFinish = () => navigate("/downloads-page");
     createDownloadPopup({
       infoTitle: "Download Game",
       infoMessage: `Do you want to download ${gameInfo()!.title}`,
       downloadedGame: gameInfo()!,
       gameDetails: gameDetails(),
-      downloadType
+      downloadType,
+      onFinish
     })
   }
 

@@ -27,7 +27,7 @@ pub static ARIA2_DAEMON: AriaDaemonType = Lazy::new(|| Mutex::new(None));
 
 struct StateShared {
     config: FitLauncherConfigV2,
-    aria2_client: Option<Client>,
+    aria2_client: Option<Arc<Client>>,
 }
 
 pub struct TorrentSession {
@@ -242,7 +242,7 @@ impl TorrentSession {
             let aria2_client = match aria2_client_from_config(&config, aria2_session).await {
                 Ok(c) => {
                     println!("Client Found");
-                    Some(c)
+                    Some(Arc::new(c))
                 }
                 Err(e) => {
                     error!("Failed to connect to aria2: {:#}", e);
@@ -267,15 +267,12 @@ impl TorrentSession {
         }
     }
 
-    pub fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
-        let g = self.shared.read();
-        if g.is_none() {
-            warn!("Shared state is uninitialized");
-        }
-
-        g.as_ref()
+    pub fn aria2_client(&self) -> Arc<Client> {
+        self.shared
+            .read()
+            .as_ref()
             .and_then(|s| s.aria2_client.clone())
-            .context("aria2 rpc server not configured")
+            .expect("aria2 should be connected by this point")
     }
 
     pub async fn configure(&self, config: FitLauncherConfigV2) -> Result<(), TorrentApiError> {
@@ -285,11 +282,16 @@ impl TorrentSession {
             .join("com.fitlauncher.carrotrub");
         let aria2_session = config_dir.join("aria2.session");
 
-        let aria2_client = Some(
-            aria2_client_from_config(&config, aria2_session)
-                .await
-                .map_err(|e| TorrentApiError::Aria2StartupError(e.to_string()))?,
-        );
+        let aria2_client = match aria2_client_from_config(&config, aria2_session).await {
+            Ok(c) => {
+                println!("Client Found");
+                Some(Arc::new(c))
+            }
+            Err(e) => {
+                error!("Failed to connect to aria2: {:#}", e);
+                None
+            }
+        };
 
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);

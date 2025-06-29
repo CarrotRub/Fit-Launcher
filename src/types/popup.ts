@@ -47,4 +47,5 @@ export type DownloadPopupProps<T extends any[] = any[]> = PopupProps<T> & {
   downloadedGame: DownloadedGame;
   gameDetails: GameDetails;
   downloadType: DownloadType;
+  onFinish: () => void | Promise<void>;
 };

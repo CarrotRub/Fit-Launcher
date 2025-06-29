@@ -9,9 +9,11 @@ import { Modal } from "../Modal/Modal";
 import { DownloadPopupProps } from "../../types/popup";
 import { DownloadSettingsApi, GlobalSettingsApi } from "../../api/settings/api";
 import TitleLabel from "../../pages/Settings-01/Settings-Categories/Components/UI/TitleLabel/TitleLabel";
+import { TorrentApi } from "../../api/bittorrent/api";
 
 const downloadSettingsInst = new DownloadSettingsApi();
 const settingsInst = new GlobalSettingsApi();
+const torrentInst = new TorrentApi();
 
 export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
     const container = document.createElement("div");
@@ -20,6 +22,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         render(() => null, container);
         container.remove();
     };
+
 
     const LastStepPopup = () => {
         const [downloadStarted, setDownloadStarted] = createSignal(false);
@@ -30,19 +33,17 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             directx_install: false,
             microsoftcpp_install: false
         });
+
         const handleStartDownload = async () => {
-            // try {
-            //     await invoke("torrent_create_from_url", {
-            //         url: props.downloadedGame.magnetlink,
-            //         opts: { overwrite: true }
-            //     });
-            //     setDownloadStarted(true);
-            //     navigate("/downloads-page");
-            // } catch (error) {
-            //     await message("Failed to start download", { title: "Error", kind: "error" });
-            // } finally {
-            //     setIsLoading(false);
-            // }
+            const currentSettings = await downloadSettingsInst.getDownloadSettings();
+            if (currentSettings.status === "ok") {
+                let path = currentSettings.data.general.download_dir;
+                torrentInst.downloadTorrent(props.downloadedGame.magnetlink, props.downloadedGame, path);
+                props.onFinish?.();
+            } else {
+                await message('Error downloading !' + currentSettings.error, { title: 'FitLauncher', kind: 'error' })
+            }
+
             console.log("smthng")
         };
 
