@@ -156,7 +156,9 @@ windows = { version = "0.61.1", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Controls",
-    "Win32_System_SystemInformation",
+    # admin elevated check
+    "Win32_Security",
+    "Win32_System_Threading",
 ] }
 windows-result = "0.3.4"
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
