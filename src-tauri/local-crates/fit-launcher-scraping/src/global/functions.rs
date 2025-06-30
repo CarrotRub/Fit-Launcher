@@ -138,7 +138,7 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
                 let text = p.text().collect::<String>();
                 if text.trim_start().starts_with("Genres/Tags:") {
                     Some(
-                        p.select(&scraper::Selector::parse("a").unwrap())
+                        p.select(&scraper::Selector::parse("a:not(:first-child)").unwrap()) // ignore the 'a > img' one
                             .map(|a| a.text().collect::<String>())
                             .collect::<Vec<_>>()
                             .join(", "),
