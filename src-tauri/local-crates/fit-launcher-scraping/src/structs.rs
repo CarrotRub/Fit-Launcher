@@ -9,6 +9,7 @@ pub struct Game {
     pub magnetlink: String,
     pub href: String,
     pub tag: String,
+    pub pastebin: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Type)]
