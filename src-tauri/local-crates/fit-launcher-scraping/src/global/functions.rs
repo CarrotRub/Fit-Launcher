@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use futures::{StreamExt, future::Lazy, stream::FuturesOrdered};
-use reqwest::{Client, header::RANGE};
+use futures::{StreamExt, stream::FuturesOrdered};
+use scraper::selectable::Selectable;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -17,6 +17,7 @@ use tracing::{error, info};
 
 use crate::{
     errors::{CreatingFileErrorStruct, ScrapingError},
+    global::functions::helper::find_preview_image,
     structs::Game,
 };
 
@@ -120,7 +121,8 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
         let img = article
             .select(&scraper::Selector::parse(".entry-content .alignleft").unwrap())
             .next()
-            .and_then(|e| e.value().attr("src"));
+            .and_then(|e| e.value().attr("src"))
+            .map(str::to_string);
 
         let desc = article
             .select(&scraper::Selector::parse("div.entry-content").unwrap())
@@ -138,7 +140,7 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
                 let text = p.text().collect::<String>();
                 if text.trim_start().starts_with("Genres/Tags:") {
                     Some(
-                        p.select(&scraper::Selector::parse("a:not(:first-child)").unwrap()) // ignore the 'a > img' one
+                        p.select(&scraper::Selector::parse("a").unwrap())
                             .map(|a| a.text().collect::<String>())
                             .collect::<Vec<_>>()
                             .join(", "),
@@ -152,17 +154,18 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
         let magnet = article
             .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
             .next()
-            .and_then(|e| e.value().attr("href"));
+            .and_then(|e| e.value().attr("href"))
+            .map(str::to_string);
 
-        if let (Some(title), Some(img), Some(desc), Some(href), tag, Some(magnet)) =
+        if let (Some(title), Some(img), Some(desc), Some(href), tag, Some(magnetlink)) =
             (title, img, desc, href, tag, magnet)
         {
             if img.contains("imageban") {
                 games.push(Game {
                     title,
-                    img: img.to_string(),
+                    img,
                     desc,
-                    magnetlink: magnet.to_string(),
+                    magnetlink,
                     href: href.to_string(),
                     tag,
                 });
@@ -256,35 +259,7 @@ async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
         })
         .unwrap_or_default();
 
-    let mut img_url = None;
-    for i in 3..10 {
-        let selector = match scraper::Selector::parse(&format!(
-            ".entry-content > p:nth-of-type({}) a[href] > img[src]:nth-child(1)",
-            i
-        )) {
-            Ok(sel) => sel,
-            Err(_) => continue,
-        };
-
-        if let Some(element) = doc.select(&selector).next() {
-            if let Some(src) = element.value().attr("src") {
-                let final_url = if src.contains("240p") {
-                    let hi_res = src.replace("240p", "1080p");
-                    if check_url_status(&hi_res).await {
-                        hi_res
-                    } else {
-                        src.replace("jpg.1080p.", "")
-                    }
-                } else {
-                    src.to_string()
-                };
-                img_url = Some(final_url);
-                break;
-            }
-        }
-    }
-
-    let img = img_url.unwrap_or_default();
+    let img = find_preview_image(&doc).await.unwrap_or_default();
 
     Ok(Game {
         title,
@@ -447,12 +422,4 @@ pub async fn run_all_scrapers(app_handle: Arc<tauri::AppHandle>) -> anyhow::Resu
     Ok(())
 }
 
-async fn check_url_status(url: &str) -> bool {
-    CUSTOM_DNS_CLIENT
-        .head(url)
-        .header(RANGE, "bytes=0-8")
-        .send()
-        .await
-        .map(|r| r.status().is_success())
-        .unwrap_or(false)
-}
+mod helper;
