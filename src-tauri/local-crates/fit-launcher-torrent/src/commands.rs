@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::{path::PathBuf, str::FromStr};
 
+use fit_launcher_ui_automation::InstallationError;
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::prelude::*;
 
@@ -11,7 +12,9 @@ use tracing::{error, info};
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
 use crate::model::FileInfo;
-use fit_launcher_ui_automation::mighty_automation::windows_ui_automation;
+use fit_launcher_ui_automation::mighty_automation::windows_ui_automation::{
+    self, automate_until_download, start_executable_components_args,
+};
 
 use super::*;
 
@@ -95,85 +98,28 @@ pub async fn config_change_only_path(
 
 #[tauri::command]
 #[specta]
-/// This function needs to receive the least arguments possible to detangle the code.
-/// The more this function receives arguments the more the code will be spaghetti code and no one will look at it so it's better to make it hard and complicated
-/// in Rust as at least it is better and readable compared to JS.
-///
-/// # Important
 pub async fn run_automate_setup_install(
     _state: tauri::State<'_, TorrentSession>,
-    id: String,
+    path: PathBuf,
 ) -> Result<(), TorrentApiError> {
-    let session_json_path = directories::BaseDirs::new()
-        .expect("Could not determine base directories")
-        .config_local_dir()
-        .join("com.fitlauncher.carrotrub")
-        .join("torrentConfig")
-        .join("session")
-        .join("data")
-        .join("session.json");
+    let setup_executable_path = path.join("setup.exe");
+    info!("Setup path is: {}", setup_executable_path.to_string_lossy());
 
-    let file_content = std::fs::read_to_string(&session_json_path).unwrap_or_else(|err| {
-        error!(
-            "Error reading the file at {:?}: {:#?}",
-            session_json_path, err
-        );
-        "{}".to_string() // Return an empty JSON object as a fallback
-    });
-
-    let session_config_json: serde_json::Value = serde_json::from_str(&file_content)
-        .unwrap_or_else(|err| {
-            error!("Error parsing JSON: {:#?}", err);
-            serde_json::Value::default()
-        });
-
-    let mut torrent_folder: Option<String> = None;
-
-    if let Some(torrents) = session_config_json.get("torrents") {
-        // Convert the `id` into a string to match the hash
-        let id_hash = id;
-
-        // Iterate over torrents to find a matching "info_hash"
-        if let Some((_, torrent)) = torrents.as_object().and_then(|obj| {
-            obj.iter().find(|(_, torrent)| {
-                torrent
-                    .get("info_hash")
-                    .is_some_and(|hash| hash == &id_hash)
-            })
-        }) {
-            if let Some(output_folder) = torrent.get("output_folder") {
-                torrent_folder = Some(output_folder.to_string().replace("\"", ""));
-            } else {
-                error!(
-                    "Torrent with ID '{}' found, but no output_folder key present.",
-                    id_hash
-                );
-            }
-        } else {
-            error!("No torrent found with the given ID/hash: {}", id_hash);
+    start_executable_components_args(setup_executable_path).map_err(|e| match e {
+        InstallationError::AdminModeError => TorrentApiError::AdminModeError,
+        InstallationError::IOError(msg) => {
+            TorrentApiError::IOError(format!("Installation IO error: {}", msg))
         }
-    } else {
-        error!("No 'torrents' object found in the JSON.");
-    }
+    })?;
 
-    if let Some(folder) = torrent_folder {
-        let setup_path = PathBuf::from_str(&folder).unwrap().join("setup.exe");
-        info!("Setup path is : {}", setup_path.to_str().unwrap());
-        windows_ui_automation::start_executable_components_args(setup_path);
+    let game_output_folder = path.to_string_lossy().replace(" [FitGirl Repack]", "");
 
-        let game_output_folder = folder.replace(" [FitGirl Repack]", "");
+    automate_until_download(&game_output_folder).await;
 
-        windows_ui_automation::automate_until_download(&game_output_folder).await;
-        info!("Torrent has completed!");
-        info!("Game Installation Has been Started");
+    info!("Torrent has completed!");
+    info!("Game Installation has been started");
 
-        Ok(())
-    } else {
-        error!("Failed to initialize torrent_folder. Aborting operation.");
-        Err(TorrentApiError::InitError(
-            "Failed to initialize torrent_folder. Aborting operation".to_string(),
-        ))
-    }
+    Ok(())
 }
 
 #[tauri::command]

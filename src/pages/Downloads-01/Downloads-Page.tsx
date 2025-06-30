@@ -13,6 +13,7 @@ import {
 } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
+import { InstallationApi } from "../../api/installation/api";
 
 const torrentApi = new TorrentApi();
 const libraryApi = new LibraryApi();
@@ -316,59 +317,81 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
 }
 
 function DownloadActionButton({ status }: { status?: Status }) {
-    const [buttonState, setButtonState] = createSignal<"pause" | "resume" | "complete">("pause");
+    const [buttonState, setButtonState] = createSignal<
+        "pause" | "resume" | "complete" | "uploading"
+    >("pause");
+
+    const installationInst = new InstallationApi();
+
     onMount(() => {
-        if (status === undefined) {
-            setButtonState("resume")
-        }
-    })
+        if (!status) setButtonState("resume");
+    });
+
     createEffect(() => {
         if (!status) return setButtonState("resume");
 
-        switch (status.status) {
-            case "paused":
-            case "waiting":
-                setButtonState("resume");
-                break;
-            case "active":
-                setButtonState("pause");
-                break;
-            case "complete":
-                setButtonState("complete");
-                break;
-            default:
-                setButtonState("resume");
+        const isUploading =
+            status.status === "active" &&
+            status.totalLength === status.completedLength;
+
+        console.log(status);
+
+        if (status.status === "complete" || status.totalLength === status.completedLength) {
+            setButtonState("complete");
+
+            const fullPath = status.files?.[0]?.path;
+            if (fullPath) {
+                const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
+                installationInst.startInstallation(folderPath);
+            }
+        } else if (isUploading) {
+            setButtonState("uploading");
+        } else {
+            switch (status.status) {
+                case "paused":
+                case "waiting":
+                    setButtonState("resume");
+                    break;
+                case "active":
+                    setButtonState("pause");
+                    break;
+                default:
+                    setButtonState("resume");
+            }
         }
     });
-
-
 
     async function toggle() {
         const gid = status?.gid ?? "";
         if (!gid) return;
 
         if (!status || status.status === "waiting" || status.status === "paused") {
-            const result = await torrentApi.resumeTorrent(gid);
-            if (result.status === "ok") {
-            }
-        } else if (status.status === "active") {
+            await torrentApi.resumeTorrent(gid);
+        } else {
+            // pause if active or "uploading"
             await torrentApi.pauseTorrent(gid);
         }
     }
 
+    const label = () => {
+        if (buttonState() === "uploading") return "UPLOADING";
+        return buttonState().toUpperCase();
+    };
+
+    const icon = () => {
+        switch (buttonState()) {
+            case "complete":
+                return <Check class="w-5 h-5" />;
+            case "pause":
+            case "uploading":
+                return <Pause class="w-5 h-5" />;
+            default:
+                return <Play class="w-5 h-5" />;
+        }
+    };
 
     return (
-        <>
-            <Button variant="bordered" onClick={toggle} label={buttonState().toUpperCase()}
-                icon={buttonState() === "complete" ? (
-                    <Check class="w-5 h-5" />
-                ) : buttonState() === "pause" ? (
-                    <Pause class="w-5 h-5" />
-                ) : (
-                    <Play class="w-5 h-5" />
-                )}
-            />
-        </>
+        <Button variant="bordered" onClick={toggle} label={label()} icon={icon()} />
     );
 }
 

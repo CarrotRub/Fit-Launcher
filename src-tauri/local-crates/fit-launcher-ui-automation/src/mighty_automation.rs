@@ -5,7 +5,11 @@
 #[allow(dead_code)]
 mod checklist_automation {
     use tracing::{error, info, warn};
+
+    #[cfg(target_os = "windows")]
     use uiautomation::types::UIProperty::{ClassName, NativeWindowHandle, ToggleToggleState};
+
+    #[cfg(target_os = "windows")]
     use uiautomation::{UIAutomation, UIElement};
 
     fn get_checklistbox() -> Result<UIElement, uiautomation::errors::Error> {
@@ -90,6 +94,7 @@ mod checklist_automation {
 
 #[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
+    use crate::InstallationError;
     use crate::mighty::windows_controls_processes;
     use fit_launcher_config::commands::get_installation_settings;
     use std::path::{Path, PathBuf};
@@ -118,13 +123,55 @@ pub mod windows_ui_automation {
         }
     }
 
+    #[cfg(target_os = "windows")]
+    fn is_running_as_admin() -> bool {
+        unsafe {
+            use windows::Win32::Security::{
+                AllocateAndInitializeSid, CheckTokenMembership, FreeSid, PSID,
+                SECURITY_NT_AUTHORITY, WinBuiltinAdministratorsSid,
+            };
+            use windows_result::BOOL;
+
+            let mut admin_sid: PSID = PSID::default();
+
+            let result = AllocateAndInitializeSid(
+                &SECURITY_NT_AUTHORITY,
+                2,
+                WinBuiltinAdministratorsSid.0 as u32,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                &mut admin_sid,
+            );
+
+            if result.is_err() {
+                return false;
+            }
+
+            let mut is_member: BOOL = BOOL(0);
+            let success = CheckTokenMembership(None, admin_sid, &mut is_member);
+
+            FreeSid(admin_sid);
+
+            success.is_ok() && is_member.as_bool()
+        }
+    }
+
     //TODO: Add one for specifical VERY_SILENT mode but only for no 2gb limit and nothing specifical.
 
     /// Start an executable using tauri::command and gets the components that needs to be checked.
     ///
-    pub fn start_executable_components_args(path: PathBuf) {
+    pub fn start_executable_components_args(path: PathBuf) -> Result<(), InstallationError> {
         #[cfg(target_os = "windows")]
         {
+            if !is_running_as_admin() {
+                return Err(InstallationError::AdminModeError);
+            }
+
             let installation_settings = get_installation_settings();
             let mut checkboxes_list: Vec<String> = Vec::new();
 
@@ -138,20 +185,19 @@ pub mod windows_ui_automation {
             let args_list = format!("/COMPONENTS=\"{}\"", components);
 
             let temp_path = path.with_extension("temp_setup.exe");
-            match std::fs::copy(&path, &temp_path) {
-                Ok(_) => match Command::new(&temp_path).arg(args_list).spawn() {
-                    Ok(child) => {
-                        info!("Executable started with PID: {}", child.id());
-                    }
-                    Err(e) => {
-                        error!("Failed to start executable: {}", e);
-                    }
-                },
-                Err(e) => {
-                    error!("Failed to copy executable: {}", e);
-                }
-            }
+
+            std::fs::copy(&path, &temp_path)
+                .map_err(|e| InstallationError::IOError(e.to_string()))?;
+
+            Command::new(&temp_path)
+                .arg(args_list)
+                .spawn()
+                .map_err(|e| InstallationError::IOError(e.to_string()))?;
+
+            info!("Executable started successfully.");
         }
+
+        Ok(())
     }
 
     #[cfg(target_os = "windows")]

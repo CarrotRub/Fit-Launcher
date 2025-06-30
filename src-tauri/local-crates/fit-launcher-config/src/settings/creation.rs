@@ -92,19 +92,16 @@ pub fn create_installation_settings_file() -> Result<(), std::io::Error> {
         .join("com.fitlauncher.carrotrub")
         .join("library");
 
-    // Ensure the library directory exists
     if !library_settings_dir.exists() {
         fs::create_dir_all(&library_settings_dir)
             .expect("Failed to create Installation Config directory");
     }
 
-    // Define paths for specific files/directories within library settings
     let downloaded_games_file = library_settings_dir
         .join("downloadedGames")
         .join("downloaded_games.json");
     let collections_dir = library_settings_dir.join("collections");
 
-    // Ensure the downloadedGames directory and its file exist
     if !downloaded_games_file.parent().unwrap().exists() {
         fs::create_dir_all(downloaded_games_file.parent().unwrap())
             .expect("Failed to create downloadedGames directory");

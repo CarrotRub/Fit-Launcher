@@ -158,7 +158,7 @@ windows = { version = "0.61.1", features = [
     "Win32_UI_Controls",
     "Win32_System_SystemInformation",
 ] }
-windows-result = "0.3.2"
+windows-result = "0.3.4"
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 sysinfo = "0.34.2"
 fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation" }

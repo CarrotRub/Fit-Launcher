@@ -139,7 +139,7 @@ pub async fn aria2_client_from_config(
         let exec = if cfg!(windows) { "./aria2c" } else { "aria2c" };
         #[cfg(not(debug_assertions))]
         let mut child = Command::new(exec)
-            .args(build_aria2_args(config, session_path.as_ref()))
+            .args(build_aria2_args(config, Path::new(&session_path.as_ref())))
             .current_dir(&config.general.download_dir)
             .spawn()?;
 

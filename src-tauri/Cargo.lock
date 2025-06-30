@@ -1765,13 +1765,15 @@ version = "0.1.0"
 dependencies = [
  "fit-launcher-config",
  "fix-path-env",
+ "serde",
  "specta",
  "sysinfo",
  "tauri",
+ "thiserror 2.0.12",
  "tracing",
  "uiautomation",
  "windows 0.61.1",
- "windows-result 0.3.2",
+ "windows-result 0.3.4",
 ]
 
 [[package]]
@@ -7875,7 +7877,7 @@ dependencies = [
  "windows-implement 0.60.0",
  "windows-interface 0.59.1",
  "windows-link",
- "windows-result 0.3.2",
+ "windows-result 0.3.4",
  "windows-strings 0.4.0",
 ]
 
@@ -7955,7 +7957,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4286ad90ddb45071efd1a66dfa43eb02dd0dfbae1545ad6cc3c51cf34d7e8ba3"
 dependencies = [
- "windows-result 0.3.2",
+ "windows-result 0.3.4",
  "windows-strings 0.3.1",
  "windows-targets 0.53.0",
 ]
@@ -7971,9 +7973,9 @@ dependencies = [
 
 [[package]]
 name = "windows-result"
-version = "0.3.2"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c64fd11a4fd95df68efcfee5f44a294fe71b8bc6a91993e2791938abcc712252"
+checksum = "56f42bd332cc6c8eac5af113fc0c1fd6a8fd2aa08a0119358686e5160d0586c6"
 dependencies = [
  "windows-link",
 ]
