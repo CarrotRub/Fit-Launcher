@@ -1,5 +1,5 @@
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use scraper::{Html, Selector};
+use scraper::Html;
 use specta::specta;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use tauri::Manager;
@@ -12,6 +12,7 @@ use std::time::Instant;
 
 use crate::errors::ScrapingError;
 use crate::global::functions::download_sitemap;
+use crate::global::functions::helper::fetch_game_info;
 use crate::singular_game_path;
 use crate::structs::Game;
 
@@ -87,56 +88,17 @@ pub async fn get_singular_game_info(
         ScrapingError::HttpStatusCodeError(e.to_string())
     })?;
 
-    let doc = Html::parse_document(&body);
+    let game = tokio::task::spawn_blocking(move || -> Result<Game, ScrapingError> {
+        let doc = Html::parse_document(&body);
+        let article = doc
+            .select(&scraper::Selector::parse("article").unwrap())
+            .next()
+            .ok_or_else(|| ScrapingError::ArticleNotFound)?;
+        Ok(fetch_game_info(article))
+    })
+    .await
+    .unwrap()?;
 
-    let title_selector = Selector::parse(".entry-title").unwrap();
-    let image_selector = Selector::parse(".entry-content > p > a > img").unwrap();
-    let desc_selector = Selector::parse("div.entry-content").unwrap();
-    let magnet_selector = Selector::parse("a[href*='magnet']").unwrap();
-    // TODO: fix tag selector
-    let tag_selector = Selector::parse(".entry-content p strong:first-of-type").unwrap();
-
-    let title = doc
-        .select(&title_selector)
-        .next()
-        .map(|e| e.text().collect::<String>())
-        .unwrap_or_default();
-
-    let desc = doc
-        .select(&desc_selector)
-        .next()
-        .map(|e| e.text().collect::<String>())
-        .unwrap_or_default();
-
-    let magnet = doc
-        .select(&magnet_selector)
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .unwrap_or_default()
-        .to_string();
-
-    let img = doc
-        .select(&image_selector)
-        .next()
-        .and_then(|e| e.value().attr("src"))
-        .unwrap_or_default()
-        .to_string();
-
-    let tag = doc
-        .select(&tag_selector)
-        .next()
-        .map(|e| e.text().collect::<String>())
-        .unwrap_or_else(|| "Unknown".to_string());
-
-    let game = Game {
-        title,
-        img,
-        desc,
-        magnetlink: magnet,
-        href: url.to_string(),
-        tag,
-        pastebin: String::new(),
-    };
     let hash = hash_url(url);
     let filename = format!("singular_game_{}.json", hash);
     let path = singular_game_path(&app_handle, &filename);

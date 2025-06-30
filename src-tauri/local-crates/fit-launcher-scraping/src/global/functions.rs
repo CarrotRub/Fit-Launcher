@@ -1,7 +1,6 @@
 use anyhow::Result;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream::FuturesOrdered};
-use scraper::selectable::Selectable;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -17,7 +16,7 @@ use tracing::{error, info};
 
 use crate::{
     errors::{CreatingFileErrorStruct, ScrapingError},
-    global::functions::helper::find_preview_image,
+    global::functions::helper::{fetch_game_info, find_preview_image},
     structs::Game,
 };
 
@@ -110,66 +109,17 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
 
     let mut games = Vec::new();
     for article in document.select(&article_selector) {
-        let title = article
-            .select(&scraper::Selector::parse(".entry-title a").unwrap())
-            .next()
-            .map(|e| e.text().collect::<String>());
+        let game = fetch_game_info(article);
 
-        let img = article
-            .select(&scraper::Selector::parse(".entry-content > p > a > img").unwrap())
-            .next()
-            .and_then(|e| e.value().attr("src"))
-            .map(str::to_string);
-
-        let desc = article
-            .select(&scraper::Selector::parse("div.entry-content").unwrap())
-            .next()
-            .map(|e| e.text().collect::<String>());
-
-        let href = article
-            .select(&scraper::Selector::parse("span.entry-date > a").unwrap())
-            .next()
-            .and_then(|e| e.value().attr("href"))
-            .map(str::to_string);
-
-        let tag = article
-            .select(&scraper::Selector::parse(".entry-content p").unwrap())
-            .find_map(|p| {
-                let text = p.text().collect::<String>();
-                if text.trim_start().starts_with("Genres/Tags:") {
-                    Some(
-                        p.select(&scraper::Selector::parse("a").unwrap())
-                            .map(|a| a.text().collect::<String>())
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                    )
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_default();
-
-        let magnet = article
-            .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
-            .next()
-            .and_then(|e| e.value().attr("href"))
-            .map(str::to_string);
-
-        if let (Some(title), Some(img), Some(desc), Some(href), Some(magnetlink)) =
-            (title, img, desc, href, magnet)
-        {
-            if img.contains("imageban") {
-                games.push(Game {
-                    title,
-                    img,
-                    desc,
-                    magnetlink,
-                    href,
-                    tag,
-                    pastebin: String::new(),
-                });
-            }
+        match game {
+            _ if game.title.is_empty() => continue,
+            _ if game.desc.is_empty() => continue,
+            _ if game.img.is_empty() => continue,
+            _ if game.href.is_empty() => continue,
+            // _ if !game.img.contains("imageban") => continue,
+            _ => (),
         }
+        games.push(game);
     }
     Ok(games)
 }
@@ -227,59 +177,10 @@ async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
         .next()
         .ok_or_else(|| ScrapingError::ArticleNotFound)?;
 
-    let title = article
-        .select(&scraper::Selector::parse(".entry-title").unwrap())
-        .next()
-        .map(|e| e.text().collect())
-        .unwrap_or_default();
-
-    let desc = article
-        .select(&scraper::Selector::parse("div.entry-content").unwrap())
-        .next()
-        .map(|e| e.text().collect())
-        .unwrap_or_default();
-
-    let magnetlink = article
-        .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .map(str::to_string)
-        .unwrap_or_default();
-
-    let tag = article
-        .select(&scraper::Selector::parse(".entry-content p").unwrap())
-        .find_map(|p| {
-            let text = p.text().collect::<String>();
-            if text.trim_start().starts_with("Genres/Tags:") {
-                Some(
-                    p.select(&scraper::Selector::parse("a:not(:first-child)").unwrap())
-                        .map(|a| a.text().collect::<String>())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                )
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default();
-
-    let href = article
-        .select(&scraper::Selector::parse("span.entry-date > a").unwrap())
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .map(str::to_string)
-        .unwrap_or_default();
-
-    let img = find_preview_image(article).await.unwrap_or_default();
-
+    let game = fetch_game_info(article);
     Ok(Game {
-        title,
-        img,
-        desc,
-        magnetlink,
-        href,
-        tag,
-        pastebin: String::new(),
+        img: find_preview_image(article).await.unwrap_or_default(),
+        ..game
     })
 }
 
@@ -322,65 +223,7 @@ async fn scrape_recent_update(link: &str) -> Result<Game, ScrapingError> {
         .next()
         .ok_or_else(|| ScrapingError::ArticleNotFound)?;
 
-    let title = article
-        .select(&scraper::Selector::parse(".entry-title").unwrap())
-        .next()
-        .map(|e| e.text().collect())
-        .unwrap_or_default();
-
-    let desc = article
-        .select(&scraper::Selector::parse("div.entry-content").unwrap())
-        .next()
-        .map(|e| e.text().collect())
-        .unwrap_or_default();
-
-    let magnetlink = article
-        .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .map(str::to_string)
-        .unwrap_or_default();
-
-    let img = article
-        .select(&scraper::Selector::parse(".entry-content > p > a > img").unwrap())
-        .next()
-        .and_then(|e| e.value().attr("src"))
-        .map(str::to_string)
-        .unwrap_or_default();
-
-    let tag = article
-        .select(&scraper::Selector::parse(".entry-content p").unwrap())
-        .find_map(|p| {
-            let text = p.text().collect::<String>();
-            if text.trim_start().starts_with("Genres/Tags:") {
-                Some(
-                    p.select(&scraper::Selector::parse("a").unwrap())
-                        .map(|a| a.text().collect::<String>())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                )
-            } else {
-                None
-            }
-        })
-        .unwrap_or_default();
-
-    let href = article
-        .select(&scraper::Selector::parse("span.entry-date > a").unwrap())
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .map(str::to_string)
-        .unwrap_or_default();
-
-    Ok(Game {
-        title,
-        img,
-        desc,
-        magnetlink,
-        href,
-        tag,
-        pastebin: String::new(),
-    })
+    Ok(fetch_game_info(article))
 }
 
 pub async fn recently_updated_games_scraping_func(
@@ -448,4 +291,4 @@ pub async fn run_all_scrapers(app_handle: Arc<tauri::AppHandle>) -> anyhow::Resu
     Ok(())
 }
 
-mod helper;
+pub mod helper;
