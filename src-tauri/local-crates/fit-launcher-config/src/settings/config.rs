@@ -1,16 +1,8 @@
-use directories::BaseDirs;
 use serde::Serialize;
 use specta::Type;
-use specta::specta;
 use std::fmt;
-use std::fs;
-use tracing::error;
-use tracing::info;
 
-use crate::client::dns::FitLauncherDnsConfig;
 
-use super::creation::GamehubSettings;
-use super::creation::InstallationSettings;
 
 #[derive(Debug, Serialize, Type)]
 pub struct SettingsConfigurationError {

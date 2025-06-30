@@ -179,7 +179,7 @@ pub mod windows_ui_automation {
                 checkboxes_list.push("microsoft".to_string());
             }
             let components = checkboxes_list.join(",");
-            let args_list = format!("/COMPONENTS=\"{}\"", components);
+            let args_list = format!("/COMPONENTS=\"{components}\"");
 
             let temp_path = path.with_extension("temp_setup.exe");
 

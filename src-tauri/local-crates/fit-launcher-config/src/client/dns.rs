@@ -102,7 +102,7 @@ pub fn new_resolver_with_config(
         "UDP" => Protocol::Udp,
         "HTTPS" => Protocol::Https,
         other => {
-            eprintln!("Unknown protocol in dns.json: {}", other);
+            eprintln!("Unknown protocol in dns.json: {other}");
             Protocol::Udp
         }
     };

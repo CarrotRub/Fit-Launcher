@@ -44,7 +44,7 @@ fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
 fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> {
     std::fs::create_dir_all(Path::new(path).parent().context("no parent")?)
         .context("error creating dirs")?;
-    let tmp = format!("{}.tmp", path);
+    let tmp = format!("{path}.tmp");
     let mut tmp_file = BufWriter::new(
         OpenOptions::new()
             .write(true)
@@ -53,7 +53,7 @@ fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> 
             .open(&tmp)?,
     );
     serde_json::to_writer(&mut tmp_file, config)?;
-    println!("{}", path);
+    println!("{path}");
     std::fs::rename(tmp, path)?;
     Ok(())
 }

@@ -277,7 +277,7 @@ fn read_cfg<T: for<'de> Deserialize<'de>>(path: &str) -> anyhow::Result<T> {
 
 fn write_cfg<T: Serialize>(path: &str, cfg: &T) -> anyhow::Result<()> {
     std::fs::create_dir_all(Path::new(path).parent().context("no parent")?)?;
-    let tmp_path = format!("{}.tmp", path);
+    let tmp_path = format!("{path}.tmp");
     let mut tmp = BufWriter::new(
         OpenOptions::new()
             .write(true)

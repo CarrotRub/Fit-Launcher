@@ -82,13 +82,12 @@ pub fn get_discovery_games(app: AppHandle) -> Result<Vec<DiscoveryGame>, Scrapin
 async fn get_games_from_file(app: &AppHandle, filename: &str) -> Result<Vec<Game>, ScrapingError> {
     let file_path = game_file_path(app, filename);
 
-    if let Some(parent) = file_path.parent() {
-        if !parent.exists() {
+    if let Some(parent) = file_path.parent()
+        && !parent.exists() {
             tokio_fs::create_dir_all(parent)
                 .await
                 .map_err(|e| ScrapingError::IOError(e.to_string()))?;
         }
-    }
 
     if !file_path.exists() {
         let mut file = tokio_fs::File::create(&file_path)
@@ -130,13 +129,12 @@ pub async fn get_singular_game_local(app: AppHandle, url: &str) -> Result<Game, 
     let filename = format!("singular_game_{}.json", hash_url(url));
     let file_path = singular_game_path(&app, &filename);
 
-    if let Some(parent) = file_path.parent() {
-        if !parent.exists() {
+    if let Some(parent) = file_path.parent()
+        && !parent.exists() {
             tokio_fs::create_dir_all(parent)
                 .await
                 .map_err(|e| ScrapingError::IOError(e.to_string()))?;
         }
-    }
 
     if !file_path.exists() {
         let mut file = tokio_fs::File::create(&file_path)

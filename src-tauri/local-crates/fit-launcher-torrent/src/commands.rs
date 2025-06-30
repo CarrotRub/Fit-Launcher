@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
 use fit_launcher_ui_automation::InstallationError;
 use fitgirl_decrypt::Paste;
@@ -13,7 +13,7 @@ use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
 use crate::model::FileInfo;
 use fit_launcher_ui_automation::mighty_automation::windows_ui_automation::{
-    self, automate_until_download, start_executable_components_args,
+    automate_until_download, start_executable_components_args,
 };
 
 use super::*;
@@ -108,7 +108,7 @@ pub async fn run_automate_setup_install(
     start_executable_components_args(setup_executable_path).map_err(|e| match e {
         InstallationError::AdminModeError => TorrentApiError::AdminModeError,
         InstallationError::IOError(msg) => {
-            TorrentApiError::IOError(format!("Installation IO error: {}", msg))
+            TorrentApiError::IOError(format!("Installation IO error: {msg}"))
         }
     })?;
 

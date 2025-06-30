@@ -30,7 +30,7 @@ pub async fn download_sitemap(
     let mut binding = app_handle.path().app_data_dir().unwrap();
     binding.push("sitemaps");
 
-    let file_path = binding.join(format!("{}.xml", filename));
+    let file_path = binding.join(format!("{filename}.xml"));
 
     let mut file = tokio::fs::File::create(&file_path).await?;
     while let Some(chunk) = response.chunk().await? {
@@ -175,7 +175,7 @@ async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
         .next()
-        .ok_or_else(|| ScrapingError::ArticleNotFound)?;
+        .ok_or(ScrapingError::ArticleNotFound)?;
 
     let game = fetch_game_info(article);
     Ok(Game {
@@ -221,7 +221,7 @@ async fn scrape_recent_update(link: &str) -> Result<Game, ScrapingError> {
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
         .next()
-        .ok_or_else(|| ScrapingError::ArticleNotFound)?;
+        .ok_or(ScrapingError::ArticleNotFound)?;
 
     Ok(fetch_game_info(article))
 }
@@ -250,7 +250,7 @@ pub async fn recently_updated_games_scraping_func(
             Ok(g) => valid_games.push(g),
             Err(e) => {
                 app_handle
-                    .emit("scraping_failed", format!("Game scrape failed: {}", e))
+                    .emit("scraping_failed", format!("Game scrape failed: {e}"))
                     .unwrap();
             }
         }
