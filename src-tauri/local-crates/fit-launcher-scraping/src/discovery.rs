@@ -2,7 +2,7 @@ use crate::{errors::ScrapingError, structs::DiscoveryGame};
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream};
 use once_cell::sync::Lazy;
-use rand::{prelude::*, rng, thread_rng};
+use rand::{prelude::*, rng};
 // TODO: Add check cuz everytime is too much
 
 use scraper::{Html, Selector};

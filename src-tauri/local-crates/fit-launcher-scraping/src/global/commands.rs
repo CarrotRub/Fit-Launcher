@@ -1,21 +1,19 @@
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use scraper::{Html, Selector};
 use specta::specta;
-use std::fs;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use tauri::Manager;
 use tracing::{error, info};
 
 use anyhow::Result;
-use std::fs::File;
-use std::io::Write;
+
 use std::path::Path;
 use std::time::Instant;
 
 use crate::errors::ScrapingError;
 use crate::global::functions::download_sitemap;
+use crate::singular_game_path;
 use crate::structs::Game;
-use crate::{game_file_path, singular_game_path};
 
 #[tokio::main]
 pub async fn get_sitemaps_website(
