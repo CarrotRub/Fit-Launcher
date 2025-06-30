@@ -1,4 +1,6 @@
-use crate::{errors::ScrapingError, structs::DiscoveryGame};
+use crate::{
+    errors::ScrapingError, global::functions::helper::fetch_game_info, structs::DiscoveryGame,
+};
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream};
 use once_cell::sync::Lazy;
@@ -44,48 +46,17 @@ async fn fix_img(src: &str) -> String {
     src.into()
 }
 
-fn parse_article(a: scraper::element_ref::ElementRef) -> Option<DiscoveryGame> {
-    let img = a
-        .select(sel!(".entry-content .alignleft"))
-        .next()?
-        .value()
-        .attr("src")?;
-    if !img.contains("imageban") {
+fn parse_article(article: scraper::element_ref::ElementRef) -> Option<DiscoveryGame> {
+    let game = fetch_game_info(article);
+    if !game.img.contains("imageban") {
         return None;
     }
-
-    let title = a.select(sel!(".entry-title a")).next()?.text().collect();
-    let desc_el = a.select(sel!("div.entry-content")).next()?;
-
-    let magnet = desc_el
-        .select(sel!("a[href*='magnet']"))
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .unwrap_or("")
-        .to_string();
-    let tor_paste = desc_el
-        .select(sel!("a[href*='.torrent file only']"))
-        .next()
-        .and_then(|e| e.value().attr("href"))
-        .unwrap_or("")
-        .to_string();
-    let tag = a
-        .select(sel!(".entry-content p strong:first-of-type"))
-        .next()
-        .map(|e| e.text().collect())
-        .unwrap_or_else(|| "Unknown".into());
-    let href = a
-        .select(sel!(".entry-title > a"))
-        .next()?
-        .value()
-        .attr("href")?
-        .to_string();
 
     let mut secondary = Vec::new();
     for p in 3..=5 {
         let sel =
             Selector::parse(&format!(".entry-content > p:nth-of-type({p}) img[src]")).unwrap();
-        for img_el in a.select(&sel) {
+        for img_el in article.select(&sel) {
             if let Some(s) = img_el.value().attr("src") {
                 secondary.push(s.to_string());
                 if secondary.len() == 5 {
@@ -96,14 +67,14 @@ fn parse_article(a: scraper::element_ref::ElementRef) -> Option<DiscoveryGame> {
     }
 
     Some(DiscoveryGame {
-        game_title: title,
-        game_main_image: img.into(),
-        game_description: desc_el.text().collect(),
-        game_magnetlink: magnet,
-        game_torrent_paste_link: tor_paste,
+        game_title: game.title,
+        game_main_image: game.img,
+        game_description: game.desc,
+        game_magnetlink: game.magnetlink,
+        game_torrent_paste_link: game.pastebin,
         game_secondary_images: secondary,
-        game_href: href,
-        game_tags: tag,
+        game_href: game.href,
+        game_tags: game.tag,
     })
 }
 
