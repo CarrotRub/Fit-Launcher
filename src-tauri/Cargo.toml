@@ -133,11 +133,6 @@ reqwest = { version = "0.12.9", features = [
     "deflate",
     "hickory-dns",
 ] }
-librqbit = { version = "8.0.0", features = [
-    "tracing-subscriber-utils",
-    "http-api",
-    "upnp-serve-adapter",
-] }
 parking_lot = "0.12.1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = [
