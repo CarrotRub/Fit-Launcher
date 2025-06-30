@@ -11,7 +11,6 @@ specta = { workspace = true }
 aria2-ws = { workspace = true }
 http = { workspace = true }
 reqwest = { workspace = true }
-librqbit = { workspace = true }
 parking_lot = { workspace = true }
 tracing = { workspace = true }
 serde_with = { workspace = true }
