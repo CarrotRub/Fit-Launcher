@@ -9,7 +9,8 @@ import {
     Trash2, Pause, Play, Check, Download as DownloadIcon,
     Upload, HardDrive, ArrowDown, ArrowUp,
     CloudDownload,
-    Gamepad2
+    Gamepad2,
+    Settings
 } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
@@ -218,12 +219,17 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
     const [progress, setProgress] = makePersisted(createSignal("0%"));
     const [numberProgress, setNumberProgress] = createSignal(0);
 
+    const libraryInst = new LibraryApi();
     createEffect(() => {
         const completed = props.status?.completedLength ?? 0;
         const total = props.status?.totalLength ?? 1;
         const percent = total > 0 ? (completed / total) * 100 : 0;
         setNumberProgress(Math.floor(percent));
         setProgress(`${percent.toFixed(1)}%`);
+
+        if (numberProgress() === 100) {
+            libraryInst.addDownloadedGame(props.game)
+        }
     });
 
     function formatSpeed(bytes?: number): string {
@@ -315,13 +321,18 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
         </div>
     );
 }
-
+const triedInstall = new Map<string, boolean>();
 function DownloadActionButton({ status }: { status?: Status }) {
+
     const [buttonState, setButtonState] = createSignal<
-        "pause" | "resume" | "complete" | "uploading"
+        "pause" | "resume" | "complete" | "uploading" | "install"
     >("pause");
 
+    const [installAttempted, setInstallAttempted] = createSignal(false);
     const installationInst = new InstallationApi();
+
+    // This flag is not reactive — it protects the effect from rerunning the install logic
+    let hasRunInstall = false;
 
     onMount(() => {
         if (!status) setButtonState("resume");
@@ -330,22 +341,40 @@ function DownloadActionButton({ status }: { status?: Status }) {
     createEffect(() => {
         if (!status) return setButtonState("resume");
 
-        const isUploading =
-            status.status === "active" &&
-            status.totalLength === status.completedLength;
+        const gid = status.gid;
+        if (!gid) return;
 
-        console.log(status);
+        const isUploading = status.status === "active" && status.totalLength === status.completedLength;
+        const isComplete = status.status === "complete" || isUploading;
 
-        if (status.status === "complete" || status.totalLength === status.completedLength) {
-            setButtonState("complete");
+        if (isComplete) {
+            if (triedInstall.get(gid)) {
+                setButtonState("complete");
+                return;
+            }
+
+
 
             const fullPath = status.files?.[0]?.path;
             if (fullPath) {
                 const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
-                installationInst.startInstallation(folderPath);
+
+                // Mark as tried immediately to avoid loops
+                triedInstall.set(gid, true);
+
+                queueMicrotask(async () => {
+                    const result = await installationInst.startInstallation(folderPath);
+
+                    if (result.status === "ok") {
+                        setButtonState("complete");
+                    } else if (result.error === "AdminModeError") {
+                        setButtonState("install");
+                        triedInstall.delete(gid);
+                    }
+                });
             }
         } else if (isUploading) {
-            setButtonState("uploading");
+            setButtonState("install");
         } else {
             switch (status.status) {
                 case "paused":
@@ -361,21 +390,44 @@ function DownloadActionButton({ status }: { status?: Status }) {
         }
     });
 
+
     async function toggle() {
         const gid = status?.gid ?? "";
         if (!gid) return;
 
-        if (!status || status.status === "waiting" || status.status === "paused") {
-            await torrentApi.resumeTorrent(gid);
-        } else {
-            // pause if active or "uploading"
-            await torrentApi.pauseTorrent(gid);
+        switch (buttonState()) {
+            case "resume":
+                await torrentApi.resumeTorrent(gid);
+                break;
+            case "pause":
+            case "uploading":
+                await torrentApi.pauseTorrent(gid);
+                break;
+            case "install":
+                if (status?.files?.[0]?.path) {
+                    const folderPath = status.files[0].path.split(/[\\/]/).slice(0, -1).join("/");
+                    const result = await installationInst.startInstallation(folderPath);
+
+                    if (result.status === "ok") {
+                        setInstallAttempted(true);
+                        setButtonState("complete");
+                    } else if (result.error === "AdminModeError") {
+                        // remain in install state
+                    }
+                }
+                break;
         }
     }
 
     const label = () => {
-        if (buttonState() === "uploading") return "UPLOADING";
-        return buttonState().toUpperCase();
+        switch (buttonState()) {
+            case "uploading":
+                return "UPLOADING";
+            case "install":
+                return "INSTALL";
+            default:
+                return buttonState().toUpperCase();
+        }
     };
 
     const icon = () => {
@@ -385,6 +437,8 @@ function DownloadActionButton({ status }: { status?: Status }) {
             case "pause":
             case "uploading":
                 return <Pause class="w-5 h-5" />;
+            case "install":
+                return <Settings class="w-5 h-5" />;
             default:
                 return <Play class="w-5 h-5" />;
         }
@@ -394,5 +448,7 @@ function DownloadActionButton({ status }: { status?: Status }) {
         <Button variant="bordered" onClick={toggle} label={label()} icon={icon()} />
     );
 }
+
+
 
 export default DownloadPage;

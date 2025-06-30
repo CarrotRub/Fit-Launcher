@@ -35,7 +35,7 @@ pub async fn get_sitemaps_website(
     }
 
     // Check for the first 5 files
-    for page_number in 1..=5 {
+    for page_number in 1..=7 {
         let relative_filename = format!("post-sitemap{}.xml", page_number);
         let concrete_path = &binding.join(relative_filename);
         if !Path::new(concrete_path).try_exists().unwrap() {
@@ -45,7 +45,7 @@ pub async fn get_sitemaps_website(
     }
 
     // If all first 5 files exist, only download the 5th file
-    let range = if all_files_exist { 6..=6 } else { 1..=6 };
+    let range = if all_files_exist { 8..=8 } else { 1..=8 };
 
     // Download files as needed
     for page_number in range {
