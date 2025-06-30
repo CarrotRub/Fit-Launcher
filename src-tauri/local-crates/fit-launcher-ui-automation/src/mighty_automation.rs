@@ -125,40 +125,37 @@ pub mod windows_ui_automation {
 
     #[cfg(target_os = "windows")]
     fn is_running_as_admin() -> bool {
+        use windows::Win32::{
+            Foundation::{CloseHandle, HANDLE},
+            Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation},
+            System::Threading::{GetCurrentProcess, OpenProcessToken},
+        };
+
         unsafe {
-            use windows::Win32::Security::{
-                AllocateAndInitializeSid, CheckTokenMembership, FreeSid, PSID,
-                SECURITY_NT_AUTHORITY, WinBuiltinAdministratorsSid,
-            };
-            use windows_result::BOOL;
-
-            let mut admin_sid: PSID = PSID::default();
-
-            let result = AllocateAndInitializeSid(
-                &SECURITY_NT_AUTHORITY,
-                2,
-                WinBuiltinAdministratorsSid.0 as u32,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                &mut admin_sid,
-            );
-
-            if result.is_err() {
+            let processhandle = GetCurrentProcess();
+            let mut tokenhandle = HANDLE(std::ptr::null_mut());
+            let desiredaccess = TOKEN_QUERY;
+            if OpenProcessToken(processhandle, desiredaccess, &mut tokenhandle as _).is_err() {
                 return false;
             }
 
-            let mut is_member: BOOL = BOOL(0);
-            let success = CheckTokenMembership(None, admin_sid, &mut is_member);
+            let mut tokeninformation = TOKEN_ELEVATION::default();
+            let mut needed = 0_u32;
 
-            FreeSid(admin_sid);
+            let result = GetTokenInformation(
+                tokenhandle,
+                TokenElevation,
+                Some(&mut tokeninformation as *mut _ as _),
+                size_of::<TOKEN_ELEVATION>() as u32,
+                &mut needed as _,
+            )
+            .map(|_| tokeninformation.TokenIsElevated != 0);
 
-            success.is_ok() && is_member.as_bool()
+            _ = CloseHandle(tokenhandle);
+
+            result
         }
+        .unwrap_or_default()
     }
 
     //TODO: Add one for specifical VERY_SILENT mode but only for no 2gb limit and nothing specifical.
