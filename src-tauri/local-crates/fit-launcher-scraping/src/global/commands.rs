@@ -35,7 +35,7 @@ pub async fn get_sitemaps_website(
 
     // Check for the first 5 files
     for page_number in 1..=7 {
-        let relative_filename = format!("post-sitemap{}.xml", page_number);
+        let relative_filename = format!("post-sitemap{page_number}.xml");
         let concrete_path = &binding.join(relative_filename);
         if !Path::new(concrete_path).try_exists().unwrap() {
             all_files_exist = false;
@@ -49,10 +49,9 @@ pub async fn get_sitemaps_website(
     // Download files as needed
     for page_number in range {
         let relative_url = format!(
-            "https://fitgirl-repacks.site/post-sitemap{}.xml",
-            page_number
+            "https://fitgirl-repacks.site/post-sitemap{page_number}.xml"
         );
-        let relative_filename = format!("post-sitemap{}", page_number);
+        let relative_filename = format!("post-sitemap{page_number}");
 
         let my_app_handle = app_handle.clone();
         download_sitemap(my_app_handle, &relative_url, &relative_filename).await?;
@@ -93,14 +92,14 @@ pub async fn get_singular_game_info(
         let article = doc
             .select(&scraper::Selector::parse("article").unwrap())
             .next()
-            .ok_or_else(|| ScrapingError::ArticleNotFound)?;
+            .ok_or(ScrapingError::ArticleNotFound)?;
         Ok(fetch_game_info(article))
     })
     .await
     .unwrap()?;
 
     let hash = hash_url(url);
-    let filename = format!("singular_game_{}.json", hash);
+    let filename = format!("singular_game_{hash}.json");
     let path = singular_game_path(&app_handle, &filename);
 
     let json = serde_json::to_string_pretty(&game).map_err(|e| {

@@ -72,14 +72,13 @@ pub mod windows_controls_processes {
 
         unsafe extern "system" fn enum_windows_callback(hwnd: HWND, l_param: LPARAM) -> BOOL {
             let data = unsafe { &*(l_param.0 as *const TitleSearchData) };
-            if let Some(title) = get_window_title(hwnd) {
-                if title.contains(data.title) {
+            if let Some(title) = get_window_title(hwnd)
+                && title.contains(data.title) {
                     unsafe {
                         *data.target_hwnd = hwnd;
                     }
                     return FALSE; // Stop enumeration with special FALSE
                 }
-            }
             TRUE // Continue enumeration with special TRUE
         }
 
@@ -105,12 +104,11 @@ pub mod windows_controls_processes {
 
     unsafe extern "system" fn enum_child_windows_proc(hwnd: HWND, l_param: LPARAM) -> BOOL {
         let data = unsafe { &*(l_param.0 as *const EnumChildWindowsData) };
-        if let Some(window_text) = get_window_text(hwnd) {
-            if window_text.contains(data.search_text) {
+        if let Some(window_text) = get_window_text(hwnd)
+            && window_text.contains(data.search_text) {
                 unsafe { *data.target_hwnd = hwnd };
                 return FALSE; // Stop enumeration with special FALSE
             }
-        }
         TRUE // Continue enumeration with special TRUE
     }
 
@@ -153,8 +151,7 @@ pub mod windows_controls_processes {
 
                     if result.is_err() {
                         eprintln!(
-                            "PostMessageW failed to send the message. Result  {:#?}",
-                            result
+                            "PostMessageW failed to send the message. Result  {result:#?}"
                         );
                     } else {
                         // // Wait 5 seconds for the next part of the setup to start
@@ -217,8 +214,7 @@ pub mod windows_controls_processes {
 
                 if result.is_err() {
                     eprintln!(
-                        "PostMessageW failed to send the message. Result  {:#?} ",
-                        result
+                        "PostMessageW failed to send the message. Result  {result:#?} "
                     );
                 } else {
                     println!("Posted click message to Limit button!");
@@ -240,8 +236,7 @@ pub mod windows_controls_processes {
 
                 if result.is_err() {
                     eprintln!(
-                        "PostMessageW for Next Button failed to send the message. Result  {:#?} ",
-                        result
+                        "PostMessageW for Next Button failed to send the message. Result  {result:#?} "
                     );
                 } else {
                     println!("Posted click message to Next button!");
@@ -281,9 +276,9 @@ pub mod windows_controls_processes {
             );
         }
 
-        if text_input_hwnd.0 != std::ptr::null_mut() {
+        if !text_input_hwnd.0.is_null() {
             unsafe {
-                println!("{:#?}", input_text);
+                println!("{input_text:#?}");
                 let mut text_wide: Vec<u16> = input_text.encode_utf16().collect();
                 text_wide.push(0); // Null-terminate the string like in C++ because Rust basic strings do not implement null-terminated strings. Could have used CString.
                 let result = SendMessageW(
@@ -295,8 +290,7 @@ pub mod windows_controls_processes {
 
                 if result == LRESULT(0) {
                     eprintln!(
-                        "SendMessageW failed to set the text. Error code: {:#?}",
-                        result
+                        "SendMessageW failed to set the text. Error code: {result:#?}"
                     );
                 } else {
                     println!("Set text in the input field successfully!");
@@ -322,8 +316,7 @@ pub mod windows_controls_processes {
 
                     if result.is_err() {
                         eprintln!(
-                            "PostMessageW for Install Button failed to send the message. Result  {:#?} ",
-                            result
+                            "PostMessageW for Install Button failed to send the message. Result  {result:#?} "
                         );
                     } else {
                         println!("Posted click message to Install button!");
@@ -366,7 +359,7 @@ pub mod windows_controls_processes {
             );
         }
 
-        if progress_bar_hwnd.0 != std::ptr::null_mut() {
+        if !progress_bar_hwnd.0.is_null() {
             #[allow(unused_assignments)]
             let mut final_percentage: f64 = 0.1; // Variable to hold the result make it 0.1 to bypass the is_normal()
 
@@ -401,7 +394,7 @@ pub mod windows_controls_processes {
                 let percentage =
                     (((current_value - min) as f64 / (max - min) as f64) * 100.0) + 0.1;
 
-                println!("Progress: {:.2}%", percentage);
+                println!("Progress: {percentage:.2}%");
                 final_percentage = percentage;
             }
 

@@ -1,12 +1,12 @@
 use std::{
-    fs::{self, remove_dir},
+    fs::{self},
     path::PathBuf,
 };
 
 use directories::BaseDirs;
 use fit_launcher_scraping::structs::Game;
 use specta::specta;
-use tracing::{error, info};
+use tracing::error;
 
 use crate::{
     core_commands::{
@@ -184,11 +184,11 @@ pub async fn remove_collection(collection_name: String) -> Result<(), String> {
     let path = get_collection_list_path().join(format!("{collection_name}.json"));
 
     if !path.exists() {
-        return Err(format!("Collection '{}' does not exist", collection_name));
+        return Err(format!("Collection '{collection_name}' does not exist"));
     }
 
     fs::remove_file(&path)
-        .map_err(|err| format!("Failed to remove collection '{}': {}", collection_name, err))?;
+        .map_err(|err| format!("Failed to remove collection '{collection_name}': {err}"))?;
 
     Ok(())
 }
@@ -202,7 +202,7 @@ pub async fn update_downloaded_game_executable_info(
     let mut games = get_downloaded_games().await;
     let path = get_downloaded_games_path();
 
-    println!("Looking for: {}", game_title);
+    println!("Looking for: {game_title}");
     for game in &games {
         println!("Found: {}", game.title);
     }
@@ -211,7 +211,7 @@ pub async fn update_downloaded_game_executable_info(
         .iter_mut()
         .find(|game| game.title.to_lowercase() == game_title.to_lowercase())
     else {
-        return Err(format!("Game '{}' not found", game_title));
+        return Err(format!("Game '{game_title}' not found"));
     };
 
     target_game.executable_info = executable_info;
@@ -250,7 +250,7 @@ pub async fn add_game_to_collection(collection_name: String, game: Game) -> Resu
     println!("Path is : {} !", path.to_str().unwrap());
     // Ensure directory exists
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {}", e))?;
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {e}"))?;
     }
 
     let mut games: Vec<Game> = if path.exists() {
@@ -273,7 +273,7 @@ pub async fn add_game_to_collection(collection_name: String, game: Game) -> Resu
     println!("Okiee done !");
 
     fs::write(&path, serde_json::to_string_pretty(&games).unwrap())
-        .map_err(|e| format!("Failed to write collection file: {}", e))?;
+        .map_err(|e| format!("Failed to write collection file: {e}"))?;
 
     Ok(())
 }
@@ -294,18 +294,18 @@ pub async fn create_collection(
         .join(format!("{collection_name}.json"));
 
     if path.exists() {
-        return Err(format!("Collection '{}' already exists", collection_name));
+        return Err(format!("Collection '{collection_name}' already exists"));
     }
 
     // Ensure parent directory exists
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {}", e))?;
+        fs::create_dir_all(parent).map_err(|e| format!("Failed to create directories: {e}"))?;
     }
 
     let game_list = games.unwrap_or_default();
 
     fs::write(&path, serde_json::to_string_pretty(&game_list).unwrap())
-        .map_err(|e| format!("Failed to write collection file: {}", e))?;
+        .map_err(|e| format!("Failed to write collection file: {e}"))?;
 
     Ok(())
 }

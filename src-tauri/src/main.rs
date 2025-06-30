@@ -54,10 +54,10 @@ fn delete_invalid_json_files(app_handle: &tauri::AppHandle) -> Result<(), Box<dy
         let path = entry.path();
 
         // Only process JSON files
-        if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            if let Err(e) = check_file_for_tags(&path) {
-                error!("Error processing file {:?}: {}", path, e);
-            }
+        if path.extension().and_then(|s| s.to_str()) == Some("json")
+            && let Err(e) = check_file_for_tags(&path)
+        {
+            error!("Error processing file {:?}: {}", path, e);
         }
     }
 
@@ -295,10 +295,7 @@ async fn start() {
 
             // Delete JSON files missing the 'tag' field or corrupted and log the process
             if let Err(err) = delete_invalid_json_files(&current_app_handle) {
-                eprintln!(
-                    "Error during deletion of invalid or corrupted JSON files: {}",
-                    err
-                );
+                eprintln!("Error during deletion of invalid or corrupted JSON files: {err}");
             }
 
             // Create the settings file if they haven't been created already
@@ -307,20 +304,17 @@ async fn start() {
                     "Error while creating the installation settings file : {}",
                     err
                 );
-                eprintln!(
-                    "Error while creating the installation settings file : {}",
-                    err
-                )
+                eprintln!("Error while creating the installation settings file : {err}")
             }
 
             if let Err(err) = create_gamehub_settings_file() {
                 error!("Error while creating the gamehub settings file : {}", err);
-                eprintln!("Error while creating the gamehub settings file : {}", err)
+                eprintln!("Error while creating the gamehub settings file : {err}")
             }
 
             if let Err(err) = create_image_cache_file() {
                 error!("Error while creating the image cache file : {}", err);
-                eprintln!("Error while creating the image cache file : {}", err)
+                eprintln!("Error while creating the image cache file : {err}")
             }
 
             // Perform the network request
@@ -330,8 +324,8 @@ async fn start() {
 
             // Clone the app handle for use in async tasks
             let first_app_handle = current_app_handle.clone();
-            let second_app_handle = current_app_handle.clone();
-            let third_app_handle = current_app_handle.clone();
+            let _second_app_handle = current_app_handle.clone();
+            let _third_app_handle = current_app_handle.clone();
             let fourth_app_handle = current_app_handle.clone();
 
             // Perform asynchronous initialization tasks without blocking the main thread
@@ -369,7 +363,7 @@ async fn start() {
                             tracing::error!("get_sitemaps_website: {e}");
                         }
                         _ => {
-                            let _ = h.emit("sitemaps-ready", {});
+                            let _ = h.emit("sitemaps-ready", ());
                         }
                     }
                 });

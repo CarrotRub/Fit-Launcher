@@ -84,7 +84,7 @@ fn parse_article(a: scraper::element_ref::ElementRef) -> Option<DiscoveryGame> {
     let mut secondary = Vec::new();
     for p in 3..=5 {
         let sel =
-            Selector::parse(&format!(".entry-content > p:nth-of-type({}) img[src]", p)).unwrap();
+            Selector::parse(&format!(".entry-content > p:nth-of-type({p}) img[src]")).unwrap();
         for img_el in a.select(&sel) {
             if let Some(s) = img_el.value().attr("src") {
                 secondary.push(s.to_string());

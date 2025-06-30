@@ -1,7 +1,6 @@
 use chrono::{DateTime, NaiveDate};
 use fit_launcher_library::structs::ExecutableInfo;
-use serde::Serialize;
-use specta::{Type, specta};
+use specta::specta;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{fs, io};
