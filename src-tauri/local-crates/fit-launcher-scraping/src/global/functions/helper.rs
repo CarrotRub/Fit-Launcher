@@ -2,7 +2,78 @@ use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use reqwest::header::RANGE;
 use scraper::ElementRef;
 
-pub async fn find_preview_image<'a>(article: ElementRef<'a>) -> Option<String> {
+use crate::structs::Game;
+
+pub fn fetch_game_info(article: ElementRef<'_>) -> Game {
+    let title = article
+        .select(&scraper::Selector::parse(".entry-title").unwrap())
+        .next()
+        .map(|e| e.text().collect())
+        .unwrap_or_default();
+
+    let desc = article
+        .select(&scraper::Selector::parse("div.entry-content").unwrap())
+        .next()
+        .map(|e| e.text().collect())
+        .unwrap_or_default();
+
+    let magnetlink = article
+        .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .map(str::to_string)
+        .unwrap_or_default();
+
+    let pastebin = article
+        .select(&scraper::Selector::parse("a[href*='.torrent file only']").unwrap())
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .map(str::to_string)
+        .unwrap_or_default();
+
+    let tag = article
+        .select(&scraper::Selector::parse(".entry-content p").unwrap())
+        .find_map(|p| {
+            let text = p.text().collect::<String>();
+            if text.trim_start().starts_with("Genres/Tags:") {
+                Some(
+                    p.select(&scraper::Selector::parse("a:not(:first-child)").unwrap())
+                        .map(|a| a.text().collect::<String>())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+
+    let href = article
+        .select(&scraper::Selector::parse("span.entry-date > a").unwrap())
+        .next()
+        .and_then(|e| e.value().attr("href"))
+        .map(str::to_string)
+        .unwrap_or_default();
+
+    let img = article
+        .select(&scraper::Selector::parse(".entry-content > p > a > img").unwrap())
+        .next()
+        .and_then(|e| e.value().attr("src"))
+        .map(str::to_string)
+        .unwrap_or_default();
+
+    Game {
+        title,
+        img,
+        desc,
+        magnetlink,
+        href,
+        tag,
+        pastebin,
+    }
+}
+
+pub async fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
     for i in 3..10 {
         let selector = match scraper::Selector::parse(&format!(
             ".entry-content > p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
