@@ -132,7 +132,8 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
         let href = article
             .select(&scraper::Selector::parse(".entry-title > a").unwrap())
             .next()
-            .and_then(|e| e.value().attr("href"));
+            .and_then(|e| e.value().attr("href"))
+            .map(str::to_string);
 
         let tag = article
             .select(&scraper::Selector::parse(".entry-content p").unwrap())
@@ -166,8 +167,9 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
                     img,
                     desc,
                     magnetlink,
-                    href: href.to_string(),
+                    href: href,
                     tag,
+                    pastebin: String::new(),
                 });
             }
         }
@@ -268,6 +270,7 @@ async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
         magnetlink: magnet.to_string(),
         href: link.to_string(),
         tag,
+        pastebin: String::new(),
     })
 }
 
@@ -354,6 +357,7 @@ async fn scrape_recent_update(link: &str) -> Result<Game, ScrapingError> {
         magnetlink: magnet.to_string(),
         href: link.to_string(),
         tag,
+                    pastebin: String::new(),
     })
 }
 

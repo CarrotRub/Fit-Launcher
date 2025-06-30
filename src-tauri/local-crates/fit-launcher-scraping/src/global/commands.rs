@@ -93,6 +93,7 @@ pub async fn get_singular_game_info(
     let image_selector = Selector::parse(".entry-content > p > a > img").unwrap();
     let desc_selector = Selector::parse("div.entry-content").unwrap();
     let magnet_selector = Selector::parse("a[href*='magnet']").unwrap();
+    // TODO: fix tag selector
     let tag_selector = Selector::parse(".entry-content p strong:first-of-type").unwrap();
 
     let title = doc
@@ -134,6 +135,7 @@ pub async fn get_singular_game_info(
         magnetlink: magnet,
         href: url.to_string(),
         tag,
+        pastebin: String::new(),
     };
     let hash = hash_url(url);
     let filename = format!("singular_game_{}.json", hash);
