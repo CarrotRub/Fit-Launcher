@@ -1,8 +1,8 @@
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use reqwest::header::RANGE;
-use scraper::Html;
+use scraper::ElementRef;
 
-pub async fn find_preview_image<'a>(doc: &Html) -> Option<String> {
+pub async fn find_preview_image<'a>(article: ElementRef<'a>) -> Option<String> {
     for i in 3..10 {
         let selector = match scraper::Selector::parse(&format!(
             ".entry-content > p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
@@ -11,7 +11,7 @@ pub async fn find_preview_image<'a>(doc: &Html) -> Option<String> {
             Err(_) => continue,
         };
 
-        let Some(src) = doc
+        let Some(src) = article
             .select(&selector)
             .next()
             .and_then(|element| element.value().attr("src"))
