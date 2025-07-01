@@ -75,6 +75,7 @@ export class LibraryApi {
       magnetlink: game.magnetlink,
       href: game.href,
       tag: game.tag,
+      pastebin: '',
     };
   }
   discoveryGameToGame(game: DiscoveryGame): Game {
@@ -85,6 +86,7 @@ export class LibraryApi {
       magnetlink: game.game_magnetlink,
       href: game.game_href,
       tag: game.game_tags,
+      pastebin: game.game_torrent_paste_link
     };
   }
   gameToDownloadedGame(game: Game): DownloadedGame {

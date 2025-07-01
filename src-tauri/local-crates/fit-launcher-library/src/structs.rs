@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use fit_launcher_scraping::structs::Game;
 use serde::de::{Deserializer, Error as SerdeError};
 use serde::{Deserialize, Serialize};
