@@ -36,6 +36,7 @@ export type AddToCollectionProps<T extends any[] = any[]> = PopupProps<T> &
   Omit<PopupProps, "action"> & {
     gameObjectInfo: Game;
     action?: (addedTo: string[]) => void | Promise<void>;
+    createCollection: () => void | Promise<void>;
   };
 
 export type AddLocalGamePopupProps<T extends any[] = any[]> = PopupProps<T> &

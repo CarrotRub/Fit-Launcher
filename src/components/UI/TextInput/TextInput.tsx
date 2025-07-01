@@ -15,6 +15,7 @@ export default function TextInput(props: TextInputProps) {
           type="text"
           value={props.value}
           disabled={props.disabled}
+          placeholder={props.placeholder}
           onInput={(e) => props.onInput?.((e.target as HTMLInputElement).value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
