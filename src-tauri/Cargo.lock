@@ -1567,6 +1567,7 @@ dependencies = [
  "serde_json",
  "specta",
  "tauri",
+ "thiserror 2.0.12",
  "tokio",
  "tracing",
 ]
