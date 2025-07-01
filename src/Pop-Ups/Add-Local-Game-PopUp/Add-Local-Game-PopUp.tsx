@@ -41,7 +41,7 @@ export default function createAddLocalGamePopup(props: AddLocalGamePopupProps) {
       console.log(link)
       await cache.getSingularGameInfo(link)
 
-      let gameResult = await cache.getSingularGameLocal();
+      let gameResult = await cache.getSingularGameLocal(link);
 
       if (gameResult.status === "ok") {
         const newGame = library.gameToDownloadedGame(gameResult.data);
