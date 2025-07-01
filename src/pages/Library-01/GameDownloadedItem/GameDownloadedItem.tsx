@@ -1,6 +1,6 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
-import { Play, Settings, Star, Info, Trash2 } from "lucide-solid";
+import { Play, Settings, Star, Info, Trash2, Pin, BookmarkPlus } from "lucide-solid";
 import { DownloadedGame, Game, ExecutableInfo, commands, GameCollection } from "../../../bindings";
 import { LibraryApi } from "../../../api/library/api";
 import BasicPathInputPopup from "../../../Pop-Ups/Basic-PathInput-PopUp/Basic-PathInput-PopUp";
@@ -24,6 +24,7 @@ export default function GameDownloadedItem(props: {
   onGameInfoUpdate?: (title: string, info: ExecutableInfo) => void;
   onGameDelete?: (title: string) => void;
   onGameAddToCollection?: (collectionKey: string, game: Game) => void;
+  createCollection: () => void | Promise<void>;
   layoutType?: Accessor<LayoutType>;
 }) {
   const [clicked, setClicked] = createSignal(false);
@@ -131,7 +132,8 @@ export default function GameDownloadedItem(props: {
           console.log(game)
           props.onGameAddToCollection?.(collectionKey, game);
         }
-      }
+      },
+      createCollection: props.createCollection
     })
 
   }
@@ -220,7 +222,7 @@ export default function GameDownloadedItem(props: {
                           }}
                           title="Add to collection"
                         >
-                          <Star class="size-4" />
+                          <BookmarkPlus class="size-4" />
                         </button>
                         <button
                           class="p-1.5 rounded-full hover:bg-secondary-20 text-muted transition-colors"
@@ -287,7 +289,7 @@ export default function GameDownloadedItem(props: {
                           class="p-2 rounded-full bg-secondary-20 hover:bg-secondary-30 text-muted transition-colors"
                           onClick={(e) => { e.stopPropagation(); addGameToCollection(game) }}
                         >
-                          <Star class="w-4 h-4" />
+                          <BookmarkPlus class="w-4 h-4" />
                         </button>
                         <button
                           class="p-2 rounded-full bg-secondary-20 hover:bg-secondary-30 text-muted transition-colors"

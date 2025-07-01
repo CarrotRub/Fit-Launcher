@@ -23,6 +23,7 @@ import { LibraryApi } from "../../api/library/api";
 import { DownloadedGame, Game, GameCollection } from "../../bindings";
 import createAddLocalGamePopup from "../../Pop-Ups/Add-Local-Game-PopUp/Add-Local-Game-PopUp";
 import { GamesCacheApi } from "../../api/cache/api";
+import createBasicTextInputPopup from "../../Pop-Ups/Basic-TextInput-PopUp/Basic-TextInput-PopUp";
 
 const libraryAPI = new LibraryApi();
 const cacheAPI = new GamesCacheApi();
@@ -93,11 +94,11 @@ function Library() {
 
 
   function handleCreateNewCollection() {
-    CreateBasicTextInputPopup({
+    createBasicTextInputPopup({
       infoTitle: "Create a new collection !",
       infoMessage: "How do you want to name your Collection ?",
       value: "Best Games 2024...",
-      infoFooter: "",
+      placeholder: "Best Games 2024...",
       action: createNewCollection,
     })
   }
@@ -258,6 +259,7 @@ function Library() {
                     [collectionKey]: [...(prev[collectionKey] ?? []), game],
                   }));
                 }}
+                createCollection={handleCreateNewCollection}
                 layoutType={layoutType}
               />
             </div>

@@ -54,6 +54,7 @@ export interface PathInputProps {
 export interface TextInputProps {
   value: string;
   class?: string;
+  placeholder?: string;
   disabled?: boolean;
   onInput?: (value: string) => void;
 }
