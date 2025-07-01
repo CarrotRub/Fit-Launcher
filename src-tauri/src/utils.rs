@@ -40,8 +40,7 @@ fn parse_image_links(body: &str, start: usize) -> anyhow::Result<Vec<String>> {
 
     for p_index in start..=5 {
         let selector = Selector::parse(&format!(
-            ".entry-content > p:nth-of-type({}) img[src]",
-            p_index
+            ".entry-content > p:nth-of-type({p_index}) img[src]"
         ))
         .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
 
@@ -83,10 +82,7 @@ async fn fetch_image_links(body: &str) -> anyhow::Result<Vec<String>> {
         .into_iter()
         .map(|img_link| {
             tokio::task::spawn(async move {
-                match process_image_link(img_link).await {
-                    Ok(img) => Some(img),
-                    Err(_) => None,
-                }
+                (process_image_link(img_link).await).ok()
             })
         })
         .collect();
@@ -180,13 +176,12 @@ async fn merge_cache_from_file(
     cache_file_path: &Path,
     cache: &mut LruCache<String, Vec<String>>,
 ) -> Result<()> {
-    if let Ok(data) = tokio::fs::read_to_string(cache_file_path).await {
-        if let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
+    if let Ok(data) = tokio::fs::read_to_string(cache_file_path).await
+        && let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
             for (key, value) in loaded_cache {
                 cache.put(key, value);
             }
         }
-    }
     Ok(())
 }
 

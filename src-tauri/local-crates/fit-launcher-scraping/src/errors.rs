@@ -21,6 +21,9 @@ impl fmt::Display for CreatingFileErrorStruct {
 #[derive(Debug, thiserror::Error, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum ScrapingError {
+    #[error("Failed to extract article")]
+    ArticleNotFound,
+
     #[error("Request Error: {0}")]
     ReqwestError(String),
 

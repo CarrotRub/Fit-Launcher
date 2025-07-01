@@ -70,7 +70,7 @@ pub async fn check_dominant_color_vec(list_images: Vec<String>) -> Result<Vec<St
     for link in list_images {
         match fetch_dominant_color(&link).await {
             Ok(rgb_value) => rgb_color_list.push(rgb_value),
-            Err(e) => return Err(format!("Failed to fetch color for {}: {}", link, e)),
+            Err(e) => return Err(format!("Failed to fetch color for {link}: {e}")),
         }
     }
 
