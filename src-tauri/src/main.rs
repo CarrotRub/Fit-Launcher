@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use std::fs;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 mod game_info;
 mod image_colors;
 use anyhow::Result;
@@ -240,16 +242,26 @@ async fn start() {
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
-                        info!("quit menu item was clicked");
+                        static PROCESSING: AtomicBool = AtomicBool::new(false);
 
+                        info!("quit menu item was clicked");
                         info!("exiting aria2 gracefully...");
+
+                        if PROCESSING.load(Ordering::Acquire) {
+                            return;
+                        }
+
+                        PROCESSING.store(true, Ordering::Release);
+
                         if let Some((close_tx, done_rx)) = ARIA2_DAEMON.lock().take() {
                             let _ = close_tx.send(());
                             std::thread::spawn(move || {
                                 let _ = done_rx.blocking_recv(); // wait in background
+                                std::process::exit(0);
                             });
+                        } else {
+                            std::process::exit(0);
                         }
-                        std::process::exit(0);
                     }
                     "show_app" => {
                         info!("show app menu item was clicked");

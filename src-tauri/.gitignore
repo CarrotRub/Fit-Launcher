@@ -6,7 +6,4 @@
 # will have schema files for capabilities auto-completion
 /gen/schemas
 
-# to place aria2c.exe during dev
-/aria2c.exe
-
 /downloads
