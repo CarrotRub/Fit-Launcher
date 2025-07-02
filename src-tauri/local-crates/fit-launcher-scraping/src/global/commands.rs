@@ -1,7 +1,6 @@
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use scraper::Html;
 use specta::specta;
-use std::hash::{DefaultHasher, Hash, Hasher};
 use tauri::Manager;
 use tracing::{error, info};
 
@@ -48,9 +47,7 @@ pub async fn get_sitemaps_website(
 
     // Download files as needed
     for page_number in range {
-        let relative_url = format!(
-            "https://fitgirl-repacks.site/post-sitemap{page_number}.xml"
-        );
+        let relative_url = format!("https://fitgirl-repacks.site/post-sitemap{page_number}.xml");
         let relative_filename = format!("post-sitemap{page_number}");
 
         let my_app_handle = app_handle.clone();
@@ -62,10 +59,10 @@ pub async fn get_sitemaps_website(
 
 #[tauri::command]
 #[specta]
-pub fn hash_url(url: &str) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    url.hash(&mut hasher);
-    hasher.finish()
+pub fn hash_url(url: &str) -> String {
+    let hasher = ahash::RandomState::with_seeds(0x1A, 0x6B, 0x4D, 0xF6);
+    let hash = hasher.hash_one(url);
+    format!("{hash:016x}")
 }
 
 #[tauri::command]
@@ -76,8 +73,8 @@ pub async fn get_singular_game_info(
 ) -> Result<(), ScrapingError> {
     let start_time = Instant::now();
 
-    let url = game_link.as_str();
-    let response = CUSTOM_DNS_CLIENT.get(url).send().await.map_err(|e| {
+    let url = game_link.clone();
+    let response = CUSTOM_DNS_CLIENT.get(&url).send().await.map_err(|e| {
         error!("Failed to fetch URL: {}", e);
         ScrapingError::HttpStatusCodeError(e.to_string())
     })?;
@@ -92,13 +89,13 @@ pub async fn get_singular_game_info(
         let article = doc
             .select(&scraper::Selector::parse("article").unwrap())
             .next()
-            .ok_or(ScrapingError::ArticleNotFound)?;
+            .ok_or(ScrapingError::ArticleNotFound(game_link))?;
         Ok(fetch_game_info(article))
     })
     .await
     .unwrap()?;
 
-    let hash = hash_url(url);
+    let hash = hash_url(&url);
     let filename = format!("singular_game_{hash}.json");
     let path = singular_game_path(&app_handle, &filename);
 

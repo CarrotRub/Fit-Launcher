@@ -9,6 +9,10 @@ pub struct DownloadedGame {
     pub img: String,
     pub desc: String,
     pub magnetlink: String,
+    /// can be empty if converted from legacy,
+    ///
+    /// or the torrent was hosted on sendfile.su
+    pub pastebin: String,
     pub href: String,
     pub tag: String,
     pub executable_info: ExecutableInfo,
