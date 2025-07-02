@@ -1,12 +1,12 @@
 use anyhow::Context;
 use aria2_ws::Client;
-use once_cell::sync::Lazy;
 use parking_lot::{Mutex, RwLock};
 use std::{
+    env::current_exe,
     ffi::OsStr,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter},
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
     sync::Arc,
     time::Duration,
@@ -21,9 +21,8 @@ use tracing::{error, info, warn};
 
 use crate::{FitLauncherConfigV2, config::FitLauncherConfigAria2, errors::TorrentApiError};
 
-type AriaDaemonType = Lazy<Mutex<Option<(Sender<()>, Receiver<()>)>>>;
-
-pub static ARIA2_DAEMON: AriaDaemonType = Lazy::new(|| Mutex::new(None));
+type AriaDaemonType = Mutex<Option<(Sender<()>, Receiver<()>)>>;
+pub static ARIA2_DAEMON: AriaDaemonType = Mutex::new(None);
 
 struct StateShared {
     config: FitLauncherConfigV2,
@@ -135,27 +134,15 @@ pub async fn aria2_client_from_config(
     let download_location = &config.general.download_dir;
 
     if *start_daemon && ARIA2_DAEMON.lock().is_none() {
-        #[cfg(not(debug_assertions))]
-        let exec = if cfg!(windows) { "./aria2c" } else { "aria2c" };
-        #[cfg(not(debug_assertions))]
+        let exec = if cfg!(windows) {
+            current_exe().unwrap().parent().unwrap().join("aria2c.exe")
+        } else {
+            PathBuf::from("aria2c")
+        };
         let mut child = Command::new(exec)
             .args(build_aria2_args(config, Path::new(&session_path.as_ref())))
-            .current_dir(&config.general.download_dir)
+            .current_dir(download_location)
             .spawn()?;
-
-        #[cfg(debug_assertions)]
-        let mut child = Command::new(if cfg!(windows) {
-            "../../binaries/aria2c-x86_64-pc-windows-msvc"
-        } else {
-            "aria2c"
-        })
-        .arg("--enable-rpc")
-        .arg(format!("--rpc-listen-port={port}"))
-        .arg("--max-connection-per-server=5")
-        .arg("--save-session")
-        .arg(session_path.as_ref())
-        .current_dir(download_location)
-        .spawn()?;
 
         let client = 'retry: {
             let mut last_err = None;
