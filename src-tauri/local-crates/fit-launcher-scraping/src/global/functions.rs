@@ -175,7 +175,7 @@ async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
         .next()
-        .ok_or(ScrapingError::ArticleNotFound)?;
+        .ok_or(ScrapingError::ArticleNotFound(link.into()))?;
 
     let game = fetch_game_info(article);
     Ok(Game {
@@ -221,7 +221,7 @@ async fn scrape_recent_update(link: &str) -> Result<Game, ScrapingError> {
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
         .next()
-        .ok_or(ScrapingError::ArticleNotFound)?;
+        .ok_or(ScrapingError::ArticleNotFound(link.to_string()))?;
 
     Ok(fetch_game_info(article))
 }

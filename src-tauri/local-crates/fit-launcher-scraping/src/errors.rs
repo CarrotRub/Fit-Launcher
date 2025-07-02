@@ -22,7 +22,7 @@ impl fmt::Display for CreatingFileErrorStruct {
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum ScrapingError {
     #[error("Failed to extract article")]
-    ArticleNotFound,
+    ArticleNotFound(String),
 
     #[error("Request Error: {0}")]
     ReqwestError(String),

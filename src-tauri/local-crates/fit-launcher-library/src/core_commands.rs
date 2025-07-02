@@ -4,12 +4,9 @@ use directories::BaseDirs;
 use tracing::error;
 
 pub fn get_games_to_download_path() -> PathBuf {
-    let base_dirs = match BaseDirs::new() {
-        Some(dirs) => dirs,
-        None => {
-            error!("Failed to determine base directories");
-            return PathBuf::new();
-        }
+    let Some(base_dirs) = BaseDirs::new() else {
+        error!("Failed to determine base directories");
+        return PathBuf::new();
     };
 
     base_dirs
@@ -21,12 +18,9 @@ pub fn get_games_to_download_path() -> PathBuf {
 }
 
 pub fn get_downloaded_games_path() -> PathBuf {
-    let base_dirs = match BaseDirs::new() {
-        Some(dirs) => dirs,
-        None => {
-            error!("Failed to determine base directories");
-            return PathBuf::new();
-        }
+    let Some(base_dirs) = BaseDirs::new() else {
+        error!("Failed to determine base directories");
+        return PathBuf::new();
     };
 
     base_dirs
@@ -38,12 +32,9 @@ pub fn get_downloaded_games_path() -> PathBuf {
 }
 
 pub fn get_collection_list_path() -> PathBuf {
-    let base_dirs = match BaseDirs::new() {
-        Some(dirs) => dirs,
-        None => {
-            error!("Failed to determine base directories");
-            return PathBuf::new();
-        }
+    let Some(base_dirs) = BaseDirs::new() else {
+        error!("Failed to determine base directories");
+        return PathBuf::new();
     };
 
     base_dirs

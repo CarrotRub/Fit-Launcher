@@ -28,7 +28,7 @@ pub struct TorrentExternInfo {
 }
 
 pub(crate) fn convert_legacy_downloads(
-    legacy_items: Vec<LegacyDownloadedGame>,
+    legacy_items: impl IntoIterator<Item = LegacyDownloadedGame>,
 ) -> Vec<DownloadedGame> {
     legacy_items
         .into_iter()
@@ -45,6 +45,7 @@ pub(crate) fn convert_legacy_downloads(
                 download_folder: legacy.torrentDownloadFolder,
                 file_list: legacy.torrentFileList,
             },
+            pastebin: String::new(),
         })
         .collect()
 }

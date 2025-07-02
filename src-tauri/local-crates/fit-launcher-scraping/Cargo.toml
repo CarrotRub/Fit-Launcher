@@ -23,3 +23,4 @@ serde_with = { workspace = true }
 tracing = { workspace = true }
 once_cell = { workspace = true }
 rand = "0.9.1"
+ahash = "0.8"
