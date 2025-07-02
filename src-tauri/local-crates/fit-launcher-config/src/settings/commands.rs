@@ -7,6 +7,7 @@ use tracing::info;
 
 use crate::SettingsConfigurationError;
 use crate::client::cookies;
+use crate::client::cookies::Cookies;
 use crate::client::dns::FitLauncherDnsConfig;
 
 use super::creation::GamehubSettings;
@@ -321,22 +322,31 @@ pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
 ///     }
 /// ]
 /// ```
-/// 
+///
 /// Extra fields are allowed.
 ///
 /// Also, to make effect, an restart is required.
 #[tauri::command]
 #[specta]
-pub async fn import_cookies(json_path: PathBuf) -> Result<(), String> {
-    let raw = tokio::fs::read(json_path)
+pub async fn import_cookies_file(json_path: String) -> Result<(), String> {
+    let json = tokio::fs::read_to_string(json_path)
         .await
         .map_err(|e| e.to_string())?;
     // validate cookies format
-    let _cookies: cookies::Cookies = serde_json::from_slice(&raw).map_err(|e| e.to_string())?;
+    let cookies: cookies::Cookies = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+
+    import_cookies(cookies).await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
+pub async fn import_cookies(cookies: Cookies) -> Result<(), String> {
     tokio::fs::create_dir_all(cookies::Cookies::default_dir())
         .await
         .map_err(|e| e.to_string())?;
-    tokio::fs::write(cookies::Cookies::default_path(), &raw)
+    let json = serde_json::to_string_pretty(&cookies).map_err(|e| e.to_string())?;
+    tokio::fs::write(cookies::Cookies::default_path(), &json)
         .await
         .map_err(|e| e.to_string())?;
     Ok(())
