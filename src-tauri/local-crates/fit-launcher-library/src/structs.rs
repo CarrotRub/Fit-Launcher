@@ -3,7 +3,8 @@ use serde::de::{Deserializer, Error as SerdeError};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-#[derive(Serialize, Deserialize, Debug, Type)]
+#[derive(Default, Serialize, Deserialize, Debug, Type)]
+#[serde(default)]
 pub struct DownloadedGame {
     pub title: String,
     pub img: String,
@@ -19,7 +20,7 @@ pub struct DownloadedGame {
     pub installation_info: InstallationInfo,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Type)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Type)]
 pub struct ExecutableInfo {
     pub executable_path: String,
     pub executable_last_opened_date: Option<String>,
@@ -43,7 +44,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Type)]
+#[derive(Default, Serialize, Deserialize, Debug, Type)]
 pub struct InstallationInfo {
     pub output_folder: String,
     pub download_folder: String,
