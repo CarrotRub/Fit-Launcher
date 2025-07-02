@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use directories::BaseDirs;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use specta::Type;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -12,13 +13,13 @@ pub enum Error {
     DeSer(#[from] serde_json::Error),
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Type)]
 pub struct Cookie {
     pub name: String,
     pub value: String,
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Type)]
 pub struct Cookies(Vec<Cookie>);
 
 impl Cookies {
