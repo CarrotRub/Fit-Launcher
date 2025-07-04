@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-#[derive(Debug, Serialize, Deserialize, Type)]
+#[derive(Default, Debug, Serialize, Deserialize, Type)]
+#[serde(default)]
 pub struct Game {
     pub title: String,
     pub img: String,
@@ -12,7 +13,8 @@ pub struct Game {
     pub pastebin: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Type)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, Type)]
+#[serde(default)]
 pub struct DiscoveryGame {
     pub game_title: String,
     pub game_main_image: String,

@@ -113,6 +113,7 @@ export class LibraryApi {
       tag: game.tag,
       executable_info: executableInfo,
       installation_info: installationInfo,
+      pastebin: game.pastebin,
     };
   }
 }

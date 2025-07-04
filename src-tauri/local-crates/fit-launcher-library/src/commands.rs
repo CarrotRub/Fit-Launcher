@@ -13,7 +13,7 @@ use crate::{
         get_collection_list_path, get_downloaded_games_path, get_games_to_download_path,
     },
     legacy::{LegacyDownloadedGame, convert_legacy_downloads},
-    structs::{DownloadedGame, ExecutableInfo, GameCollection, InstallationInfo},
+    structs::{DownloadedGame, ExecutableInfo, GameCollection},
 };
 
 #[tauri::command]
@@ -224,23 +224,7 @@ pub async fn update_downloaded_game_executable_info(
 #[tauri::command]
 #[specta]
 pub fn transform_legacy_download(legacy_items: Vec<LegacyDownloadedGame>) -> Vec<DownloadedGame> {
-    legacy_items
-        .into_iter()
-        .map(|legacy| DownloadedGame {
-            title: legacy.torrentExternInfo.title,
-            img: legacy.torrentExternInfo.img,
-            desc: legacy.torrentExternInfo.desc,
-            magnetlink: legacy.torrentExternInfo.magnetlink,
-            href: legacy.torrentExternInfo.href,
-            tag: legacy.torrentExternInfo.tag,
-            executable_info: legacy.executableInfo,
-            installation_info: InstallationInfo {
-                output_folder: legacy.torrentOutputFolder,
-                download_folder: legacy.torrentDownloadFolder,
-                file_list: legacy.torrentFileList,
-            },
-        })
-        .collect()
+    convert_legacy_downloads(legacy_items)
 }
 
 #[tauri::command]

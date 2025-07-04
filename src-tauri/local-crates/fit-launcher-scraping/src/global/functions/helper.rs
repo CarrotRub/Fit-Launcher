@@ -25,7 +25,12 @@ pub fn fetch_game_info(article: ElementRef<'_>) -> Game {
         .unwrap_or_default();
 
     let pastebin = article
-        .select(&scraper::Selector::parse("a[href*='.torrent file only']").unwrap())
+        .select(
+            &scraper::Selector::parse(
+                "a[href*='pastefg.hermietkreeft.site'], a[href*='paste.fitgirl-repacks.site']",
+            )
+            .unwrap(),
+        )
         .next()
         .and_then(|e| e.value().attr("href"))
         .map(str::to_string)
