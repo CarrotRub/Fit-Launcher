@@ -16,7 +16,7 @@ pub struct DownloadedGame {
     pub pastebin: String,
     pub href: String,
     pub tag: String,
-    pub pastebin: String,
+
     pub executable_info: ExecutableInfo,
     pub installation_info: InstallationInfo,
 }

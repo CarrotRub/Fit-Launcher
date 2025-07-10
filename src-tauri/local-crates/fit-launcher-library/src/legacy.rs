@@ -46,7 +46,6 @@ pub(crate) fn convert_legacy_downloads(
                 download_folder: legacy.torrentDownloadFolder,
                 file_list: legacy.torrentFileList,
             },
-            pastebin: String::new(),
         })
         .collect()
 }
