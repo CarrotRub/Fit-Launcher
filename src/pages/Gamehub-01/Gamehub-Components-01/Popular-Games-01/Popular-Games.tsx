@@ -1,5 +1,4 @@
 import { createSignal, onMount, createEffect, onCleanup, Show, For } from 'solid-js';
-import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from '@solidjs/router';
 import { GamesCacheApi } from '../../../../api/cache/api';
 import { commands, Game } from '../../../../bindings';
@@ -109,7 +108,7 @@ export default function PopularGames() {
                 e.stopPropagation();
                 setSelected(prev => (prev - 1 + games().length) % games().length);
               }}
-              class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
+              class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110 active:scale-95"
             >
               <ChevronLeft size={20} class="text-text" stroke-width={1.5} />
             </button>
@@ -177,7 +176,7 @@ export default function PopularGames() {
                 e.stopPropagation();
                 setSelected(prev => (prev + 1) % games().length);
               }}
-              class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110"
+              class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110 active:scale-95"
             >
               <ChevronRight size={24} class="text-text" stroke-width={1.5} />
             </button>

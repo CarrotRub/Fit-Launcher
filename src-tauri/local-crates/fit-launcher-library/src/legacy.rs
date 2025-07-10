@@ -39,6 +39,7 @@ pub(crate) fn convert_legacy_downloads(
             magnetlink: legacy.torrentExternInfo.magnetlink,
             href: legacy.torrentExternInfo.href,
             tag: legacy.torrentExternInfo.tag,
+            pastebin: "".to_string(),
             executable_info: legacy.executableInfo.clone(),
             installation_info: InstallationInfo {
                 output_folder: legacy.torrentOutputFolder,

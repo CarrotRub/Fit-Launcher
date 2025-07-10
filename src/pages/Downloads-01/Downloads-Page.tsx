@@ -356,7 +356,7 @@ function DownloadActionButton({ status }: { status?: Status }) {
 
 
             const fullPath = status.files?.[0]?.path;
-            if (fullPath) {
+            if (fullPath && triedInstall.get(gid)) {
                 const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
 
                 // Mark as tried immediately to avoid loops
@@ -372,6 +372,8 @@ function DownloadActionButton({ status }: { status?: Status }) {
                         triedInstall.delete(gid);
                     }
                 });
+            } else {
+                setButtonState("install")
             }
         } else if (isUploading) {
             setButtonState("install");
@@ -412,7 +414,7 @@ function DownloadActionButton({ status }: { status?: Status }) {
                         setInstallAttempted(true);
                         setButtonState("complete");
                     } else if (result.error === "AdminModeError") {
-                        // remain in install state
+                        setButtonState("install");
                     }
                 }
                 break;

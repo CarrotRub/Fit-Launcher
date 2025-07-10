@@ -46,7 +46,7 @@ export class GamesCacheApi {
     return commands.getSingularGameInfo(gameLink);
   }
 
-  async getGameHash(url: string): Promise<number> {
+  async getGameHash(url: string): Promise<string> {
     return await commands.hashUrl(url);
   }
 
@@ -124,10 +124,20 @@ export class GamesCacheApi {
       if (resultTyped.status === "ok") {
         this.cache.set(key, resultTyped);
       } else {
-        await message(
-          resultTyped.error.data.toString() ?? "An unknown error occurred.",
-          { title: "Fetch Error", kind: "error" }
-        );
+        if (resultTyped.error.type !== "articleNotFound") {
+          await message(
+            resultTyped.error.data.toString() ?? "An unknown error occurred.",
+            {
+              title: "Fetch Error",
+              kind: "error",
+            }
+          );
+        } else {
+          await message("Article Not Found.", {
+            title: "Fetch Error",
+            kind: "error",
+          });
+        }
       }
       return resultTyped;
     }

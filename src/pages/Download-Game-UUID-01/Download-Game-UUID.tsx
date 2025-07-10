@@ -36,7 +36,6 @@ const DownloadGameUUIDPage = () => {
   let backgroundCycleIntervalID: number;
 
   const location = useLocation<GamePageState>();
-  const { gameHref, gameTitle, filePath } = location.state || {};
 
   async function fetchGame(gameHref: string) {
     try {
