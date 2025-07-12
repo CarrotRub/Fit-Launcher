@@ -4,5 +4,6 @@ pub mod errors;
 pub mod functions;
 pub use commands::*;
 pub use config::*;
-
+pub mod handler;
+pub use handler::*;
 pub mod model;

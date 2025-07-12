@@ -276,15 +276,15 @@ const DownloadGameUUIDPage = () => {
                   <div class="flex items-start gap-2">
                     <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
-                      <p class="text-xs text-muted">Original Size</p>
-                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
+                      <p class="text-xs text-muted">Repack Size</p>
+                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
                     </div>
                   </div>
                   <div class="flex items-start gap-2">
                     <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
-                      <p class="text-xs text-muted">Repack Size</p>
-                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
+                      <p class="text-xs text-muted">Original Size</p>
+                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
                     </div>
                   </div>
                 </div>

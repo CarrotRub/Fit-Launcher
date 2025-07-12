@@ -110,7 +110,7 @@ impl Default for LegacyHttpApi {
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type, Debug)]
 #[serde(default)]
 pub struct FitLauncherConfigAria2 {
-    pub port: u32,
+    pub port: u16,
     pub token: Option<String>,
     pub start_daemon: bool,
 }
@@ -201,6 +201,7 @@ pub struct Bittorrent {
     pub enable_dht: bool,
 
     /// The port aria2 will listen on for incoming BitTorrent peer connections.
+    /// todo: Add randomization if port is blocked
     pub listen_port: u16,
 
     /// The maximum number of peers to connect to for each torrent.

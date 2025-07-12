@@ -24,4 +24,19 @@ pub enum TorrentApiError {
 
     #[error("IO Error: {0}")]
     IOError(String),
+
+    #[error("Librqbit Error")]
+    LibrqbitError,
+
+    #[error("Metadata Error")]
+    MetadataError,
+
+    #[error("Torrent Not Found")]
+    TorrentNotFound,
+
+    #[error("Invalid Magnet")]
+    InvalidMagnet,
+
+    #[error("Unexpected Torrent State")]
+    UnexpectedTorrentState,
 }

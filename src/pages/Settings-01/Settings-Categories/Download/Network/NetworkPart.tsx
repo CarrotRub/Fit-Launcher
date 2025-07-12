@@ -15,10 +15,10 @@ export default function NetworkPart({
         <PageGroup title="Network Configuration">
             <LabelNumericalInput
                 text="Minimum split size"
-                typeText="The smallest size a split part of a file can be (in MB)"
+                typeText="The smallest size a split part of a file can be, by default, in MB"
                 value={settings().min_split_size || 4}
                 onInput={(value) =>
-                    handleTextCheckChange?.("general.min_split_size", value)
+                    handleTextCheckChange?.("network.min_split_size", value)
                 }
                 unit={true}
             />
@@ -26,9 +26,9 @@ export default function NetworkPart({
             <LabelNumericalInput
                 text="Connect timeout"
                 typeText="How long to wait when trying to establish a connection (in seconds)"
-                value={settings().connect_timeout?.secs}
-                onInput={(value) =>
-                    handleTextCheckChange?.("general.connect_timeout", { secs: value, nanos: 0 })
+                value={settings().connect_timeout?.secs ?? 0}
+                onInput={(e) =>
+                    handleTextCheckChange?.("network.connect_timeout", { secs: +e.valueOf(), nanos: 0 })
                 }
                 valueType="Sec"
             />
@@ -36,9 +36,9 @@ export default function NetworkPart({
             <LabelNumericalInput
                 text="Read/write timeout"
                 typeText="How long to wait for read/write operations to complete (in seconds)"
-                value={settings().rw_timeout?.secs}
+                value={settings().rw_timeout.secs || 5}
                 onInput={(value) =>
-                    handleTextCheckChange?.("general.rw_timeout", { secs: value, nanos: 0 })
+                    handleTextCheckChange?.("network.rw_timeout", { secs: value, nanos: 0 })
                 }
                 valueType="Sec"
             />
@@ -48,7 +48,7 @@ export default function NetworkPart({
                 typeText="How many parts each file will be split into for parallel downloading"
                 value={settings().split || 4}
                 onInput={(value) =>
-                    handleTextCheckChange?.("general.split", value)
+                    handleTextCheckChange?.("network.split", value)
                 }
             />
 
@@ -57,7 +57,7 @@ export default function NetworkPart({
                 typeText="Limits how many concurrent connections are allowed per server"
                 value={settings().max_connection_per_server || 10}
                 onInput={(value) =>
-                    handleTextCheckChange?.("general.max_connection_per_server", value)
+                    handleTextCheckChange?.("network.max_connection_per_server", value)
                 }
             />
 
