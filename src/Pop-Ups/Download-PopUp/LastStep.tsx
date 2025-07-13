@@ -11,6 +11,8 @@ import { DownloadSettingsApi, GlobalSettingsApi } from "../../api/settings/api";
 import TitleLabel from "../../pages/Settings-01/Settings-Categories/Components/UI/TitleLabel/TitleLabel";
 import { TorrentApi } from "../../api/bittorrent/api";
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
+import { formatBytes, toTitleCase, toTitleCaseExceptions } from "../../helpers/format";
+import LoadingPage from "../../pages/LoadingPage-01/LoadingPage";
 
 const downloadSettingsInst = new DownloadSettingsApi();
 const settingsInst = new GlobalSettingsApi();
@@ -34,13 +36,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             Others: Record<string, string>;
         }>({ Languages: {}, Others: {} });
         const [uncategorizedFiles, setUncategorizedFiles] = createSignal<string[]>([]);
-        const [installationSettings, setInstallationSettings] = createSignal<InstallationSettings>({
-            auto_clean: false,
-            auto_install: false,
-            two_gb_limit: false,
-            directx_install: false,
-            microsoftcpp_install: false
-        });
+        const [loading, setLoading] = createSignal(true);
 
         type LanguageMap = {
             [key: string]: string;
@@ -54,7 +50,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         onMount(async () => {
             try {
                 let downloadSettings = await downloadSettingsInst.getDownloadSettings();
-                let settings = await settingsInst.getInstallationSettings();
                 if (downloadSettings.status === "ok") {
                     console.log("settings: ", downloadSettings.data)
                 }
@@ -75,12 +70,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     );
                 }
 
-
-                setInstallationSettings(settings)
-
             } catch (error) {
                 console.error("Error initializing settings:", error);
                 await message("Failed to load download settings", { title: "Error", kind: "error" });
+            } finally {
+                setLoading(false);
             }
         });
 
@@ -103,7 +97,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             if (currentSettings.status === "ok") {
                 let path = currentSettings.data.general.download_dir;
                 //todo: add file list
-                torrentInst.downloadTorrent(props.downloadedGame.magnetlink, props.downloadedGame, path);
+                torrentInst.downloadTorrent(props.downloadedGame.magnetlink, props.downloadedGame, Array.from(selectedFileIndices()), path);
                 props.onFinish?.();
             } else {
                 await message('Error downloading !' + currentSettings.error, { title: 'FitLauncher', kind: 'error' })
@@ -192,22 +186,28 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             return categorizedFiles;
         };
 
-
-        createEffect(() => {
-            console.log("list files: ", selectedFileIndices())
-        })
         const FileItem = (props: {
-            originalName: string, displayName: string, index: number, selectedFileIndices: Accessor<Set<number>
-            >, toggleFileSelection: (index: number) => any
+            originalName: string;
+            displayName: string;
+            index: number;
+            selectedFileIndices: Accessor<Set<number>>;
+            toggleFileSelection: (index: number) => any;
         }) => {
-            const fileIndex = listFiles().findIndex(f => f.file_name === props.originalName);
+            const file = listFiles().find(f => f.file_name === props.originalName);
+            const size = file ? formatBytes(file.length) : "-";
+
             return (
                 <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50">
-                    <span class="text-sm text-text truncate max-w-[70%]">{props.displayName}</span>
-                    <Checkbox
-                        checked={selectedFileIndices().has(fileIndex)}
-                        action={() => toggleFileSelection(fileIndex)}
-                    />
+                    <span class="text-sm text-text truncate max-w-[55%]">{props.displayName}</span>
+                    <div class="flex items-center gap-3">
+                        <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">
+                            {size}
+                        </div>
+                        <Checkbox
+                            checked={props.selectedFileIndices().has(props.index)}
+                            action={() => props.toggleFileSelection(props.index)}
+                        />
+                    </div>
                 </label>
             );
         };
@@ -237,77 +237,79 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                             </h3>
                         </div>
                         <div class="px-2">
-                            <Show when={listFiles().length !== 0} fallback={
-                                <div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 mt-2 mx-2">
-                                    No files were detected in this torrent. This may happen if the game uses an old format without Pastebin support.
-                                    A future update will fix this for older titles.
-                                </div>
-                            }>
-                                <div class="divide-y divide-secondary-20 -mx-2">
-                                    {/* Show categorized files (Languages and Optional) */}
-                                    <For each={Object.entries(categorizedFiles().Languages)}>
-                                        {([originalName, displayName], index) => (
-                                            <FileItem
-                                                originalName={originalName}
-                                                displayName={displayName}
-                                                index={findFileIndex(originalName)}
-                                                selectedFileIndices={selectedFileIndices}
-                                                toggleFileSelection={toggleFileSelection}
-                                            />
-                                        )}
-                                    </For>
-
-                                    <For each={Object.entries(categorizedFiles().Others)}>
-                                        {([originalName, displayName], index) => (
-                                            <FileItem
-                                                originalName={originalName}
-                                                displayName={displayName}
-                                                index={findFileIndex(originalName)}
-                                                selectedFileIndices={selectedFileIndices}
-                                                toggleFileSelection={toggleFileSelection}
-                                            />
-                                        )}
-                                    </For>
-
-                                    {/* Advanced options toggle */}
-                                    <div class="px-4 py-2">
-                                        <button
-                                            onClick={() => setShowAdvanced(!showAdvanced())}
-                                            class="text-xs text-accent hover:underline flex items-center gap-1"
-                                        >
-                                            <Show when={showAdvanced()} fallback={
-                                                <>
-                                                    <ChevronRight class="w-3 h-3" />
-                                                    Show advanced options
-                                                </>
-                                            }>
-                                                <>
-                                                    <ChevronDown class="w-3 h-3" />
-                                                    Hide advanced options
-                                                </>
-                                            </Show>
-                                        </button>
+                            <Show when={!loading()} fallback={<LoadingPage />}>
+                                <Show when={listFiles().length !== 0} fallback={
+                                    <div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">
+                                        No files were detected in this torrent. This may happen if the game uses an old format without Pastebin support.
+                                        A future update will fix this for older titles.
                                     </div>
-
-                                    {/* Advanced files (hidden by default) */}
-                                    <Show when={showAdvanced()}>
-                                        <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
-                                            <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" />
-                                            Warning: Only modify these if you know what you're doing
-                                        </div>
-                                        <For each={uncategorizedFiles()}>
-                                            {(fileName, index) => (
+                                }>
+                                    <div class="divide-y divide-secondary-20 -mx-2">
+                                        {/* Show categorized files (Languages and Optional) */}
+                                        <For each={Object.entries(categorizedFiles().Languages)}>
+                                            {([originalName, displayName], _index) => (
                                                 <FileItem
-                                                    originalName={fileName}
-                                                    displayName={fileName}
-                                                    index={findFileIndex(fileName)}
+                                                    originalName={originalName}
+                                                    displayName={toTitleCaseExceptions(displayName)}
+                                                    index={findFileIndex(originalName)}
                                                     selectedFileIndices={selectedFileIndices}
                                                     toggleFileSelection={toggleFileSelection}
                                                 />
                                             )}
                                         </For>
-                                    </Show>
-                                </div>
+
+                                        <For each={Object.entries(categorizedFiles().Others)}>
+                                            {([originalName, displayName], _index) => (
+                                                <FileItem
+                                                    originalName={originalName}
+                                                    displayName={toTitleCaseExceptions(displayName)}
+                                                    index={findFileIndex(originalName)}
+                                                    selectedFileIndices={selectedFileIndices}
+                                                    toggleFileSelection={toggleFileSelection}
+                                                />
+                                            )}
+                                        </For>
+
+                                        {/* Advanced options toggle */}
+                                        <div class="px-4 py-2">
+                                            <button
+                                                onClick={() => setShowAdvanced(!showAdvanced())}
+                                                class="text-xs text-accent hover:underline flex items-center gap-1"
+                                            >
+                                                <Show when={showAdvanced()} fallback={
+                                                    <>
+                                                        <ChevronRight class="w-3 h-3" />
+                                                        Show advanced options
+                                                    </>
+                                                }>
+                                                    <>
+                                                        <ChevronDown class="w-3 h-3" />
+                                                        Hide advanced options
+                                                    </>
+                                                </Show>
+                                            </button>
+                                        </div>
+
+                                        {/* Advanced files (hidden by default) */}
+                                        <Show when={showAdvanced()}>
+                                            <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
+                                                <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" />
+                                                Warning: Only modify these if you know what you're doing
+                                            </div>
+                                            <For each={uncategorizedFiles()}>
+                                                {(fileName, index) => (
+                                                    <FileItem
+                                                        originalName={fileName}
+                                                        displayName={fileName}
+                                                        index={findFileIndex(fileName)}
+                                                        selectedFileIndices={selectedFileIndices}
+                                                        toggleFileSelection={toggleFileSelection}
+                                                    />
+                                                )}
+                                            </For>
+                                        </Show>
+                                    </div>
+                                </Show>
                             </Show>
                         </div>
                     </div>

@@ -111,6 +111,17 @@ pub async fn list_torrent_files(
 
 #[tauri::command]
 #[specta]
+pub async fn magnet_to_file(
+    librqbit_state: tauri::State<'_, LibrqbitSession>,
+    magnet: String,
+) -> Result<Vec<u8>, TorrentApiError> {
+    let info = &librqbit_state.get_metadata_only(magnet).await?;
+
+    Ok(info.torrent_bytes.clone().to_vec())
+}
+
+#[tauri::command]
+#[specta]
 pub async fn get_download_settings(
     state: tauri::State<'_, TorrentSession>,
 ) -> Result<FitLauncherConfigV2, TorrentApiError> {

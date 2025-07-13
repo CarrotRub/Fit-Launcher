@@ -168,12 +168,13 @@ const DownloadGameUUIDPage = () => {
   }
 
   return (
-    <div class="min-h-screen min-w-screen bg-background text-text">
+    <div class="min-h-full min-w-screen bg-background text-text flex items-center justify-center">
+
 
       {loading() ? (
         <LoadingPage />
       ) : gameInfo() ? (
-        <div class=" mx-auto pb-8">
+        <div class=" mx-auto   pb-8">
           {/* Hero Section */}
           <div
             class="relative h-128 w-full bg-cover bg-center mb-6 overflow-hidden transition-all duration-1000 ease-in-out"

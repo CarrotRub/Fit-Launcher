@@ -83,25 +83,31 @@ export class TorrentApi {
   async downloadTorrent(
     magnet: string,
     downloadedGame: DownloadedGame,
+    listFiles: number[],
     path: string
   ): Promise<Result<string, Aria2Error>> {
-    const res = await commands.aria2StartDownload(magnet, path, "");
+    const bytes = await commands.magnetToFile(magnet);
 
-    if (res.status === "ok") {
-      const gid = res.data as Gid;
+    if (bytes.status === "ok") {
+      const res = await commands.aria2StartTorrent(bytes.data, path, listFiles);
 
-      const list = this.gameList.get(gid) ?? [];
-      this.gameList.set(gid, [...list, downloadedGame]);
-      console.log(this.gameList);
-      if (this.gameList.size === 0) {
-        console.warn("Warning: Tried to save empty gameList");
+      if (res.status === "ok") {
+        const gid = res.data as Gid;
+
+        const list = this.gameList.get(gid) ?? [];
+        this.gameList.set(gid, [...list, downloadedGame]);
+        console.log(this.gameList);
+        if (this.gameList.size === 0) {
+          console.warn("Warning: Tried to save empty gameList");
+        }
+        await this.saveGameListToDisk();
+
+        return { status: "ok", data: res.data };
       }
-      await this.saveGameListToDisk();
 
-      return { status: "ok", data: res.data };
+      return res;
     }
-
-    return res;
+    return { status: "error", error: "NotConfigured" };
   }
 
   async getTorrentFileList(

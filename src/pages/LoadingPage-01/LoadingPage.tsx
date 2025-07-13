@@ -1,28 +1,25 @@
 import { JSX } from "solid-js";
 
 function LoadingPage(): JSX.Element {
-    return (
-        <div class="fixed inset-0 flex items-center justify-center">
-            <div class="banter-loader">
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-                <div class="banter-loader__box"></div>
-            </div>
-            <style>{`
+  return (
+    <div class="flex items-center justify-center py-12">
+      <div class="banter-loader">
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+        <div class="banter-loader__box"></div>
+      </div>
+      <style>{`
                         .banter-loader {
-                          position: absolute;
-                          left: 50%;
-                          top: 50%;
-                          width: 72px;
-                          height: 72px;
-                          margin-left: -36px;
-                          margin-top: -36px;
+                            display: grid;
+                            grid-template-columns: repeat(3, 20px);
+                            grid-template-rows: repeat(3, 20px);
+                            gap: 6px;
                         }
 
                         .banter-loader__box {
@@ -509,9 +506,9 @@ function LoadingPage(): JSX.Element {
                           animation: moveBox-9 4s infinite;
                         }
                         `}
-            </style>
-        </div>
-    );
+      </style>
+    </div>
+  );
 }
 
 export default LoadingPage;

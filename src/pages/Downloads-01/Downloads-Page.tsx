@@ -15,6 +15,7 @@ import {
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
 import { InstallationApi } from "../../api/installation/api";
+import { formatBytes } from "../../helpers/format";
 
 const torrentApi = new TorrentApi();
 const libraryApi = new LibraryApi();
@@ -275,13 +276,7 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
     }
 
 
-    function formatBytes(bytes?: number): string {
-        if (!bytes || bytes <= 0) return "-";
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
-        if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-        return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-    }
+
 
 
     return (
