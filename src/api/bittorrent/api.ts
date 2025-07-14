@@ -1,24 +1,29 @@
 import { appDataDir } from "@tauri-apps/api/path";
 import {
   Aria2Error,
+  Error,
   commands,
   DownloadedGame,
   Game,
   GlobalStat,
   Result,
   Status,
+  FileInfo,
+  TorrentApiError,
 } from "../../bindings";
 import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 export type Gid = string;
 
 export class TorrentApi {
+  gameList = new Map<Gid, DownloadedGame[]>();
+
   private async getSavePath(): Promise<string> {
     console.log((await appDataDir()) + "\\torrent_game_map.json");
     return (await appDataDir()) + "\\torrent_game_map.json";
   }
 
-  private async saveGameListToDisk() {
+  async saveGameListToDisk() {
     const savePath = await this.getSavePath();
     const obj: Record<Gid, DownloadedGame[]> = Object.fromEntries(
       this.gameList
@@ -41,7 +46,30 @@ export class TorrentApi {
     }
   }
 
-  gameList = new Map<Gid, DownloadedGame[]>();
+  private uninstalledPath: string | undefined;
+  uninstalledGames = new Map<Gid, DownloadedGame>();
+
+  private async getUninstalledPath(): Promise<string> {
+    if (!this.uninstalledPath) {
+      this.uninstalledPath = (await appDataDir()) + "\\uninstalled_games.json";
+    }
+    return this.uninstalledPath;
+  }
+
+  async saveUninstalledToDisk() {
+    const path = await this.getUninstalledPath();
+    const obj = Object.fromEntries(this.uninstalledGames);
+    await writeTextFile(path, JSON.stringify(obj, null, 2));
+  }
+
+  async loadUninstalledFromDisk() {
+    const path = await this.getUninstalledPath();
+    if (await exists(path)) {
+      const content = await readTextFile(path);
+      const obj: Record<Gid, DownloadedGame> = JSON.parse(content);
+      this.uninstalledGames = new Map(Object.entries(obj));
+    }
+  }
 
   /**
    * Start a torrent download and remember it in `gameList`.
@@ -55,25 +83,37 @@ export class TorrentApi {
   async downloadTorrent(
     magnet: string,
     downloadedGame: DownloadedGame,
+    listFiles: number[],
     path: string
   ): Promise<Result<string, Aria2Error>> {
-    const res = await commands.aria2StartDownload(magnet, path, "");
+    const bytes = await commands.magnetToFile(magnet);
 
-    if (res.status === "ok") {
-      const gid = res.data as Gid;
+    if (bytes.status === "ok") {
+      const res = await commands.aria2StartTorrent(bytes.data, path, listFiles);
 
-      const list = this.gameList.get(gid) ?? [];
-      this.gameList.set(gid, [...list, downloadedGame]);
-      console.log(this.gameList);
-      if (this.gameList.size === 0) {
-        console.warn("Warning: Tried to save empty gameList");
+      if (res.status === "ok") {
+        const gid = res.data as Gid;
+
+        const list = this.gameList.get(gid) ?? [];
+        this.gameList.set(gid, [...list, downloadedGame]);
+        console.log(this.gameList);
+        if (this.gameList.size === 0) {
+          console.warn("Warning: Tried to save empty gameList");
+        }
+        await this.saveGameListToDisk();
+
+        return { status: "ok", data: res.data };
       }
-      await this.saveGameListToDisk();
 
-      return { status: "ok", data: res.data };
+      return res;
     }
+    return { status: "error", error: "NotConfigured" };
+  }
 
-    return res;
+  async getTorrentFileList(
+    magnet: string
+  ): Promise<Result<FileInfo[], TorrentApiError>> {
+    return await commands.listTorrentFiles(magnet);
   }
 
   async getTorrentListActive(): Promise<Result<Status[], Aria2Error>> {

@@ -105,7 +105,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
           network: (
             <NetworkPart
               settings={() => globalTorrentConfig()?.network!}
-              handleSwitchCheckChange={handleSwitchCheckChange}
+              handleTextCheckChange={handleTextCheckChange}
             />
           ),
           bittorrent: (

@@ -168,12 +168,13 @@ const DownloadGameUUIDPage = () => {
   }
 
   return (
-    <div class="min-h-screen min-w-screen bg-background text-text">
+    <div class="min-h-full min-w-screen bg-background text-text flex items-center justify-center">
+
 
       {loading() ? (
         <LoadingPage />
       ) : gameInfo() ? (
-        <div class=" mx-auto pb-8">
+        <div class=" mx-auto   pb-8">
           {/* Hero Section */}
           <div
             class="relative h-128 w-full bg-cover bg-center mb-6 overflow-hidden transition-all duration-1000 ease-in-out"
@@ -276,15 +277,15 @@ const DownloadGameUUIDPage = () => {
                   <div class="flex items-start gap-2">
                     <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
-                      <p class="text-xs text-muted">Original Size</p>
-                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
+                      <p class="text-xs text-muted">Repack Size</p>
+                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
                     </div>
                   </div>
                   <div class="flex items-start gap-2">
                     <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
-                      <p class="text-xs text-muted">Repack Size</p>
-                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
+                      <p class="text-xs text-muted">Original Size</p>
+                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
                     </div>
                   </div>
                 </div>

@@ -20,53 +20,71 @@ export class LibraryApi {
     return await commands.getGamesToDownload();
   }
 
+  async hasDownloadedGame(game: DownloadedGame): Promise<boolean> {
+    let result = await commands.getDownloadedGames();
+    if (result.includes(game)) {
+      return true;
+    }
+    return false;
+  }
+
   async addGameToCollection(
     collectionName: string,
     gameData: Game
   ): Promise<Result<null, string>> {
     return await commands.addGameToCollection(collectionName, gameData);
   }
+
   async createCollection(
     collectionName: string,
     gamesList: Game[] | null
   ): Promise<Result<null, string>> {
     return await commands.createCollection(collectionName, gamesList);
   }
+
   async addDownloadedGame(game: DownloadedGame): Promise<Result<null, string>> {
     return await commands.addDownloadedGame(game);
   }
+
   async removeDownloadedGame(gameTitle: string): Promise<Result<null, string>> {
     return await commands.removeDownloadedGame(gameTitle);
   }
+
   async removeGameFromCollection(
     gameTitle: string,
     collectionName: string
   ): Promise<Result<null, string>> {
     return await commands.removeGameFromCollection(gameTitle, collectionName);
   }
+
   async removeGameToDownload(gameTitle: string): Promise<Result<null, string>> {
     return await commands.removeGameToDownload(gameTitle);
   }
+
   async removeCollection(
     collectionName: string
   ): Promise<Result<null, string>> {
     return await commands.removeCollection(collectionName);
   }
+
   async runExecutable(path: string): Promise<void> {
     return await commands.startExecutable(path);
   }
+
   async getExecutableInfo(
     pathToExe: string,
     pathToFolder: string
   ): Promise<ExecutableInfo | null> {
     return await commands.executableInfoDiscovery(pathToExe, pathToFolder);
   }
+
   async updateGameExecutableInfo(gameTitle: string, exec_info: ExecutableInfo) {
     return await commands.updateDownloadedGameExecutableInfo(
       gameTitle,
       exec_info
     );
   }
+
   downloadedGameToGame(game: DownloadedGame): Game {
     return {
       title: game.title,
@@ -75,9 +93,10 @@ export class LibraryApi {
       magnetlink: game.magnetlink,
       href: game.href,
       tag: game.tag,
-      pastebin: '',
+      pastebin: "",
     };
   }
+
   discoveryGameToGame(game: DiscoveryGame): Game {
     return {
       title: game.game_title,
@@ -86,9 +105,10 @@ export class LibraryApi {
       magnetlink: game.game_magnetlink,
       href: game.game_href,
       tag: game.game_tags,
-      pastebin: game.game_torrent_paste_link
+      pastebin: game.game_torrent_paste_link,
     };
   }
+
   gameToDownloadedGame(game: Game): DownloadedGame {
     const executableInfo: ExecutableInfo = {
       executable_path: "",

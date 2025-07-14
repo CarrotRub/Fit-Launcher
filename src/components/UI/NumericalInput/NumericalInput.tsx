@@ -58,7 +58,7 @@ export default function NumericalInput(props: NumericalInputProps) {
 
                 {/* Stepper Controls */}
                 <div class={`
-                    absolute right-[2px] top-0 h-full flex flex-col
+                    absolute right-0 top-0 h-full flex flex-col
                     border-l border-secondary-20
                     transition-opacity duration-150
                     opacity-100

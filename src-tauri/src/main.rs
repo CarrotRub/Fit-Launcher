@@ -13,6 +13,7 @@ use fit_launcher_config::settings::creation::create_installation_settings_file;
 use fit_launcher_scraping::discovery::get_100_games_unordered;
 use fit_launcher_scraping::get_sitemaps_website;
 use fit_launcher_scraping::global::functions::run_all_scrapers;
+use fit_launcher_torrent::LibrqbitSession;
 use fit_launcher_torrent::functions::ARIA2_DAEMON;
 use fit_launcher_torrent::functions::TorrentSession;
 use lru::LruCache;
@@ -26,12 +27,14 @@ use std::time::Instant;
 use tauri::Emitter;
 use tauri::Listener;
 use tauri::Manager;
+use tauri::async_runtime::block_on;
 use tauri::async_runtime::spawn;
 use tauri::menu::Menu;
 use tauri::menu::MenuItem;
 use tauri::tray::TrayIconBuilder;
 use tauri_helper::specta_collect_commands;
 use tokio::sync::Mutex;
+use tokio::task::block_in_place;
 use tracing::{error, info, warn};
 pub mod utils;
 pub use game_info::*;
@@ -229,7 +232,12 @@ async fn start() {
             let current_app_handle = app.app_handle().clone();
 
             let app_handle = app.handle().clone();
-
+            let session = app.state::<TorrentSession>().clone();
+            block_in_place(|| {
+                block_on(async {
+                    session.init_client().await;
+                });
+            });
             let _scraping_failed_event = app_handle.clone();
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_app_i = MenuItem::with_id(app, "show_app", "Show App", true, None::<&str>)?;
@@ -252,16 +260,15 @@ async fn start() {
                         }
 
                         PROCESSING.store(true, Ordering::Release);
+                        let session = app.state::<TorrentSession>();
 
-                        if let Some((close_tx, done_rx)) = ARIA2_DAEMON.lock().take() {
-                            let _ = close_tx.send(());
-                            std::thread::spawn(move || {
-                                let _ = done_rx.blocking_recv(); // wait in background
-                                std::process::exit(0);
-                            });
-                        } else {
-                            std::process::exit(0);
-                        }
+                        // Use block_in_place to run blocking code safely inside Tauri's event loop
+                        block_in_place(|| {
+                            block_on(async {
+                                session.shutdown().await;
+                            })
+                        });
+                        std::process::exit(0);
                     }
                     "show_app" => {
                         info!("show app menu item was clicked");
@@ -414,6 +421,7 @@ async fn start() {
         .invoke_handler(tauri_helper::tauri_collect_commands!())
         .manage(image_cache)
         .manage(TorrentSession::new().await)
+        .manage(LibrqbitSession::new().await)
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {

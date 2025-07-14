@@ -11,6 +11,7 @@ use tracing::{error, info};
 
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
+use crate::handler::get_torrent_idx_from_url;
 use crate::model::FileInfo;
 use fit_launcher_ui_automation::mighty_automation::windows_ui_automation::{
     automate_until_download, start_executable_components_args,
@@ -20,7 +21,7 @@ use super::*;
 
 #[tauri::command]
 #[specta]
-pub async fn download_torrent_from_paste(
+pub async fn decrypt_torrent_from_paste(
     paste_link: String,
 ) -> Result<Vec<u8>, fitgirl_decrypt::Error> {
     let paste = Paste::parse_url(&paste_link)?;
@@ -45,9 +46,7 @@ pub async fn download_torrent_from_paste(
     Ok(torrent)
 }
 
-#[tauri::command]
-#[specta]
-pub async fn list_torrent_files(torrent: Vec<u8>) -> Result<Vec<FileInfo>, String> {
+pub async fn list_torrent_files_local(torrent: Vec<u8>) -> Result<Vec<FileInfo>, String> {
     let torrent =
         torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
 
@@ -72,6 +71,62 @@ pub async fn get_torrent_hash(torrent: Vec<u8>) -> Result<String, String> {
     let torrent =
         torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
     Ok(torrent.info_hash.as_string())
+}
+
+
+#[tauri::command]
+#[specta]
+pub async fn list_torrent_files(
+    librqbit_state: tauri::State<'_, LibrqbitSession>,
+    magnet: String,
+) -> Result<Vec<FileInfo>, TorrentApiError> {
+    let info = &librqbit_state.get_metadata_only(magnet).await?.info;
+
+    let mut files = Vec::new();
+
+    if let Some(multi) = &info.files {
+        //  convert each file's relative path (Vec<BufType>) to PathBuf
+        for (i, file) in multi.iter().enumerate() {
+            // Join the relative path parts as strings into PathBuf
+            let file_path = file
+                .path
+                .iter()
+                .map(|part| std::str::from_utf8(part).unwrap_or("<invalid utf8>"))
+                .collect::<std::path::PathBuf>();
+
+            files.push(FileInfo {
+                file_name: file_path,
+                length: file.length,
+                file_index: i,
+            });
+        }
+    } else if let Some(length) = info.length {
+        let file_name = info
+            .name
+            .as_ref()
+            .map(|name_bytes| std::str::from_utf8(name_bytes).unwrap_or("unnamed"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("unnamed"));
+
+        files.push(FileInfo {
+            file_name,
+            length,
+            file_index: 0,
+        });
+    }
+
+    Ok(files)
+}
+
+#[tauri::command]
+#[specta]
+pub async fn magnet_to_file(
+    librqbit_state: tauri::State<'_, LibrqbitSession>,
+    magnet: String,
+) -> Result<Vec<u8>, TorrentApiError> {
+    let info = &librqbit_state.get_metadata_only(magnet).await?;
+
+    Ok(info.torrent_bytes.clone().to_vec())
 }
 
 #[tauri::command]

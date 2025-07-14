@@ -23,9 +23,10 @@ fit-launcher-ui-automation = { workspace = true }
 fit-launcher-config = { workspace = true }
 fitgirl-decrypt = { workspace = true }
 once_cell = { workspace = true }
-
+rand = { workspace = true }
+librqbit = "8.1.1"
 librqbit-core = { workspace = true }
 librqbit-buffers = { workspace = true }
-
+lazy_static = "1.5.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

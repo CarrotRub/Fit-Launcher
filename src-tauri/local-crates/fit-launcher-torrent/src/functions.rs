@@ -6,6 +6,7 @@ use std::{
     ffi::OsStr,
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter},
+    net::TcpListener,
     path::{Path, PathBuf},
     process::Command,
     sync::Arc,
@@ -21,8 +22,11 @@ use tracing::{error, info, warn};
 
 use crate::{FitLauncherConfigV2, config::FitLauncherConfigAria2, errors::TorrentApiError};
 
-type AriaDaemonType = Mutex<Option<(Sender<()>, Receiver<()>)>>;
-pub static ARIA2_DAEMON: AriaDaemonType = Mutex::new(None);
+type AriaDaemonType = Arc<Mutex<Option<(Sender<()>, Receiver<()>)>>>;
+lazy_static::lazy_static! {
+    pub static ref ARIA2_DAEMON: AriaDaemonType =
+        Arc::new(Mutex::new(None));
+}
 
 struct StateShared {
     config: FitLauncherConfigV2,
@@ -132,58 +136,117 @@ pub async fn aria2_client_from_config(
     } = &config.rpc;
 
     let download_location = &config.general.download_dir;
+    let handles = {
+        let mut guard = ARIA2_DAEMON.lock();
+        guard.take()
+    };
 
-    if *start_daemon && ARIA2_DAEMON.lock().is_none() {
+    if let Some((close_tx, done_rx)) = handles {
+        let connect_result =
+            aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+                .await;
+
+        match connect_result {
+            Ok(client) => {
+                ARIA2_DAEMON.lock().replace((close_tx, done_rx));
+                return Ok(client);
+            }
+            Err(e) => {
+                warn!(
+                    "Existing aria2 connection failed, attempting to restart: {}",
+                    e
+                );
+                if close_tx.send(()).is_ok() {
+                    let _ = done_rx.await;
+                    sleep(Duration::from_secs(1)).await;
+                } else {
+                    warn!("Failed to send shutdown signal to aria2 daemon");
+                }
+            }
+        }
+    }
+
+    if *start_daemon {
         let exec = if cfg!(windows) {
             current_exe().unwrap().parent().unwrap().join("aria2c.exe")
         } else {
             PathBuf::from("aria2c")
         };
-        let mut child = Command::new(exec)
-            .args(build_aria2_args(config, Path::new(&session_path.as_ref())))
-            .current_dir(download_location)
-            .spawn()?;
 
-        let client = 'retry: {
-            let mut last_err = None;
-            for _ in 0..10 {
-                match aria2_ws::Client::connect(
-                    &format!("ws://127.0.0.1:{port}/jsonrpc"),
-                    token.as_deref(),
-                )
-                .await
-                {
-                    Ok(client) => break 'retry Ok(client),
-                    Err(e) => {
-                        last_err = Some(e);
-                        sleep(Duration::from_millis(300)).await;
+        let mut current_port = *port;
+        let mut max_retries = 10;
+        let client = loop {
+            let mut child = match Command::new(&exec)
+                .args(build_aria2_args(config, Path::new(&session_path.as_ref())))
+                .current_dir(download_location)
+                .spawn()
+            {
+                Ok(child) => child,
+                Err(e) => {
+                    if max_retries == 0 {
+                        return Err(e).context("Failed to start aria2c after multiple attempts");
                     }
+                    max_retries -= 1;
+                    current_port = find_available_port(current_port).await;
+                    warn!(
+                        "Failed to start aria2c on port {}, trying {}: {}",
+                        port, current_port, e
+                    );
+                    continue;
+                }
+            };
+
+            match aria2_ws::Client::connect(
+                &format!("ws://127.0.0.1:{current_port}/jsonrpc"),
+                token.as_deref(),
+            )
+            .await
+            {
+                Ok(client) => break client,
+                Err(e) => {
+                    if max_retries == 0 {
+                        let _ = child.kill();
+                        return Err(e)
+                            .context("Failed to connect to aria2c after multiple attempts");
+                    }
+                    max_retries -= 1;
+
+                    if let Err(kill_err) = child.kill() {
+                        warn!("Failed to kill aria2c process: {}", kill_err);
+                    }
+
+                    current_port = find_available_port(current_port).await;
+                    warn!(
+                        "Failed to connect to aria2c on port {}, trying {}: {}",
+                        port, current_port, e
+                    );
+
+                    sleep(Duration::from_millis(500)).await;
+                    continue;
                 }
             }
-            Err(anyhow::anyhow!(
-                "aria2c failed to start after retries: {:?}",
-                last_err
-            ))
-        }?;
+        };
 
-        let (close_tx, close_rx) = channel();
-        let (done_tx, done_rx) = channel();
+        let (close_tx, close_rx) = channel::<()>();
+        let (done_tx, done_rx) = channel::<()>();
 
         let client_clone = client.clone();
         tokio::task::spawn(async move {
             match close_rx.await {
-                Ok(_) => {
-                    let _ = client_clone.force_shutdown().await;
-                    let _ = child.wait();
+                Ok(()) => {
+                    if let Err(e) = client_clone.force_shutdown().await {
+                        warn!("Failed to shutdown aria2 gracefully: {}", e);
+                    }
+
                     let _ = done_tx.send(());
                 }
                 Err(_) => {
-                    error!("close_tx closed unexpectedly, fail to close aria2 gracefully");
+                    warn!("Shutdown signal dropped before reaching aria2 task");
                 }
             }
         });
 
-        let _ = ARIA2_DAEMON.lock().replace((close_tx, done_rx));
+        ARIA2_DAEMON.lock().replace((close_tx, done_rx));
         return Ok(client);
     }
 
@@ -192,7 +255,44 @@ pub async fn aria2_client_from_config(
         .context("Could not connect to already running aria2 RPC server")
 }
 
+async fn find_available_port(start_port: u16) -> u16 {
+    let mut port = start_port + 1;
+    for _ in 0..100 {
+        if is_port_available(port) {
+            return port;
+        }
+        port = port.wrapping_add(1);
+    }
+
+    port = 49152 + (rand::random::<u16>() % 16384);
+    port
+}
+
+fn is_port_available(port: u16) -> bool {
+    TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
+unsafe impl Send for TorrentSession {}
+unsafe impl Sync for TorrentSession {}
+
 impl TorrentSession {
+    pub async fn init_client(&self) {
+        let config = self.get_config().await;
+        let config_dir = directories::BaseDirs::new()
+            .expect("Could not determine base directories")
+            .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .join("com.fitlauncher.carrotrub");
+
+        let aria2_session = config_dir.join("aria2.session");
+
+        if let Ok(client) = aria2_client_from_config(&config, aria2_session).await {
+            let mut g = self.shared.write();
+            if let Some(shared) = g.as_mut() {
+                shared.aria2_client = Some(client);
+            }
+        }
+    }
+
     pub async fn new() -> Self {
         warn!("Starting Initialization");
         let config_dir = directories::BaseDirs::new()
@@ -200,7 +300,6 @@ impl TorrentSession {
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
             .join("com.fitlauncher.carrotrub");
 
-        let aria2_session = config_dir.join("aria2.session");
         let config_filename = config_dir
             .join("torrentConfig")
             .join("config.json")
@@ -226,16 +325,7 @@ impl TorrentSession {
                 Err(e) => error!("Error writing default config: {}", e),
             }
 
-            let aria2_client = match aria2_client_from_config(&config, aria2_session).await {
-                Ok(c) => {
-                    println!("Client Found");
-                    Some(c)
-                }
-                Err(e) => {
-                    error!("Failed to connect to aria2: {:#}", e);
-                    None
-                }
-            };
+            let aria2_client = None;
 
             let shared = Arc::new(RwLock::new(Some(StateShared {
                 config,
@@ -266,18 +356,6 @@ impl TorrentSession {
     }
 
     pub async fn configure(&self, config: FitLauncherConfigV2) -> Result<(), TorrentApiError> {
-        let config_dir = directories::BaseDirs::new()
-            .expect("Could not determine base directories")
-            .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
-            .join("com.fitlauncher.carrotrub");
-        let aria2_session = config_dir.join("aria2.session");
-
-        let aria2_client = Some(
-            aria2_client_from_config(&config, aria2_session)
-                .await
-                .map_err(|e| TorrentApiError::Aria2StartupError(e.to_string()))?,
-        );
-
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }
@@ -285,7 +363,7 @@ impl TorrentSession {
         let mut g = self.shared.write();
         *g = Some(StateShared {
             config,
-            aria2_client,
+            aria2_client: None, // Client will be initialized separately from now on, no more new on config
         });
         Ok(())
     }
@@ -299,6 +377,18 @@ impl TorrentSession {
                 "Tried to somehow get config before any initialization, has returned default config"
             );
             FitLauncherConfigV2::default()
+        }
+    }
+
+    pub async fn shutdown(&self) {
+        let handles = {
+            let mut guard = ARIA2_DAEMON.lock();
+            guard.take()
+        };
+
+        if let Some((close_tx, done_rx)) = handles {
+            let _ = close_tx.send(());
+            let _ = done_rx.await;
         }
     }
 }
