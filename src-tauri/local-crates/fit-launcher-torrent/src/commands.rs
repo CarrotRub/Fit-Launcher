@@ -67,6 +67,15 @@ pub async fn list_torrent_files_local(torrent: Vec<u8>) -> Result<Vec<FileInfo>,
 
 #[tauri::command]
 #[specta]
+pub async fn get_torrent_hash(torrent: Vec<u8>) -> Result<String, String> {
+    let torrent =
+        torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
+    Ok(torrent.info_hash.as_string())
+}
+
+
+#[tauri::command]
+#[specta]
 pub async fn list_torrent_files(
     librqbit_state: tauri::State<'_, LibrqbitSession>,
     magnet: String,
