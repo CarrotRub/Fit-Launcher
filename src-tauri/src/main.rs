@@ -232,11 +232,13 @@ async fn start() {
             let current_app_handle = app.app_handle().clone();
 
             let app_handle = app.handle().clone();
-            let session = app.state::<TorrentSession>().clone();
-            block_in_place(|| {
-                block_on(async {
-                    session.init_client().await;
-                });
+            let app_session = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let session = app_session.state::<TorrentSession>();
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                if let Err(e) = session.init_client().await {
+                    error!("Error initializing Aria2 Session {:#?}", e);
+                };
             });
             let _scraping_failed_event = app_handle.clone();
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

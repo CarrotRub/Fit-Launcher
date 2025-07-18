@@ -96,7 +96,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             const currentSettings = await downloadSettingsInst.getDownloadSettings();
             if (currentSettings.status === "ok") {
                 let path = currentSettings.data.general.download_dir;
-                //todo: add file list
                 torrentInst.downloadTorrent(props.downloadedGame.magnetlink, props.downloadedGame, Array.from(selectedFileIndices()), path);
                 props.onFinish?.();
             } else {

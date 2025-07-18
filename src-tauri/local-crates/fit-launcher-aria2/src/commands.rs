@@ -1,6 +1,7 @@
 use aria2_ws::response::{GlobalStat, Status, Version};
 use fit_launcher_ddl::DirectLink;
 use specta::specta;
+use tracing::error;
 
 use crate::{
     aria2::{aria2_add_torrent, aria2_add_uri},
@@ -37,6 +38,7 @@ pub async fn aria2_start_download(
 ) -> Result<String, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     aria2_add_uri(&aria2_client, url, dir, Some(filename)).await
@@ -52,9 +54,10 @@ pub async fn aria2_start_torrent(
     dir: Option<String>,
     selected_files: Vec<usize>,
 ) -> Result<String, Aria2Error> {
-    let aria2_client = state
-        .aria2_client()
-        .map_err(|_| Aria2Error::NotConfigured)?;
+    let aria2_client = state.aria2_client().await.map_err(|e| {
+        error!("Error getting aria2 client: {e}");
+        Aria2Error::NotConfigured
+    })?;
 
     aria2_add_torrent(&aria2_client, torrent, dir, selected_files).await
 }
@@ -68,6 +71,7 @@ pub async fn aria2_pause(
 ) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     Ok(aria2_client.pause(&gid).await?)
@@ -79,6 +83,7 @@ pub async fn aria2_pause(
 pub async fn aria2_pause_all(state: tauri::State<'_, TorrentSession>) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     Ok(aria2_client.pause_all().await?)
@@ -93,6 +98,7 @@ pub async fn aria2_resume(
 ) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     Ok(aria2_client.unpause(&gid).await?)
@@ -104,6 +110,7 @@ pub async fn aria2_resume(
 pub async fn aria2_resume_all(state: tauri::State<'_, TorrentSession>) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     Ok(aria2_client.unpause_all().await?)
@@ -118,6 +125,7 @@ pub async fn aria2_remove(
 ) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     Ok(aria2_client.remove(&gid).await?)
@@ -132,6 +140,7 @@ pub async fn aria2_get_status(
 ) -> Result<Status, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let status: Status = aria2_client.tell_status(&gid).await?;
@@ -145,6 +154,7 @@ pub async fn aria2_get_list_active(
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let active = aria2_client.tell_active().await?;
@@ -158,6 +168,7 @@ pub async fn aria2_get_list_waiting(
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let active = aria2_client.tell_waiting(0, 100).await?;
@@ -171,6 +182,7 @@ pub async fn aria2_get_list_stopped(
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let active = aria2_client.tell_stopped(0, 100).await?;
@@ -185,6 +197,7 @@ pub async fn aria2_get_version(
 ) -> Result<Version, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let status = aria2_client.get_version().await?;
@@ -203,6 +216,7 @@ pub async fn aria2_task_spawn(
 ) -> Result<Vec<AriaTaskResult>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let mut results = Vec::with_capacity(direct_links.len());
@@ -240,6 +254,7 @@ pub async fn aria2_task_progress(
 ) -> Result<AriaTaskProgress, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let mut completed_length = 0;
@@ -274,6 +289,7 @@ pub async fn aria2_global_stat(
 ) -> Result<GlobalStat, Aria2Error> {
     let aria2_client = state
         .aria2_client()
+        .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
     let stat = aria2_client.get_global_stat().await?;

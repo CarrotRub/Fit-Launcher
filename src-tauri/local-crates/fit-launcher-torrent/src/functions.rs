@@ -38,6 +38,9 @@ pub struct TorrentSession {
     shared: Arc<RwLock<Option<StateShared>>>,
 }
 
+unsafe impl Send for TorrentSession {}
+unsafe impl Sync for TorrentSession {}
+
 fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
     let rdr = BufReader::new(File::open(path)?);
     let cfg: FitLauncherConfigV2 = serde_json::from_reader(rdr)?;
@@ -117,7 +120,7 @@ fn build_aria2_args(cfg: &FitLauncherConfigV2, session_path: &Path) -> Vec<Strin
     if let Some(t) = cfg.bittorrent.seed_time {
         a.push(format!("--seed-time={t}"));
     }
-
+    a.push("--bt-remove-unselected-file=true".into());
     // Session persistence --------------------------------------------------
     a.push("--save-session".into());
     a.push(session_path.display().to_string());
@@ -167,7 +170,13 @@ pub async fn aria2_client_from_config(
     }
 
     if *start_daemon {
-        let exec = if cfg!(windows) {
+        let exec = if cfg!(debug_assertions) {
+            if cfg!(windows) {
+                PathBuf::from("../../binaries/aria2c-x86_64-pc-windows-msvc")
+            } else {
+                PathBuf::from("aria2c")
+            }
+        } else if cfg!(windows) {
             current_exe().unwrap().parent().unwrap().join("aria2c.exe")
         } else {
             PathBuf::from("aria2c")
@@ -272,25 +281,60 @@ fn is_port_available(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
-unsafe impl Send for TorrentSession {}
-unsafe impl Sync for TorrentSession {}
-
 impl TorrentSession {
-    pub async fn init_client(&self) {
-        let config = self.get_config().await;
+    pub async fn init_client(&self) -> anyhow::Result<()> {
         let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
-            .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+            .config_dir()
             .join("com.fitlauncher.carrotrub");
 
         let aria2_session = config_dir.join("aria2.session");
 
-        if let Ok(client) = aria2_client_from_config(&config, aria2_session).await {
-            let mut g = self.shared.write();
-            if let Some(shared) = g.as_mut() {
-                shared.aria2_client = Some(client);
+        let config_filename = config_dir
+            .join("torrentConfig")
+            .join("config.json")
+            .to_string_lossy()
+            .to_string();
+
+        if !Path::new(&config_filename).exists() {
+            match write_config(&config_filename, &FitLauncherConfigV2::default()) {
+                Ok(_) => info!(
+                    "Default config written successfully to: {}",
+                    &config_filename
+                ),
+                Err(e) => error!("Error writing default config: {}", e),
             }
         }
+
+        let final_config = match read_config(&config_filename) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                return Err(anyhow::anyhow!("Failed to read config: {}", e));
+            }
+        };
+
+        let aria2_client = match aria2_client_from_config(&final_config, aria2_session).await {
+            Ok(c) => {
+                println!("Client Found");
+                Some(c)
+            }
+            Err(e) => {
+                error!("Failed to connect to aria2: {:#}", e);
+                None
+            }
+        };
+
+        let mut shared_guard = self.shared.write();
+        if let Some(shared) = shared_guard.as_mut() {
+            shared.aria2_client = aria2_client;
+        } else {
+            *shared_guard = Some(StateShared {
+                config: final_config,
+                aria2_client,
+            });
+        }
+
+        Ok(())
     }
 
     pub async fn new() -> Self {
@@ -344,15 +388,37 @@ impl TorrentSession {
         }
     }
 
-    pub fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
-        let g = self.shared.read();
-        if g.is_none() {
-            warn!("Shared state is uninitialized");
+    pub async fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
+        {
+            let g = self.shared.read();
+            if let Some(shared) = g.as_ref() {
+                if let Some(client) = &shared.aria2_client {
+                    return Ok(client.clone());
+                }
+            }
         }
 
-        g.as_ref()
-            .and_then(|s| s.aria2_client.clone())
-            .context("aria2 rpc server not configured")
+        warn!("Aria2 client not configured, attempting initialization...");
+
+        let config = self.get_config().await;
+        let config_dir = directories::BaseDirs::new()
+            .context("Could not determine base directories")?
+            .config_dir()
+            .join("com.fitlauncher.carrotrub");
+
+        let aria2_session = config_dir.join("aria2.session");
+        let client = aria2_client_from_config(&config, aria2_session).await?;
+
+        {
+            let mut g = self.shared.write();
+            if let Some(shared) = g.as_mut() {
+                shared.aria2_client = Some(client.clone());
+            } else {
+                return Err(anyhow::anyhow!("Shared state not initialized"));
+            }
+        }
+
+        Ok(client)
     }
 
     pub async fn configure(&self, config: FitLauncherConfigV2) -> Result<(), TorrentApiError> {
@@ -373,7 +439,7 @@ impl TorrentSession {
         if let Some(shared) = g.as_ref() {
             shared.config.clone()
         } else {
-            warn!(
+            error!(
                 "Tried to somehow get config before any initialization, has returned default config"
             );
             FitLauncherConfigV2::default()

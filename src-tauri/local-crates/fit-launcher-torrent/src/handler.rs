@@ -1,15 +1,12 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
+use std::sync::Arc;
 
 use librqbit::{
     AddTorrent, AddTorrentOptions, AddTorrentResponse, ListOnlyResponse, Magnet, Session,
-    SessionOptions, TorrentMetadata, api::TorrentIdOrHash,
+    api::TorrentIdOrHash,
 };
 use tracing::error;
 
-use crate::{errors::TorrentApiError, functions::TorrentSession};
+use crate::errors::TorrentApiError;
 
 #[derive(Clone)]
 pub struct LibrqbitSession {
@@ -31,10 +28,6 @@ impl LibrqbitSession {
         let session = &self.session;
 
         let magnet = Magnet::parse(&magnet_str).map_err(|_| TorrentApiError::InvalidMagnet)?;
-
-        let id = Magnet::as_id20(&magnet)
-            .map(TorrentIdOrHash::Hash)
-            .ok_or(TorrentApiError::InvalidMagnet)?;
 
         let response = session
             .add_torrent(

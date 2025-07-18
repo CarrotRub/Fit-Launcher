@@ -1,5 +1,6 @@
 use aria2_ws::{Client, Map, TaskOptions};
 use serde_json::Value;
+use tracing::error;
 
 use crate::error::Aria2Error;
 
@@ -31,26 +32,31 @@ pub async fn aria2_add_torrent(
     dir: Option<String>,
     select_file: impl IntoIterator<Item = usize>,
 ) -> Result<String, Aria2Error> {
-    // empty case is safe, aria2 will treat empty select-file as "*".
-    let select_file = select_file
+    // Convert to 1-based indices
+    let select_file: String = select_file
         .into_iter()
-        .map(|d| d.to_string())
-        .collect::<Vec<String>>()
+        .map(|idx| (idx + 1).to_string())
+        .collect::<Vec<_>>()
         .join(",");
-    Ok(aria2_client
-        .add_torrent(
-            torrent,
-            None,
-            Some(TaskOptions {
-                dir,
-                r#continue: Some(true),
-                extra_options: Map::from_iter(
-                    [("select-file".to_string(), Value::String(select_file))].into_iter(),
-                ),
-                ..TaskOptions::default()
-            }),
-            None,
-            None,
-        )
-        .await?)
+
+    let mut options = TaskOptions {
+        dir,
+        r#continue: Some(true),
+        extra_options: Map::new(),
+        ..TaskOptions::default()
+    };
+
+    if !select_file.is_empty() {
+        options
+            .extra_options
+            .insert("select-file".to_string(), Value::String(select_file));
+    }
+
+    aria2_client
+        .add_torrent(torrent, None, Some(options), None, None)
+        .await
+        .map_err(|e| {
+            error!("Failed to add torrent: {}", e);
+            Aria2Error::RPCError(format!("Failed to add torrent: {}", e))
+        })
 }

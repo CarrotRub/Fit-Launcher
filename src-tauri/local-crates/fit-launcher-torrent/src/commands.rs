@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use fit_launcher_ui_automation::InstallationError;
 use fitgirl_decrypt::Paste;
-use fitgirl_decrypt::base64::prelude::*;
+use fitgirl_decrypt::base64::Engine;
+use fitgirl_decrypt::base64::prelude::BASE64_STANDARD;
 
 use librqbit_core::torrent_metainfo::torrent_from_bytes;
 use specta::specta;
@@ -11,7 +12,6 @@ use tracing::{error, info};
 
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
-use crate::handler::get_torrent_idx_from_url;
 use crate::model::FileInfo;
 use fit_launcher_ui_automation::mighty_automation::windows_ui_automation::{
     automate_until_download, start_executable_components_args,
@@ -72,7 +72,6 @@ pub async fn get_torrent_hash(torrent: Vec<u8>) -> Result<String, String> {
         torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
     Ok(torrent.info_hash.as_string())
 }
-
 
 #[tauri::command]
 #[specta]

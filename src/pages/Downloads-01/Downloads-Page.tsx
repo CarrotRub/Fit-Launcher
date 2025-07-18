@@ -1,8 +1,8 @@
-import { Component, createEffect, createSignal, For, onMount } from "solid-js";
+import { Component, createEffect, createSignal, For, onMount, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { makePersisted } from "@solid-primitives/storage";
 import { message } from "@tauri-apps/plugin-dialog";
-import { DownloadedGame, Status, TaskStatus } from "../../bindings";
+import { DownloadedGame, File, Status, TaskStatus } from "../../bindings";
 import { TorrentApi } from "../../api/bittorrent/api";
 import { LibraryApi } from "../../api/library/api";
 import {
@@ -23,7 +23,14 @@ const libraryApi = new LibraryApi();
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
     const [downloading, setDownloading] = createSignal<{ game: DownloadedGame; status?: Status }[]>([]);
+    const [expandedStates, setExpandedStates] = createSignal<Record<string, boolean>>({});
 
+    const toggleExpand = (gid: string) => {
+        setExpandedStates(prev => ({
+            ...prev,
+            [gid]: !prev[gid]
+        }));
+    };
 
     async function refreshDownloads() {
         const activeRes = await torrentApi.getTorrentListActive();
@@ -98,6 +105,8 @@ const DownloadPage: Component = () => {
                 await torrentApi.saveUninstalledToDisk();
             }
 
+            //todo: delete useless files
+
         }
 
         await refreshDownloads();
@@ -160,7 +169,7 @@ const DownloadPage: Component = () => {
     return (
         <div class="min-h-screen  bg-background  p-6">
             {/* Header with glass effect */}
-            <div class="sticky top-0 z-10 bg-popup/80 backdrop-blur-sm mx-auto rounded-xl max-w-7xl p-4 mb-6 border border-secondary-20 shadow-sm">
+            <div class=" top-0 z-10 bg-popup/80 backdrop-blur-sm mx-auto rounded-xl max-w-7xl p-4 mb-6 border border-secondary-20 shadow-sm">
                 <div class="flex justify-between items-center max-w-7xl mx-auto">
                     <h1 class="text-2xl font-bold flex items-center gap-3">
                         <CloudDownload class="w-6 h-6 text-accent" />
@@ -224,7 +233,13 @@ const DownloadPage: Component = () => {
                     <div class="space-y-3">
                         <For each={downloading()}>
                             {(item) => (
-                                <Dynamic component={DownloadingGameItem} game={item.game} status={item.status} />
+                                <Dynamic
+                                    component={DownloadingGameItem}
+                                    game={item.game}
+                                    status={item.status}
+                                    isExpanded={!!expandedStates()[item.status?.gid || ""]}
+                                    onToggleExpand={() => toggleExpand(item.status?.gid || "")}
+                                />
                             )}
                         </For>
                     </div>
@@ -250,17 +265,28 @@ const DownloadPage: Component = () => {
     );
 };
 
-function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
+function DownloadingGameItem(props: {
+    game: DownloadedGame;
+    status?: Status;
+    isExpanded: boolean;
+    onToggleExpand: () => void;
+}) {
     const [progress, setProgress] = makePersisted(createSignal("0%"));
     const [numberProgress, setNumberProgress] = createSignal(0);
+    const [files, setFiles] = createSignal<File[]>([]);
 
     const libraryInst = new LibraryApi();
+
     createEffect(() => {
         const completed = props.status?.completedLength ?? 0;
         const total = props.status?.totalLength ?? 1;
         const percent = total > 0 ? (completed / total) * 100 : 0;
         setNumberProgress(Math.floor(percent));
         setProgress(`${percent.toFixed(1)}%`);
+
+        if (props.status?.files) {
+            setFiles(props.status.files);
+        }
 
         if (numberProgress() === 100) {
             libraryInst.addDownloadedGame(props.game)
@@ -275,15 +301,16 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
         return `${(bytes / 1024 ** 3).toFixed(1)} GB/s`;
     }
 
-
-
-
+    function getFileNameFromPath(path: string): string {
+        return path.split(/[\\/]/).pop() || path;
+    }
 
     return (
-        <div class="bg-popup rounded-xl border border-secondary-20 overflow-hidden transition-all hover:border-accent/50">
-            <div class="flex flex-col md:flex-row">
+        <div class="bg-popup rounded-xl h-fit border border-secondary-20 overflow-hidden transition-all hover:border-accent/50">
+            <div class="flex flex-row items-center h-full">
+
                 {/* Game Info */}
-                <div class="flex items-center p-4 md:w-1/3">
+                <div class="flex items-center p-4 md:w-1/3 border-r border-secondary-20">
                     <img
                         src={props.game.img}
                         alt={props.game.title}
@@ -299,8 +326,8 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
                 </div>
 
                 {/* Download Stats */}
-                <div class="flex flex-row items-center w-full border-t-0 border-l border-secondary-20 p-4 md:w-2/3">
-                    <div class="flex flex-row items-center justify-center gap-4 w-full">
+                <div class="flex flex-col w-full border-t-0  border-secondary-20">
+                    <div class="flex flex-row items-center justify-center gap-4 w-full p-4">
                         {/* Speed Indicators */}
                         <div class="flex gap-6 justify-center">
                             <div class="flex items-center gap-2">
@@ -320,7 +347,7 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
                         </div>
 
                         {/* Progress Bar */}
-                        <div class="flex-1 ">
+                        <div class="flex-1">
                             <div class="flex justify-between text-xs text-muted mb-1">
                                 <span>
                                     {props.status?.status === "complete"
@@ -339,14 +366,59 @@ function DownloadingGameItem(props: { game: DownloadedGame; status?: Status }) {
                             </div>
                         </div>
 
-                        {/* Action Button */}
-                        <div class="ml-auto justify-center">
-                            <DownloadActionButton status={props.status!} />
+                        {/* Action Button and Expand Button */}
+                        <div class="flex items-center gap-2">
 
+                            <DownloadActionButton status={props.status!} />
+                            <Button
+                                variant="bordered"
+                                size="sm"
+                                onClick={props.onToggleExpand}
+                                icon={
+                                    props.isExpanded ? (
+                                        <ArrowUp class="w-4 h-4" />
+                                    ) : (
+                                        <ArrowDown class="w-4 h-4" />
+                                    )
+                                }
+                            />
+                        </div>
+
+
+                    </div>
+                </div>
+
+            </div>
+
+            <Show when={files().length > 0}>
+                <div class={`overflow-x-hidden no-scrollbar transition-all duration-300 ${props.isExpanded ? "max-h-fit" : "max-h-0"}`}>
+                    <div class="border-t border-secondary-20 p-4 space-y-3">
+                        <h4 class="text-sm font-medium text-muted">Downloading Files</h4>
+                        <div class="space-y-2">
+                            <For each={files()}>
+                                {(file) => (
+                                    <div class="bg-secondary-10 rounded-lg p-3">
+                                        <div class="flex justify-between text-xs mb-1">
+                                            <span class="truncate max-w-xs">{getFileNameFromPath(file.path)}</span>
+                                            <span>{((file.completedLength / file.length) * 100).toFixed(1)}%</span>
+                                        </div>
+                                        <div class="w-full h-1.5 bg-secondary-20 rounded-full overflow-hidden">
+                                            <div
+                                                class="h-full bg-accent transition-all duration-300"
+                                                style={{ width: `${(file.completedLength / file.length) * 100}%` }}
+                                            />
+                                        </div>
+                                        <div class="flex justify-between text-xs text-muted mt-1">
+                                            <span>{formatBytes(file.completedLength)}</span>
+                                            <span>{formatBytes(file.length)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </For>
                         </div>
                     </div>
                 </div>
-            </div>
+            </Show>
         </div>
     );
 }
@@ -438,6 +510,7 @@ function DownloadActionButton({ status }: { status?: Status }) {
                 break;
             case "install":
                 if (status?.files?.[0]?.path) {
+                    // add stop to make it complete state
                     const folderPath = status.files[0].path.split(/[\\/]/).slice(0, -1).join("/");
                     const result = await installationInst.startInstallation(folderPath);
 

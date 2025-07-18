@@ -1,13 +1,8 @@
 import { JSX } from "solid-js";
 import { DownloadedGame, Game, GameCollection } from "../bindings";
-import {
-  ButtonVariants,
-  PathInputProps,
-  TextInputProps,
-} from "./components/types";
+import { PathInputProps, TextInputProps } from "./components/types";
 import { GameDetails } from "./game";
 
-export type DownloadType = "bittorrent" | "direct_download";
 export type PopupTypeVariant = "warning" | "error" | "success" | "info";
 
 export type PopupProps<T extends unknown[] = []> = {
@@ -47,6 +42,6 @@ export type AddLocalGamePopupProps<T extends any[] = any[]> = PopupProps<T> &
 export type DownloadPopupProps<T extends any[] = any[]> = PopupProps<T> & {
   downloadedGame: DownloadedGame;
   gameDetails: GameDetails;
-  downloadType: DownloadType;
+  downloadType: "bittorrent" | "direct_download";
   onFinish: () => void | Promise<void>;
 };

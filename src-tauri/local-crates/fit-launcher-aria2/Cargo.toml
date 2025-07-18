@@ -13,5 +13,6 @@ serde_json = { workspace = true }
 tauri = { workspace = true }
 specta = { workspace = true }
 tokio = { workspace = true }
-
+tracing-subscriber = { workspace = true }
+tracing = { workspace = true }
 fit-launcher-ddl = { path = "../fit-launcher-ddl" }

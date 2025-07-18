@@ -12,6 +12,7 @@ import {
   TorrentApiError,
 } from "../../bindings";
 import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { message } from "@tauri-apps/plugin-dialog";
 
 export type Gid = string;
 
@@ -90,7 +91,7 @@ export class TorrentApi {
 
     if (bytes.status === "ok") {
       const res = await commands.aria2StartTorrent(bytes.data, path, listFiles);
-
+      console.log(bytes.data);
       if (res.status === "ok") {
         const gid = res.data as Gid;
 
@@ -103,11 +104,20 @@ export class TorrentApi {
         await this.saveGameListToDisk();
 
         return { status: "ok", data: res.data };
+      } else {
+        console.warn("start torrent error");
+        await message("Error starting the torrent :" + res.error, {
+          title: "Torrent Error",
+          kind: "error",
+        });
+        console.error("status ", res.status, "error: " + res.error);
       }
 
       return res;
+    } else {
+      console.error("bytes error :", bytes.error);
+      return { status: "error", error: "NotConfigured" };
     }
-    return { status: "error", error: "NotConfigured" };
   }
 
   async getTorrentFileList(
@@ -141,7 +151,7 @@ export class TorrentApi {
       return { status: "ok", data: {} };
     }
 
-    // Fallback: try re-adding the torrent using the magnet
+    // re-adding the torrent using the magnet
     const gameEntry = this.gameList.get(gid)?.[0];
     const magnet = gameEntry?.magnetlink;
 
