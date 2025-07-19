@@ -192,5 +192,3 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
   render(() => <DownloadPopupModal />, container);
 }
-// Component<LastStepProps>
-

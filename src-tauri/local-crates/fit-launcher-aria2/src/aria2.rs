@@ -6,13 +6,13 @@ use crate::error::Aria2Error;
 
 pub async fn aria2_add_uri(
     aria2_client: &Client,
-    url: String,
+    url: Vec<String>,
     dir: Option<String>,
     filename: Option<String>,
 ) -> Result<String, Aria2Error> {
     Ok(aria2_client
         .add_uri(
-            vec![url],
+            url,
             Some(TaskOptions {
                 split: Some(1),
                 out: filename,

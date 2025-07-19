@@ -3,6 +3,7 @@ import { DownloadedGame, Game, GameCollection } from "../bindings";
 import { PathInputProps, TextInputProps } from "./components/types";
 import { GameDetails } from "./game";
 
+export type DownloadType = "bittorrent" | "direct_download";
 export type PopupTypeVariant = "warning" | "error" | "success" | "info";
 
 export type PopupProps<T extends unknown[] = []> = {

@@ -39,4 +39,7 @@ pub enum TorrentApiError {
 
     #[error("Unexpected Torrent State")]
     UnexpectedTorrentState,
+
+    #[error("Configuration is trying to be changed during download")]
+    ConfigChangeDuringDownload,
 }

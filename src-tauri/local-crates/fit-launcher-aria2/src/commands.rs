@@ -32,16 +32,16 @@ use fit_launcher_torrent::functions::TorrentSession;
 #[specta]
 pub async fn aria2_start_download(
     state: tauri::State<'_, TorrentSession>,
-    url: String,
+    url: Vec<String>,
     dir: Option<String>,
-    filename: String,
+    filename: Option<String>,
 ) -> Result<String, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    aria2_add_uri(&aria2_client, url, dir, Some(filename)).await
+    aria2_add_uri(&aria2_client, url, dir, filename).await
 }
 
 /// `selected_files`: list of torrent metadata files index
@@ -224,7 +224,7 @@ pub async fn aria2_task_spawn(
     for DirectLink { url, filename } in direct_links {
         let result = aria2_add_uri(
             &aria2_client,
-            url.clone(),
+            vec![url.clone()],
             dir.clone(),
             Some(filename.clone()),
         )

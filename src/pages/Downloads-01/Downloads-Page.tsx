@@ -1,156 +1,189 @@
-import { Component, createEffect, createSignal, For, onMount, Show } from "solid-js";
+import { Component, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { makePersisted } from "@solid-primitives/storage";
 import { message } from "@tauri-apps/plugin-dialog";
-import { DownloadedGame, File, Status, TaskStatus } from "../../bindings";
+import { DownloadedGame, File, Status, TaskStatus, DirectLink, commands } from "../../bindings";
 import { TorrentApi } from "../../api/bittorrent/api";
+import { DdlJobEntry, DownloadManagerApi, JobId } from "../../api/download/api";
 import { LibraryApi } from "../../api/library/api";
 import {
     Trash2, Pause, Play, Check, Download as DownloadIcon,
     Upload, HardDrive, ArrowDown, ArrowUp,
     CloudDownload,
     Gamepad2,
-    Settings
+    Settings,
+    Magnet,
+    DownloadCloud
 } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
 import { InstallationApi } from "../../api/installation/api";
-import { formatBytes } from "../../helpers/format";
+import { formatBytes, formatSpeed, toNumber } from "../../helpers/format";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 const torrentApi = new TorrentApi();
+const ddlApi = new DownloadManagerApi();
 const libraryApi = new LibraryApi();
+
+// Unified download item type
+type DownloadItem =
+    | { type: 'torrent', game: DownloadedGame; status?: Status; gid: string }
+    | { type: 'ddl', job: DdlJobEntry; statuses: Status[]; jobId: string };
 
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
-    const [downloading, setDownloading] = createSignal<{ game: DownloadedGame; status?: Status }[]>([]);
+    const [downloadItems, setDownloadItems] = createSignal<DownloadItem[]>([]);
     const [expandedStates, setExpandedStates] = createSignal<Record<string, boolean>>({});
 
-    const toggleExpand = (gid: string) => {
+    const toggleExpand = (id: string) => {
         setExpandedStates(prev => ({
             ...prev,
-            [gid]: !prev[gid]
+            [id]: !prev[id]
         }));
     };
 
-    async function refreshDownloads() {
-        const activeRes = await torrentApi.getTorrentListActive();
-        const waitingRes = await torrentApi.getTorrentListWaiting();
+    // Aggregate download stats
+    const downloadStats = createMemo(() => {
+        let totalDownloadSpeed = 0;
+        let totalUploadSpeed = 0;
+        let activeCount = 0;
+        let torrentCount = 0;
+        let ddlCount = 0;
 
-        if (activeRes.status !== "ok" && waitingRes.status !== "ok") return;
-
-        const combined = [
-            ...(activeRes.status === "ok" ? activeRes.data : []),
-            ...(waitingRes.status === "ok" ? waitingRes.data : [])
-        ];
-
-        const statusMap = new Map<string, Status>();
-        for (const status of combined) {
-            const key = status.following ?? status.gid;
-            statusMap.set(key, status);
+        for (const item of downloadItems()) {
+            if (item.type === 'torrent' && item.status) {
+                totalDownloadSpeed += toNumber(item.status.downloadSpeed);
+                totalUploadSpeed += toNumber(item.status.uploadSpeed);
+                if (item.status.status === "active") activeCount++;
+                torrentCount++;
+            }
+            if (item.type === 'ddl') {
+                for (const status of item.statuses) {
+                    totalDownloadSpeed += toNumber(status.downloadSpeed);
+                    totalUploadSpeed += toNumber(status.uploadSpeed);
+                    if (status.status === "active") activeCount++;
+                }
+                ddlCount++;
+            }
         }
 
-        const entries: { game: DownloadedGame; status?: Status }[] = [];
 
-        for (const [savedGid, games] of torrentApi.gameList.entries()) {
-            const status =
-                statusMap.get(savedGid) ||
-                [...statusMap.values()].find(s => s.gid === savedGid || s.following === savedGid);
+        return {
+            activeCount,
+            torrentCount,
+            ddlCount,
+            totalDownloadSpeed,
+            totalUploadSpeed
+        };
+    });
 
+    async function refreshDownloads() {
+        await Promise.all([
+            torrentApi.loadGameListFromDisk(),
+            DownloadManagerApi.loadJobMapFromDisk(),
+        ]);
+        const [activeRes, waitingRes] = await Promise.all([
+            torrentApi.getTorrentListActive(),
+            torrentApi.getTorrentListWaiting()
+        ]);
+
+        const torrentStatusMap = new Map<string, Status>();
+        if (activeRes.status === "ok") {
+            activeRes.data.forEach(s => torrentStatusMap.set(s.gid, s));
+        }
+        if (waitingRes.status === "ok") {
+            waitingRes.data.forEach(s => torrentStatusMap.set(s.gid, s));
+        }
+
+        const ddlJobs = DownloadManagerApi.getAllJobs();
+        const ddlStatusPromises = Array.from(ddlJobs)
+            .map(async ([jobId, job]) => {
+                const statusPromises = job.gids.map(gid => commands.aria2GetStatus(gid));
+                const results = await Promise.all(statusPromises);
+                return {
+                    jobId,
+                    statuses: results
+                        .filter(r => r.status === "ok")
+                        .map(r => r.data)
+                };
+            });
+
+        const ddlStatusResults = await Promise.all(ddlStatusPromises);
+        const ddlStatuses = new Map<JobId, Status[]>();
+        ddlStatusResults.forEach(({ jobId, statuses }) => ddlStatuses.set(jobId, statuses));
+
+
+        const items: DownloadItem[] = [];
+
+        for (const [gid, games] of torrentApi.gameList.entries()) {
+            const status = torrentStatusMap.get(gid);
             for (const game of games) {
-                entries.push({
-                    game: structuredClone(game),
-                    status: status ? structuredClone(status) : undefined,
+                items.push({
+                    type: 'torrent',
+                    game,
+                    status,
+                    gid
                 });
             }
         }
 
-        setDownloading(entries);
+        for (const [jobId, job] of ddlJobs) {
+            items.push({
+                type: 'ddl',
+                job,
+                statuses: ddlStatuses.get(jobId) || [],
+                jobId
+            });
+        }
+
+        setDownloadItems(items);
     }
-
-
 
 
     async function checkFinishedDownloads() {
-        const updates = downloading().filter(
-            (d) => d.status?.status === "complete" && d.status?.completedLength === d.status?.totalLength
-        );
+        const items = downloadItems();
+        const completedItems = [];
 
-        for (const { game, status } of updates) {
-            if (!status) continue;
-
-            const gid = status.gid;
-            const games = torrentApi.gameList.get(gid);
-
-            if (games) {
-                const updatedGames = games.map((g) => {
-                    if (g.magnetlink === game.magnetlink) {
-                        return structuredClone(game);
-                    }
-                    return g;
-                });
-
-                torrentApi.gameList.set(gid, updatedGames);
-
-                await torrentApi.saveGameListToDisk();
+        for (const item of items) {
+            if (item.type === 'torrent' && item.status?.status === "complete") {
+                completedItems.push(item);
+                await libraryApi.addDownloadedGame(item.game);
+                torrentApi.gameList.delete(item.gid);
             }
-
-            await libraryApi.addDownloadedGame(game);
-
-            torrentApi.gameList.delete(gid);
-
-            // Only add to uninstalled list if not already in library
-            const alreadyInstalled = await libraryApi.hasDownloadedGame(game);
-            if (!alreadyInstalled) {
-                torrentApi.uninstalledGames.set(gid, game);
-                await torrentApi.saveUninstalledToDisk();
-            }
-
-            //todo: delete useless files
-
         }
 
-        await refreshDownloads();
+        for (const item of items) {
+            if (item.type === 'ddl') {
+                const allComplete = item.statuses.every(s =>
+                    s.status === "complete" &&
+                    s.completedLength === s.totalLength
+                );
+
+                if (allComplete) {
+                    completedItems.push(item);
+                    await libraryApi.addDownloadedGame(item.job.downloadedGame);
+                    DownloadManagerApi.removeJob(item.jobId);
+                }
+            }
+        }
+
+        if (completedItems.length > 0) {
+            await Promise.all([
+                torrentApi.saveGameListToDisk(),
+                DownloadManagerApi.saveJobMapToDisk()
+            ]);
+            await refreshDownloads();
+        }
     }
 
-
     onMount(async () => {
-        await torrentApi.loadGameListFromDisk();
-        await torrentApi.loadUninstalledFromDisk();
+        await Promise.all([
+            torrentApi.loadGameListFromDisk(),
+            DownloadManagerApi.loadJobMapFromDisk(),
+            torrentApi.loadUninstalledFromDisk()
+        ]);
 
-        const statusRes = await torrentApi.getTorrentListActive();
-        const statusMap = new Map<string, Status>();
-
-        if (statusRes.status === "ok") {
-            for (const status of statusRes.data) {
-                if (status.following) {
-                    statusMap.set(status.following, status);
-                } else {
-                    statusMap.set(status.gid, status);
-                }
-
-
-
-            }
-        }
-
-        const entries: { game: DownloadedGame; status?: Status }[] = [];
-
-        for (const [gid, games] of torrentApi.gameList.entries()) {
-            const status = statusMap.get(gid);
-            for (const game of games) {
-                entries.push({
-                    game: structuredClone(game),
-                    status: status ? structuredClone(status) : undefined,
-                });
-            }
-        }
-        for (const [gid, game] of torrentApi.uninstalledGames.entries()) {
-            entries.push({
-                game: structuredClone(game),
-                status: undefined
-            });
-        }
-        setDownloading(entries);
+        await refreshDownloads();
 
         setInterval(() => {
             refreshDownloads();
@@ -158,18 +191,10 @@ const DownloadPage: Component = () => {
         }, 1000);
     });
 
-    const formatSpeed = (bytes?: number) => {
-        if (!bytes) return "-";
-        if (bytes < 1024) return `${bytes} B/s`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB/s`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB/s`;
-    };
-
-
     return (
-        <div class="min-h-screen  bg-background  p-6">
+        <div class="min-h-screen bg-background p-6">
             {/* Header with glass effect */}
-            <div class=" top-0 z-10 bg-popup/80 backdrop-blur-sm mx-auto rounded-xl max-w-7xl p-4 mb-6 border border-secondary-20 shadow-sm">
+            <div class="top-0 z-10 bg-popup/80 backdrop-blur-sm mx-auto rounded-xl max-w-7xl p-4 mb-6 border border-secondary-20 shadow-sm">
                 <div class="flex justify-between items-center max-w-7xl mx-auto">
                     <h1 class="text-2xl font-bold flex items-center gap-3">
                         <CloudDownload class="w-6 h-6 text-accent" />
@@ -178,28 +203,52 @@ const DownloadPage: Component = () => {
                         </span>
                     </h1>
 
-                    <Button
-
-                        size="sm"
-                        label="CLEAR ALL"
-                        icon={<Trash2 class="w-4 h-4" />}
-                        onClick={async () => torrentApi.removeAllTorrents()}
-                    />
+                    <div class="flex gap-2">
+                        <Button
+                            size="sm"
+                            label="CLEAR ALL TORRENTS"
+                            icon={<Trash2 class="w-4 h-4" />}
+                            onClick={async () => torrentApi.removeAllTorrents()}
+                        />
+                        <Button
+                            size="sm"
+                            label="CLEAR ALL DDL"
+                            icon={<Trash2 class="w-4 h-4" />}
+                            onClick={async () => {
+                                const jobs = DownloadManagerApi.getAllJobs();
+                                for (const [jobId] of jobs) {
+                                    await DownloadManagerApi.removeJob(jobId);
+                                }
+                                await refreshDownloads();
+                            }}
+                        />
+                    </div>
                 </div>
             </div>
 
             {/* Main Content */}
             <div class="max-w-7xl mx-auto">
                 {/* Stats Bar */}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
                         <div class="flex items-center gap-3">
-                            <HardDrive class="w-5 h-5 text-accent" />
+                            <Magnet class="w-5 h-5 text-blue-500" />
                             <div>
-                                <p class="text-sm text-muted">Active Downloads</p>
-                                {
-                                    downloading().filter(d => d.status?.status === "active").length
-                                }
+                                <p class="text-sm text-muted">Torrents</p>
+                                <p class="text-lg font-semibold">
+                                    {downloadStats().torrentCount}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
+                        <div class="flex items-center gap-3">
+                            <DownloadCloud class="w-5 h-5 text-green-500" />
+                            <div>
+                                <p class="text-sm text-muted">Direct Downloads</p>
+                                <p class="text-lg font-semibold">
+                                    {downloadStats().ddlCount}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -208,9 +257,8 @@ const DownloadPage: Component = () => {
                             <ArrowDown class="w-5 h-5 text-green-500" />
                             <div>
                                 <p class="text-sm text-muted">Total Download Speed</p>
-                                <p class="text-xl font-semibold">
-                                    {formatSpeed(downloading().reduce((acc, item) => acc + (item.status?.downloadSpeed ?? 0), 0))}
-
+                                <p class="text-lg font-semibold">
+                                    {formatSpeed(downloadStats().totalDownloadSpeed)}
                                 </p>
                             </div>
                         </div>
@@ -220,8 +268,8 @@ const DownloadPage: Component = () => {
                             <ArrowUp class="w-5 h-5 text-blue-500" />
                             <div>
                                 <p class="text-sm text-muted">Total Upload Speed</p>
-                                <p class="text-xl font-semibold">
-                                    {formatSpeed(downloading().reduce((acc, item) => acc + (item.status?.uploadSpeed ?? 0), 0))}
+                                <p class="text-lg font-semibold">
+                                    {formatSpeed(downloadStats().totalUploadSpeed)}
                                 </p>
                             </div>
                         </div>
@@ -229,16 +277,16 @@ const DownloadPage: Component = () => {
                 </div>
 
                 {/* Downloads List */}
-                {downloading().length > 0 ? (
+                {downloadItems().length > 0 ? (
                     <div class="space-y-3">
-                        <For each={downloading()}>
+                        <For each={downloadItems()}>
                             {(item) => (
                                 <Dynamic
                                     component={DownloadingGameItem}
-                                    game={item.game}
-                                    status={item.status}
-                                    isExpanded={!!expandedStates()[item.status?.gid || ""]}
-                                    onToggleExpand={() => toggleExpand(item.status?.gid || "")}
+                                    item={item}
+                                    isExpanded={!!expandedStates()[item.type === 'torrent' ? item.gid : item.jobId]}
+                                    onToggleExpand={() => toggleExpand(item.type === 'torrent' ? item.gid : item.jobId)}
+                                    formatSpeed={formatSpeed} // Pass formatter to child
                                 />
                             )}
                         </For>
@@ -247,7 +295,6 @@ const DownloadPage: Component = () => {
                     <div class="flex flex-col items-center justify-center py-16 text-center bg-popup/30 backdrop-blur-sm rounded-2xl border border-dashed border-secondary-20">
                         <div class="relative mb-6">
                             <DownloadIcon class="w-16 h-16 text-accent animate-pulse" />
-
                         </div>
                         <h3 class="text-2xl font-medium text-text mb-2">No Active Downloads</h3>
                         <p class="text-muted max-w-md mb-6">
@@ -266,67 +313,126 @@ const DownloadPage: Component = () => {
 };
 
 function DownloadingGameItem(props: {
-    game: DownloadedGame;
-    status?: Status;
+    item: DownloadItem;
     isExpanded: boolean;
     onToggleExpand: () => void;
+    formatSpeed: (bytes?: number) => string;
 }) {
-    const [progress, setProgress] = makePersisted(createSignal("0%"));
-    const [numberProgress, setNumberProgress] = createSignal(0);
-    const [files, setFiles] = createSignal<File[]>([]);
+    const game = props.item.type === 'torrent'
+        ? props.item.game
+        : props.item.job.downloadedGame;
 
-    const libraryInst = new LibraryApi();
-
-    createEffect(() => {
-        const completed = props.status?.completedLength ?? 0;
-        const total = props.status?.totalLength ?? 1;
-        const percent = total > 0 ? (completed / total) * 100 : 0;
-        setNumberProgress(Math.floor(percent));
-        setProgress(`${percent.toFixed(1)}%`);
-
-        if (props.status?.files) {
-            setFiles(props.status.files);
+    // For torrents: single status, for DDL: aggregate multiple statuses
+    const aggregatedStatus = createMemo(() => {
+        if (props.item.type === "torrent") {
+            return props.item.status;
         }
 
-        if (numberProgress() === 100) {
-            libraryInst.addDownloadedGame(props.game)
+        let totalLength = 0;
+        let completedLength = 0;
+        let downloadSpeed = 0;
+        let uploadSpeed = 0;
+
+        let allComplete = true;
+        let anyActive = false;
+
+        for (const s of props.item.statuses) {
+            totalLength += toNumber(s.totalLength);
+            completedLength += toNumber(s.completedLength);
+            downloadSpeed += toNumber(s.downloadSpeed);
+            uploadSpeed += toNumber(s.uploadSpeed);
+
+            if (s.status !== "complete") {
+                allComplete = false;
+            }
+            if (s.status === "active") {
+                anyActive = true;
+            }
         }
+
+        let status: TaskStatus = "waiting";
+        if (allComplete) {
+            status = "complete";
+        } else if (anyActive) {
+            status = "active";
+        }
+
+        return {
+            gid: "",
+            status,
+            totalLength,
+            completedLength,
+            downloadSpeed,
+            uploadSpeed,
+            connections: 0,
+            numPieces: 0,
+            pieceLength: 0,
+        } as Status;
     });
 
-    function formatSpeed(bytes?: number): string {
-        if (!bytes || bytes <= 0) return "-";
-        if (bytes < 1024) return `${bytes} B/s`;
-        if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB/s`;
-        if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB/s`;
-        return `${(bytes / 1024 ** 3).toFixed(1)} GB/s`;
-    }
 
-    function getFileNameFromPath(path: string): string {
+
+    const files = createMemo(() => {
+        if (props.item.type === 'torrent') {
+            return props.item.status?.files || [];
+        }
+
+        // For DDL: get files from all statuses
+        return props.item.statuses.flatMap(s => s.files || []);
+    });
+
+    const progress = createMemo(() => {
+        const status = aggregatedStatus();
+        if (!status) return "0%";
+
+        const completed = status.completedLength || 0;
+        const total = status.totalLength || 1;
+        const percent = total > 0 ? (completed / total) * 100 : 0;
+        return `${percent.toFixed(1)}%`;
+    });
+
+    const numberProgress = createMemo(() => {
+        const status = aggregatedStatus();
+        if (!status) return 0;
+
+        const completed = status.completedLength || 0;
+        const total = status.totalLength || 1;
+        return Math.floor((completed / total) * 100);
+    });
+
+    const getFileNameFromPath = (path: string): string => {
         return path.split(/[\\/]/).pop() || path;
-    }
+    };
 
     return (
         <div class="bg-popup rounded-xl h-fit border border-secondary-20 overflow-hidden transition-all hover:border-accent/50">
             <div class="flex flex-row items-center h-full">
+                {/* Game Info with Download Type Badge */}
+                <div class="flex items-center p-4 pt-10 md:w-1/3 border-r border-secondary-20 relative">
+                    {/* Download Type Badge */}
+                    <div class={`absolute top-2 left-4 px-2 py-1 rounded text-xs font-medium ${props.item.type === 'torrent'
+                        ? 'bg-secondary text-text'
+                        : 'bg-secondary text-text'
+                        }`}>
+                        {props.item.type === 'torrent' ? 'TORRENT' : 'DIRECT DOWNLOAD'}
+                    </div>
 
-                {/* Game Info */}
-                <div class="flex items-center p-4 md:w-1/3 border-r border-secondary-20">
                     <img
-                        src={props.game.img}
-                        alt={props.game.title}
+                        src={game.img}
+                        alt={game.title}
                         class="w-16 h-16 rounded-lg object-cover mr-4"
                     />
                     <div>
-                        <h3 class="font-medium line-clamp-2">{props.game.title}</h3>
+                        <h3 class="font-medium line-clamp-2">{game.title}</h3>
                         <div class="flex items-center gap-2 mt-1 text-sm text-muted">
                             <HardDrive class="w-4 h-4" />
-                            <span>{formatBytes(props.status?.totalLength)} total</span>
+                            <span>{formatBytes(aggregatedStatus()?.totalLength)} total</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Download Stats */}
-                <div class="flex flex-col w-full border-t-0  border-secondary-20">
+                <div class="flex flex-col w-full border-t-0 border-secondary-20">
                     <div class="flex flex-row items-center justify-center gap-4 w-full p-4">
                         {/* Speed Indicators */}
                         <div class="flex gap-6 justify-center">
@@ -334,14 +440,14 @@ function DownloadingGameItem(props: {
                                 <ArrowDown class="w-5 h-5 text-green-500" />
                                 <div>
                                     <p class="text-xs text-muted">DOWNLOAD</p>
-                                    <p class="font-medium">{formatSpeed(props.status?.downloadSpeed)}</p>
+                                    <p class="font-medium">{props.formatSpeed(aggregatedStatus()?.downloadSpeed)}</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
                                 <ArrowUp class="w-5 h-5 text-blue-500" />
                                 <div>
                                     <p class="text-xs text-muted">UPLOAD</p>
-                                    <p class="font-medium">{formatSpeed(props.status?.uploadSpeed)}</p>
+                                    <p class="font-medium">{props.formatSpeed(aggregatedStatus()?.uploadSpeed)}</p>
                                 </div>
                             </div>
                         </div>
@@ -350,9 +456,9 @@ function DownloadingGameItem(props: {
                         <div class="flex-1">
                             <div class="flex justify-between text-xs text-muted mb-1">
                                 <span>
-                                    {props.status?.status === "complete"
+                                    {aggregatedStatus()?.status === "complete"
                                         ? "Completed"
-                                        : props.status
+                                        : aggregatedStatus()
                                             ? "Downloading..."
                                             : "Waiting..."}
                                 </span>
@@ -368,8 +474,10 @@ function DownloadingGameItem(props: {
 
                         {/* Action Button and Expand Button */}
                         <div class="flex items-center gap-2">
-
-                            <DownloadActionButton status={props.status!} />
+                            <DownloadActionButton
+                                item={props.item}
+                                status={aggregatedStatus()}
+                            />
                             <Button
                                 variant="bordered"
                                 size="sm"
@@ -383,11 +491,8 @@ function DownloadingGameItem(props: {
                                 }
                             />
                         </div>
-
-
                     </div>
                 </div>
-
             </div>
 
             <Show when={files().length > 0}>
@@ -399,7 +504,7 @@ function DownloadingGameItem(props: {
                                 {(file) => (
                                     <div class="bg-secondary-10 rounded-lg p-3">
                                         <div class="flex justify-between text-xs mb-1">
-                                            <span class="truncate max-w-xs">{getFileNameFromPath(file.path)}</span>
+                                            <span class="truncate max-w-md">{getFileNameFromPath(file.path)}</span>
                                             <span>{((file.completedLength / file.length) * 100).toFixed(1)}%</span>
                                         </div>
                                         <div class="w-full h-1.5 bg-secondary-20 rounded-full overflow-hidden">
@@ -422,66 +527,34 @@ function DownloadingGameItem(props: {
         </div>
     );
 }
-const triedInstall = new Map<string, boolean>();
-function DownloadActionButton({ status }: { status?: Status }) {
 
+
+function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
     const [buttonState, setButtonState] = createSignal<
-        "pause" | "resume" | "complete" | "uploading" | "install"
+        "pause" | "resume" | "install" | "uploading"
     >("pause");
 
-    const [installAttempted, setInstallAttempted] = createSignal(false);
-    const installationInst = new InstallationApi();
-
+    const isTorrent = props.item.type === 'torrent';
+    const installationApi = new InstallationApi();
 
     onMount(() => {
-        if (!status) setButtonState("resume");
+        if (!props.status) setButtonState("resume");
     });
 
     createEffect(() => {
-        if (!status) return setButtonState("resume");
+        if (!props.status) return setButtonState("resume");
 
-        const gid = status.gid;
-        if (!gid) return;
-
-        const isUploading = status.status === "active" && status.totalLength === status.completedLength;
-        const isComplete = status.status === "complete" || isUploading;
+        const isUploading = props.status.status === "active" &&
+            props.status.completedLength === props.status.totalLength;
+        const isComplete = props.status.status === "complete" ||
+            (props.status.completedLength === props.status.totalLength);
 
         if (isComplete) {
-            if (triedInstall.get(gid)) {
-                setButtonState("complete");
-                return;
-            }
-
-
-
-            const fullPath = status.files?.[0]?.path;
-            if (fullPath && triedInstall.get(gid)) {
-                const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
-
-                triedInstall.set(gid, true);
-
-                queueMicrotask(async () => {
-                    const result = await installationInst.startInstallation(folderPath);
-
-                    if (result.status === "ok") {
-                        setButtonState("complete");
-                    } else if (result.error === "AdminModeError") {
-                        setButtonState("install");
-                        triedInstall.delete(gid);
-                        if (torrentApi.uninstalledGames.has(gid)) {
-                            torrentApi.uninstalledGames.delete(gid);
-                            await torrentApi.saveUninstalledToDisk();
-                        }
-
-                    }
-                });
-            } else {
-                setButtonState("install")
-            }
-        } else if (isUploading) {
             setButtonState("install");
+        } else if (isUploading) {
+            setButtonState("uploading");
         } else {
-            switch (status.status) {
+            switch (props.status.status) {
                 case "paused":
                 case "waiting":
                     setButtonState("resume");
@@ -495,33 +568,44 @@ function DownloadActionButton({ status }: { status?: Status }) {
         }
     });
 
-
     async function toggle() {
-        const gid = status?.gid ?? "";
-        if (!gid) return;
+        if (props.item.type === 'torrent') {
+            const gid = props.item.gid;
+            if (!gid) return;
 
-        switch (buttonState()) {
-            case "resume":
-                await torrentApi.resumeTorrent(gid);
-                break;
-            case "pause":
-            case "uploading":
-                await torrentApi.pauseTorrent(gid);
-                break;
-            case "install":
-                if (status?.files?.[0]?.path) {
-                    // add stop to make it complete state
-                    const folderPath = status.files[0].path.split(/[\\/]/).slice(0, -1).join("/");
-                    const result = await installationInst.startInstallation(folderPath);
+            switch (buttonState()) {
+                case "resume":
+                    await torrentApi.resumeTorrent(gid);
+                    break;
+                case "pause":
+                case "uploading":
+                    await torrentApi.pauseTorrent(gid);
+                    break;
+                case "install":
 
-                    if (result.status === "ok") {
-                        setInstallAttempted(true);
-                        setButtonState("complete");
-                    } else if (result.error === "AdminModeError") {
-                        setButtonState("install");
+                    const fullPath = props.status!.files?.[0]?.path;
+                    if (fullPath) {
+                        const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
+                        await installationApi.startInstallation(folderPath);
+                        break;
                     }
-                }
-                break;
+                    break;
+            }
+        } else {
+            const jobId = props.item.jobId;
+            switch (buttonState()) {
+                case "resume":
+                    await DownloadManagerApi.resumeJob(jobId);
+                    break;
+                case "pause":
+                case "uploading":
+                    await DownloadManagerApi.pauseJob(jobId);
+                    break;
+                case "install":
+                    // Install DDL game
+                    //extract first
+                    break;
+            }
         }
     }
 
@@ -538,8 +622,6 @@ function DownloadActionButton({ status }: { status?: Status }) {
 
     const icon = () => {
         switch (buttonState()) {
-            case "complete":
-                return <Check class="w-5 h-5" />;
             case "pause":
             case "uploading":
                 return <Pause class="w-5 h-5" />;
@@ -551,7 +633,12 @@ function DownloadActionButton({ status }: { status?: Status }) {
     };
 
     return (
-        <Button variant="bordered" onClick={toggle} label={label()} icon={icon()} />
+        <Button
+            variant="bordered"
+            onClick={toggle}
+            label={label()}
+            icon={icon()}
+        />
     );
 }
 

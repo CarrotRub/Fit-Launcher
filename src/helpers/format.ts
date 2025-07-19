@@ -15,6 +15,16 @@ export function formatDate(dateString: string | null) {
   return date.toLocaleDateString();
 }
 
+export function formatSpeed(bytes?: string | number): string {
+  const num = toNumber(bytes);
+  if (!num || num === 0) return "-";
+  if (num < 1024) return `${num} B/s`;
+  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB/s`;
+  if (num < 1024 * 1024 * 1024)
+    return `${(num / (1024 * 1024)).toFixed(1)} MB/s`;
+  return `${(num / (1024 * 1024 * 1024)).toFixed(1)} GB/s`;
+}
+
 export function formatBytes(bytes?: number): string {
   if (!bytes || bytes <= 0) return "-";
 
@@ -48,4 +58,10 @@ export function toTitleCaseExceptions(str: string): string {
 
     return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
   });
+}
+
+export function toNumber(value: string | number | undefined): number {
+  if (value === undefined) return 0;
+  if (typeof value === "number") return value;
+  return parseFloat(value) || 0;
 }

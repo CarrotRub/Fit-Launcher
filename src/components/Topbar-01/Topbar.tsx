@@ -1,34 +1,29 @@
-import { createEffect, onMount, createSignal } from "solid-js";
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
-import { listen } from '@tauri-apps/api/event';
 import { A, useLocation } from "@solidjs/router";
-import { invoke } from "@tauri-apps/api/core";
-import {
-  Minimize2,
-  Maximize2,
-  X,
-  Home,
-  Compass,
-  Library,
-  Download,
-  Settings,
-  EyeClosed,
-  Minus
-} from "lucide-solid";
+import { Compass, Download, Home, Library, Maximize2, Minimize2, Minus, Settings, X } from "lucide-solid";
+import { createSignal, onMount, Show } from "solid-js";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
+import { listen } from "@tauri-apps/api/event";
 import { TorrentApi } from "../../api/bittorrent/api";
-
-const appWindow = getCurrentWebviewWindow();
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 export default function Topbar() {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [notificationMessage, setNotificationMessage] = createSignal('');
+  const [isMaximized, setIsMaximized] = createSignal(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const torrentApi = new TorrentApi();
+  const appWindow = getCurrentWebviewWindow();
+
   function handleWindowClose() {
     //todo: add pause all torrent
     appWindow.hide();
+  }
+
+  async function handleMaximize() {
+    await appWindow.toggleMaximize();
+    const maximized = await appWindow.isMaximized();
+    setIsMaximized(maximized);
   }
 
   function changeLocalStorageLatestHref(href: string) {
@@ -36,9 +31,11 @@ export default function Topbar() {
     console.log("Updated latestGlobalHref:", href);
   }
 
-  onMount(() => {
+  onMount(async () => {
+    setIsMaximized(await appWindow.isMaximized());
+
     document.getElementById('titlebar-minimize')?.addEventListener('click', () => appWindow.minimize());
-    document.getElementById('titlebar-maximize')?.addEventListener('click', () => appWindow.toggleMaximize());
+    document.getElementById('titlebar-maximize')?.addEventListener('click', handleMaximize);
     document.getElementById('titlebar-close')?.addEventListener('click', () => handleWindowClose());
 
     listen('network-failure', (event: any) => {
@@ -52,6 +49,8 @@ export default function Topbar() {
       console.log('Scraping failed:', event.payload.message);
     });
   });
+
+
 
   return (
     <div
@@ -132,24 +131,28 @@ export default function Topbar() {
           <button
             id="titlebar-minimize"
             class="p-1.5 rounded-full text-muted hover:bg-secondary-20/30 hover:text-accent transition-colors"
+            title="Minimize"
           >
             <Minus size={16} />
           </button>
           <button
             id="titlebar-maximize"
             class="p-1.5 rounded-full text-muted hover:bg-secondary-20/30 hover:text-accent transition-colors"
+            onClick={handleMaximize}
+            title={isMaximized() ? "Restore Down" : "Maximize"}
           >
-            <Maximize2 size={16} />
+            <Show when={isMaximized()} fallback={<Maximize2 size={16} />}>
+              <Minimize2 size={16} />
+            </Show>
           </button>
           <button
             id="titlebar-close"
-            class="p-1.5 rounded-full text-muted hover:bg-secondary/20 hover:text-primary transition-colors"
+            class="p-1.5 rounded-full text-muted hover:bg-red-500/20 hover:text-red-500 transition-colors"
+            title="Close"
           >
             <X size={16} />
           </button>
         </div>
-
-
       </div>
     </div>
   );

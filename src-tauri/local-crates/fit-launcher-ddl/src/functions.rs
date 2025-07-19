@@ -39,9 +39,10 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
     let mut fucking_fast_links = Vec::new();
     for element in html_document.select(&a_selector) {
         if element.text().any(|t| t.contains("FuckingFast"))
-            && let Some(href) = element.value().attr("href") {
-                fucking_fast_links.push(href.to_string());
-            }
+            && let Some(href) = element.value().attr("href")
+        {
+            fucking_fast_links.push(href.to_string());
+        }
     }
 
     let spoiler_selector =
@@ -57,13 +58,17 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
     for content in &spoiler_content {
         let spoiler_doc = scraper::Html::parse_fragment(content);
         for element in spoiler_doc.select(&a_selector) {
-            if let Some(href) = element.value().attr("href")
-                && href.contains("_fitgirl-repacks.site_") {
+            if let Some(href) = element.value().attr("href") {
+                if href.contains("_fitgirl-repacks.site_") {
+                    original_repack_links.push(href.to_string());
+                } else if href.contains("fg-optional-") {
+                    original_repack_links.push(href.to_string());
+                } else if href.starts_with("https://fuckingfast.co/") {
                     original_repack_links.push(href.to_string());
                 }
+            }
         }
     }
-
     let mut result_links = Vec::new();
     result_links.append(&mut original_repack_links);
     result_links.append(&mut fucking_fast_links);

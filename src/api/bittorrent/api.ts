@@ -20,7 +20,6 @@ export class TorrentApi {
   gameList = new Map<Gid, DownloadedGame[]>();
 
   private async getSavePath(): Promise<string> {
-    console.log((await appDataDir()) + "\\torrent_game_map.json");
     return (await appDataDir()) + "\\torrent_game_map.json";
   }
 
@@ -34,13 +33,11 @@ export class TorrentApi {
 
   async loadGameListFromDisk() {
     const savePath = await this.getSavePath();
-    console.log("Trying to load gameList from:", savePath);
 
     if (await exists(savePath)) {
       const content = await readTextFile(savePath);
       const obj: Record<Gid, DownloadedGame[]> = JSON.parse(content);
       this.gameList = new Map(Object.entries(obj));
-      console.log("Loaded gameList:", this.gameList);
       return this.gameList;
     } else {
       console.warn("No saved gameList found at", savePath);
@@ -91,13 +88,11 @@ export class TorrentApi {
 
     if (bytes.status === "ok") {
       const res = await commands.aria2StartTorrent(bytes.data, path, listFiles);
-      console.log(bytes.data);
       if (res.status === "ok") {
         const gid = res.data as Gid;
 
         const list = this.gameList.get(gid) ?? [];
         this.gameList.set(gid, [...list, downloadedGame]);
-        console.log(this.gameList);
         if (this.gameList.size === 0) {
           console.warn("Warning: Tried to save empty gameList");
         }

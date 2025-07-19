@@ -216,21 +216,34 @@ const DownloadGameUUIDPage = () => {
             </div>
           </div>
 
-          <div class="flex w-full flex-col items-center justify-center p-4 gap-6">
+          <div class="flex w-full flex-col items-center justify-center px-4 gap-6">
             {/* Download Button */}
-            <div class="flex flex-row gap-4 w-[80%]">
-              <Button
-                icon={<Magnet class="size-5" />}
-                label="Bittorrent Download"
-                onClick={() => handleDownloadPopup("bittorrent")}
-                class="w-full max-w-4xl"
-              />
-              <Button
-                icon={<Globe class="size-5" />}
-                label="Direct Download"
-                onClick={() => handleDownloadPopup("direct_download")}
-                class="w-full max-w-4xl"
-              />
+            <div class="w-full max-w-4xl flex flex-col gap-3">
+              <div class="flex flex-col sm:flex-row gap-3 w-full">
+                <Button
+                  icon={<Magnet class="size-5" />}
+                  label="Torrent Download"
+                  onClick={() => handleDownloadPopup("bittorrent")}
+                  class="flex-1 py-3 hover:bg-accent/90 transition-colors"
+                  variant="bordered"
+                />
+                <div class="relative flex items-center justify-center">
+                  <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-secondary-20"></div>
+                  </div>
+                  <div class="relative px-2 bg-popup text-xs text-muted">OR</div>
+                </div>
+                <Button
+                  icon={<Globe class="size-5" />}
+                  label="Direct Download"
+                  onClick={() => handleDownloadPopup("direct_download")}
+                  class="flex-1 py-3 hover:bg-accent/90 transition-colors"
+                  variant="bordered"
+                />
+              </div>
+              <p class="text-xs text-muted text-center">
+                Choose your preferred download method
+              </p>
             </div>
 
             {/* Game Info Grid */}

@@ -3,7 +3,6 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
-import { setDownloadGamePageInfo } from "../../../functions/dataStoreGlobal";
 import { Search, X, Sparkles } from "lucide-solid";
 import { commands } from "../../../../bindings";
 

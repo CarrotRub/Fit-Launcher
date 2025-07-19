@@ -1,7 +1,6 @@
 import { createSignal, onMount, Show, JSX, For } from 'solid-js';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
-import { setDownloadGamePageInfo } from '../../../../components/functions/dataStoreGlobal';
 import { useNavigate } from '@solidjs/router';
 import type { DiscoveryGame } from '../../../../bindings';
 import { commands } from '../../../../bindings';

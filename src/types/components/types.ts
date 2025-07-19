@@ -1,6 +1,8 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { JSX } from "solid-js";
 
+export type ButtonVariants = "glass" | "solid" | "bordered";
+
 export interface CheckboxProps {
   checked: boolean;
   action?: (...args: any[]) => void | Promise<void>;
