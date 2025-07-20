@@ -9,6 +9,7 @@ use rand::{prelude::*, rng};
 
 use scraper::{Html, Selector};
 use serde_with::chrono::{self, DateTime, Utc};
+use tauri::AppHandle;
 use tokio::fs;
 
 const TARGET: usize = 100; // keep exactly this many
@@ -78,16 +79,9 @@ fn parse_article(article: scraper::element_ref::ElementRef) -> Option<DiscoveryG
     })
 }
 
-async fn fetch_page(n: u32) -> Result<Vec<DiscoveryGame>, ScrapingError> {
+async fn fetch_page(n: u32, app: &AppHandle) -> Result<Vec<DiscoveryGame>, ScrapingError> {
     let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{n}");
-    let body = CUSTOM_DNS_CLIENT
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?
-        .text()
-        .await
-        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
+    let body = crate::global::functions::fetch_page(&url, app).await?;
 
     let doc = Html::parse_document(&body);
     let mut games = Vec::new();
@@ -127,7 +121,7 @@ async fn write_meta_ts() {
     .await;
 }
 
-pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
+pub async fn get_100_games_unordered(app: AppHandle) -> Result<(), Box<ScrapingError>> {
     fs::create_dir_all(discovery_dir()).await.ok();
 
     let mut queue: Vec<DiscoveryGame> = if let Ok(bytes) = fs::read(json_path()).await {
@@ -158,7 +152,7 @@ pub async fn get_100_games_unordered() -> Result<(), Box<ScrapingError>> {
         let mut fresh = Vec::<DiscoveryGame>::new();
 
         while fresh.len() < BATCH && page <= 10 {
-            let mut page_games = fetch_page(page).await?;
+            let mut page_games = fetch_page(page, &app).await?;
             for g in page_games.drain(..) {
                 if have.insert(g.game_title.clone()) {
                     fresh.push(g);

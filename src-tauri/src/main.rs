@@ -357,7 +357,8 @@ async fn start() {
                     move || {
                         // Jump back into the async runtime on _this_ blocking thread.
                         tokio::runtime::Handle::current().block_on(async {
-                            if let Err(e) = get_100_games_unordered().await {
+                            if let Err(e) = get_100_games_unordered(first_app_handle.clone()).await
+                            {
                                 tracing::error!("run_all_scrapers failed: {e}");
                             }
                         });
