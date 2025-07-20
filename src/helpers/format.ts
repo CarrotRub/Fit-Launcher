@@ -65,3 +65,54 @@ export function toNumber(value: string | number | undefined): number {
   if (typeof value === "number") return value;
   return parseFloat(value) || 0;
 }
+
+export function extractMainTitle(title: string): string {
+  return title
+    ?.replace(
+      /(?: - |, | )?(Digital Deluxe|Ultimate Edition|Deluxe Edition)\s*[:\-]?.*|(?: - |, ).*/,
+      ""
+    )
+    ?.replace(/\s*[:\-]\s*$/, "")
+    ?.replace(/\(.*?\)/g, "")
+    ?.replace(/\s*[:\u2013]\s*$/, "")
+    ?.replace(/[\u2013].*$/, "");
+}
+
+export function cleanForFolder(title: string): string {
+  // https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  const forbidden = /[<>:"/\\|?*\x00-\x1F]/g;
+  const reservedNames = [
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+  ];
+
+  let cleaned = title.replace(forbidden, " ");
+
+  cleaned = cleaned.trim().replace(/[. ]+$/, "");
+
+  if (reservedNames.includes(cleaned.toUpperCase())) {
+    cleaned = `${cleaned}_`;
+  }
+
+  return cleaned;
+}

@@ -34,13 +34,14 @@ const DownloadPage: Component = () => {
     const navigate = useNavigate();
     const [downloadItems, setDownloadItems] = createSignal<DownloadItem[]>([]);
     const [expandedStates, setExpandedStates] = createSignal<Record<string, boolean>>({});
-
+    const [installationsInProgress, setInstallationsInProgress] = createSignal<Set<string>>(new Set());
     const toggleExpand = (id: string) => {
         setExpandedStates(prev => ({
             ...prev,
             [id]: !prev[id]
         }));
     };
+    const [processedJobs, setProcessedJobs] = createSignal<Set<string>>(new Set());
 
     // Aggregate download stats
     const downloadStats = createMemo(() => {
@@ -142,37 +143,71 @@ const DownloadPage: Component = () => {
 
     async function checkFinishedDownloads() {
         const items = downloadItems();
-        const completedItems = [];
+        const installationApi = new InstallationApi();
+        const currentInstallations = installationsInProgress();
+
+
 
         for (const item of items) {
             if (item.type === 'torrent' && item.status?.status === "complete") {
-                completedItems.push(item);
-                await libraryApi.addDownloadedGame(item.game);
-                torrentApi.gameList.delete(item.gid);
-            }
-        }
+                const key = `torrent:${item.gid}`;
+                if (currentInstallations.has(key)) continue;
 
-        for (const item of items) {
-            if (item.type === 'ddl') {
+                setInstallationsInProgress(prev => new Set(prev).add(key));
+
+                const fullPath = item.status.files?.[0]?.path;
+                if (fullPath) {
+                    const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
+
+                    await libraryApi.addDownloadedGame(item.game);
+                    torrentApi.gameList.delete(item.gid);
+                    await torrentApi.saveGameListToDisk();
+
+                    installationApi.startInstallation(folderPath)
+                        .finally(() => {
+                            setInstallationsInProgress(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(key);
+                                return newSet;
+                            });
+                        })
+                        .catch(console.error);
+                }
+            }
+            else if (item.type === 'ddl') {
                 const allComplete = item.statuses.every(s =>
                     s.status === "complete" &&
                     s.completedLength === s.totalLength
                 );
 
                 if (allComplete) {
-                    completedItems.push(item);
+                    const key = `ddl:${item.jobId}`;
+                    if (currentInstallations.has(key) || processedJobs().has(key)) continue;
+
+                    setProcessedJobs(prev => new Set(prev).add(key));
+
+                    // Mark installation as in progress
+                    setInstallationsInProgress(prev => new Set(prev).add(key));
+
                     await libraryApi.addDownloadedGame(item.job.downloadedGame);
-                    DownloadManagerApi.removeJob(item.jobId);
+                    const targetPath = item.job.targetPath;
+
+                    installationApi.startExtractionDdl(targetPath)
+                        .then(async () => {
+                            DownloadManagerApi.removeJob(item.jobId);
+                            await DownloadManagerApi.saveJobMapToDisk();
+                            installationApi.startInstallation(targetPath)
+                        })
+                        .catch(console.error)
+                        .finally(() => {
+                            setInstallationsInProgress(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(key);
+                                return newSet;
+                            });
+                        });
                 }
             }
-        }
-
-        if (completedItems.length > 0) {
-            await Promise.all([
-                torrentApi.saveGameListToDisk(),
-                DownloadManagerApi.saveJobMapToDisk()
-            ]);
-            await refreshDownloads();
         }
     }
 
@@ -188,7 +223,7 @@ const DownloadPage: Component = () => {
         setInterval(() => {
             refreshDownloads();
             checkFinishedDownloads();
-        }, 1000);
+        }, 2500);
     });
 
     return (
@@ -598,12 +633,19 @@ function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
                     await DownloadManagerApi.resumeJob(jobId);
                     break;
                 case "pause":
+                    await DownloadManagerApi.pauseJob(jobId);
+                    break;
+                //todo: do xD
                 case "uploading":
                     await DownloadManagerApi.pauseJob(jobId);
                     break;
                 case "install":
-                    // Install DDL game
-                    //extract first
+                    if (props.item.statuses.length > 0) {
+                        const firstFilePath = props.item.statuses[0].files?.[0]?.path;
+                        if (firstFilePath) {
+                            await installationApi.startExtractionDdl(firstFilePath);
+                        }
+                    }
                     break;
             }
         }

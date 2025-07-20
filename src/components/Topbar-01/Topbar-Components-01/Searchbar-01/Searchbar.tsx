@@ -41,6 +41,7 @@ export default function Searchbar(props: SearchbarProps) {
   function clearSearch() {
     setSearchTerm("");
     setSearchResults([]);
+    setClicked(false);
   }
 
   createEffect(() => {
@@ -103,6 +104,7 @@ export default function Searchbar(props: SearchbarProps) {
     const value = target.value.toLowerCase();
     setSearchTerm(value);
     value ? showResults(value) : clearSearch();
+
   }
 
   async function handleGoToGamePage(gameHref: string) {
@@ -119,6 +121,7 @@ export default function Searchbar(props: SearchbarProps) {
         setSearchTerm(capitalizeTitle(getTitleFromUrl(gameHref)));
         setSearchResults([]);
         setSearchValue(gameHref);
+        setClicked(false);
       }
     }
   }

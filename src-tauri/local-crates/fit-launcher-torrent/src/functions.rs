@@ -368,15 +368,6 @@ impl TorrentSession {
     }
 
     pub async fn configure(&self, config: FitLauncherConfigV2) -> Result<(), TorrentApiError> {
-        {
-            let guard = self.shared.read();
-            if let Some(shared) = guard.as_ref() {
-                if shared.aria2_client.is_some() {
-                    return Err(TorrentApiError::ConfigChangeDuringDownload);
-                }
-            }
-        }
-
         if let Err(e) = write_config(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }

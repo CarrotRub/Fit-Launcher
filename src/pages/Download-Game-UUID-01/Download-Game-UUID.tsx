@@ -5,7 +5,7 @@ import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
 import { ArrowLeft, Bookmark, BookmarkCheck, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
-import { formatDate, formatPlayTime } from "../../helpers/format";
+import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
 import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
@@ -111,14 +111,6 @@ const DownloadGameUUIDPage = () => {
     }, 5000);
   }
 
-  function extractMainTitle(title: string): string {
-    return title
-      ?.replace(/(?: - |, | )?(Digital Deluxe|Ultimate Edition|Deluxe Edition)\s*[:\-]?.*|(?: - |, ).*/, "")
-      ?.replace(/\s*[:\-]\s*$/, "")
-      ?.replace(/\(.*?\)/g, "")
-      ?.replace(/\s*[:\u2013]\s*$/, "")
-      ?.replace(/[\u2013].*$/, "");
-  }
 
   async function toggleDownloadLater(checked: boolean) {
     const game = gameInfo();

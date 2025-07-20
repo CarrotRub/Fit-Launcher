@@ -1,13 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 import { commands, DirectLink, DownloadedGame, Result } from "../../bindings";
-import { appDataDir } from "@tauri-apps/api/path";
-import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import {
+  create,
+  exists,
+  mkdir,
+  readTextFile,
+  writeTextFile,
+} from "@tauri-apps/plugin-fs";
+import { cleanForFolder, extractMainTitle } from "../../helpers/format";
 
 export type JobId = string;
 export interface DdlJobEntry {
   downloadedGame: DownloadedGame;
   gids: string[];
   files: DirectLink[];
+  targetPath: string;
 }
 
 export class DownloadManagerApi {
@@ -66,24 +74,42 @@ export class DownloadManagerApi {
   ): Promise<Result<JobId, string>> {
     const jobId = crypto.randomUUID();
 
-    const results = await commands.aria2TaskSpawn(directLinks, path);
+    await commands.allowDir(path);
 
-    if (results.status === "ok") {
-      const gids = results.data
-        .filter((result) => result.task)
-        .map((result) => result.task!.gid);
+    try {
+      const folderName = cleanForFolder(
+        extractMainTitle(downloadedGame.title)
+      ).concat(" [FitGirl Repack]");
 
-      this.ddlJobMap.set(jobId, {
-        downloadedGame,
-        gids,
-        files: directLinks,
-      });
+      const targetPath = await join(path, folderName);
 
-      await this.saveJobMapToDisk();
+      const dirExists = await exists(targetPath);
+      if (!dirExists) {
+        await mkdir(targetPath, { recursive: true });
+      }
 
-      return { status: "ok", data: jobId };
-    } else {
-      return { status: "error", error: results.error.toString() };
+      const results = await commands.aria2TaskSpawn(directLinks, targetPath);
+
+      if (results.status === "ok") {
+        const gids = results.data
+          .filter((result) => result.task)
+          .map((result) => result.task!.gid);
+
+        this.ddlJobMap.set(jobId, {
+          downloadedGame,
+          gids,
+          files: directLinks,
+          targetPath,
+        });
+
+        await this.saveJobMapToDisk();
+
+        return { status: "ok", data: jobId };
+      } else {
+        return { status: "error", error: results.error.toString() };
+      }
+    } catch (e) {
+      return { status: "error", error: `Download initialization failed: ${e}` };
     }
   }
 
@@ -124,7 +150,6 @@ export class DownloadManagerApi {
       await commands.aria2Resume(gid);
     }
   }
-
   // static async getStatus(jobId: string) {
   //   const job = this.ddlJobMap.get(jobId);
   //   if (!job) return;
