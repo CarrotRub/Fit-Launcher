@@ -16,7 +16,10 @@ use tracing::{error, info};
 
 use crate::{
     errors::{CreatingFileErrorStruct, ScrapingError},
-    global::functions::helper::{fetch_game_info, find_preview_image},
+    global::{
+        captcha::{handle_ddos_guard_captcha, update_client_cookies},
+        functions::helper::{fetch_game_info, find_preview_image},
+    },
     structs::Game,
 };
 
@@ -41,23 +44,47 @@ pub async fn download_sitemap(
 }
 
 pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
-    let fetch = CUSTOM_DNS_CLIENT.get(url).send();
-    let resp = timeout(Duration::from_secs(20), fetch)
-        .await
-        .map_err(|_| ScrapingError::TimeoutError(url.into()))?
-        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
+    let mut client = CUSTOM_DNS_CLIENT.clone();
+    let mut retry_with_cookies = false;
 
-    if !resp.status().is_success() {
-        if resp.status().as_u16() == 403 {
-            _ = app.emit("ddos-guard-blocked", ());
+    loop {
+        let fetch = client.get(url).send();
+        let resp = timeout(Duration::from_secs(20), fetch)
+            .await
+            .map_err(|_| ScrapingError::TimeoutError(url.into()))?
+            .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
+
+        if let Ok(cookies) = handle_ddos_guard_captcha(app, url).await {
+            update_client_cookies(&mut client, cookies);
+            retry_with_cookies = true;
+            continue;
         }
-        return Err(ScrapingError::HttpStatusCodeError(
-            resp.status().to_string(),
-        ));
+        if resp.status().as_u16() == 403 && !retry_with_cookies {
+            if let Some(server_header) = resp.headers().get("server") {
+                if let Ok(server_value) = server_header.to_str() {
+                    if server_value.to_lowercase().contains("ddos-guard") {
+                        _ = app.emit("ddos-guard-blocked", ());
+                        if let Ok(cookies) = handle_ddos_guard_captcha(app, url).await {
+                            update_client_cookies(&mut client, cookies);
+                            retry_with_cookies = true;
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        if !resp.status().is_success() {
+            return Err(ScrapingError::HttpStatusCodeError(
+                resp.status().to_string(),
+            ));
+        }
+
+        return resp
+            .text()
+            .await
+            .map_err(|e| ScrapingError::ReqwestError(e.to_string()));
     }
-    resp.text()
-        .await
-        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))
 }
 
 async fn write_games_to_file(

@@ -47,6 +47,15 @@ pub enum ScrapingError {
 
     #[error("I/O Error: {0}")]
     IOError(String),
+
+    #[error("Window Error: {0}")]
+    WindowError(String),
+
+    #[error("Cookie Error: {0}")]
+    CookieError(String),
+
+    #[error("URL parse error: {0}")]
+    UrlParseError(String),
 }
 
 impl From<reqwest::Error> for ScrapingError {

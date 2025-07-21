@@ -14,6 +14,8 @@ import './App.css';
 import { check } from '@tauri-apps/plugin-updater';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { ThemeManagerApi } from './api/theme/api';
+import { listen } from '@tauri-apps/api/event';
+import createCookiesImportPopup from './Pop-Ups/Cookies-Import-PopUp/Cookies-Import-PopUp';
 
 const themeManager = new ThemeManagerApi();
 
@@ -44,6 +46,16 @@ function App() {
     }
 
     await handleCheckUpdate();
+
+    listen("ddos-guard-blocked", () => {
+      createCookiesImportPopup({
+        infoTitle: "DDoS Protection Triggered",
+        infoMessage: "Please drop a valid `cookies.json` file to bypass the DDoS-Guard restriction.",
+        confirmLabel: "Continue",
+        cancelLabel: "Cancel",
+      });
+    });
+
   });
 
   async function handleCheckUpdate() {
@@ -81,6 +93,8 @@ function App() {
 
           await message('Update has been installed correctly! Please close and re-open the app.');
         }
+      } else {
+        console.log("NO updates")
       }
     } catch (err) {
       console.error('Update check failed:', err);
