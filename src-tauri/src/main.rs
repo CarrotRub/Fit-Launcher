@@ -345,7 +345,7 @@ async fn start() {
 
             // Clone the app handle for use in async tasks
             let first_app_handle = current_app_handle.clone();
-            let _second_app_handle = current_app_handle.clone();
+            let second_app_handle = current_app_handle.clone();
             let _third_app_handle = current_app_handle.clone();
             let fourth_app_handle = current_app_handle.clone();
 
@@ -357,7 +357,8 @@ async fn start() {
                     move || {
                         // Jump back into the async runtime on _this_ blocking thread.
                         tokio::runtime::Handle::current().block_on(async {
-                            if let Err(e) = get_100_games_unordered().await {
+                            if let Err(e) = get_100_games_unordered(first_app_handle.clone()).await
+                            {
                                 tracing::error!("run_all_scrapers failed: {e}");
                             }
                         });
@@ -365,7 +366,7 @@ async fn start() {
                 });
 
                 let scraper_handle = tauri::async_runtime::spawn_blocking({
-                    let app = first_app_handle.clone();
+                    let app = second_app_handle.clone();
                     move || {
                         // Jump back into the async runtime on _this_ blocking thread.
                         tokio::runtime::Handle::current().block_on(async {

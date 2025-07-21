@@ -40,7 +40,7 @@ pub async fn download_sitemap(
     Ok(())
 }
 
-async fn fetch_page(url: &str) -> Result<String, ScrapingError> {
+pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
     let fetch = CUSTOM_DNS_CLIENT.get(url).send();
     let resp = timeout(Duration::from_secs(20), fetch)
         .await
@@ -48,6 +48,9 @@ async fn fetch_page(url: &str) -> Result<String, ScrapingError> {
         .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
 
     if !resp.status().is_success() {
+        if resp.status().as_u16() == 403 {
+            _ = app.emit("ddos-guard-blocked", ());
+        }
         return Err(ScrapingError::HttpStatusCodeError(
             resp.status().to_string(),
         ));
@@ -100,9 +103,12 @@ async fn write_games_to_file(
     })
 }
 
-async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
+async fn scrape_new_games_page(
+    page: u32,
+    app: &tauri::AppHandle,
+) -> Result<Vec<Game>, ScrapingError> {
     let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{page}",);
-    let body = fetch_page(&url).await?;
+    let body = fetch_page(&url, app).await?;
     let document = scraper::Html::parse_document(&body);
     let article_selector = scraper::Selector::parse("article")
         .map_err(|e| ScrapingError::SelectorError(e.to_string()))?;
@@ -126,7 +132,9 @@ async fn scrape_new_games_page(page: u32) -> Result<Vec<Game>, ScrapingError> {
 
 pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
     let start = Instant::now();
-    let pages = FuturesOrdered::from_iter((1..=2).map(scrape_new_games_page));
+    let pages = FuturesOrdered::from_iter(
+        (1..=2).map(async |page| scrape_new_games_page(page, &app_handle).await),
+    );
 
     let results: Vec<_> = pages.collect().await;
     let mut games = Vec::new();
@@ -169,8 +177,8 @@ pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<Scrap
     Ok(())
 }
 
-async fn scrape_popular_game(link: &str) -> Result<Game, ScrapingError> {
-    let body = fetch_page(link).await?;
+async fn scrape_popular_game(link: &str, app: &tauri::AppHandle) -> Result<Game, ScrapingError> {
+    let body = fetch_page(link, app).await?;
     let doc = scraper::Html::parse_document(&body);
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
@@ -188,7 +196,7 @@ pub async fn popular_games_scraping_func(
     app_handle: tauri::AppHandle,
 ) -> Result<(), Box<ScrapingError>> {
     let start = Instant::now();
-    let body = fetch_page("https://fitgirl-repacks.site/popular-repacks/").await?;
+    let body = fetch_page("https://fitgirl-repacks.site/popular-repacks/", &app_handle).await?;
     let doc = scraper::Html::parse_document(&body);
 
     let links = doc
@@ -198,9 +206,13 @@ pub async fn popular_games_scraping_func(
         .map(str::to_owned)
         .collect::<Vec<_>>();
 
-    let games = FuturesOrdered::from_iter(links.iter().map(|link| scrape_popular_game(link)))
-        .collect::<Vec<_>>()
-        .await;
+    let games = FuturesOrdered::from_iter(
+        links
+            .iter()
+            .map(|link| scrape_popular_game(link, &app_handle)),
+    )
+    .collect::<Vec<_>>()
+    .await;
 
     let mut valid_games = Vec::new();
     for game in games {
@@ -215,8 +227,8 @@ pub async fn popular_games_scraping_func(
     Ok(())
 }
 
-async fn scrape_recent_update(link: &str) -> Result<Game, ScrapingError> {
-    let body = fetch_page(link).await?;
+async fn scrape_recent_update(link: &str, app: &tauri::AppHandle) -> Result<Game, ScrapingError> {
+    let body = fetch_page(link, app).await?;
     let doc = scraper::Html::parse_document(&body);
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
@@ -230,7 +242,11 @@ pub async fn recently_updated_games_scraping_func(
     app_handle: tauri::AppHandle,
 ) -> Result<(), Box<ScrapingError>> {
     let start = Instant::now();
-    let body = fetch_page("https://fitgirl-repacks.site/category/updates-digest/").await?;
+    let body = fetch_page(
+        "https://fitgirl-repacks.site/category/updates-digest/",
+        &app_handle,
+    )
+    .await?;
     let doc = scraper::Html::parse_document(&body);
 
     let links = doc
@@ -240,9 +256,13 @@ pub async fn recently_updated_games_scraping_func(
         .map(str::to_owned)
         .collect::<Vec<_>>();
 
-    let games = FuturesOrdered::from_iter(links.iter().map(|link| scrape_recent_update(link)))
-        .collect::<Vec<_>>()
-        .await;
+    let games = FuturesOrdered::from_iter(
+        links
+            .iter()
+            .map(|link| scrape_recent_update(link, &app_handle)),
+    )
+    .collect::<Vec<_>>()
+    .await;
 
     let mut valid_games = Vec::new();
     for game in games {
