@@ -46,6 +46,29 @@ pub struct TorrentSession {
 unsafe impl Send for TorrentSession {}
 unsafe impl Sync for TorrentSession {}
 
+async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Option<u16> {
+    let mut port = start;
+    let mut attempts = 0;
+
+    while attempts < count {
+        if let Some(excluded) = exclude {
+            if port == excluded {
+                port = port.wrapping_add(1);
+                continue;
+            }
+        }
+
+        if is_port_available(port) {
+            return Some(port);
+        }
+
+        port = port.wrapping_add(1);
+        attempts += 1;
+    }
+
+    None
+}
+
 fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
     let rdr = BufReader::new(File::open(path)?);
     let cfg: FitLauncherConfigV2 = serde_json::from_reader(rdr)?;
@@ -70,12 +93,17 @@ fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> 
     Ok(())
 }
 
-fn build_aria2_args(cfg: &FitLauncherConfigV2, session_path: &Path) -> Vec<String> {
+fn build_aria2_args(
+    cfg: &FitLauncherConfigV2,
+    session_path: &Path,
+    rpc_port: u16,
+    bt_port: u16,
+) -> Vec<String> {
     let mut a = Vec::<String>::new();
 
     // RPC ------------------------------------------------------------------
     a.push("--enable-rpc".into());
-    a.push(format!("--rpc-listen-port={}", cfg.rpc.port));
+    a.push(format!("--rpc-listen-port={rpc_port}"));
     if let Some(tok) = &cfg.rpc.token {
         a.push(format!("--rpc-secret={tok}"));
     }
@@ -118,7 +146,7 @@ fn build_aria2_args(cfg: &FitLauncherConfigV2, session_path: &Path) -> Vec<Strin
     if !cfg.bittorrent.enable_dht {
         a.push("--enable-dht=false".into());
     }
-    a.push(format!("--listen-port={}", cfg.bittorrent.listen_port));
+    a.push(format!("--listen-port={bt_port}"));
     a.push(format!("--bt-max-peers={}", cfg.bittorrent.max_peers));
     if let Some(r) = cfg.bittorrent.seed_ratio {
         a.push(format!("--seed-ratio={r}"));
@@ -169,7 +197,25 @@ pub async fn aria2_client_from_config(
             PathBuf::from("aria2c")
         };
 
-        if !is_port_available(*port) {
+        let rpc_port = find_port_in_range(*port, 5, None).await.ok_or_else(|| {
+            anyhow::anyhow!(
+                "Could not find available port in range {}-{}",
+                *port,
+                *port + 4
+            )
+        })?;
+
+        let bt_port = find_port_in_range(config.bittorrent.listen_port, 5, Some(rpc_port))
+            .await
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Could not find available BitTorrent port in range {}-{}",
+                    config.bittorrent.listen_port,
+                    config.bittorrent.listen_port + 4
+                )
+            })?;
+
+        if !is_port_available(rpc_port) {
             return Err(anyhow::anyhow!(
                 "Port {} is already in use. Please choose a different port.",
                 port
@@ -177,7 +223,12 @@ pub async fn aria2_client_from_config(
         }
 
         let mut child = Command::new(&exec)
-            .args(build_aria2_args(config, Path::new(&session_path.as_ref())))
+            .args(build_aria2_args(
+                config,
+                Path::new(&session_path.as_ref()),
+                rpc_port,
+                bt_port,
+            ))
             .current_dir(download_location)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -186,10 +237,12 @@ pub async fn aria2_client_from_config(
 
         sleep(Duration::from_secs(1)).await;
 
-        let client =
-            aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
-                .await
-                .context("Failed to connect to aria2c")?;
+        let client = aria2_ws::Client::connect(
+            &format!("ws://127.0.0.1:{rpc_port}/jsonrpc"),
+            token.as_deref(),
+        )
+        .await
+        .context("Failed to connect to aria2c")?;
 
         let (close_tx, close_rx) = channel::<()>();
         let (done_tx, done_rx) = channel::<()>();
@@ -210,26 +263,23 @@ pub async fn aria2_client_from_config(
             }
         });
 
-        *guard = Some((close_tx, done_rx, *port));
+        *guard = Some((close_tx, done_rx, rpc_port));
         Ok(client)
     } else {
-        aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
-            .await
-            .context("Could not connect to already running aria2 RPC server")
+        let rpc_port = find_port_in_range(*port, 5, None).await.ok_or_else(|| {
+            anyhow::anyhow!(
+                "Could not find available port in range {}-{}",
+                *port,
+                *port + 4
+            )
+        })?;
+        aria2_ws::Client::connect(
+            &format!("ws://127.0.0.1:{rpc_port}/jsonrpc"),
+            token.as_deref(),
+        )
+        .await
+        .context("Could not connect to already running aria2 RPC server")
     }
-}
-
-async fn find_available_port(start_port: u16) -> u16 {
-    let mut port = start_port + 1;
-    for _ in 0..100 {
-        if is_port_available(port) {
-            return port;
-        }
-        port = port.wrapping_add(1);
-    }
-
-    port = 49152 + (rand::random::<u16>() % 16384);
-    port
 }
 
 fn is_port_available(port: u16) -> bool {
