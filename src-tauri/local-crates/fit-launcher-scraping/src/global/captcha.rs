@@ -12,12 +12,12 @@ pub(crate) fn update_client_cookies(client: &mut Client, new_cookies: Vec<Cookie
     Cookies::save_local(&new_cookies).unwrap();
 
     for new_cookie in new_cookies {
-        if let Some(pos) = current_cookies
+        if let Some(cookie) = current_cookies
             .0
-            .iter()
-            .position(|c| c.name == new_cookie.name)
+            .iter_mut()
+            .find(|c| c.name == new_cookie.name)
         {
-            current_cookies.0[pos] = new_cookie;
+            *cookie = new_cookie;
         } else {
             current_cookies.0.push(new_cookie);
         }
@@ -52,6 +52,15 @@ pub(crate) async fn handle_ddos_guard_captcha(
 
     let (tx, rx) = std::sync::mpsc::channel();
 
+    let _ = win.eval(
+        r#"
+setInterval(() => {
+    if (document.querySelector(".site-title") !== null) {
+        window.close();
+    }
+}, 500);
+"#,
+    );
     win.on_window_event(move |event| {
         if let WindowEvent::Destroyed = event {
             let _ = tx.send(());

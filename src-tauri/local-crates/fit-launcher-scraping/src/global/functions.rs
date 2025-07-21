@@ -1,6 +1,7 @@
 use anyhow::Result;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream::FuturesOrdered};
+use reqwest::Response;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -43,29 +44,37 @@ pub async fn download_sitemap(
     Ok(())
 }
 
+fn likely_guarded(resp: &Response) -> bool {
+    resp.status().as_u16() == 403
+        && match resp.headers().get("server").map(|header| header.to_str()) {
+            Some(Ok(server_name)) if server_name.to_lowercase().contains("ddos-guard") => true,
+            _ => false,
+        }
+}
+
+async fn get_response(client: &reqwest::Client, url: &str) -> Result<Response, ScrapingError> {
+    let fetch = client.get(url).send();
+    let resp = timeout(Duration::from_secs(20), fetch)
+        .await
+        .map_err(|_| ScrapingError::TimeoutError(url.into()))?
+        .map_err(|e| ScrapingError::ReqwestError(e.to_string()));
+    resp
+}
+
 pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
     let mut client = CUSTOM_DNS_CLIENT.clone();
     let mut retry_with_cookies = false;
 
     loop {
-        let fetch = client.get(url).send();
-        let resp = timeout(Duration::from_secs(20), fetch)
-            .await
-            .map_err(|_| ScrapingError::TimeoutError(url.into()))?
-            .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
-
-        if resp.status().as_u16() == 403 && !retry_with_cookies {
-            if let Some(server_header) = resp.headers().get("server") {
-                if let Ok(server_value) = server_header.to_str() {
-                    if server_value.to_lowercase().contains("ddos-guard") {
-                        _ = app.emit("ddos-guard-blocked", ());
-                        if let Ok(cookies) = handle_ddos_guard_captcha(app, url).await {
-                            update_client_cookies(&mut client, cookies);
-                            retry_with_cookies = true;
-                            continue;
-                        }
-                    }
+        let resp = get_response(&client, url).await?;
+        if !retry_with_cookies && likely_guarded(&resp) {
+            match handle_ddos_guard_captcha(app, url).await {
+                Ok(cookies) => {
+                    update_client_cookies(&mut client, cookies);
+                    retry_with_cookies = true;
+                    continue;
                 }
+                Err(e) => error!("scrape error: {e}"),
             }
         }
 
