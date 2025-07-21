@@ -54,11 +54,6 @@ pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<Stri
             .map_err(|_| ScrapingError::TimeoutError(url.into()))?
             .map_err(|e| ScrapingError::ReqwestError(e.to_string()))?;
 
-        if let Ok(cookies) = handle_ddos_guard_captcha(app, url).await {
-            update_client_cookies(&mut client, cookies);
-            retry_with_cookies = true;
-            continue;
-        }
         if resp.status().as_u16() == 403 && !retry_with_cookies {
             if let Some(server_header) = resp.headers().get("server") {
                 if let Ok(server_value) = server_header.to_str() {
