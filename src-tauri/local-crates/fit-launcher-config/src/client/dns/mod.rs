@@ -3,6 +3,7 @@ use directories::BaseDirs;
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use reqwest::ClientBuilder;
+use reqwest::cookie::Jar;
 use reqwest::header::COOKIE;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -93,28 +94,37 @@ fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
 pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
     let dns_config = ensure_and_load_dns_config();
 
-    // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
-    // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
-    let mut client_builder = ClientBuilder::new()
-            .use_rustls_tls()
-            .gzip(true)
-            .brotli(true)
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
-            .pool_max_idle_per_host(0);
+    let jar = Arc::new(Jar::default());
 
     match Cookies::load_cookies() {
         Ok(cookies) => {
-            if let Ok(value) = HeaderValue::from_str(&cookies.to_header()) {
-                client_builder = client_builder
-                    .default_headers(reqwest::header::HeaderMap::from_iter([(COOKIE, value)]));
-            } else {
-                error!("invalid ASCII character found in cookies value");
+            for cookie in &cookies.0 {
+                if let Some(domain) = &cookie.domain {
+                    let cookie_str = format!(
+                        "{}={}; Domain={}; Path={}",
+                        cookie.name,
+                        cookie.value,
+                        domain,
+                        cookie.path.as_deref().unwrap_or("/")
+                    );
+                    jar.add_cookie_str(&cookie_str, &domain.parse().unwrap());
+                }
             }
         }
         Err(e) => {
             warn!("failed to read cookies: {e}");
         }
     }
+
+    // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
+    // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
+    let mut client_builder = ClientBuilder::new()
+        .use_rustls_tls()
+        .gzip(true)
+        .brotli(true)
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+        .pool_max_idle_per_host(0)
+        .cookie_provider(Arc::clone(&jar));
 
     // Conditionally set the custom DNS resolver only if sys_conf is disabled
     if !dns_config.system_conf {

@@ -1,4 +1,4 @@
-import { Component, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Component, createEffect, createMemo, createSignal, For, JSX, onCleanup, onMount, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { makePersisted } from "@solid-primitives/storage";
 import { message } from "@tauri-apps/plugin-dialog";
@@ -13,7 +13,16 @@ import {
     Gamepad2,
     Settings,
     Magnet,
-    DownloadCloud
+    DownloadCloud,
+    ChevronUp,
+    ChevronDown,
+    Folder,
+    Filter,
+    Clock,
+    Zap,
+    Activity,
+    CheckCircle,
+    Gauge
 } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
@@ -226,119 +235,196 @@ const DownloadPage: Component = () => {
         }, 2500);
     });
 
+    const StatPill = (props: {
+        icon: JSX.Element;
+        label: string;
+        value: string;
+        color: "blue" | "green" | "amber" | "purple" | "red" | "cyan";
+        glow?: boolean;
+    }) => {
+        const colorClasses = {
+            blue: "bg-blue-500/10 text-blue-400 border-blue-400/20",
+            green: "bg-emerald-500/10 text-emerald-400 border-emerald-400/20",
+            amber: "bg-amber-500/10 text-amber-400 border-amber-400/20",
+            purple: "bg-purple-500/10 text-purple-400 border-purple-400/20",
+            red: "bg-red-500/10 text-red-400 border-red-400/20",
+            cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-400/20"
+        };
+
+        return (
+            <div class={`
+            flex items-center gap-3 px-6 py-3 rounded-xl 
+            border ${colorClasses[props.color]}
+            bg-popup/80 backdrop-blur-sm
+            transition-all hover:scale-[1.02] hover:shadow-lg
+            ${props.glow ? `shadow-${props.color}-400/10 hover:shadow-${props.color}-400/20` : ''}
+            relative overflow-hidden
+        `}>
+                {/* Animated background effect */}
+                <div class={`
+                absolute inset-0 -z-10 opacity-10
+                ${props.glow ? `bg-gradient-to-br from-${props.color}-400 to-transparent` : ''}
+                group-hover:opacity-20 transition-opacity
+            `}></div>
+
+                <div class={`p-2 rounded-lg ${colorClasses[props.color]} backdrop-blur-sm`}>
+                    {props.icon}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-xs uppercase tracking-wider text-muted/80">{props.label}</span>
+                    <span class="font-bold text-lg">{props.value}</span>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div class="min-h-screen bg-background p-6">
-            {/* Header with glass effect */}
-            <div class="top-0 z-10 bg-popup/80 backdrop-blur-sm mx-auto rounded-xl max-w-7xl p-4 mb-6 border border-secondary-20 shadow-sm">
-                <div class="flex justify-between items-center max-w-7xl mx-auto">
-                    <h1 class="text-2xl font-bold flex items-center gap-3">
-                        <CloudDownload class="w-6 h-6 text-accent" />
-                        <span class="bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+        <div class="min-h-screen bg-gradient-to-br from-background to-background-950 p-4 w-full">
+            {/* Header Section */}
+            <div class="max-w-[1800px] mx-auto mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                    <h1 class="text-3xl font-bold flex items-center gap-3">
+                        <div class="p-2 rounded-xl bg-accent/10 border border-accent/20 backdrop-blur-sm">
+                            <CloudDownload class="w-6 h-6 text-accent animate-pulse" />
+                        </div>
+                        <span class="bg-gradient-to-r from-accent via-primary to-secondary   bg-clip-text text-transparent">
                             DOWNLOAD MANAGER
                         </span>
                     </h1>
 
-                    <div class="flex gap-2">
-                        <Button
-                            size="sm"
-                            label="CLEAR ALL TORRENTS"
-                            icon={<Trash2 class="w-4 h-4" />}
-                            onClick={async () => torrentApi.removeAllTorrents()}
-                        />
-                        <Button
-                            size="sm"
-                            label="CLEAR ALL DDL"
-                            icon={<Trash2 class="w-4 h-4" />}
-                            onClick={async () => {
-                                const jobs = DownloadManagerApi.getAllJobs();
-                                for (const [jobId] of jobs) {
-                                    await DownloadManagerApi.removeJob(jobId);
-                                }
-                                await refreshDownloads();
-                            }}
-                        />
+                    {/* Glowing Filter Tabs */}
+                    <div class="flex flex-wrap gap-3 w-full md:w-auto">
+                        <button class={`
+                        px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                        bg-blue-500/10 hover:bg-blue-500/20 transition-all
+                        border border-blue-400/30 hover:border-blue-400/50
+                        shadow-blue-400/10 hover:shadow-blue-400/20
+                        group
+                    `}>
+                            <Magnet class="w-5 h-5 text-blue-400 group-hover:animate-pulse" />
+                            <span>Torrents</span>
+                            <span class="px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold">
+                                {downloadStats().torrentCount}
+                            </span>
+                        </button>
+
+                        <button class={`
+                        px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                        bg-green-500/10 hover:bg-green-500/20 transition-all
+                        border border-green-400/30 hover:border-green-400/50
+                        shadow-green-400/10 hover:shadow-green-400/20
+                        group
+                    `}>
+                            <DownloadCloud class="w-5 h-5 text-green-400 group-hover:animate-bounce" />
+                            <span>Direct</span>
+                            <span class="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold">
+                                {downloadStats().ddlCount}
+                            </span>
+                        </button>
+
+                        <button class={`
+                        px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                        bg-amber-500/10 hover:bg-amber-500/20 transition-all
+                        border border-amber-400/30 hover:border-amber-400/50
+                        shadow-amber-400/10 hover:shadow-amber-400/20
+                        group
+                    `}>
+                            <Zap class="w-5 h-5 text-amber-400 group-hover:animate-pulse" />
+                            <span>Active</span>
+                            <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold">
+                                {downloadStats().activeCount}
+                            </span>
+                        </button>
                     </div>
+                </div>
+
+                {/* Animated Stats Pills */}
+                <div class="flex gap-4 overflow-x-auto p-4 mb-8 no-scrollbar">
+                    <StatPill
+                        icon={<ArrowDown class="w-5 h-5" />}
+                        label="Download Speed"
+                        value={formatSpeed(downloadStats().totalDownloadSpeed)}
+                        color="cyan"
+                        glow
+                    />
+
+                    <StatPill
+                        icon={<ArrowUp class="w-5 h-5" />}
+                        label="Upload Speed"
+                        value={formatSpeed(downloadStats().totalUploadSpeed)}
+                        color="purple"
+                        glow
+                    />
+
+                    <StatPill
+                        icon={<Activity class="w-5 h-5" />}
+                        label="Active Transfers"
+                        value={downloadStats().activeCount.toString()}
+                        color="amber"
+                    />
+
+                    <StatPill
+                        icon={<Gauge class="w-5 h-5" />}
+                        label="Peak Speed"
+                        value={formatSpeed(downloadStats().totalDownloadSpeed * 1.5)} // Example calculation
+                        color="red"
+                    />
+
+                    {/* <StatPill
+                        icon={<HardDrive class="w-5 h-5" />}
+                        label="Total Data"
+                        value={formatBytes(downloadStats().totalSize)}
+                        color="green"
+                    /> */}
                 </div>
             </div>
 
             {/* Main Content */}
-            <div class="max-w-7xl mx-auto">
-                {/* Stats Bar */}
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
-                        <div class="flex items-center gap-3">
-                            <Magnet class="w-5 h-5 text-blue-500" />
-                            <div>
-                                <p class="text-sm text-muted">Torrents</p>
-                                <p class="text-lg font-semibold">
-                                    {downloadStats().torrentCount}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
-                        <div class="flex items-center gap-3">
-                            <DownloadCloud class="w-5 h-5 text-green-500" />
-                            <div>
-                                <p class="text-sm text-muted">Direct Downloads</p>
-                                <p class="text-lg font-semibold">
-                                    {downloadStats().ddlCount}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
-                        <div class="flex items-center gap-3">
-                            <ArrowDown class="w-5 h-5 text-green-500" />
-                            <div>
-                                <p class="text-sm text-muted">Total Download Speed</p>
-                                <p class="text-lg font-semibold">
-                                    {formatSpeed(downloadStats().totalDownloadSpeed)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-popup/50 backdrop-blur-sm rounded-xl p-4 border border-secondary-20">
-                        <div class="flex items-center gap-3">
-                            <ArrowUp class="w-5 h-5 text-blue-500" />
-                            <div>
-                                <p class="text-sm text-muted">Total Upload Speed</p>
-                                <p class="text-lg font-semibold">
-                                    {formatSpeed(downloadStats().totalUploadSpeed)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Downloads List */}
+            <div class="max-w-[1800px] mx-auto">
                 {downloadItems().length > 0 ? (
-                    <div class="space-y-3">
+                    <div class="grid grid-cols-1 gap-5">
                         <For each={downloadItems()}>
                             {(item) => (
-                                <Dynamic
-                                    component={DownloadingGameItem}
-                                    item={item}
-                                    isExpanded={!!expandedStates()[item.type === 'torrent' ? item.gid : item.jobId]}
-                                    onToggleExpand={() => toggleExpand(item.type === 'torrent' ? item.gid : item.jobId)}
-                                    formatSpeed={formatSpeed} // Pass formatter to child
-                                />
+                                <div class={`
+                                bg-popup/80 backdrop-blur-sm rounded-2xl 
+                                border border-secondary-20/50 hover:border-accent/50 
+                                transition-all hover:shadow-xl hover:shadow-accent/10
+                                overflow-hidden
+                            `}>
+                                    <Dynamic
+                                        component={DownloadingGameItem}
+                                        item={item}
+                                        isExpanded={!!expandedStates()[item.type === 'torrent' ? item.gid : item.jobId]}
+                                        onToggleExpand={() => toggleExpand(item.type === 'torrent' ? item.gid : item.jobId)}
+                                        formatSpeed={formatSpeed}
+                                    />
+                                </div>
                             )}
                         </For>
                     </div>
                 ) : (
-                    <div class="flex flex-col items-center justify-center py-16 text-center bg-popup/30 backdrop-blur-sm rounded-2xl border border-dashed border-secondary-20">
-                        <div class="relative mb-6">
-                            <DownloadIcon class="w-16 h-16 text-accent animate-pulse" />
+                    <div class={`
+                    flex flex-col items-center justify-center py-24 text-center 
+                    bg-popup/30 backdrop-blur-sm rounded-3xl 
+                    border-2 border-dashed border-accent/30 hover:border-accent/50
+                    transition-all hover:shadow-lg hover:shadow-accent/10
+                `}>
+                        <div class="relative mb-8">
+                            <div class="absolute inset-0 bg-accent/10 rounded-full animate-ping opacity-20"></div>
+                            <DownloadIcon class="w-20 h-20 text-accent animate-bounce" />
                         </div>
-                        <h3 class="text-2xl font-medium text-text mb-2">No Active Downloads</h3>
-                        <p class="text-muted max-w-md mb-6">
-                            Your active downloads will appear here. Start downloading games to see them!
+                        <h3 class="text-3xl font-bold text-text mb-3 bg-gradient-to-r from-text to-primary bg-clip-text text-transparent">
+                            Ready for Downloads!
+                        </h3>
+                        <p class="text-muted/80 max-w-md mb-8 text-lg">
+                            Your download queue is empty. Let's find some awesome games!
                         </p>
                         <Button
-                            label="Browse Games"
-                            icon={<Gamepad2 class="w-5 h-5" />}
+                            label="Explore Game Library"
+                            icon={<Gamepad2 class="w-6 h-6" />}
                             onClick={() => navigate('/discovery-page')}
+                            class="text-lg py-3 px-6 hover:scale-105 transition-transform"
+                            variant="glass"
                         />
                     </div>
                 )}
@@ -440,115 +526,135 @@ function DownloadingGameItem(props: {
     };
 
     return (
-        <div class="bg-popup rounded-xl h-fit border border-secondary-20 overflow-hidden transition-all hover:border-accent/50">
-            <div class="flex flex-row items-center h-full">
-                {/* Game Info with Download Type Badge */}
-                <div class="flex items-center p-4 pt-10 md:w-1/3 border-r border-secondary-20 relative">
+        <div class="bg-popup rounded-xl border border-secondary-20/60 hover:border-accent/40 transition-all overflow-hidden group">
+            {/* Main Content Row */}
+            <div class="flex flex-col md:flex-row h-full">
+                {/* Game Info Section */}
+                <div class="flex items-center p-4 md:w-1/3 md:border-r border-secondary-20/50 relative">
                     {/* Download Type Badge */}
-                    <div class={`absolute top-2 left-4 px-2 py-1 rounded text-xs font-medium ${props.item.type === 'torrent'
-                        ? 'bg-secondary text-text'
-                        : 'bg-secondary text-text'
+                    <div class={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium tracking-wide ${props.item.type === 'torrent'
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                         }`}>
-                        {props.item.type === 'torrent' ? 'TORRENT' : 'DIRECT DOWNLOAD'}
+                        {props.item.type === 'torrent' ? 'TORRENT' : 'DIRECT'}
                     </div>
 
                     <img
                         src={game.img}
                         alt={game.title}
-                        class="w-16 h-16 rounded-lg object-cover mr-4"
+                        class="w-16 h-16 rounded-lg object-cover mt-5 mr-4 border border-secondary-20/30 group-hover:border-accent/30 transition-colors"
                     />
-                    <div>
-                        <h3 class="font-medium line-clamp-2">{game.title}</h3>
-                        <div class="flex items-center gap-2 mt-1 text-sm text-muted">
-                            <HardDrive class="w-4 h-4" />
-                            <span>{formatBytes(aggregatedStatus()?.totalLength)} total</span>
+                    <div class="flex-1 min-w-0 mt-5 ">
+                        <h3 class="font-medium line-clamp-2 text-text group-hover:text-primary transition-colors">
+                            {game.title}
+                        </h3>
+                        <div class="flex items-center gap-2 mt-1 text-sm text-muted/80">
+                            <HardDrive class="w-4 h-4 opacity-70" />
+                            <span>{formatBytes(aggregatedStatus()?.totalLength)}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Download Stats */}
-                <div class="flex flex-col w-full border-t-0 border-secondary-20">
-                    <div class="flex flex-row items-center justify-center gap-4 w-full p-4">
-                        {/* Speed Indicators */}
-                        <div class="flex gap-6 justify-center">
-                            <div class="flex items-center gap-2">
-                                <ArrowDown class="w-5 h-5 text-green-500" />
-                                <div>
-                                    <p class="text-xs text-muted">DOWNLOAD</p>
-                                    <p class="font-medium">{props.formatSpeed(aggregatedStatus()?.downloadSpeed)}</p>
+                {/* Download Stats Section */}
+                <div class="flex-1 flex flex-col ">
+                    <div class="flex flex-col h-full sm:flex-row items-center gap-4 p-4">
+                        <div class="flex gap-4 sm:gap-6">
+                            <div class="flex items-center gap-2 min-w-[100px]">
+                                <div class="p-1.5 rounded-md bg-green-500/10">
+                                    <ArrowDown class="w-4 h-4 text-green-400" />
+                                </div>
+                                <div class="text-sm">
+                                    <p class="text-xs text-muted/80">DOWNLOAD</p>
+                                    <p class="font-medium text-text">
+                                        {props.formatSpeed(aggregatedStatus()?.downloadSpeed)}
+                                    </p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <ArrowUp class="w-5 h-5 text-blue-500" />
-                                <div>
-                                    <p class="text-xs text-muted">UPLOAD</p>
-                                    <p class="font-medium">{props.formatSpeed(aggregatedStatus()?.uploadSpeed)}</p>
+                            <div class="flex items-center gap-2 min-w-[100px]">
+                                <div class="p-1.5 rounded-md bg-blue-500/10">
+                                    <ArrowUp class="w-4 h-4 text-blue-400" />
+                                </div>
+                                <div class="text-sm">
+                                    <p class="text-xs text-muted/80">UPLOAD</p>
+                                    <p class="font-medium text-text">
+                                        {props.formatSpeed(aggregatedStatus()?.uploadSpeed)}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Progress Bar */}
-                        <div class="flex-1">
-                            <div class="flex justify-between text-xs text-muted mb-1">
-                                <span>
+                        <div class="flex-1 min-w-0 w-full">
+                            <div class="flex justify-between text-xs text-muted/80 mb-1.5">
+                                <span class="capitalize">
                                     {aggregatedStatus()?.status === "complete"
                                         ? "Completed"
                                         : aggregatedStatus()
                                             ? "Downloading..."
                                             : "Waiting..."}
                                 </span>
-                                <span>{numberProgress()}%</span>
+                                <span class="font-medium text-text">{numberProgress()}%</span>
                             </div>
-                            <div class="w-full h-2 bg-secondary-20 rounded-full overflow-hidden">
+                            <div class="w-full h-2 bg-secondary-20/30 rounded-full overflow-hidden">
                                 <div
-                                    class="h-full bg-gradient-to-r from-accent to-primary transition-all duration-300"
+                                    class="h-full bg-gradient-to-r from-accent to-primary/80 transition-all duration-500 ease-out"
                                     style={{ width: progress() }}
                                 />
                             </div>
                         </div>
 
-                        {/* Action Button and Expand Button */}
-                        <div class="flex items-center gap-2">
+                        {/* Action Buttons - Better spacing */}
+                        <div class="flex items-center gap-2 ml-auto">
                             <DownloadActionButton
                                 item={props.item}
                                 status={aggregatedStatus()}
                             />
                             <Button
-                                variant="bordered"
+                                variant="glass"
                                 size="sm"
                                 onClick={props.onToggleExpand}
                                 icon={
                                     props.isExpanded ? (
-                                        <ArrowUp class="w-4 h-4" />
+                                        <ChevronUp class="w-4 h-4" />
                                     ) : (
-                                        <ArrowDown class="w-4 h-4" />
+                                        <ChevronDown class="w-4 h-4" />
                                     )
                                 }
+                                class="hover:bg-secondary-20/30"
                             />
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Expanded Files Section */}
             <Show when={files().length > 0}>
-                <div class={`overflow-x-hidden no-scrollbar transition-all duration-300 ${props.isExpanded ? "max-h-fit" : "max-h-0"}`}>
-                    <div class="border-t border-secondary-20 p-4 space-y-3">
-                        <h4 class="text-sm font-medium text-muted">Downloading Files</h4>
+                <div class={`overflow-scroll no-scrollbar transition-all duration-300 ease-in-out ${props.isExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                    }`}>
+                    <div class="border-t border-secondary-20/30 p-4 space-y-3">
+                        <h4 class="text-sm font-medium text-muted/80 flex items-center gap-2">
+                            <Folder class="w-4 h-4" />
+                            Downloading Files
+                        </h4>
                         <div class="space-y-2">
                             <For each={files()}>
                                 {(file) => (
-                                    <div class="bg-secondary-10 rounded-lg p-3">
-                                        <div class="flex justify-between text-xs mb-1">
-                                            <span class="truncate max-w-md">{getFileNameFromPath(file.path)}</span>
-                                            <span>{((file.completedLength / file.length) * 100).toFixed(1)}%</span>
+                                    <div class="bg-secondary-10/50 hover:bg-secondary-20/30 rounded-lg p-3 transition-colors">
+                                        <div class="flex justify-between text-xs mb-1.5">
+                                            <span class="truncate max-w-[200px] sm:max-w-md font-medium text-text">
+                                                {getFileNameFromPath(file.path)}
+                                            </span>
+                                            <span class="text-muted/80">
+                                                {((file.completedLength / file.length) * 100).toFixed(1)}%
+                                            </span>
                                         </div>
-                                        <div class="w-full h-1.5 bg-secondary-20 rounded-full overflow-hidden">
+                                        <div class="w-full h-1.5 bg-secondary-20/30 rounded-full overflow-hidden">
                                             <div
-                                                class="h-full bg-accent transition-all duration-300"
+                                                class="h-full bg-accent/80 transition-all duration-500 ease-out"
                                                 style={{ width: `${(file.completedLength / file.length) * 100}%` }}
                                             />
                                         </div>
-                                        <div class="flex justify-between text-xs text-muted mt-1">
+                                        <div class="flex justify-between text-xs text-muted/80 mt-1">
                                             <span>{formatBytes(file.completedLength)}</span>
                                             <span>{formatBytes(file.length)}</span>
                                         </div>

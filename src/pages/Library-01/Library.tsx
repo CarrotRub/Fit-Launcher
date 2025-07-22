@@ -38,7 +38,7 @@ function Library() {
       const [collections, downloadedGames, gamesToDownload] = await Promise.all([
         libraryAPI.getCollectionsList(),
         libraryAPI.getDownloadedGames(),
-        libraryAPI.getGamesToDownload(), // ← Fetch it
+        libraryAPI.getGamesToDownload(),
       ]);
 
       const normalizedCollections: Record<string, Game[]> = {};
@@ -142,7 +142,7 @@ function Library() {
   return (
     <div class="library flex bg-gradient-to-br from-background to-background-70 text-text h-full">
       {/* Sidebar */}
-      <div class="w-72 bg-popup/95 backdrop-blur-sm border-r border-secondary-30 p-5 flex flex-col space-y-5">
+      <div class="w-72  bg-popup-background/95 backdrop-blur-sm border-r border-secondary-30 p-5 flex flex-col space-y-5 ">
         <div class="flex items-center space-x-3 mb-6 px-2">
           <LibraryBig class="w-6 h-6 text-accent" />
           <h2 class="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent font-titles">
@@ -185,7 +185,7 @@ function Library() {
       {/* Main Content */}
       <div class="flex-1 flex flex-col overflow-hidden">
         {/* Toolbar */}
-        <div class="bg-popup/80 backdrop-blur-sm border-b border-secondary-20 p-4 flex justify-between items-center">
+        <div class=" bg-popup-background/80 backdrop-blur-sm border-b border-secondary-20 p-4 flex justify-between items-center">
           <div class="flex items-center gap-1">
             <div class="relative flex items-center bg-secondary-20/30 rounded-lg p-1">
               <button

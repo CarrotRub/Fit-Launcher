@@ -1,6 +1,5 @@
 import { createSignal, createEffect, JSX, For, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { setDownloadGamePageInfo } from '../functions/dataStoreGlobal';
 import { CircleArrowLeft, CircleArrowRight, MoveRight } from 'lucide-solid';
 import { SliderProps } from '../../types/components/types';
 import Button from '../UI/Button/Button';
@@ -112,7 +111,6 @@ const Slider = (props: SliderProps): JSX.Element => {
                         </For>
                     </div>
                 </Show>
-
 
                 <button
                     class={`skipper right p-2 rounded-full bg-background/90 border border-secondary-30 shadow backdrop-blur-md transition-all duration-200 hover:scale-105 ${currentIndex() === props.images.length - 1 ? 'opacity-0 cursor-default' : 'opacity-100 hover:bg-accent/10'}`}

@@ -5,7 +5,6 @@ import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
 import { listen } from "@tauri-apps/api/event";
 import { TorrentApi } from "../../api/bittorrent/api";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import createCookiesImportPopup from "../../Pop-Ups/Cookies-Import-PopUp/Cookies-Import-PopUp";
 
 export default function Topbar() {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -51,19 +50,6 @@ export default function Topbar() {
     });
   });
 
-  function handleIdk() {
-    createCookiesImportPopup({
-      infoTitle: "DDoS Protection Triggered",
-      infoMessage: "Please drop a valid `cookies.json` file to bypass the DDoS-Guard restriction.",
-      confirmLabel: "Continue",
-      cancelLabel: "Cancel",
-      action: (file: File) => {
-        // TODO: handle the dropped file (save/send it)
-        console.log("Got cookie file:", file.name);
-      }
-    });
-  }
-
   return (
     <div
       class="w-full h-16 px-4 flex items-center justify-between bg-popup-background border-b border-secondary-20 select-none"
@@ -75,7 +61,6 @@ export default function Topbar() {
         alt='fitgirl repack logo'
         class="w-8 h-8 rounded-md object-cover"
         style="-webkit-app-region: no-drag;"
-        onClick={handleIdk}
       />
 
       {/* Right Section - Searchbar */}

@@ -4,7 +4,7 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
@@ -21,7 +21,9 @@ const DownloadGameUUIDPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = createSignal(0);
   const [loading, setLoading] = createSignal(true);
   const [isToDownloadLater, setToDownloadLater] = createSignal(false);
-  const [showPopup, setShowPopup] = createSignal(false);
+  const [touchStartX, setTouchStartX] = createSignal(0);
+  const [touchEndX, setTouchEndX] = createSignal(0);
+  const [swipeDirection, setSwipeDirection] = createSignal<"left" | "right" | null>(null);
   const [gameDetails, setGameDetails] = createSignal<GameDetails>({
     tags: "N/A",
     companies: "N/A",
@@ -34,8 +36,28 @@ const DownloadGameUUIDPage = () => {
   const params = useParams();
 
   let backgroundCycleIntervalID: number;
+  let heroSectionRef: HTMLDivElement;
 
   const location = useLocation<GamePageState>();
+
+  function goToNextImage() {
+    clearInterval(backgroundCycleIntervalID);
+    setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
+    startBackgroundCycle();
+  }
+
+  function goToPrevImage() {
+    clearInterval(backgroundCycleIntervalID);
+    setCurrentImageIndex((i) => (i - 1 + additionalImages().length) % additionalImages().length);
+    startBackgroundCycle();
+  }
+
+  function goToImage(index: number) {
+    clearInterval(backgroundCycleIntervalID);
+    setCurrentImageIndex(index);
+    startBackgroundCycle();
+  }
+
 
   async function fetchGame(gameHref: string) {
     try {
@@ -68,7 +90,6 @@ const DownloadGameUUIDPage = () => {
     }
   }
 
-
   async function checkIfInDownloadLater(title: string) {
     try {
       const list = await library.getGamesToDownload();
@@ -97,7 +118,6 @@ const DownloadGameUUIDPage = () => {
     setGameDetails(details);
   }
 
-
   function cutDescription(desc?: string): string {
     if (!desc) return "Description not available";
     const index = desc.indexOf("\nGame Description\n");
@@ -111,25 +131,60 @@ const DownloadGameUUIDPage = () => {
     }, 5000);
   }
 
-
-  async function toggleDownloadLater(checked: boolean) {
-    const game = gameInfo();
-    if (!game) return;
-    if (checked) {
-      await library.addGameToCollection("games_to_download", library.downloadedGameToGame(game));
-    } else {
-      await library.removeGameToDownload(game.title);
-    }
-    setToDownloadLater(checked);
+  function handleTouchStart(e: TouchEvent) {
+    setTouchStartX(e.touches[0].clientX);
+    setTouchEndX(e.touches[0].clientX);
+    clearInterval(backgroundCycleIntervalID);
   }
 
-  const handleCheckboxChange = async (e: Event) => {
-    const checked = (e.target as HTMLInputElement).checked;
-    await toggleDownloadLater(checked);
-  };
+  function handleTouchMove(e: TouchEvent) {
+    setTouchEndX(e.touches[0].clientX);
+    const diff = touchStartX() - touchEndX();
+    console.log("Swipe is: ", diff > 0 ? "left" : "right")
+    if (Math.abs(diff) > 30) {
+      setSwipeDirection(diff > 0 ? "left" : "right");
+    } else {
+      setSwipeDirection(null);
+    }
+  }
+
+  function handleTouchEnd() {
+    if (!swipeDirection()) {
+      startBackgroundCycle();
+      return;
+    }
+
+    if (swipeDirection() === "left") {
+      // Swipe left - go to next image
+      setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
+    } else {
+      // Swipe right - go to previous image
+      setCurrentImageIndex((i) => (i - 1 + additionalImages().length) % additionalImages().length);
+    }
+
+    setSwipeDirection(null);
+    startBackgroundCycle();
+  }
+
+  async function toggleDownloadLater() {
+    const game = gameInfo();
+    if (!game) return;
+
+    try {
+      if (isToDownloadLater()) {
+        await library.removeGameToDownload(game.title);
+        setToDownloadLater(false);
+      } else {
+        await library.addGameToCollection("games_to_download", library.downloadedGameToGame(game));
+        setToDownloadLater(true);
+      }
+    } catch (err) {
+      console.error("Error toggling download later", err);
+    }
+  }
+
 
   const handleReturn = () => navigate(localStorage.getItem("latestGlobalHref") || "/");
-
 
   createEffect(() => {
     const state = location.state;
@@ -161,41 +216,74 @@ const DownloadGameUUIDPage = () => {
 
   return (
     <div class="min-h-full min-w-screen bg-background text-text flex items-center justify-center">
-
-
       {loading() ? (
         <LoadingPage />
       ) : gameInfo() ? (
-        <div class=" mx-auto   pb-8">
+        <div class=" mx-auto w-screen   pb-8">
           {/* Hero Section */}
           <div
+            ref={heroSectionRef!}
             class="relative h-128 w-full bg-cover bg-center mb-6 overflow-hidden transition-all duration-1000 ease-in-out"
-            style={{ 'background-image': `url(${additionalImages()[currentImageIndex()]})` }}
+            style={{
+              'background-image': `url(${additionalImages()[currentImageIndex()]})`,
+              'transform': swipeDirection() ?
+                `translateX(${swipeDirection() === 'left' ? '-10' : '10'}px)` : 'translateX(0)',
+              'transition': swipeDirection() ? 'transform 0.1s ease-out' : 'transform 0.5s ease-in-out'
+            }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
-            <div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            <div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
 
             {/* Navigation */}
-            <div class="absolute top-3 left-3 z-10 flex gap-2">
+            <Show when={additionalImages().length > 1}>
               <button
-                onClick={handleReturn}
-                class="p-2 rounded-lg bg-background/80 hover:bg-secondary-20 text-primary transition-colors backdrop-blur-sm"
+                onClick={goToPrevImage}
+                class="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-background/50 hover:bg-background/80 text-primary transition-colors backdrop-blur-sm"
               >
-                <ArrowLeft class="w-5 h-5" />
+                <ChevronLeft class="w-5 h-5" />
               </button>
-              <label class="cursor-pointer p-2 rounded-lg bg-background/80 hover:bg-secondary-20 backdrop-blur-sm">
-                <input
-                  type="checkbox"
-                  checked={isToDownloadLater()}
-                  onChange={handleCheckboxChange}
-                  class="hidden"
-                />
-                {isToDownloadLater() ? (
-                  <BookmarkCheck class="w-5 h-5 text-accent" />
-                ) : (
-                  <Bookmark class="w-5 h-5 text-muted hover:text-accent" />
-                )}
-              </label>
+              <button
+                onClick={goToNextImage}
+                class="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-background/50 hover:bg-background/80 text-primary transition-colors backdrop-blur-sm"
+              >
+                <ChevronRight class="w-5 h-5" />
+              </button>
+            </Show>
+
+            {/* Top Navigation */}
+            <div class="absolute top-3 left-3 z-10 flex gap-2">
+
+              <Button
+                icon={<ArrowLeft class="w-5 h-5 text-primary" />}
+                onClick={handleReturn}
+                size="sm"
+                variant="glass"
+              />
+
+              <Button
+                icon={isToDownloadLater() ?
+                  <BookmarkCheck class="w-5 h-5 text-primary" /> :
+                  <Bookmark class="w-5 h-5 text-primary" />}
+                onClick={toggleDownloadLater}
+                size="sm"
+                variant="glass"
+                aria-label={isToDownloadLater() ? "Remove from download later" : "Add to download later"}
+              />
             </div>
+
+            {/* Image Indicators */}
+            <Show when={additionalImages().length > 1}>
+              <div class="absolute bottom-16 left-0 right-0 flex justify-center gap-2 z-10">
+                {additionalImages().map((_, index) => (
+                  <button
+                    onClick={() => goToImage(index)}
+                    class={`w-2 h-2 rounded-full transition-all ${index === currentImageIndex() ? 'bg-accent w-4' : 'bg-muted/50 hover:bg-muted'}`}
+                  />
+                ))}
+              </div>
+            </Show>
 
             {/* Game Title */}
             <div class="absolute bottom-4 left-4 right-4 z-10">
@@ -348,6 +436,5 @@ const DownloadGameUUIDPage = () => {
     </div>
   );
 };
-
 
 export default DownloadGameUUIDPage;
