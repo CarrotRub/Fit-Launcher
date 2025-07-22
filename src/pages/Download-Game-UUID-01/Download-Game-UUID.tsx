@@ -238,18 +238,23 @@ const DownloadGameUUIDPage = () => {
 
             {/* Navigation */}
             <Show when={additionalImages().length > 1}>
-              <button
-                onClick={goToPrevImage}
-                class="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-background/50 hover:bg-background/80 text-primary transition-colors backdrop-blur-sm"
-              >
-                <ChevronLeft class="w-5 h-5" />
-              </button>
-              <button
-                onClick={goToNextImage}
-                class="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-background/50 hover:bg-background/80 text-primary transition-colors backdrop-blur-sm"
-              >
-                <ChevronRight class="w-5 h-5" />
-              </button>
+              <div class="flex w-full justify-between items-center h-full px-4">
+                <Button
+                  icon={<ChevronLeft class="w-5 h-5 text-primary" />}
+                  onClick={goToPrevImage}
+                  size="sm"
+                  class="!rounded-full z-10"
+                  variant="glass"
+                />
+
+                <Button
+                  icon={<ChevronRight class="w-5 h-5 text-primary" />}
+                  onClick={goToNextImage}
+
+                  class="!rounded-full z-10"
+                  variant="glass"
+                />
+              </div>
             </Show>
 
             {/* Top Navigation */}

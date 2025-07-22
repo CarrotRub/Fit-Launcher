@@ -10,6 +10,7 @@ export default function Topbar() {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [notificationMessage, setNotificationMessage] = createSignal('');
   const [isMaximized, setIsMaximized] = createSignal(false);
+  const [isFullscreen, setIsFullscreen] = createSignal(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const torrentApi = new TorrentApi();
@@ -21,9 +22,37 @@ export default function Topbar() {
   }
 
   async function handleMaximize() {
-    await appWindow.toggleMaximize();
-    const maximized = await appWindow.isMaximized();
-    setIsMaximized(maximized);
+    if (isFullscreen()) {
+      await appWindow.setFullscreen(false);
+      setIsFullscreen(false);
+      if (isMaximized()) {
+        await appWindow.maximize();
+      }
+    } else {
+      await appWindow.toggleMaximize();
+      const maximized = await appWindow.isMaximized();
+      setIsMaximized(maximized);
+    }
+  }
+
+  async function toggleFullscreen() {
+    if (isMaximized()) {
+      await appWindow.toggleMaximize();
+    }
+    const newFullscreenState = !isFullscreen();
+    await appWindow.setFullscreen(newFullscreenState);
+    setIsFullscreen(newFullscreenState);
+
+    if (newFullscreenState) {
+
+      const wasMaximized = await appWindow.isMaximized();
+      setIsMaximized(wasMaximized);
+    } else {
+
+      if (isMaximized()) {
+        await appWindow.maximize();
+      }
+    }
   }
 
   function changeLocalStorageLatestHref(href: string) {
@@ -33,6 +62,19 @@ export default function Topbar() {
 
   onMount(async () => {
     setIsMaximized(await appWindow.isMaximized());
+    setIsFullscreen(await appWindow.isFullscreen());
+
+    const unlistenResize = await appWindow.onResized(async () => {
+      setIsFullscreen(await appWindow.isFullscreen());
+      setIsMaximized(await appWindow.isMaximized());
+    });
+
+    document.addEventListener("keydown", async (e) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        await toggleFullscreen();
+      }
+    });
 
     document.getElementById('titlebar-minimize')?.addEventListener('click', () => appWindow.minimize());
     document.getElementById('titlebar-maximize')?.addEventListener('click', handleMaximize);
@@ -48,6 +90,10 @@ export default function Topbar() {
       setIsDialogOpen(true);
       console.log('Scraping failed:', event.payload.message);
     });
+
+    return () => {
+      unlistenResize();
+    };
   });
 
   return (
@@ -126,6 +172,7 @@ export default function Topbar() {
       <div class="flex items-center gap-6" style="-webkit-app-region: no-drag;">
         {/* Window Controls */}
         <div data-tauri-drag-region class="flex items-center gap-2">
+
           <button
             id="titlebar-minimize"
             class="p-1.5 rounded-full text-muted hover:bg-secondary-20/30 hover:text-accent transition-colors"
@@ -133,16 +180,24 @@ export default function Topbar() {
           >
             <Minus size={16} />
           </button>
+
           <button
             id="titlebar-maximize"
             class="p-1.5 rounded-full text-muted hover:bg-secondary-20/30 hover:text-accent transition-colors"
             onClick={handleMaximize}
-            title={isMaximized() ? "Restore Down" : "Maximize"}
+            title={
+              isFullscreen()
+                ? "Exit Fullscreen"
+                : isMaximized()
+                  ? "Restore Down"
+                  : "Maximize"
+            }
           >
-            <Show when={isMaximized()} fallback={<Maximize2 size={16} />}>
+            <Show when={isFullscreen() || isMaximized()} fallback={<Maximize2 size={16} />}>
               <Minimize2 size={16} />
             </Show>
           </button>
+
           <button
             id="titlebar-close"
             class="p-1.5 rounded-full text-muted hover:bg-red-500/20 hover:text-red-500 transition-colors"
