@@ -1,6 +1,6 @@
 use fit_launcher_config::client::cookies::{Cookie, Cookies};
 use reqwest::{Client, ClientBuilder};
-use tauri::{Url, WindowEvent, http::HeaderValue};
+use tauri::{Listener, Url, WindowEvent, http::HeaderValue};
 use time::format_description::well_known::Rfc2822;
 use tracing::error;
 
@@ -52,15 +52,19 @@ pub(crate) async fn handle_ddos_guard_captcha(
 
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let _ = win.eval(
-        r#"
-setInterval(() => {
-    if (document.querySelector(".site-title") !== null) {
-        window.close();
-    }
-}, 500);
-"#,
-    );
+    let win_for_eval = win.clone();
+    win.once("tauri://page-loaded", move |_| {
+        let _ = win_for_eval.eval(
+            r#"
+        setInterval(() => {
+            if (document.querySelector(".site-title") !== null) {
+                window.close();
+            }
+        }, 500);
+        "#,
+        );
+    });
+
     win.on_window_event(move |event| {
         if let WindowEvent::Destroyed = event {
             let _ = tx.send(());
