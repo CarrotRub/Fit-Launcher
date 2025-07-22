@@ -4,13 +4,12 @@ use once_cell::sync::Lazy;
 use reqwest::Client;
 use reqwest::ClientBuilder;
 use reqwest::cookie::Jar;
-use reqwest::header::COOKIE;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
 use std::io::Write;
 use std::sync::Arc;
-use tauri::http::HeaderValue;
+use tauri::Url;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
@@ -107,7 +106,8 @@ pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
                         domain,
                         cookie.path.as_deref().unwrap_or("/")
                     );
-                    jar.add_cookie_str(&cookie_str, &domain.parse().unwrap());
+                    let url = Url::parse(&format!("https://{domain}"));
+                    jar.add_cookie_str(&cookie_str, &url.unwrap());
                 }
             }
         }
