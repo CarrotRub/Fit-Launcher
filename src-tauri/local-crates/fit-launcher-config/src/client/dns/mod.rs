@@ -105,10 +105,12 @@ pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
 
     match Cookies::load_cookies() {
         Ok(cookies) => {
-            client_builder = client_builder.default_headers(HeaderMap::from_iter([(
+            client_builder = client_builder.default_headers(
+              HeaderMap::from_iter([(
                 COOKIE,
                 HeaderValue::from_str(&cookies.to_header()).expect("invalid cookies value"),
-            )]))
+              )])
+            )
         }
         Err(e) => {
             warn!("failed to read cookies: {e}");
