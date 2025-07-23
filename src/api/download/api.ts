@@ -41,6 +41,10 @@ export class DownloadManagerApi {
       const content = await readTextFile(savePath);
       const obj: Record<JobId, DdlJobEntry> = JSON.parse(content);
       this.ddlJobMap = new Map(Object.entries(obj));
+      return this.ddlJobMap;
+    } else {
+      console.warn("No saved job map found at", savePath);
+      return new Map();
     }
   }
 
@@ -142,12 +146,38 @@ export class DownloadManagerApi {
     }
   }
 
-  static async resumeJob(jobId: string) {
+  static async unpauseJob(jobId: string) {
     const job = this.ddlJobMap.get(jobId);
     if (!job) return;
 
     for (const gid of job.gids) {
       await commands.aria2Resume(gid);
+    }
+  }
+
+  static async resumeJob(jobId: string) {
+    const job = this.ddlJobMap.get(jobId);
+    if (!job) return;
+
+    const results = await commands.aria2TaskSpawn(job.files, job.targetPath);
+
+    if (results.status === "ok") {
+      const gids = results.data
+        .filter((result) => result.task)
+        .map((result) => result.task!.gid);
+
+      this.ddlJobMap.set(jobId, {
+        ...job,
+        gids,
+        files: job.files,
+        targetPath: job.targetPath,
+      });
+
+      await this.saveJobMapToDisk();
+
+      return { status: "ok", data: jobId };
+    } else {
+      return { status: "error", error: results.error.toString() };
     }
   }
   // static async getStatus(jobId: string) {

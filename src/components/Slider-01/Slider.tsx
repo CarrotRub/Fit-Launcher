@@ -1,4 +1,4 @@
-import { createSignal, createEffect, JSX, For, Show } from 'solid-js';
+import { createSignal, createEffect, JSX, For, Show, onMount, onCleanup } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { CircleArrowLeft, CircleArrowRight, MoveRight } from 'lucide-solid';
 import { SliderProps } from '../../types/components/types';

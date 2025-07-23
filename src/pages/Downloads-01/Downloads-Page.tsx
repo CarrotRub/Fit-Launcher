@@ -56,7 +56,6 @@ const DownloadPage: Component = () => {
     const filteredItems = createMemo(() => {
         const items = downloadItems;
         const filter = activeFilter();
-
         return items.filter(item => {
             if (filter === "all") return true;
             if (filter === "torrent") return item.type === "torrent";
@@ -481,6 +480,7 @@ const DownloadPage: Component = () => {
                                         isExpanded={!!expandedStates()[getItemKey(item)]}
                                         onToggleExpand={() => toggleExpand(getItemKey(item))}
                                         formatSpeed={formatSpeed}
+                                        refreshDownloads={refreshDownloads}
                                     />
                                 </div>
                             )}
@@ -522,6 +522,7 @@ function DownloadingGameItem(props: {
     isExpanded: boolean;
     onToggleExpand: () => void;
     formatSpeed: (bytes?: number) => string;
+    refreshDownloads: () => Promise<void>;
 }) {
     const game = () => props.item.type === 'torrent' ? props.item.game : props.item.job.downloadedGame;
 
@@ -541,13 +542,17 @@ function DownloadingGameItem(props: {
         let allComplete = true;
         let anyActive = false;
 
+
         for (const s of statuses()) {
             totalLength += toNumber(s.totalLength);
             completedLength += toNumber(s.completedLength);
             downloadSpeed += toNumber(s.downloadSpeed);
             uploadSpeed += toNumber(s.uploadSpeed);
 
-            if (s.status !== "complete") allComplete = false;
+            if (s.status !== "complete" || s.completedLength !== s.totalLength) {
+                allComplete = false;
+            }
+
             if (s.status === "active") anyActive = true;
         }
 
@@ -570,10 +575,11 @@ function DownloadingGameItem(props: {
     const progress = () => {
         const status = aggregatedStatus();
         if (!status) return "0%";
-        const percent = status.totalLength > 0
-            ? (status.completedLength / status.totalLength) * 100
-            : 0;
-        return `${percent.toFixed(1)}%`;
+
+        const total = status.totalLength;
+        const completed = status.completedLength;
+
+        return total > 0 ? `${((completed / total) * 100).toFixed(1)}%` : "0%";
     };
 
     const numberProgress = () => {
@@ -667,6 +673,7 @@ function DownloadingGameItem(props: {
                             <DownloadActionButton
                                 item={props.item}
                                 status={aggregatedStatus()}
+                                refreshDownloads={props.refreshDownloads}
                             />
                             <Button
                                 variant="glass"
@@ -730,7 +737,7 @@ function DownloadingGameItem(props: {
 
 
 
-function DownloadActionButton(props: { item: DownloadItem; status?: any }) {
+function DownloadActionButton(props: { item: DownloadItem; status?: any; refreshDownloads: () => Promise<void>; }) {
     const [buttonState, setButtonState] = createSignal<
         "pause" | "resume" | "install" | "uploading"
     >("pause");
@@ -739,6 +746,18 @@ function DownloadActionButton(props: { item: DownloadItem; status?: any }) {
 
     createEffect(() => {
         if (!props.status) return setButtonState("resume");
+
+        if (props.item.type === 'ddl') {
+            if (props.item.statuses.length === 0) return setButtonState("resume");
+            const allComplete = props.item.statuses.every(s =>
+                s.status === "complete" && s.completedLength === s.totalLength
+            );
+
+            if (allComplete) {
+                setButtonState("install");
+                return;
+            }
+        }
 
         const isUploading = props.status.status === "active" &&
             props.status.completedLength === props.status.totalLength;
@@ -774,47 +793,57 @@ function DownloadActionButton(props: { item: DownloadItem; status?: any }) {
     }
 
     async function toggle() {
-        if (props.item.type === 'torrent') {
-            const gid = props.item.gid;
-            if (!gid) return;
+        try {
+            const state = buttonState();
 
-            switch (buttonState()) {
-                case "resume":
-                    await torrentApi.resumeTorrent(gid);
-                    break;
-                case "pause":
-                case "uploading":
-                    await torrentApi.pauseTorrent(gid);
-                    break;
-                case "install":
-                    const fullPath = props.status.files?.[0]?.path;
-                    if (fullPath) {
-                        const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
-                        await installationApi.startInstallation(folderPath);
-                    }
-                    break;
-            }
-        } else {
-            const jobId = props.item.jobId;
-            switch (buttonState()) {
-                case "resume":
-                    await DownloadManagerApi.resumeJob(jobId);
-                    break;
-                case "pause":
-                case "uploading":
-                    await DownloadManagerApi.pauseJob(jobId);
-                    break;
-                case "install":
-                    if (props.item.statuses.length > 0) {
-                        const firstFilePath = props.item.statuses[0].files?.[0]?.path;
+            if (props.item.type === 'torrent') {
+                const gid = props.item.gid;
+                if (!gid) return;
+
+                switch (state) {
+                    case "resume":
+                        await torrentApi.resumeTorrent(gid);
+                        break;
+                    case "pause":
+                    case "uploading":
+                        await torrentApi.pauseTorrent(gid);
+                        break;
+                    case "install":
+                        const fullPath = props.status.files?.[0]?.path;
+                        if (fullPath) {
+                            const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
+                            await installationApi.startInstallation(folderPath);
+                        }
+                        break;
+                }
+            } else {
+                const jobId = props.item.jobId;
+                switch (state) {
+                    case "resume":
+                        if (props.item.statuses.length > 0) {
+                            await DownloadManagerApi.unpauseJob(jobId);
+                        } else {
+                            await DownloadManagerApi.resumeJob(jobId)
+                        }
+
+                        break;
+                    case "pause":
+                    case "uploading":
+                        await DownloadManagerApi.pauseJob(jobId);
+                        break;
+                    case "install":
+                        const firstFilePath = props.item.statuses?.[0]?.files?.[0]?.path;
                         if (firstFilePath) {
                             await installationApi.startExtractionDdl(firstFilePath);
                         }
-                    }
-                    break;
+                        break;
+                }
             }
+        } finally {
+            await props.refreshDownloads();
         }
     }
+
 
     const label = () => {
         switch (buttonState()) {

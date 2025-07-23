@@ -33,7 +33,6 @@ export class TorrentApi {
 
   async loadGameListFromDisk() {
     const savePath = await this.getSavePath();
-
     if (await exists(savePath)) {
       const content = await readTextFile(savePath);
       const obj: Record<Gid, DownloadedGame[]> = JSON.parse(content);
