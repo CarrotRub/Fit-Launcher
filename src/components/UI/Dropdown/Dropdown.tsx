@@ -61,13 +61,14 @@ export default function Dropdown<T extends string | number>(props: DropdownProps
                                     <button
                                         onClick={() => handleSelection(item)}
                                         class={`
-                      w-full flex items-center justify-between  
-                      text-sm transition-all duration-200
-                      ${isActive
+                                          w-full flex items-center justify-between  
+                                          text-sm transition-all duration-200
+                                          ${isActive
                                                 ? "bg-accent/10 text-accent font-medium"
                                                 : "text-text hover:bg-secondary-20/20"}
-                      ${isAnimating() ? "opacity-80" : "opacity-100"}
-                    `}
+                                          ${isAnimating() ? "opacity-80" : "opacity-100"}
+                                        `}
+                                        title={String(item)}
                                     >
                                         <span class="truncate text-left flex-1 min-w-0 py-2.5 pl-4">
                                             {String(item)}

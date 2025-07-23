@@ -29,19 +29,19 @@ import { useNavigate } from "@solidjs/router";
 import { InstallationApi } from "../../api/installation/api";
 import { formatBytes, formatSpeed, toNumber } from "../../helpers/format";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { createStore, reconcile } from "solid-js/store";
 
 const torrentApi = new TorrentApi();
-const ddlApi = new DownloadManagerApi();
 const libraryApi = new LibraryApi();
 
 // Unified download item type
 type DownloadItem =
-    | { type: 'torrent', game: DownloadedGame; status?: Status; gid: string }
+    | { type: 'torrent', game: DownloadedGame; status?: Status; gid: string; }
     | { type: 'ddl', job: DdlJobEntry; statuses: Status[]; jobId: string };
 
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
-    const [downloadItems, setDownloadItems] = createSignal<DownloadItem[]>([]);
+    const [downloadItems, setDownloadItems] = createStore<DownloadItem[]>([]);
     const [expandedStates, setExpandedStates] = createSignal<Record<string, boolean>>({});
     const [installationsInProgress, setInstallationsInProgress] = createSignal<Set<string>>(new Set());
     const toggleExpand = (id: string) => {
@@ -51,6 +51,50 @@ const DownloadPage: Component = () => {
         }));
     };
     const [processedJobs, setProcessedJobs] = createSignal<Set<string>>(new Set());
+    const [activeFilter, setActiveFilter] = createSignal<"all" | "torrent" | "ddl" | "active">("all");
+
+    const filteredItems = createMemo(() => {
+        const items = downloadItems;
+        const filter = activeFilter();
+
+        return items.filter(item => {
+            if (filter === "all") return true;
+            if (filter === "torrent") return item.type === "torrent";
+            if (filter === "ddl") return item.type === "ddl";
+            if (filter === "active") {
+                if (item.type === "torrent") {
+                    return item.status?.status === "active";
+                } else {
+                    return item.statuses.some(s => s.status === "active");
+                }
+            }
+            return true;
+        });
+    });
+
+    const deleteAllDownloads = async () => {
+        try {
+            await torrentApi.removeAllTorrents({ force: true });
+        } catch (error) {
+            console.error("Error removing torrents:", error);
+        }
+
+        const ddlJobs = DownloadManagerApi.getAllJobs();
+        for (const [jobId] of ddlJobs) {
+            try {
+                DownloadManagerApi.removeJob(jobId);
+            } catch (error) {
+                console.error(`Error removing job ${jobId}:`, error);
+            }
+        }
+
+        setDownloadItems(reconcile([]));
+        setProcessedJobs(new Set(""));
+        setInstallationsInProgress(new Set(""));
+        await refreshDownloads();
+    };
+
+
 
     // Aggregate download stats
     const downloadStats = createMemo(() => {
@@ -60,7 +104,7 @@ const DownloadPage: Component = () => {
         let torrentCount = 0;
         let ddlCount = 0;
 
-        for (const item of downloadItems()) {
+        for (const item of downloadItems) {
             if (item.type === 'torrent' && item.status) {
                 totalDownloadSpeed += toNumber(item.status.downloadSpeed);
                 totalUploadSpeed += toNumber(item.status.uploadSpeed);
@@ -77,33 +121,28 @@ const DownloadPage: Component = () => {
             }
         }
 
-
-        return {
-            activeCount,
-            torrentCount,
-            ddlCount,
-            totalDownloadSpeed,
-            totalUploadSpeed
-        };
+        return { activeCount, torrentCount, ddlCount, totalDownloadSpeed, totalUploadSpeed };
     });
+
+    function getItemKey(item: DownloadItem): string {
+        return item.type === 'torrent' ? `torrent:${item.gid}` : `ddl:${item.jobId}`;
+    }
+
 
     async function refreshDownloads() {
         await Promise.all([
             torrentApi.loadGameListFromDisk(),
             DownloadManagerApi.loadJobMapFromDisk(),
         ]);
+
         const [activeRes, waitingRes] = await Promise.all([
             torrentApi.getTorrentListActive(),
             torrentApi.getTorrentListWaiting()
         ]);
 
         const torrentStatusMap = new Map<string, Status>();
-        if (activeRes.status === "ok") {
-            activeRes.data.forEach(s => torrentStatusMap.set(s.gid, s));
-        }
-        if (waitingRes.status === "ok") {
-            waitingRes.data.forEach(s => torrentStatusMap.set(s.gid, s));
-        }
+        if (activeRes.status === "ok") activeRes.data.forEach(s => torrentStatusMap.set(s.gid, s));
+        if (waitingRes.status === "ok") waitingRes.data.forEach(s => torrentStatusMap.set(s.gid, s));
 
         const ddlJobs = DownloadManagerApi.getAllJobs();
         const ddlStatusPromises = Array.from(ddlJobs)
@@ -112,9 +151,7 @@ const DownloadPage: Component = () => {
                 const results = await Promise.all(statusPromises);
                 return {
                     jobId,
-                    statuses: results
-                        .filter(r => r.status === "ok")
-                        .map(r => r.data)
+                    statuses: results.filter(r => r.status === "ok").map(r => r.data)
                 };
             });
 
@@ -122,23 +159,17 @@ const DownloadPage: Component = () => {
         const ddlStatuses = new Map<JobId, Status[]>();
         ddlStatusResults.forEach(({ jobId, statuses }) => ddlStatuses.set(jobId, statuses));
 
-
-        const items: DownloadItem[] = [];
+        const newItems: DownloadItem[] = [];
 
         for (const [gid, games] of torrentApi.gameList.entries()) {
             const status = torrentStatusMap.get(gid);
             for (const game of games) {
-                items.push({
-                    type: 'torrent',
-                    game,
-                    status,
-                    gid
-                });
+                newItems.push({ type: 'torrent', game, status, gid });
             }
         }
 
         for (const [jobId, job] of ddlJobs) {
-            items.push({
+            newItems.push({
                 type: 'ddl',
                 job,
                 statuses: ddlStatuses.get(jobId) || [],
@@ -146,16 +177,21 @@ const DownloadPage: Component = () => {
             });
         }
 
-        setDownloadItems(items);
+        const reconciledItems = newItems.map(item => ({
+            ...item,
+            reconcileKey: getItemKey(item)
+        }));
+
+        setDownloadItems(reconcile(reconciledItems, { key: "reconcileKey" }));
     }
 
 
+
+
     async function checkFinishedDownloads() {
-        const items = downloadItems();
+        const items = [...downloadItems];
         const installationApi = new InstallationApi();
         const currentInstallations = installationsInProgress();
-
-
 
         for (const item of items) {
             if (item.type === 'torrent' && item.status?.status === "complete") {
@@ -184,18 +220,18 @@ const DownloadPage: Component = () => {
                 }
             }
             else if (item.type === 'ddl') {
+                if (item.statuses.length === 0) continue;
+
                 const allComplete = item.statuses.every(s =>
-                    s.status === "complete" &&
-                    s.completedLength === s.totalLength
+                    s.status === "complete" && s.completedLength === s.totalLength
                 );
+
 
                 if (allComplete) {
                     const key = `ddl:${item.jobId}`;
                     if (currentInstallations.has(key) || processedJobs().has(key)) continue;
 
                     setProcessedJobs(prev => new Set(prev).add(key));
-
-                    // Mark installation as in progress
                     setInstallationsInProgress(prev => new Set(prev).add(key));
 
                     await libraryApi.addDownloadedGame(item.job.downloadedGame);
@@ -205,7 +241,7 @@ const DownloadPage: Component = () => {
                         .then(async () => {
                             DownloadManagerApi.removeJob(item.jobId);
                             await DownloadManagerApi.saveJobMapToDisk();
-                            installationApi.startInstallation(targetPath)
+                            installationApi.startInstallation(targetPath);
                         })
                         .catch(console.error)
                         .finally(() => {
@@ -220,6 +256,8 @@ const DownloadPage: Component = () => {
         }
     }
 
+
+
     onMount(async () => {
         await Promise.all([
             torrentApi.loadGameListFromDisk(),
@@ -229,11 +267,14 @@ const DownloadPage: Component = () => {
 
         await refreshDownloads();
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             refreshDownloads();
             checkFinishedDownloads();
-        }, 2500);
+        }, 2000);
+
+        onCleanup(() => clearInterval(intervalId));
     });
+
 
     const StatPill = (props: {
         icon: JSX.Element;
@@ -293,14 +334,36 @@ const DownloadPage: Component = () => {
                     </h1>
 
                     {/* Glowing Filter Tabs */}
-                    <div class="flex flex-wrap gap-3 w-full md:w-auto">
-                        <button class={`
-                        px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
-                        bg-blue-500/10 hover:bg-blue-500/20 transition-all
-                        border border-blue-400/30 hover:border-blue-400/50
-                        shadow-blue-400/10 hover:shadow-blue-400/20
-                        group
-                    `}>
+                    <div class="flex flex-wrap gap-3 w-full md:w-auto items-center">
+                        {/* Filter Buttons */}
+                        <button
+                            onClick={() => setActiveFilter("all")}
+                            class={`
+                px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                ${activeFilter() === "all"
+                                    ? "bg-primary/20 border-primary/50 text-primary"
+                                    : "bg-secondary-20/10 hover:bg-secondary-20/20 border-secondary-20/30"}
+                border transition-all
+                shadow-secondary-20/10 hover:shadow-secondary-20/20
+                group
+              `}
+                        >
+                            <Filter class="w-5 h-5 opacity-70" />
+                            <span>All</span>
+                        </button>
+
+                        <button
+                            onClick={() => setActiveFilter("torrent")}
+                            class={`
+                px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                ${activeFilter() === "torrent"
+                                    ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                                    : "bg-blue-500/10 hover:bg-blue-500/20 border-blue-400/30"}
+                border transition-all
+                shadow-blue-400/10 hover:shadow-blue-400/20
+                group
+              `}
+                        >
                             <Magnet class="w-5 h-5 text-blue-400 group-hover:animate-pulse" />
                             <span>Torrents</span>
                             <span class="px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold">
@@ -308,13 +371,18 @@ const DownloadPage: Component = () => {
                             </span>
                         </button>
 
-                        <button class={`
-                        px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
-                        bg-green-500/10 hover:bg-green-500/20 transition-all
-                        border border-green-400/30 hover:border-green-400/50
-                        shadow-green-400/10 hover:shadow-green-400/20
-                        group
-                    `}>
+                        <button
+                            onClick={() => setActiveFilter("ddl")}
+                            class={`
+                px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                ${activeFilter() === "ddl"
+                                    ? "bg-green-500/20 border-green-500/50 text-green-400"
+                                    : "bg-green-500/10 hover:bg-green-500/20 border-green-400/30"}
+                border transition-all
+                shadow-green-400/10 hover:shadow-green-400/20
+                group
+              `}
+                        >
                             <DownloadCloud class="w-5 h-5 text-green-400 group-hover:animate-bounce" />
                             <span>Direct</span>
                             <span class="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold">
@@ -322,18 +390,40 @@ const DownloadPage: Component = () => {
                             </span>
                         </button>
 
-                        <button class={`
-                        px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
-                        bg-amber-500/10 hover:bg-amber-500/20 transition-all
-                        border border-amber-400/30 hover:border-amber-400/50
-                        shadow-amber-400/10 hover:shadow-amber-400/20
-                        group
-                    `}>
+                        <button
+                            onClick={() => setActiveFilter("active")}
+                            class={`
+                px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                ${activeFilter() === "active"
+                                    ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
+                                    : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-400/30"}
+                border transition-all
+                shadow-amber-400/10 hover:shadow-amber-400/20
+                group
+              `}
+                        >
                             <Zap class="w-5 h-5 text-amber-400 group-hover:animate-pulse" />
                             <span>Active</span>
                             <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold">
                                 {downloadStats().activeCount}
                             </span>
+                        </button>
+
+                        {/* Delete All Button */}
+                        <button
+                            onClick={deleteAllDownloads}
+                            class={`
+                px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 
+                bg-red-500/10 hover:bg-red-500/20 transition-all
+                border border-red-400/30 hover:border-red-400/50
+                shadow-red-400/10 hover:shadow-red-400/20
+                group
+                ${filteredItems().length === 0 ? "opacity-50 cursor-not-allowed" : ""}
+              `}
+                            disabled={filteredItems().length === 0}
+                        >
+                            <Trash2 class="w-5 h-5 text-red-400 group-hover:animate-pulse" />
+                            <span>Delete All</span>
                         </button>
                     </div>
                 </div>
@@ -363,12 +453,12 @@ const DownloadPage: Component = () => {
                         color="amber"
                     />
 
-                    <StatPill
+                    {/* <StatPill
                         icon={<Gauge class="w-5 h-5" />}
                         label="Peak Speed"
-                        value={formatSpeed(downloadStats().totalDownloadSpeed * 1.5)} // Example calculation
+                        value={formatSpeed(downloadStats().totalDownloadSpeed * 1.5)} // not true way but too lazy to impl rn
                         color="red"
-                    />
+                    /> */}
 
                     {/* <StatPill
                         icon={<HardDrive class="w-5 h-5" />}
@@ -381,21 +471,15 @@ const DownloadPage: Component = () => {
 
             {/* Main Content */}
             <div class="max-w-[1800px] mx-auto">
-                {downloadItems().length > 0 ? (
+                {downloadItems.length > 0 ? (
                     <div class="grid grid-cols-1 gap-5">
-                        <For each={downloadItems()}>
-                            {(item) => (
-                                <div class={`
-                                bg-popup/80 backdrop-blur-sm rounded-2xl 
-                                border border-secondary-20/50 hover:border-accent/50 
-                                transition-all hover:shadow-xl hover:shadow-accent/10
-                                overflow-hidden
-                            `}>
-                                    <Dynamic
-                                        component={DownloadingGameItem}
-                                        item={item}
-                                        isExpanded={!!expandedStates()[item.type === 'torrent' ? item.gid : item.jobId]}
-                                        onToggleExpand={() => toggleExpand(item.type === 'torrent' ? item.gid : item.jobId)}
+                        <For each={filteredItems()}>
+                            {(item, index) => (
+                                <div class="bg-popup/80 backdrop-blur-sm rounded-2xl border border-secondary-20/50 hover:border-accent/50 transition-all hover:shadow-xl hover:shadow-accent/10 overflow-hidden">
+                                    <DownloadingGameItem
+                                        item={downloadItems[index()]}
+                                        isExpanded={!!expandedStates()[getItemKey(item)]}
+                                        onToggleExpand={() => toggleExpand(getItemKey(item))}
                                         formatSpeed={formatSpeed}
                                     />
                                 </div>
@@ -413,7 +497,7 @@ const DownloadPage: Component = () => {
                             <div class="absolute inset-0 bg-accent/10 rounded-full animate-ping opacity-20"></div>
                             <DownloadIcon class="w-20 h-20 text-accent animate-bounce" />
                         </div>
-                        <h3 class="text-3xl font-bold text-text mb-3 bg-gradient-to-r from-text to-primary bg-clip-text text-transparent">
+                        <h3 class="text-3xl font-bold mb-3 bg-gradient-to-r from-text to-primary bg-clip-text text-transparent">
                             Ready for Downloads!
                         </h3>
                         <p class="text-muted/80 max-w-md mb-8 text-lg">
@@ -439,114 +523,89 @@ function DownloadingGameItem(props: {
     onToggleExpand: () => void;
     formatSpeed: (bytes?: number) => string;
 }) {
-    const game = props.item.type === 'torrent'
-        ? props.item.game
-        : props.item.job.downloadedGame;
+    const game = () => props.item.type === 'torrent' ? props.item.game : props.item.job.downloadedGame;
 
-    // For torrents: single status, for DDL: aggregate multiple statuses
-    const aggregatedStatus = createMemo(() => {
+    // Reactive properties
+    const status = () => props.item.type === 'torrent' ? props.item.status : undefined;
+    const statuses = () => props.item.type === 'ddl' ? props.item.statuses : [];
+
+    const aggregatedStatus = () => {
         if (props.item.type === "torrent") {
-            return props.item.status;
+            return status();
         }
 
         let totalLength = 0;
         let completedLength = 0;
         let downloadSpeed = 0;
         let uploadSpeed = 0;
-
         let allComplete = true;
         let anyActive = false;
 
-        for (const s of props.item.statuses) {
+        for (const s of statuses()) {
             totalLength += toNumber(s.totalLength);
             completedLength += toNumber(s.completedLength);
             downloadSpeed += toNumber(s.downloadSpeed);
             uploadSpeed += toNumber(s.uploadSpeed);
 
-            if (s.status !== "complete") {
-                allComplete = false;
-            }
-            if (s.status === "active") {
-                anyActive = true;
-            }
-        }
-
-        let status: TaskStatus = "waiting";
-        if (allComplete) {
-            status = "complete";
-        } else if (anyActive) {
-            status = "active";
+            if (s.status !== "complete") allComplete = false;
+            if (s.status === "active") anyActive = true;
         }
 
         return {
-            gid: "",
-            status,
+            status: allComplete ? "complete" : anyActive ? "active" : "waiting",
             totalLength,
             completedLength,
             downloadSpeed,
-            uploadSpeed,
-            connections: 0,
-            numPieces: 0,
-            pieceLength: 0,
-        } as Status;
-    });
+            uploadSpeed
+        };
+    };
 
-
-
-    const files = createMemo(() => {
+    const files = () => {
         if (props.item.type === 'torrent') {
-            return props.item.status?.files || [];
+            return status()?.files || [];
         }
+        return statuses().flatMap(s => s.files || []);
+    };
 
-        // For DDL: get files from all statuses
-        return props.item.statuses.flatMap(s => s.files || []);
-    });
-
-    const progress = createMemo(() => {
+    const progress = () => {
         const status = aggregatedStatus();
         if (!status) return "0%";
-
-        const completed = status.completedLength || 0;
-        const total = status.totalLength || 1;
-        const percent = total > 0 ? (completed / total) * 100 : 0;
+        const percent = status.totalLength > 0
+            ? (status.completedLength / status.totalLength) * 100
+            : 0;
         return `${percent.toFixed(1)}%`;
-    });
+    };
 
-    const numberProgress = createMemo(() => {
+    const numberProgress = () => {
         const status = aggregatedStatus();
         if (!status) return 0;
-
-        const completed = status.completedLength || 0;
-        const total = status.totalLength || 1;
-        return Math.floor((completed / total) * 100);
-    });
-
-    const getFileNameFromPath = (path: string): string => {
-        return path.split(/[\\/]/).pop() || path;
+        return status.totalLength > 0
+            ? Math.floor((status.completedLength / status.totalLength) * 100)
+            : 0;
     };
+
+    const getFileNameFromPath = (path: string): string => path.split(/[\\/]/).pop() || path;
 
     return (
         <div class="bg-popup rounded-xl border border-secondary-20/60 hover:border-accent/40 transition-all overflow-hidden group">
-            {/* Main Content Row */}
             <div class="flex flex-col md:flex-row h-full">
                 {/* Game Info Section */}
                 <div class="flex items-center p-4 md:w-1/3 md:border-r border-secondary-20/50 relative">
-                    {/* Download Type Badge */}
-                    <div class={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium tracking-wide ${props.item.type === 'torrent'
-                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                        : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                    <div class={`absolute top-1.5 left-4 px-2 py-1 rounded-md text-xs font-medium tracking-wide ${props.item.type === 'torrent'
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/70'
+                        : 'bg-purple-500/10 text-purple-400 border border-purple-500/70'
                         }`}>
                         {props.item.type === 'torrent' ? 'TORRENT' : 'DIRECT'}
                     </div>
 
                     <img
-                        src={game.img}
-                        alt={game.title}
+                        src={game().img}
+                        alt={game().title}
                         class="w-16 h-16 rounded-lg object-cover mt-5 mr-4 border border-secondary-20/30 group-hover:border-accent/30 transition-colors"
                     />
-                    <div class="flex-1 min-w-0 mt-5 ">
+                    <div class="flex-1 min-w-0 mt-5">
                         <h3 class="font-medium line-clamp-2 text-text group-hover:text-primary transition-colors">
-                            {game.title}
+                            {game().title}
                         </h3>
                         <div class="flex items-center gap-2 mt-1 text-sm text-muted/80">
                             <HardDrive class="w-4 h-4 opacity-70" />
@@ -556,7 +615,7 @@ function DownloadingGameItem(props: {
                 </div>
 
                 {/* Download Stats Section */}
-                <div class="flex-1 flex flex-col ">
+                <div class="flex-1 flex flex-col">
                     <div class="flex flex-col h-full sm:flex-row items-center gap-4 p-4">
                         <div class="flex gap-4 sm:gap-6">
                             <div class="flex items-center gap-2 min-w-[100px]">
@@ -603,7 +662,7 @@ function DownloadingGameItem(props: {
                             </div>
                         </div>
 
-                        {/* Action Buttons - Better spacing */}
+                        {/* Action Buttons */}
                         <div class="flex items-center gap-2 ml-auto">
                             <DownloadActionButton
                                 item={props.item}
@@ -645,7 +704,7 @@ function DownloadingGameItem(props: {
                                                 {getFileNameFromPath(file.path)}
                                             </span>
                                             <span class="text-muted/80">
-                                                {((file.completedLength / file.length) * 100).toFixed(1)}%
+                                                {((file.completedLength / file.length) * 100).toFixed(1) || 100}%
                                             </span>
                                         </div>
                                         <div class="w-full h-1.5 bg-secondary-20/30 rounded-full overflow-hidden">
@@ -670,17 +729,13 @@ function DownloadingGameItem(props: {
 }
 
 
-function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
+
+function DownloadActionButton(props: { item: DownloadItem; status?: any }) {
     const [buttonState, setButtonState] = createSignal<
         "pause" | "resume" | "install" | "uploading"
     >("pause");
 
-    const isTorrent = props.item.type === 'torrent';
     const installationApi = new InstallationApi();
-
-    onMount(() => {
-        if (!props.status) setButtonState("resume");
-    });
 
     createEffect(() => {
         if (!props.status) return setButtonState("resume");
@@ -709,6 +764,15 @@ function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
         }
     });
 
+    async function removeDownload() {
+        if (props.item.type === "torrent") {
+            await torrentApi.removeTorrent(props.item.gid);
+        } else {
+            DownloadManagerApi.removeJob(props.item.jobId);
+            await DownloadManagerApi.saveJobMapToDisk();
+        }
+    }
+
     async function toggle() {
         if (props.item.type === 'torrent') {
             const gid = props.item.gid;
@@ -723,12 +787,10 @@ function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
                     await torrentApi.pauseTorrent(gid);
                     break;
                 case "install":
-
-                    const fullPath = props.status!.files?.[0]?.path;
+                    const fullPath = props.status.files?.[0]?.path;
                     if (fullPath) {
                         const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
                         await installationApi.startInstallation(folderPath);
-                        break;
                     }
                     break;
             }
@@ -739,9 +801,6 @@ function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
                     await DownloadManagerApi.resumeJob(jobId);
                     break;
                 case "pause":
-                    await DownloadManagerApi.pauseJob(jobId);
-                    break;
-                //todo: do xD
                 case "uploading":
                     await DownloadManagerApi.pauseJob(jobId);
                     break;
@@ -759,36 +818,40 @@ function DownloadActionButton(props: { item: DownloadItem; status?: Status }) {
 
     const label = () => {
         switch (buttonState()) {
-            case "uploading":
-                return "UPLOADING";
-            case "install":
-                return "INSTALL";
-            default:
-                return buttonState().toUpperCase();
+            case "uploading": return "UPLOADING";
+            case "install": return "INSTALL";
+            default: return buttonState().toUpperCase();
         }
     };
 
     const icon = () => {
         switch (buttonState()) {
             case "pause":
-            case "uploading":
-                return <Pause class="w-5 h-5" />;
-            case "install":
-                return <Settings class="w-5 h-5" />;
-            default:
-                return <Play class="w-5 h-5" />;
+            case "uploading": return <Pause class="w-5 h-5" />;
+            case "install": return <Settings class="w-5 h-5" />;
+            default: return <Play class="w-5 h-5" />;
         }
     };
 
     return (
-        <Button
-            variant="bordered"
-            onClick={toggle}
-            label={label()}
-            icon={icon()}
-        />
+        <>
+            <Button
+                variant="bordered"
+                onClick={toggle}
+                label={label()}
+                icon={icon()}
+            />
+            <Button
+                variant="bordered"
+                onClick={removeDownload}
+                icon={<Trash2 class="w-5 h-5 text-red-400" />}
+                class="hover:bg-red-500/10 !border-red-400/30 !hover:border-red-400/80"
+            />
+        </>
     );
 }
+
+
 
 
 

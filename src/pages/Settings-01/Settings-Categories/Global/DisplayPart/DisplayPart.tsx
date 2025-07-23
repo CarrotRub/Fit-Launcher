@@ -110,7 +110,7 @@ function DisplayPartContent({
           // If the current theme was just removed, reset to default
           if (currentTheme() === themeName) {
             await themeAPI.revertToDefault();
-            setCurrentTheme("Dark Purple");
+            setCurrentTheme("Blue Cyan");
           }
         }}
       />

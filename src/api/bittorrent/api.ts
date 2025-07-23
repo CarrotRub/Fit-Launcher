@@ -146,30 +146,29 @@ export class TorrentApi {
       return { status: "ok", data: {} };
     }
 
-    // re-adding the torrent using the magnet
     const gameEntry = this.gameList.get(gid)?.[0];
     const magnet = gameEntry?.magnetlink;
 
     if (!magnet) {
       return {
         status: "error",
-        error: {
-          RPCError:
-            "Resume failed and no magnet/installDir found for re-adding",
-        },
+        error: { RPCError: "Resume failed and no magnet found" },
       };
     }
 
     console.warn(`Resuming via magnet fallback: ${magnet}`);
+    const fallback = await this.downloadTorrent(magnet, gameEntry, [], "");
 
-    const fallback = await this.downloadTorrent(magnet, gameEntry, "");
     if (fallback.status === "ok") {
-      return {
-        status: "ok",
-        data: { newGid: fallback.data },
-      };
+      const newGid = fallback.data;
+      const games = this.gameList.get(gid);
+      if (games) {
+        this.gameList.delete(gid);
+        this.gameList.set(newGid, games);
+        await this.saveGameListToDisk();
+      }
+      return { status: "ok", data: { newGid } };
     }
-
     return fallback;
   }
 

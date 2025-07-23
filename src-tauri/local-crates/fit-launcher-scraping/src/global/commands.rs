@@ -71,9 +71,51 @@ pub async fn get_singular_game_info(
     app_handle: tauri::AppHandle,
     game_link: String,
 ) -> Result<(), ScrapingError> {
-    let start_time = Instant::now();
+    use std::time::{Duration, SystemTime};
+    use tokio::fs;
+    use tokio::io::AsyncWriteExt;
 
+    let start_time = Instant::now();
     let url = game_link.clone();
+    let hash = hash_url(&url);
+    let filename = format!("singular_game_{hash}.json");
+    let path = singular_game_path(&app_handle, &filename);
+
+    let cache_dir = singular_game_path(&app_handle, "");
+    if let Ok(mut entries) = fs::read_dir(&cache_dir).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let file_name = entry.file_name();
+            if file_name.to_string_lossy().starts_with("singular_game_") {
+                if let Ok(metadata) = entry.metadata().await {
+                    if let Ok(modified) = metadata.modified() {
+                        if SystemTime::now()
+                            .duration_since(modified)
+                            .unwrap_or_default()
+                            > Duration::from_secs(60 * 60 * 24)
+                        {
+                            let _ = fs::remove_file(entry.path()).await;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if path.exists() {
+        if let Ok(metadata) = fs::metadata(&path).await {
+            if let Ok(modified) = metadata.modified() {
+                if SystemTime::now()
+                    .duration_since(modified)
+                    .unwrap_or_default()
+                    < Duration::from_secs(60 * 60 * 24)
+                {
+                    info!("Using cached game info for {}", hash);
+                    return Ok(());
+                }
+            }
+        }
+    }
+
     let response = CUSTOM_DNS_CLIENT.get(&url).send().await.map_err(|e| {
         error!("Failed to fetch URL: {}", e);
         ScrapingError::HttpStatusCodeError(e.to_string())
@@ -95,16 +137,16 @@ pub async fn get_singular_game_info(
     .await
     .unwrap()?;
 
-    let hash = hash_url(&url);
-    let filename = format!("singular_game_{hash}.json");
-    let path = singular_game_path(&app_handle, &filename);
-
     let json = serde_json::to_string_pretty(&game).map_err(|e| {
         error!("Failed to serialize game JSON: {}", e);
         ScrapingError::FileJSONError(e.to_string())
     })?;
 
-    tokio::fs::write(&path, json).await.map_err(|e| {
+    let mut file = fs::File::create(&path).await.map_err(|e| {
+        error!("Failed to create game file: {}", e);
+        ScrapingError::IOError(e.to_string())
+    })?;
+    file.write_all(json.as_bytes()).await.map_err(|e| {
         error!("Failed to write game to file: {}", e);
         ScrapingError::IOError(e.to_string())
     })?;

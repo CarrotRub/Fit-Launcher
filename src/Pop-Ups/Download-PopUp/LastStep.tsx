@@ -277,7 +277,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         displayName: `${languageName} Language`
                     });
                 }
-
                 else if (lowerFilename.includes("optional")) {
                     const languageMatch = lowerFilename.match(/optional-(\w+)/);
                     if (languageMatch) {
@@ -294,7 +293,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         });
                     }
                 }
-
                 else if (lowerFilename.includes("part")) {
                     const partMatch = file.filename.match(/part(\d+)/i);
                     if (partMatch) {
@@ -309,7 +307,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         });
                     }
                 }
-
                 else if (lowerFilename.includes("setup") ||
                     lowerFilename.includes("install")) {
                     result.Main.push({
@@ -317,18 +314,27 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         displayName: "Game Installer"
                     });
                 }
+
+                else if (!lowerFilename.includes("part") &&
+                    (file.filename.match(/\.(rar|001|zip)$/i) ||
+                        file.filename.includes('fitgirl-repacks') ||
+                        file.filename.includes('--_'))) {
+                    result.Parts.push({
+                        ...file,
+                        displayName: "Part 1"
+                    });
+                }
                 // Everything else
                 else {
                     result.Main.push({
                         ...file,
-                        displayName: file.filename.replace(/\.[^/.]+$/, "") // Remove extension
+                        displayName: file.filename.replace(/\.[^/.]+$/, "")
                     });
                 }
             });
 
             return result;
         }
-
         async function loadHosterLinks(hoster: "fuckingfast" | "datanodes") {
             setLoading(true);
             setSelectedHoster(hoster);
@@ -366,7 +372,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     }));
                     setDirectLinks(dataNodeLinks);
 
-                    // Select all files by default
                     const allIndices = new Set(dataNodeLinks.map((_, index) => index));
                     setDdlSelectedIndices(allIndices);
                     const allUrls = new Set(dataNodeLinks.map(link => link.url));
@@ -393,8 +398,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             const size = file ? formatBytes(file.length) : "-";
 
             return (
-                <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50">
-                    <span class="text-sm text-text truncate max-w-[55%]">{props.displayName}</span>
+                <label
+                    class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50"
+                    title={props.displayName}
+                >
+                    <span class="text-sm text-text truncate max-w-[55%]" title={props.displayName}>{props.displayName}</span>
                     <div class="flex items-center gap-3">
                         <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">
                             {size}

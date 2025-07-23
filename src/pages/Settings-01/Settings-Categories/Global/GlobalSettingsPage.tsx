@@ -16,6 +16,7 @@ import { GlobalSettings, GlobalSettingsPart } from "../../../../types/settings/t
 import { GlobalSettingsApi } from "../../../../api/settings/api";
 import LoadingPage from "../../../LoadingPage-01/LoadingPage";
 import Button from "../../../../components/UI/Button/Button";
+import AppInfoSettings from "./AppInfoSettings/AppInfo";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
@@ -26,7 +27,8 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
     | "display"
     | "dns"
     | "install"
-    | "cache";
+    | "cache"
+    | "appinfo";
 
   async function getCurrentSettings() {
     try {
@@ -160,6 +162,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
             />
           ),
           cache: <CacheSettings />,
+          appinfo: <AppInfoSettings />
         }[selectedPart()] || <p>Invalid or unsupported settings part.</p>}
 
         <div class="flex flex-row self-end gap-3 ">

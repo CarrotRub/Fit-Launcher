@@ -16,7 +16,8 @@ import {
   Cpu,
   Monitor,
   HardDriveDownload,
-  Archive
+  Archive,
+  Info
 } from "lucide-solid";
 
 import type {
@@ -102,6 +103,7 @@ function SettingsSidebar(): JSX.Element {
             <SidebarLink id="settings-dns" label="DNS Settings" icon={Network} onClick={() => handleActivateElem("settings-dns", "global-dns")} />
             <SidebarLink id="settings-install" label="Install Settings" icon={HardDriveDownload} onClick={() => handleActivateElem("settings-install", "global-install")} />
             <SidebarLink id="settings-cache" label="Cache & Logs" icon={Archive} onClick={() => handleActivateElem("settings-cache", "global-cache")} />
+            <SidebarLink id="settings-appinfo" label="App Info" icon={Info} onClick={() => handleActivateElem("settings-appinfo", "global-appinfo")} />
           </ul>
         </div>
 

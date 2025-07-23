@@ -18,19 +18,19 @@ export class ThemeManagerApi {
   private readonly blockRegex =
     /:root\[data-theme="([a-z0-9-]{1,40})"\]\s*{([^}]+)}/;
   private readonly requiredVars = [
-    "--accent-color",
-    "--secondary-color",
-    "--secondary-30-selected-color",
-    "--non-selected-text-color",
-    "--primary-color",
-    "--secondary-20-color",
-    "--text-color",
-    "--background-color",
-    "--70-background-color",
-    "--30-background-color",
-    "--popup-background-color",
-    "--resume-button-accent-color",
-    "--warning-orange",
+    "--color-accent",
+    "--color-primary",
+    "--color-secondary",
+    "--color-secondary-30",
+    "--color-secondary-20",
+    "--color-text",
+    "--color-muted",
+    "--color-background",
+    "--color-background-70",
+    "--color-background-30",
+    "--color-popup-background",
+    "--color-resume-accent",
+    "--color-warning-orange",
   ];
 
   public async getAllThemes(): Promise<string[]> {
@@ -87,7 +87,7 @@ export class ThemeManagerApi {
   }
 
   public async revertToDefault(): Promise<void> {
-    const fallback = "dark-purple";
+    const fallback = "blue-cyan";
     document.documentElement.setAttribute("data-theme", fallback);
     localStorage.setItem("theme", fallback);
   }

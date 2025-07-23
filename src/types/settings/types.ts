@@ -41,7 +41,8 @@ export type GlobalSettingsPart =
   | "global-display"
   | "global-dns"
   | "global-install"
-  | "global-cache";
+  | "global-cache"
+  | "global-appinfo";
 
 export type DownloadSettingsPart =
   | "general"
