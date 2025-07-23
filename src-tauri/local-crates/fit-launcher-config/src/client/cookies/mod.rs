@@ -1,10 +1,8 @@
 use std::path::PathBuf;
 
 use directories::BaseDirs;
-use reqwest::{Client, ClientBuilder};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use tauri::http::HeaderValue;
 use thiserror::Error;
 use tracing::error;
 

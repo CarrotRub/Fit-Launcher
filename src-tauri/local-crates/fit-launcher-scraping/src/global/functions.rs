@@ -13,12 +13,12 @@ use tokio::{
     task::LocalSet,
     time::timeout,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{
     errors::{CreatingFileErrorStruct, ScrapingError},
     global::{
-        captcha::{handle_ddos_guard_captcha, update_client_cookies},
+        captcha::handle_ddos_guard_captcha,
         functions::helper::{fetch_game_info, find_preview_image},
     },
     structs::Game,
@@ -63,15 +63,16 @@ async fn get_response(client: &reqwest::Client, url: &str) -> Result<Response, S
 
 pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
     let mut client = CUSTOM_DNS_CLIENT.clone();
-    let mut retry_with_cookies = false;
 
     loop {
         let resp = get_response(&client, url).await?;
-        if !retry_with_cookies && likely_guarded(&resp) {
-            match handle_ddos_guard_captcha(app, url).await {
-                Ok(cookies) => {
-                    update_client_cookies(&mut client, cookies);
-                    retry_with_cookies = true;
+
+        if likely_guarded(&resp) {
+            let cookies = resp.cookies().collect::<Vec<_>>();
+            warn!("cookies: {cookies:?}, status: {}", resp.status().as_u16());
+
+            match handle_ddos_guard_captcha(app, url, &mut client).await {
+                Ok(_) => {
                     continue;
                 }
                 Err(e) => error!("scrape error: {e}"),
