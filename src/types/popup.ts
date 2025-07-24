@@ -20,6 +20,7 @@ export type ModalPopupProps<T extends unknown[] = []> = PopupProps<T> & {
   children: JSX.Element;
   variant?: PopupTypeVariant;
   onClose?: (...args: T) => void | Promise<void>;
+  disabledConfirm?: boolean;
 };
 
 export type PopupPathInputProps<T extends any[] = any[]> = PathInputProps &

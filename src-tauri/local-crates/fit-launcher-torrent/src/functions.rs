@@ -93,6 +93,58 @@ fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> 
     Ok(())
 }
 
+pub async fn kill_existing_aria2c() -> anyhow::Result<()> {
+    info!("Attempting to kill existing aria2c.exe processes...");
+
+    let graceful_status = Command::new("taskkill")
+        .args(["/IM", "aria2c.exe", "/T"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match graceful_status {
+        Ok(status) if status.success() => {
+            info!("Successfully terminated aria2c.exe processes gracefully");
+            return Ok(());
+        }
+        _ => {
+            warn!("Graceful termination failed, trying forceful method");
+        }
+    }
+
+    let force_status = Command::new("taskkill")
+        .args(["/IM", "aria2c.exe", "/F", "/T"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match force_status {
+        Ok(status) if status.success() => {
+            info!("Successfully force-killed aria2c.exe processes");
+            Ok(())
+        }
+        Ok(status) => {
+            if status.code() == Some(128) {
+                info!("No aria2c.exe processes were running");
+                Ok(())
+            } else {
+                warn!(
+                    "Failed to kill aria2c.exe processes with status: {:?}",
+                    status.code()
+                );
+                Err(anyhow::anyhow!(
+                    "Failed to kill processes with status {}",
+                    status
+                ))
+            }
+        }
+        Err(e) => {
+            warn!("Failed to execute taskkill: {}", e);
+            Err(anyhow::anyhow!("Failed to execute taskkill: {}", e))
+        }
+    }
+}
+
 fn build_aria2_args(
     cfg: &FitLauncherConfigV2,
     session_path: &Path,
@@ -191,6 +243,10 @@ pub async fn aria2_client_from_config(
     }
 
     if *start_daemon {
+        //TODO: Make it cross-platform
+        #[cfg(windows)]
+        kill_existing_aria2c().await;
+
         let exec = if cfg!(windows) {
             current_exe().unwrap().parent().unwrap().join("aria2c.exe")
         } else {

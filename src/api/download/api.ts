@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { commands, DirectLink, DownloadedGame, Result } from "../../bindings";
+import {
+  commands,
+  DirectLink,
+  DownloadedGame,
+  Result,
+  Status,
+} from "../../bindings";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import {
   create,
@@ -9,6 +15,7 @@ import {
   writeTextFile,
 } from "@tauri-apps/plugin-fs";
 import { cleanForFolder, extractMainTitle } from "../../helpers/format";
+import { DdlItem } from "../../pages/Downloads-01/Downloads-Page";
 
 export type JobId = string;
 export interface DdlJobEntry {
@@ -123,6 +130,38 @@ export class DownloadManagerApi {
 
   static getAllJobs(): [JobId, DdlJobEntry][] {
     return Array.from(this.ddlJobMap.entries());
+  }
+
+  static async getActiveDdlJobs(): Promise<DdlItem[]> {
+    try {
+      const activeStatuses = await commands.aria2GetListActive();
+
+      if (activeStatuses.status !== "ok") return [];
+
+      const gidStatusMap = new Map(activeStatuses.data.map((s) => [s.gid, s]));
+
+      const ddlItems: DdlItem[] = [];
+
+      for (const [jobId, job] of this.ddlJobMap.entries()) {
+        const matchingStatuses = job.gids
+          .map((gid) => gidStatusMap.get(gid))
+          .filter((s): s is Status => !!s);
+
+        if (matchingStatuses.length > 0) {
+          ddlItems.push({
+            type: "ddl",
+            job,
+            statuses: matchingStatuses,
+            jobId,
+          });
+        }
+      }
+
+      return ddlItems;
+    } catch (error) {
+      console.error("Failed to get active DDL jobs:", error);
+      return [];
+    }
   }
 
   static async removeJob(jobId: JobId) {

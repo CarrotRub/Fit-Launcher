@@ -30,14 +30,18 @@ import { InstallationApi } from "../../api/installation/api";
 import { formatBytes, formatSpeed, toNumber } from "../../helpers/format";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { createStore, reconcile } from "solid-js/store";
+import { backgroundInstaller } from "../../services/background-installer.service";
 
 const torrentApi = new TorrentApi();
 const libraryApi = new LibraryApi();
 
 // Unified download item type
-type DownloadItem =
+export type DownloadItem =
     | { type: 'torrent', game: DownloadedGame; status?: Status; gid: string; }
     | { type: 'ddl', job: DdlJobEntry; statuses: Status[]; jobId: string };
+
+export type TorrentItem = { type: 'torrent', game: DownloadedGame; status?: Status; gid: string; };
+export type DdlItem = { type: 'ddl', job: DdlJobEntry; statuses: Status[]; jobId: string };
 
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
@@ -184,78 +188,10 @@ const DownloadPage: Component = () => {
         setDownloadItems(reconcile(reconciledItems, { key: "reconcileKey" }));
     }
 
-
-
-
-    async function checkFinishedDownloads() {
-        const items = [...downloadItems];
-        const installationApi = new InstallationApi();
-        const currentInstallations = installationsInProgress();
-
-        for (const item of items) {
-            if (item.type === 'torrent' && item.status?.status === "complete") {
-                const key = `torrent:${item.gid}`;
-                if (currentInstallations.has(key)) continue;
-
-                setInstallationsInProgress(prev => new Set(prev).add(key));
-
-                const fullPath = item.status.files?.[0]?.path;
-                if (fullPath) {
-                    const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
-
-                    await libraryApi.addDownloadedGame(item.game);
-                    torrentApi.gameList.delete(item.gid);
-                    await torrentApi.saveGameListToDisk();
-
-                    installationApi.startInstallation(folderPath)
-                        .finally(() => {
-                            setInstallationsInProgress(prev => {
-                                const newSet = new Set(prev);
-                                newSet.delete(key);
-                                return newSet;
-                            });
-                        })
-                        .catch(console.error);
-                }
-            }
-            else if (item.type === 'ddl') {
-                if (item.statuses.length === 0) continue;
-
-                const allComplete = item.statuses.every(s =>
-                    s.status === "complete" && s.completedLength === s.totalLength
-                );
-
-
-                if (allComplete) {
-                    const key = `ddl:${item.jobId}`;
-                    if (currentInstallations.has(key) || processedJobs().has(key)) continue;
-
-                    setProcessedJobs(prev => new Set(prev).add(key));
-                    setInstallationsInProgress(prev => new Set(prev).add(key));
-
-                    await libraryApi.addDownloadedGame(item.job.downloadedGame);
-                    const targetPath = item.job.targetPath;
-
-                    installationApi.startExtractionDdl(targetPath)
-                        .then(async () => {
-                            DownloadManagerApi.removeJob(item.jobId);
-                            await DownloadManagerApi.saveJobMapToDisk();
-                            installationApi.startInstallation(targetPath);
-                        })
-                        .catch(console.error)
-                        .finally(() => {
-                            setInstallationsInProgress(prev => {
-                                const newSet = new Set(prev);
-                                newSet.delete(key);
-                                return newSet;
-                            });
-                        });
-                }
-            }
-        }
-    }
-
-
+    onMount(() => {
+        backgroundInstaller.start();
+        return () => backgroundInstaller.stop();
+    });
 
     onMount(async () => {
         await Promise.all([
@@ -268,7 +204,6 @@ const DownloadPage: Component = () => {
 
         const intervalId = setInterval(() => {
             refreshDownloads();
-            checkFinishedDownloads();
         }, 2000);
 
         onCleanup(() => clearInterval(intervalId));
@@ -525,7 +460,12 @@ function DownloadingGameItem(props: {
     refreshDownloads: () => Promise<void>;
 }) {
     const game = () => props.item.type === 'torrent' ? props.item.game : props.item.job.downloadedGame;
-
+    function safeProgress(completed: number, total: number): number {
+        if (isNaN(completed) || isNaN(total) || total <= 0) {
+            return 0;
+        }
+        return Math.min(100, Math.max(0, (completed / total) * 100));
+    }
     // Reactive properties
     const status = () => props.item.type === 'torrent' ? props.item.status : undefined;
     const statuses = () => props.item.type === 'ddl' ? props.item.statuses : [];
@@ -704,28 +644,31 @@ function DownloadingGameItem(props: {
                         </h4>
                         <div class="space-y-2">
                             <For each={files()}>
-                                {(file) => (
-                                    <div class="bg-secondary-10/50 hover:bg-secondary-20/30 rounded-lg p-3 transition-colors">
-                                        <div class="flex justify-between text-xs mb-1.5">
-                                            <span class="truncate max-w-[200px] sm:max-w-md font-medium text-text">
-                                                {getFileNameFromPath(file.path)}
-                                            </span>
-                                            <span class="text-muted/80">
-                                                {((file.completedLength / file.length) * 100).toFixed(1) || 100}%
-                                            </span>
+                                {(file) => {
+                                    const progress = safeProgress(file.completedLength, file.length);
+                                    return (
+                                        <div class="bg-secondary-10/50 hover:bg-secondary-20/30 rounded-lg p-3 transition-colors">
+                                            <div class="flex justify-between text-xs mb-1.5">
+                                                <span class="truncate max-w-[200px] sm:max-w-md font-medium text-text">
+                                                    {getFileNameFromPath(file.path)}
+                                                </span>
+                                                <span class="text-muted/80">
+                                                    {progress.toFixed(1) || 0}%
+                                                </span>
+                                            </div>
+                                            <div class="w-full h-1.5 bg-secondary-20/30 rounded-full overflow-hidden">
+                                                <div
+                                                    class="h-full bg-accent/80 transition-all duration-500 ease-out"
+                                                    style={{ width: `${progress}%` }}
+                                                />
+                                            </div>
+                                            <div class="flex justify-between text-xs text-muted/80 mt-1">
+                                                <span>{formatBytes(file.completedLength)}</span>
+                                                <span>{formatBytes(file.length)}</span>
+                                            </div>
                                         </div>
-                                        <div class="w-full h-1.5 bg-secondary-20/30 rounded-full overflow-hidden">
-                                            <div
-                                                class="h-full bg-accent/80 transition-all duration-500 ease-out"
-                                                style={{ width: `${(file.completedLength / file.length) * 100}%` }}
-                                            />
-                                        </div>
-                                        <div class="flex justify-between text-xs text-muted/80 mt-1">
-                                            <span>{formatBytes(file.completedLength)}</span>
-                                            <span>{formatBytes(file.length)}</span>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                }}
                             </For>
                         </div>
                     </div>

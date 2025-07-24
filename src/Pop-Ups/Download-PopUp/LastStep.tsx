@@ -1,7 +1,7 @@
 import { useNavigate } from "@solidjs/router";
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, Download, Info, Languages, Loader2, MemoryStick } from "lucide-solid";
+import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, Download, Info, Languages, Loader2, MemoryStick, X } from "lucide-solid";
 import { Accessor, createEffect, createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
 import { DirectLink, DownloadedGame, FileInfo, InstallationSettings } from "../../bindings";
@@ -23,6 +23,8 @@ const torrentInst = new TorrentApi();
 export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
     const languageMap: Record<string, string> = {
         chinese: "Chinese",
+        brazilian: "Brazilian",
+        mexican: "Mexican",
         french: "French",
         german: "German",
         japanese: "Japanese",
@@ -271,60 +273,51 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 );
 
                 if (matchedLanguage) {
-                    const languageName = languageMap[matchedLanguage];
+                    let displayName = `${languageMap[matchedLanguage]} Language`;
+                    if (lowerFilename.includes("vo")) {
+                        displayName += " VO";
+                    }
                     result.Languages.push({
                         ...file,
-                        displayName: `${languageName} Language`
+                        displayName
                     });
                 }
-                else if (lowerFilename.includes("optional")) {
-                    const languageMatch = lowerFilename.match(/optional-(\w+)/);
-                    if (languageMatch) {
-                        const langCode = languageMatch[1];
-                        const languageName = languageMap[langCode] || toTitleCase(langCode);
-                        result.Languages.push({
-                            ...file,
-                            displayName: `${languageName} Language`
-                        });
-                    } else {
-                        result.Others.push({
-                            ...file,
-                            displayName: "Optional Content"
-                        });
-                    }
+                else if (lowerFilename.includes("optional") || lowerFilename.includes("selective")) {
+                    const label = file.filename
+                        .replace(/fg-optional-|optional-|selective-/gi, "")
+                        .replace(/\.[^/.]+$/, "")
+                        .replace(/[-_.]/g, " ")
+                        .trim();
+
+                    result.Others.push({
+                        ...file,
+                        displayName: toTitleCase(label || "Optional Content")
+                    });
                 }
                 else if (lowerFilename.includes("part")) {
                     const partMatch = file.filename.match(/part(\d+)/i);
-                    if (partMatch) {
-                        result.Parts.push({
-                            ...file,
-                            displayName: `Part ${partMatch[1]}`
-                        });
-                    } else {
-                        result.Parts.push({
-                            ...file,
-                            displayName: "Game Part"
-                        });
-                    }
+                    result.Parts.push({
+                        ...file,
+                        displayName: partMatch ? `Part ${partMatch[1]}` : "Game Part"
+                    });
                 }
-                else if (lowerFilename.includes("setup") ||
-                    lowerFilename.includes("install")) {
+                else if (lowerFilename.includes("setup") || lowerFilename.includes("install")) {
                     result.Main.push({
                         ...file,
                         displayName: "Game Installer"
                     });
                 }
-
-                else if (!lowerFilename.includes("part") &&
+                else if (
+                    !lowerFilename.includes("part") &&
                     (file.filename.match(/\.(rar|001|zip)$/i) ||
-                        file.filename.includes('fitgirl-repacks') ||
-                        file.filename.includes('--_'))) {
+                        file.filename.includes("fitgirl-repacks") ||
+                        file.filename.includes("--_"))
+                ) {
                     result.Parts.push({
                         ...file,
                         displayName: "Part 1"
                     });
                 }
-                // Everything else
                 else {
                     result.Main.push({
                         ...file,
@@ -335,6 +328,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
             return result;
         }
+
         async function loadHosterLinks(hoster: "fuckingfast" | "datanodes") {
             setLoading(true);
             setSelectedHoster(hoster);
@@ -389,6 +383,36 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             return listFiles().findIndex(f => f.file_name === fileName);
         };
 
+        function deselectOptionalFiles() {
+            if (props.downloadType === "bittorrent") {
+                const { Languages, Others } = categorizedFiles();
+                const indicesToUnselect = new Set<number>();
+
+                for (const filename of [...Object.keys(Languages), ...Object.keys(Others)]) {
+                    const index = listFiles().findIndex(f => f.file_name === filename);
+                    if (index !== -1) indicesToUnselect.add(index);
+                }
+
+                setSelectedFileIndices(prev => {
+                    const next = new Set(prev);
+                    for (const idx of indicesToUnselect) next.delete(idx);
+                    return next;
+                });
+            } else if (props.downloadType === "direct_download") {
+                const categorized = classifyDdlFiles(directLinks());
+                const urlsToUnselect = new Set([
+                    ...categorized.Languages.map(f => f.url),
+                    ...categorized.Others.map(f => f.url)
+                ]);
+
+                setDdlSelectedUrls(prev => {
+                    const next = new Set(prev);
+                    for (const url of urlsToUnselect) next.delete(url);
+                    return next;
+                });
+            }
+        }
+
         const TorrentFileItem = (props: {
             originalName: string;
             displayName: string;
@@ -400,9 +424,9 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             return (
                 <label
                     class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50"
-                    title={props.displayName}
+                    title={props.originalName}
                 >
-                    <span class="text-sm text-text truncate max-w-[55%]" title={props.displayName}>{props.displayName}</span>
+                    <span class="text-sm text-text truncate max-w-[55%]" title={props.originalName}>{props.displayName}</span>
                     <div class="flex items-center gap-3">
                         <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">
                             {size}
@@ -420,8 +444,8 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             file: DirectLink & { displayName?: string };
         }) => {
             return (
-                <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50">
-                    <span class="text-sm text-text truncate max-w-[55%]">
+                <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.file.filename}>
+                    <span class="text-sm text-text truncate max-w-[55%]" title={props.file.filename}>
                         {props.file.displayName || props.file.filename}
                     </span>
                     <div class="flex items-center gap-3">
@@ -463,6 +487,17 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                 </div>
                             }>
                                 <div class="divide-y divide-secondary-20 -mx-2">
+                                    <Show when={Object.entries(categorizedFiles().Others).length > 0 || Object.entries(categorizedFiles().Languages).length > 0}>
+                                        <div class="w-full flex justify-end px-4 py-2">
+                                            <button
+                                                onClick={deselectOptionalFiles}
+                                                class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"
+                                            >
+                                                <X class="w-3 h-3" />
+                                                <span>Deselect All Languages & Extras</span>
+                                            </button>
+                                        </div>
+                                    </Show>
                                     {/* Show categorized files (Languages and Optional) */}
                                     <For each={Object.entries(categorizedFiles().Languages)}>
                                         {([originalName, displayName], _index) => (
@@ -624,6 +659,17 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                         </div>
                                     }>
                                         <div class="divide-y divide-secondary-20 -mx-2">
+                                            <Show when={categorized.Others.length > 0}>
+                                                <div class="w-full flex justify-end px-4 py-2">
+                                                    <button
+                                                        onClick={deselectOptionalFiles}
+                                                        class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"
+                                                    >
+                                                        <X class="w-3 h-3" />
+                                                        <span>Deselect All Languages & Extras</span>
+                                                    </button>
+                                                </div>
+                                            </Show>
                                             {/* Main Files */}
                                             <For each={categorized.Main}>
                                                 {(file, index) => (
@@ -712,7 +758,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         };
 
         return (
-            <Modal {...props} onClose={destroy} onConfirm={handleStartDownload}>
+            <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading()}>
                 <div class="space-y-6">
                     <Show when={error()}>
                         <div class="bg-red-500/10 text-red-500 rounded-lg p-3 text-sm">

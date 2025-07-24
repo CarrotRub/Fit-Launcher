@@ -332,7 +332,7 @@ const DownloadGameUUIDPage = () => {
             </div>
 
             {/* Game Info Grid */}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
               {/* Game Description */}
               <div class="bg-popup rounded-lg p-4 border border-secondary-20">
                 <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
