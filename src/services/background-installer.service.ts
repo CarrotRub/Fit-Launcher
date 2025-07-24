@@ -10,6 +10,7 @@ import {
 } from "../pages/Downloads-01/Downloads-Page";
 import { createSignal } from "solid-js";
 import { commands, Status } from "../bindings";
+import { GlobalSettingsApi } from "../api/settings/api";
 
 // Enhanced persisted storage with better debugging
 function makePersistedSetStorage(key: string) {
@@ -50,6 +51,7 @@ const installationsInProgressStorage = makePersistedSetStorage(
 class BackgroundInstaller {
   private torrentApi = new TorrentApi();
   private libraryApi = new LibraryApi();
+  private globalSettingsApi = new GlobalSettingsApi();
   private installationApi = new InstallationApi();
   private intervalId: number | null = null;
   private isProcessing = false;
@@ -193,14 +195,18 @@ class BackgroundInstaller {
 
       const folderPath = fullPath.split(/[\\/]/).slice(0, -1).join("/");
 
-      await this.libraryApi.addDownloadedGame(item.game);
+      if (
+        (await this.globalSettingsApi.getInstallationSettings()).auto_install
+      ) {
+        await this.libraryApi.addDownloadedGame(item.game);
 
-      this.torrentApi.gameList.delete(item.gid);
-      await this.torrentApi.saveGameListToDisk();
+        this.torrentApi.gameList.delete(item.gid);
+        await this.torrentApi.saveGameListToDisk();
 
-      await this.installationApi.startInstallation(folderPath);
+        await this.installationApi.startInstallation(folderPath);
 
-      processedTorrentsStorage.add(key);
+        processedTorrentsStorage.add(key);
+      }
     } catch (error) {
       console.error(`Failed to process torrent ${item.gid}:`, error);
 
@@ -241,14 +247,18 @@ class BackgroundInstaller {
 
       const targetPath = item.job.targetPath;
 
-      await this.installationApi.startExtractionDdl(targetPath);
+      if (
+        (await this.globalSettingsApi.getInstallationSettings()).auto_install
+      ) {
+        await this.installationApi.startExtractionDdl(targetPath);
 
-      DownloadManagerApi.removeJob(item.jobId);
-      await DownloadManagerApi.saveJobMapToDisk();
+        DownloadManagerApi.removeJob(item.jobId);
+        await DownloadManagerApi.saveJobMapToDisk();
 
-      await this.installationApi.startInstallation(targetPath);
+        await this.installationApi.startInstallation(targetPath);
 
-      processedDdlJobsStorage.add(key);
+        processedDdlJobsStorage.add(key);
+      }
     } catch (error) {
       console.error(`Failed to process DDL job ${item.jobId}:`, error);
       installationsInProgressStorage.remove(key);

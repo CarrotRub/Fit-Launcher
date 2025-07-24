@@ -131,7 +131,7 @@ impl Default for Bittorrent {
             enable_dht: true,
             listen_port: 51413,
             max_peers: 60,
-            seed_ratio: Some(1.0),
+            seed_ratio: None,
             seed_time: None,
         }
     }
