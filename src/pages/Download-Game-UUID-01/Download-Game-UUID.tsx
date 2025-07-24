@@ -4,7 +4,7 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
@@ -16,6 +16,7 @@ const library = new LibraryApi();
 const cache = new GamesCacheApi();
 
 const DownloadGameUUIDPage = () => {
+  const [expanded, setExpanded] = createSignal(false);
   const [gameInfo, setGameInfo] = createSignal<DownloadedGame>();
   const [additionalImages, setAdditionalImages] = createSignal<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = createSignal(0);
@@ -316,7 +317,7 @@ const DownloadGameUUIDPage = () => {
                   <div class="absolute inset-0 flex items-center">
                     <div class="w-full border-t border-secondary-20"></div>
                   </div>
-                  <div class="relative px-2 bg-popup text-xs text-muted">OR</div>
+                  <div class="relative px-2 text-xs text-muted">OR</div>
                 </div>
                 <Button
                   icon={<Globe class="size-5" />}
@@ -334,18 +335,49 @@ const DownloadGameUUIDPage = () => {
             {/* Game Info Grid */}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
               {/* Game Description */}
-              <div class="bg-popup rounded-lg p-4 border border-secondary-20">
+              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20/50 hover:border-accent/30 transition-colors">
                 <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
                   <Info class="w-5 h-5 text-accent" />
                   Description
                 </h2>
-                <p class="text-sm text-muted leading-relaxed line-clamp-6 hover:line-clamp-none transition-all">
-                  {cutDescription(gameInfo()?.desc)}
-                </p>
+                <div class="relative overflow-hidden">
+                  <p
+                    class="text-sm text-muted leading-relaxed transition-all duration-300 ease-in-out"
+                    classList={{
+                      "max-h-24": !expanded(),
+                      "max-h-[1000px]": expanded()
+                    }}
+                  >
+                    {cutDescription(gameInfo()?.desc)}
+                  </p>
+                  <div
+                    class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-popup to-transparent pointer-events-none transition-opacity duration-300"
+                    classList={{
+                      "opacity-100": !expanded(),
+                      "opacity-0": expanded()
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={() => setExpanded(!expanded())}
+                  class="mt-2 text-xs flex items-center gap-1 text-accent hover:text-primary transition-colors"
+                >
+                  {expanded() ? (
+                    <>
+                      <ChevronUp class="w-4 h-4" />
+                      Show Less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown class="w-4 h-4" />
+                      Read More
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Game Details */}
-              <div class="bg-popup rounded-lg p-4 border border-secondary-20">
+              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20">
                 <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
                   <Gamepad2 class="w-5 h-5 text-accent" />
                   Details
@@ -393,7 +425,7 @@ const DownloadGameUUIDPage = () => {
           </div>
           {/* Play Statistics */}
           <Show when={gameInfo()?.executable_info?.executable_path}>
-            <div class="mt-4 bg-popup rounded-lg p-4 border border-secondary-20">
+            <div class="mt-4 bg-popup-background rounded-lg p-4 border border-secondary-20">
               <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
                 <Clock class="w-5 h-5 text-accent" />
                 Play Stats
@@ -423,7 +455,7 @@ const DownloadGameUUIDPage = () => {
         </div>
       ) : (
         <div class="flex flex-col items-center justify-center h-screen px-4">
-          <div class="text-center p-6 bg-popup rounded-lg border border-secondary-20 w-full max-w-sm">
+          <div class="text-center p-6 bg-popup-background rounded-lg border border-secondary-20 w-full max-w-sm">
             <Info class="w-10 h-10 text-accent mx-auto mb-3" />
             <h2 class="text-xl font-bold mb-2">Game Not Found</h2>
             <p class="text-sm text-muted mb-4">
