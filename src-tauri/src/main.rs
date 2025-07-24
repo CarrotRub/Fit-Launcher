@@ -171,7 +171,8 @@ async fn start() {
 
     let builder: tauri_specta::Builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
-    
+
+    #[cfg(debug_assertions)]
     {
         use specta_typescript::Typescript;
 

@@ -6,4 +6,3 @@ examples
 target
 test.json
 test_info.json
-src/bindings.ts
