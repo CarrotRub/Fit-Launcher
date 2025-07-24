@@ -1,5 +1,6 @@
 use color_thief::{get_palette, ColorFormat};
 use image::{load_from_memory, DynamicImage, ImageError};
+use specta::specta;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -62,13 +63,14 @@ async fn fetch_dominant_color(url: &str) -> Result<String, DominantColorError> {
 }
 
 #[tauri::command]
+#[specta]
 pub async fn check_dominant_color_vec(list_images: Vec<String>) -> Result<Vec<String>, String> {
     let mut rgb_color_list: Vec<String> = Vec::new();
 
     for link in list_images {
         match fetch_dominant_color(&link).await {
             Ok(rgb_value) => rgb_color_list.push(rgb_value),
-            Err(e) => return Err(format!("Failed to fetch color for {}: {}", link, e)),
+            Err(e) => return Err(format!("Failed to fetch color for {link}: {e}")),
         }
     }
 

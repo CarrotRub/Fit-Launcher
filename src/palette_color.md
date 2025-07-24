@@ -1,7 +1,7 @@
 
-## Default Dark Purple.
+## Dark Purple.
 ```css
-:root[data-theme="default-dark-purple"] {
+:root[data-theme="dark-purple"] {
     --accent-color: rgba(187, 114, 160, 1); /* #bb72a0 */
     --secondary-color: rgba(110, 53, 103, 1); /* #6e3567 */
     --secondary-30-selected-color: rgba(110, 53, 103, 0.3); /* #6e3567 */

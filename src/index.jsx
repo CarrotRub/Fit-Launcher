@@ -3,7 +3,7 @@ import { render } from "solid-js/web";
 import "./styles.css";
 import App from "./App";
 
-let savedTheme = localStorage.getItem("theme") || "default-dark-purple";
+let savedTheme = localStorage.getItem("theme") || "blue-cyan";
 
 // Apply the saved theme to the document element
 document.documentElement.setAttribute("data-theme", savedTheme);

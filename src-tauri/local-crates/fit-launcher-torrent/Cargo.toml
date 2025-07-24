@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+tauri-plugin-shell = { workspace = true }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
+specta = { workspace = true }
 aria2-ws = { workspace = true }
 http = { workspace = true }
 reqwest = { workspace = true }
-librqbit = { workspace = true }
 parking_lot = { workspace = true }
 tracing = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
 serde_with = { workspace = true }
 tauri = { workspace = true }
 tokio = { workspace = true }
@@ -23,3 +23,10 @@ fit-launcher-ui-automation = { workspace = true }
 fit-launcher-config = { workspace = true }
 fitgirl-decrypt = { workspace = true }
 once_cell = { workspace = true }
+rand = { workspace = true }
+librqbit = "8.1.1"
+librqbit-core = { workspace = true }
+librqbit-buffers = { workspace = true }
+lazy_static = "1.5.0"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }

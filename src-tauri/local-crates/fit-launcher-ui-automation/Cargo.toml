@@ -5,9 +5,13 @@ edition = "2024"
 
 [dependencies]
 sysinfo = { workspace = true }
+serde = { workspace = true }
 tauri = { workspace = true }
 tracing = { workspace = true }
 fit-launcher-config = { workspace = true }
+specta = { workspace = true }
+thiserror = { workspace = true }
+unrar = "0.5.8"
 
 [target.'cfg(windows)'.dependencies]
 uiautomation = { workspace = true }

@@ -31,9 +31,9 @@ Each theme consists of CSS variables that define colors for:
 2. **Define Variables in `:root`:**  
    Use the following template as a starting point for your theme:
 
-   Example of Le Beau Cyan Theme : 
+   Example of Blue Cyan Theme : 
    ```css
-        :root[data-theme="le-beau-cyan"] {
+        :root[data-theme="blue-cyan"] {
           --accent-color: rgba(0, 128, 128, 1);
           --secondary-color: rgba(0, 102, 102, 1);
           --secondary-30-selected-color: rgba(0, 102, 102, 0.3);

@@ -9,8 +9,8 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
         .await
         .map_err(|e| {
             eprintln!("Failed to get response from URL: {}", &url);
-            eprintln!("Error is: {}", e);
-            ScrapingError::ReqwestError(e)
+            eprintln!("Error is: {e}");
+            ScrapingError::ReqwestError(e.to_string())
         })
         .expect("Error getting response from URL, please check the logs.");
 
@@ -30,7 +30,7 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
         .await
         .map_err(|e| {
             eprintln!("Failed to get a body from URL: {}", &url);
-            ScrapingError::ReqwestError(e)
+            ScrapingError::ReqwestError(e.to_string())
         })
         .unwrap();
 
@@ -38,10 +38,10 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
     let a_selector = scraper::Selector::parse("a").unwrap();
     let mut fucking_fast_links = Vec::new();
     for element in html_document.select(&a_selector) {
-        if element.text().any(|t| t.contains("FuckingFast")) {
-            if let Some(href) = element.value().attr("href") {
-                fucking_fast_links.push(href.to_string());
-            }
+        if element.text().any(|t| t.contains("FuckingFast"))
+            && let Some(href) = element.value().attr("href")
+        {
+            fucking_fast_links.push(href.to_string());
         }
     }
 
@@ -61,11 +61,14 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
             if let Some(href) = element.value().attr("href") {
                 if href.contains("_fitgirl-repacks.site_") {
                     original_repack_links.push(href.to_string());
+                } else if href.contains("fg-optional-") {
+                    original_repack_links.push(href.to_string());
+                } else if href.starts_with("https://fuckingfast.co/") {
+                    original_repack_links.push(href.to_string());
                 }
             }
         }
     }
-
     let mut result_links = Vec::new();
     result_links.append(&mut original_repack_links);
     result_links.append(&mut fucking_fast_links);

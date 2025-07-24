@@ -5,12 +5,19 @@ edition = "2024"
 
 [dependencies]
 tauri = { workspace = true }
+tokio = { workspace = true }
+
 directories = { workspace = true }
 tracing = { workspace = true }
-serde = { workspace = true }
 reqwest = { workspace = true }
-serde_json = { workspace = true }
-tokio = { workspace = true }
-hickory-resolver = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+hickory-resolver = { workspace = true }
+
+specta = { workspace = true }
+
+thiserror = { workspace = true }

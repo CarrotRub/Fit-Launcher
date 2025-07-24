@@ -1,270 +1,204 @@
 use std::path::Path;
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 
+use fit_launcher_ui_automation::InstallationError;
 use fitgirl_decrypt::Paste;
-use fitgirl_decrypt::base64::prelude::*;
-use http::StatusCode;
-use librqbit::ApiError;
+use fitgirl_decrypt::base64::Engine;
+use fitgirl_decrypt::base64::prelude::BASE64_STANDARD;
 
+use librqbit_core::torrent_metainfo::torrent_from_bytes;
+use specta::specta;
 use tracing::{error, info};
 
-use crate::config::FitLauncherConfig;
+use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
-use fit_launcher_ui_automation::mighty_automation::windows_ui_automation;
+use crate::model::FileInfo;
+use fit_launcher_ui_automation::mighty_automation::windows_ui_automation::{
+    automate_until_download, start_executable_components_args,
+};
 
 use super::*;
 
-use librqbit::{
-    AddTorrent, AddTorrentOptions, Magnet,
-    api::{
-        ApiAddTorrentResponse, EmptyJsonResponse, TorrentDetailsResponse, TorrentIdOrHash,
-        TorrentListResponse, TorrentStats,
-    },
-};
-
 #[tauri::command]
-pub async fn download_torrent_from_paste(
+#[specta]
+pub async fn decrypt_torrent_from_paste(
     paste_link: String,
 ) -> Result<Vec<u8>, fitgirl_decrypt::Error> {
     let paste = Paste::parse_url(&paste_link)?;
     let cipherinfo = paste.request_async().await?;
-    let attachment = paste.decrypt(&cipherinfo)?;
+
+    let attachment = tokio::task::spawn_blocking(move || {
+        let paste = Paste::parse_url(&paste_link).unwrap();
+        paste.decrypt(&cipherinfo)
+    })
+    .await
+    .expect("join error")
+    .map_err(|_| fitgirl_decrypt::Error::DecompressError)?;
+
     let torrent_b64 = attachment
         .attachment
         .strip_prefix("data:application/x-bittorrent;base64,")
-        .ok_or(fitgirl_decrypt::Error::IllFormedURL)?;
-    let torrent = BASE64_STANDARD.decode(torrent_b64)?;
+        .ok_or(fitgirl_decrypt::Error::IllFormedURL)?
+        .to_string();
+    let torrent = tokio::task::spawn_blocking(move || BASE64_STANDARD.decode(torrent_b64))
+        .await
+        .expect("Join error")?;
     Ok(torrent)
 }
 
-#[tauri::command]
-pub fn torrents_list(state: tauri::State<TorrentSession>) -> Result<TorrentListResponse, ApiError> {
-    Ok(state.api()?.api_torrent_list())
+pub async fn list_torrent_files_local(torrent: Vec<u8>) -> Result<Vec<FileInfo>, String> {
+    let torrent =
+        torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
+
+    Ok(torrent
+        .info
+        .iter_file_details()
+        .map_err(|e| e.to_string())?
+        .enumerate()
+        .flat_map(|(idx, detail)| -> anyhow::Result<FileInfo> {
+            Ok(FileInfo {
+                file_name: detail.filename.to_pathbuf()?,
+                length: detail.len,
+                file_index: idx + 1,
+            })
+        })
+        .collect())
 }
 
 #[tauri::command]
-pub async fn torrent_create_from_url(
-    state: tauri::State<'_, TorrentSession>,
-    url: String,
-    opts: Option<AddTorrentOptions>,
-) -> Result<ApiAddTorrentResponse, ApiError> {
-    state
-        .api()?
-        .api_add_torrent(AddTorrent::Url(url.into()), opts)
-        .await
+#[specta]
+pub async fn get_torrent_hash(torrent: Vec<u8>) -> Result<String, String> {
+    let torrent =
+        torrent_from_bytes::<librqbit_buffers::ByteBuf>(&torrent).map_err(|e| e.to_string())?;
+    Ok(torrent.info_hash.as_string())
 }
 
 #[tauri::command]
-pub async fn torrent_create_from_torrent(
-    state: tauri::State<'_, TorrentSession>,
-    torrent: Vec<u8>,
-    opts: Option<AddTorrentOptions>,
-) -> Result<ApiAddTorrentResponse, ApiError> {
-    state
-        .api()?
-        .api_add_torrent(AddTorrent::TorrentFileBytes(torrent.into()), opts)
-        .await
-}
+#[specta]
+pub async fn list_torrent_files(
+    librqbit_state: tauri::State<'_, LibrqbitSession>,
+    magnet: String,
+) -> Result<Vec<FileInfo>, TorrentApiError> {
+    let info = &librqbit_state.get_metadata_only(magnet).await?.info;
 
-#[tauri::command]
-pub async fn get_torrent_idx_from_url(url: String) -> Result<String, ApiError> {
-    let actual_torrent_magnet = match Magnet::parse(&url) {
-        Ok(magnet) => magnet,
-        Err(e) => {
-            error!("Error Parsing Magnet : {:#?}", e);
-            return Err(ApiError::new_from_anyhow(
-                StatusCode::from_u16(401).unwrap(),
-                e,
-            ));
+    let mut files = Vec::new();
+
+    if let Some(multi) = &info.files {
+        //  convert each file's relative path (Vec<BufType>) to PathBuf
+        for (i, file) in multi.iter().enumerate() {
+            // Join the relative path parts as strings into PathBuf
+            let file_path = file
+                .path
+                .iter()
+                .map(|part| std::str::from_utf8(part).unwrap_or("<invalid utf8>"))
+                .collect::<std::path::PathBuf>();
+
+            files.push(FileInfo {
+                file_name: file_path,
+                length: file.length,
+                file_index: i,
+            });
         }
-    };
+    } else if let Some(length) = info.length {
+        let file_name = info
+            .name
+            .as_ref()
+            .map(|name_bytes| std::str::from_utf8(name_bytes).unwrap_or("unnamed"))
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("unnamed"));
 
-    let actual_torrent_id20 = Magnet::as_id20(&actual_torrent_magnet);
-    Ok(TorrentIdOrHash::Hash(actual_torrent_id20.unwrap()).to_string())
+        files.push(FileInfo {
+            file_name,
+            length,
+            file_index: 0,
+        });
+    }
+
+    Ok(files)
 }
 
 #[tauri::command]
-pub async fn torrent_details(
-    state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<TorrentDetailsResponse, ApiError> {
-    state.api()?.api_torrent_details(id)
+#[specta]
+pub async fn magnet_to_file(
+    librqbit_state: tauri::State<'_, LibrqbitSession>,
+    magnet: String,
+) -> Result<Vec<u8>, TorrentApiError> {
+    let info = &librqbit_state.get_metadata_only(magnet).await?;
+
+    Ok(info.torrent_bytes.clone().to_vec())
 }
 
 #[tauri::command]
-pub async fn torrent_stats(
+#[specta]
+pub async fn get_download_settings(
     state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<TorrentStats, ApiError> {
-    state.api()?.api_stats_v1(id)
-}
-
-#[tauri::command]
-pub async fn torrent_action_delete(
-    state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<EmptyJsonResponse, ApiError> {
-    state.api()?.api_torrent_action_delete(id).await
-}
-
-#[tauri::command]
-pub async fn torrent_action_pause(
-    state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<EmptyJsonResponse, ApiError> {
-    state.api()?.api_torrent_action_pause(id).await
-}
-
-#[tauri::command]
-pub async fn torrent_action_forget(
-    state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<EmptyJsonResponse, ApiError> {
-    state.api()?.api_torrent_action_forget(id).await
-}
-
-#[tauri::command]
-pub async fn torrent_action_start(
-    state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<EmptyJsonResponse, ApiError> {
-    state.api()?.api_torrent_action_start(id).await
-}
-
-#[tauri::command]
-pub async fn get_torrent_full_settings(
-    state: tauri::State<'_, TorrentSession>,
-) -> Result<FitLauncherConfig, ApiError> {
+) -> Result<FitLauncherConfigV2, TorrentApiError> {
     Ok(state.get_config().await)
 }
 
 #[tauri::command]
-pub async fn change_torrent_config(
+#[specta]
+pub async fn change_download_settings(
     state: tauri::State<'_, TorrentSession>,
-    config: FitLauncherConfig,
-) -> Result<EmptyJsonResponse, ApiError> {
-    state.configure(config).await.map(|_| EmptyJsonResponse {})
+    config: FitLauncherConfigV2,
+) -> Result<(), TorrentApiError> {
+    state.configure(config).await?;
+    Ok(())
 }
 
 #[tauri::command]
+#[specta]
 pub async fn config_change_only_path(
     state: tauri::State<'_, TorrentSession>,
     download_path: String,
-) -> Result<EmptyJsonResponse, ApiError> {
-    // Get the current config
+) -> Result<(), TorrentApiError> {
     let mut current_config = state.get_config().await;
-    // Convert the string path to a PathBuf and update the default_download_location
-    current_config.default_download_location = PathBuf::from(download_path);
+    current_config.general.download_dir = PathBuf::from(download_path);
 
-    // Save the updated config
-    state
-        .configure(current_config)
-        .await
-        .map(|_| EmptyJsonResponse {})
+    state.configure(current_config).await
 }
 
 #[tauri::command]
-/// This function needs to receive the least arguments possible to detangle the code.
-/// The more this function receives arguments the more the code will be spaghetti code and no one will look at it so it's better to make it hard and complicated
-/// in Rust as at least it is better and readable compared to JS.
-///
-/// # Important
+#[specta]
 pub async fn run_automate_setup_install(
     _state: tauri::State<'_, TorrentSession>,
-    id: TorrentIdOrHash,
-) -> Result<(), ApiError> {
-    let session_json_path = directories::BaseDirs::new()
-        .expect("Could not determine base directories")
-        .config_local_dir()
-        .join("com.fitlauncher.carrotrub")
-        .join("torrentConfig")
-        .join("session")
-        .join("data")
-        .join("session.json");
+    path: PathBuf,
+) -> Result<(), TorrentApiError> {
+    let setup_executable_path = path.join("setup.exe");
+    info!("Setup path is: {}", setup_executable_path.to_string_lossy());
 
-    let file_content = std::fs::read_to_string(&session_json_path).unwrap_or_else(|err| {
-        error!(
-            "Error reading the file at {:?}: {:#?}",
-            session_json_path, err
-        );
-        "{}".to_string() // Return an empty JSON object as a fallback
-    });
-
-    let session_config_json: serde_json::Value = serde_json::from_str(&file_content)
-        .unwrap_or_else(|err| {
-            error!("Error parsing JSON: {:#?}", err);
-            serde_json::Value::default()
-        });
-
-    let mut torrent_folder: Option<String> = None;
-
-    if let Some(torrents) = session_config_json.get("torrents") {
-        // Convert the `id` into a string to match the hash
-        let id_hash = id.to_string(); // Assume `id.to_string()` gives the correct hash representation
-
-        // Iterate over torrents to find a matching "info_hash"
-        if let Some((_, torrent)) = torrents.as_object().and_then(|obj| {
-            obj.iter().find(|(_, torrent)| {
-                torrent
-                    .get("info_hash")
-                    .is_some_and(|hash| hash == &id_hash)
-            })
-        }) {
-            if let Some(output_folder) = torrent.get("output_folder") {
-                torrent_folder = Some(output_folder.to_string().replace("\"", ""));
-            } else {
-                error!(
-                    "Torrent with ID '{}' found, but no output_folder key present.",
-                    id_hash
-                );
-            }
-        } else {
-            error!("No torrent found with the given ID/hash: {}", id_hash);
+    start_executable_components_args(setup_executable_path).map_err(|e| match e {
+        InstallationError::AdminModeError => TorrentApiError::AdminModeError,
+        InstallationError::IOError(msg) => {
+            TorrentApiError::IOError(format!("Installation IO error: {msg}"))
         }
-    } else {
-        error!("No 'torrents' object found in the JSON.");
-    }
+    })?;
 
-    if let Some(folder) = torrent_folder {
-        let setup_path = PathBuf::from_str(&folder).unwrap().join("setup.exe");
-        info!("Setup path is : {}", setup_path.to_str().unwrap());
-        windows_ui_automation::start_executable_components_args(setup_path);
+    let game_output_folder = path.to_string_lossy().replace(" [FitGirl Repack]", "");
 
-        let game_output_folder = folder.replace(" [FitGirl Repack]", "");
+    automate_until_download(&game_output_folder).await;
 
-        windows_ui_automation::automate_until_download(&game_output_folder).await;
-        info!("Torrent has completed!");
-        info!("Game Installation Has been Started");
+    info!("Torrent has completed!");
+    info!("Game Installation has been started");
 
-        Ok(())
-    } else {
-        error!("Failed to initialize torrent_folder. Aborting operation.");
-
-        Err(ApiError::new_from_text(
-            StatusCode::from_u16(401).unwrap(),
-            "Failed to initialize torrent_folder. Aborting operation",
-        ))
-    }
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn delete_game_folder_recursively(folder_path: &Path) -> Result<(), ApiError> {
-    if folder_path.exists() && folder_path.is_dir() {
-        return match tokio::fs::remove_dir_all(folder_path).await {
+#[specta]
+pub async fn delete_game_folder_recursively(folder_path: &str) -> Result<(), TorrentApiError> {
+    let folder = Path::new(folder_path);
+    if folder.exists() && folder.is_dir() {
+        return match tokio::fs::remove_dir_all(folder).await {
             Ok(_) => {
-                info!("Correctly removed directory: {:#?}", &folder_path);
+                info!("Correctly removed directory: {:#?}", &folder);
                 Ok(())
             }
             Err(e) => {
                 error!("Error removing directory: {}", e);
-                Err(ApiError::new_from_anyhow(
-                    StatusCode::from_u16(401).unwrap(),
-                    anyhow::Error::new(e),
-                ))
+                Err(TorrentApiError::IOError(e.to_string()))
             }
         };
     }
     Ok(())
 }
-
-//TODO: Add clear cache functions

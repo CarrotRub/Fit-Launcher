@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tauri = { workspace = true }
+tauri = { workspace = true, features = ["unstable"] }
+specta = { workspace = true }
 fit-launcher-config = { workspace = true }
 futures = { workspace = true }
 directories = { workspace = true }
@@ -20,3 +21,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 tracing = { workspace = true }
+once_cell = { workspace = true }
+time = { version = "0.3.41", features = ["formatting"] }
+rand = "0.9.1"
+ahash = "0.8"

@@ -4,8 +4,8 @@ use std::{
     fmt,
     path::Path,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     time::Instant,
 };
@@ -16,24 +16,16 @@ use futures::future::join_all;
 use lru::LruCache;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
+use specta::{Type, specta};
 use tauri::{Manager, State, Window};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 
-#[derive(Clone, serde::Serialize)]
+#[derive(Clone, serde::Serialize, Type)]
 pub struct Payload {
     pub message: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Game {
-    title: String,
-    img: String,
-    desc: String,
-    magnetlink: String,
-    href: String,
 }
 
 /// Helper function.
@@ -48,8 +40,7 @@ fn parse_image_links(body: &str, start: usize) -> anyhow::Result<Vec<String>> {
 
     for p_index in start..=5 {
         let selector = Selector::parse(&format!(
-            ".entry-content > p:nth-of-type({}) img[src]",
-            p_index
+            ".entry-content > p:nth-of-type({p_index}) img[src]"
         ))
         .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
 
@@ -91,10 +82,7 @@ async fn fetch_image_links(body: &str) -> anyhow::Result<Vec<String>> {
         .into_iter()
         .map(|img_link| {
             tokio::task::spawn(async move {
-                match process_image_link(img_link).await {
-                    Ok(img) => Some(img),
-                    Err(_) => None,
-                }
+                (process_image_link(img_link).await).ok()
             })
         })
         .collect();
@@ -127,6 +115,7 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
 type ImageCache = Arc<Mutex<LruCache<String, Vec<String>>>>;
 
 #[tauri::command]
+#[specta]
 pub async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
 }
@@ -136,14 +125,14 @@ struct CachedGameImages {
     game_link: String,
     images: Vec<String>,
 }
-
 #[tauri::command]
+#[specta]
 pub async fn get_games_images(
     app_handle: tauri::AppHandle,
     game_link: String,
     image_cache: State<'_, ImageCache>,
-) -> Result<(), CustomError> {
-    let now = Instant::now();
+) -> Result<Vec<String>, CustomError> {
+    let start = Instant::now();
 
     let cache_file_path = app_handle
         .path()
@@ -151,48 +140,48 @@ pub async fn get_games_images(
         .unwrap_or_default()
         .join("image_cache.json");
 
-    // Acquire the lock and merge cache from file
-    let mut cache = image_cache.lock().await;
-    merge_cache_from_file(&cache_file_path, &mut cache).await?;
+    {
+        let mut cache = image_cache.lock().await;
+        merge_cache_from_file(&cache_file_path, &mut cache).await?;
 
-    // Check if the game link is already cached
-    if let Some(image_list) = cache.get(&game_link) {
-        if !image_list.is_empty() {
-            // Images already exist in cache, no need to fetch
-            return Ok(());
+        if let Some(image_list) = cache.get(&game_link) {
+            if !image_list.is_empty() {
+                return Ok(image_list.clone());
+            }
+            warn!(
+                "Cached list for '{}' is empty. Fetching anew...",
+                &game_link
+            );
         }
-        warn!(
-            "The list of {} is empty, it will get images again",
-            &game_link
-        );
     }
 
-    drop(cache); // Release lock before performing network operations
+    if STOP_FLAG.load(Ordering::Relaxed) {
+        return Err(anyhow::anyhow!("Scraping cancelled").into());
+    }
 
-    // Fetch image sources
+    // Fetch fresh images
     let image_srcs = scrape_image_srcs(&game_link).await?;
 
-    // Save fetched data back to the cache
-    let mut cache = image_cache.lock().await;
-    cache.put(game_link.clone(), image_srcs.clone());
-    save_cache_to_file(&cache_file_path, &cache).await?;
+    {
+        let mut cache = image_cache.lock().await;
+        cache.put(game_link.clone(), image_srcs.clone());
+        save_cache_to_file(&cache_file_path, &cache).await?;
+    }
 
-    info!("Time elapsed to find images: {:?}", now.elapsed());
-
-    Ok(())
+    info!("Image fetch completed in {:?}", start.elapsed());
+    Ok(image_srcs)
 }
 
 async fn merge_cache_from_file(
     cache_file_path: &Path,
     cache: &mut LruCache<String, Vec<String>>,
 ) -> Result<()> {
-    if let Ok(data) = tokio::fs::read_to_string(cache_file_path).await {
-        if let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
+    if let Ok(data) = tokio::fs::read_to_string(cache_file_path).await
+        && let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
             for (key, value) in loaded_cache {
                 cache.put(key, value);
             }
         }
-    }
     Ok(())
 }
 
@@ -218,7 +207,7 @@ pub struct FileContent {
     content: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Type)]
 pub struct CustomError {
     message: String,
 }
@@ -256,6 +245,7 @@ impl From<std::io::Error> for CustomError {
 }
 
 #[tauri::command]
+#[specta]
 pub async fn close_splashscreen(window: Window) {
     // Close splashscreen
     window

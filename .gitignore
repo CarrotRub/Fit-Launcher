@@ -3,7 +3,7 @@ dist
 *.xml
 temp
 examples
-.vscode
 target
 test.json
 test_info.json
+src/bindings.ts

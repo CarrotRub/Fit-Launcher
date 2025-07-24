@@ -1,22 +1,24 @@
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 import { viteStaticCopy } from "vite-plugin-static-copy";
+import tailwindcss from '@tailwindcss/vite';
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
   plugins: [solid(),
-    viteStaticCopy({
-        targets: [
-          {
-            src: './splashscreen.html',  
-            dest: '.'                     
-          },
-          {
-            src: './src-tauri/icons/Square310x310Logo.png', 
-            dest: '.'  
-          }
-        ]
-      })
+  tailwindcss(),
+  viteStaticCopy({
+    targets: [
+      {
+        src: './splashscreen.html',
+        dest: '.'
+      },
+      {
+        src: './src-tauri/icons/Square310x310Logo.png',
+        dest: '.'
+      }
+    ]
+  })
   ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -35,5 +37,5 @@ export default defineConfig(async () => ({
   build: {
     target: 'esnext'
   },
-  
+
 }));

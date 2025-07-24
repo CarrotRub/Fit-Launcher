@@ -5,7 +5,11 @@
 #[allow(dead_code)]
 mod checklist_automation {
     use tracing::{error, info, warn};
+
+    #[cfg(target_os = "windows")]
     use uiautomation::types::UIProperty::{ClassName, NativeWindowHandle, ToggleToggleState};
+
+    #[cfg(target_os = "windows")]
     use uiautomation::{UIAutomation, UIElement};
 
     fn get_checklistbox() -> Result<UIElement, uiautomation::errors::Error> {
@@ -90,13 +94,13 @@ mod checklist_automation {
 
 #[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
-    use fit_launcher_config::settings::config::get_installation_settings;
+    use crate::InstallationError;
+    use crate::mighty::windows_controls_processes;
+    use fit_launcher_config::commands::get_installation_settings;
     use std::path::{Path, PathBuf};
     use std::process::Command;
     use std::{thread, time};
     use tracing::{error, info};
-
-    use crate::mighty::windows_controls_processes;
 
     #[allow(dead_code)]
     #[deprecated(note = "please use `start_executable_components_args` instead")]
@@ -119,13 +123,52 @@ pub mod windows_ui_automation {
         }
     }
 
+    #[cfg(target_os = "windows")]
+    fn is_running_as_admin() -> bool {
+        use windows::Win32::{
+            Foundation::{CloseHandle, HANDLE},
+            Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation},
+            System::Threading::{GetCurrentProcess, OpenProcessToken},
+        };
+
+        unsafe {
+            let processhandle = GetCurrentProcess();
+            let mut tokenhandle = HANDLE(std::ptr::null_mut());
+            let desiredaccess = TOKEN_QUERY;
+            if OpenProcessToken(processhandle, desiredaccess, &mut tokenhandle as _).is_err() {
+                return false;
+            }
+
+            let mut tokeninformation = TOKEN_ELEVATION::default();
+            let mut needed = 0_u32;
+
+            let result = GetTokenInformation(
+                tokenhandle,
+                TokenElevation,
+                Some(&mut tokeninformation as *mut _ as _),
+                size_of::<TOKEN_ELEVATION>() as u32,
+                &mut needed as _,
+            )
+            .map(|_| tokeninformation.TokenIsElevated != 0);
+
+            _ = CloseHandle(tokenhandle);
+
+            result
+        }
+        .unwrap_or_default()
+    }
+
     //TODO: Add one for specifical VERY_SILENT mode but only for no 2gb limit and nothing specifical.
 
     /// Start an executable using tauri::command and gets the components that needs to be checked.
     ///
-    pub fn start_executable_components_args(path: PathBuf) {
+    pub fn start_executable_components_args(path: PathBuf) -> Result<(), InstallationError> {
         #[cfg(target_os = "windows")]
         {
+            if !is_running_as_admin() {
+                return Err(InstallationError::AdminModeError);
+            }
+
             let installation_settings = get_installation_settings();
             let mut checkboxes_list: Vec<String> = Vec::new();
 
@@ -136,23 +179,22 @@ pub mod windows_ui_automation {
                 checkboxes_list.push("microsoft".to_string());
             }
             let components = checkboxes_list.join(",");
-            let args_list = format!("/COMPONENTS=\"{}\"", components);
+            let args_list = format!("/COMPONENTS=\"{components}\"");
 
             let temp_path = path.with_extension("temp_setup.exe");
-            match std::fs::copy(&path, &temp_path) {
-                Ok(_) => match Command::new(&temp_path).arg(args_list).spawn() {
-                    Ok(child) => {
-                        info!("Executable started with PID: {}", child.id());
-                    }
-                    Err(e) => {
-                        error!("Failed to start executable: {}", e);
-                    }
-                },
-                Err(e) => {
-                    error!("Failed to copy executable: {}", e);
-                }
-            }
+
+            std::fs::copy(&path, &temp_path)
+                .map_err(|e| InstallationError::IOError(e.to_string()))?;
+
+            Command::new(&temp_path)
+                .arg(args_list)
+                .spawn()
+                .map_err(|e| InstallationError::IOError(e.to_string()))?;
+
+            info!("Executable started successfully.");
         }
+
+        Ok(())
     }
 
     #[cfg(target_os = "windows")]
