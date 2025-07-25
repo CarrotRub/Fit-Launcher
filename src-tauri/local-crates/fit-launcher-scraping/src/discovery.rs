@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use crate::{
     errors::ScrapingError, global::functions::helper::fetch_game_info, structs::DiscoveryGame,
 };
+use directories::BaseDirs;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream};
 use once_cell::sync::Lazy;
@@ -11,10 +14,11 @@ use scraper::{Html, Selector};
 use serde_with::chrono::{self, DateTime, Utc};
 use tauri::AppHandle;
 use tokio::fs;
+use tracing::error;
 
 const TARGET: usize = 100; // keep exactly this many
 const BATCH: usize = 10; // add/drop this many per cycle
-const REFRESH_DAYS: i64 = 2; // age threshold
+const REFRESH_DAYS: i64 = 1; // age threshold
 
 // selectors cached once
 macro_rules! sel {
@@ -93,17 +97,45 @@ async fn fetch_page(n: u32, app: &AppHandle) -> Result<Vec<DiscoveryGame>, Scrap
     Ok(games)
 }
 
-fn discovery_dir() -> std::path::PathBuf {
-    directories::BaseDirs::new()
+fn ensure_path(path: &PathBuf, is_file: bool) {
+    if is_file {
+        if let Some(parent) = path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                error!("Failed to create parent directories: {e}");
+            }
+        }
+        if !path.exists() {
+            if let Err(e) = std::fs::File::create(path) {
+                error!("Failed to create file {}: {e}", path.display());
+            }
+        }
+    } else if let Err(e) = std::fs::create_dir_all(path) {
+        error!("Failed to create directory: {e}");
+    }
+}
+
+fn discovery_dir() -> PathBuf {
+    let path = BaseDirs::new()
         .unwrap()
         .config_dir()
-        .join("com.fitlauncher.carrotrub/tempGames/discovery")
+        .join("com.fitlauncher.carrotrub")
+        .join("tempGames")
+        .join("discovery");
+
+    ensure_path(&path, false);
+    path
 }
-fn json_path() -> std::path::PathBuf {
-    discovery_dir().join("games_list.json")
+
+fn json_path() -> PathBuf {
+    let path = discovery_dir().join("games_list.json");
+    ensure_path(&path, true);
+    path
 }
-fn meta_path() -> std::path::PathBuf {
-    discovery_dir().join("games_meta.json")
+
+fn meta_path() -> PathBuf {
+    let path = discovery_dir().join("games_meta.json");
+    ensure_path(&path, true);
+    path
 }
 
 async fn read_meta_ts() -> Option<DateTime<Utc>> {
