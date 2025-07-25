@@ -54,11 +54,11 @@ fn likely_guarded(resp: &Response) -> bool {
 
 async fn get_response(client: &reqwest::Client, url: &str) -> Result<Response, ScrapingError> {
     let fetch = client.get(url).send();
-    let resp = timeout(Duration::from_secs(20), fetch)
+
+    timeout(Duration::from_secs(60), fetch)
         .await
         .map_err(|_| ScrapingError::TimeoutError(url.into()))?
-        .map_err(|e| ScrapingError::ReqwestError(e.to_string()));
-    resp
+        .map_err(|e| ScrapingError::ReqwestError(e.to_string()))
 }
 
 pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
