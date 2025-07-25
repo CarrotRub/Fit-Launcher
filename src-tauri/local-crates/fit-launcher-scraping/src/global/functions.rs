@@ -29,7 +29,7 @@ pub async fn download_sitemap(
     url: &str,
     filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut response = CUSTOM_DNS_CLIENT.get(url).send().await?;
+    let mut response = CUSTOM_DNS_CLIENT.read().await.get(url).send().await?;
 
     let mut binding = app_handle.path().app_data_dir().unwrap();
     binding.push("sitemaps");
@@ -62,8 +62,7 @@ async fn get_response(client: &reqwest::Client, url: &str) -> Result<Response, S
 }
 
 pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
-    let mut client = CUSTOM_DNS_CLIENT.clone();
-
+    let client = CUSTOM_DNS_CLIENT.read().await.clone();
     loop {
         let resp = get_response(&client, url).await?;
 
@@ -71,7 +70,7 @@ pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<Stri
             let cookies = resp.cookies().collect::<Vec<_>>();
             warn!("cookies: {cookies:?}, status: {}", resp.status().as_u16());
 
-            match handle_ddos_guard_captcha(app, url, &mut client).await {
+            match handle_ddos_guard_captcha(app, url).await {
                 Ok(_) => {
                     continue;
                 }

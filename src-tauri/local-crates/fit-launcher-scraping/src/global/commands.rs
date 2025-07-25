@@ -116,10 +116,16 @@ pub async fn get_singular_game_info(
         }
     }
 
-    let response = CUSTOM_DNS_CLIENT.get(&url).send().await.map_err(|e| {
-        error!("Failed to fetch URL: {}", e);
-        ScrapingError::HttpStatusCodeError(e.to_string())
-    })?;
+    let response = CUSTOM_DNS_CLIENT
+        .read()
+        .await
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch URL: {}", e);
+            ScrapingError::HttpStatusCodeError(e.to_string())
+        })?;
 
     let body = response.text().await.map_err(|e| {
         error!("Failed to read response body: {}", e);

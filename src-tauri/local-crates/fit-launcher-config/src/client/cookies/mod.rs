@@ -56,19 +56,12 @@ impl Cookies {
             .join(";")
     }
 
-    pub fn save_local(cookies: &Vec<Cookie>) -> Result<(), Error> {
-        let path = Self::default_path();
-        let json = serde_json::to_string_pretty(&cookies)?;
-        std::fs::write(path, json)?;
-        Ok(())
-    }
-
     pub fn save(&self) -> Result<(), Error> {
         let path = Self::default_path();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        std::fs::write(path, serde_json::to_vec(self)?)?;
+        std::fs::write(path, serde_json::to_vec_pretty(self)?)?;
         Ok(())
     }
 }

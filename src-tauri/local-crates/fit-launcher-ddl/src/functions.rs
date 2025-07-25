@@ -4,6 +4,8 @@ use fit_launcher_scraping::errors::ScrapingError;
 
 pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, Box<ScrapingError>> {
     let response = CUSTOM_DNS_CLIENT
+        .read()
+        .await
         .get(&url)
         .send()
         .await
