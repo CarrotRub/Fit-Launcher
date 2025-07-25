@@ -6,6 +6,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import PageGroup from "../../Components/PageGroup";
 import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
+import { makePersisted } from "@solid-primitives/storage";
 
 export default function CacheSettings(): JSX.Element {
 
@@ -71,8 +72,8 @@ function CacheContent() {
       });
 
       const update = await check();
-
-      if (update) {
+      console.log("here: ", update);
+      if (update !== null) {
         console.log(
           `Found update ${update.version} from ${update.date} with notes:\n${update.body}`
         );
@@ -114,6 +115,7 @@ function CacheContent() {
           kind: "info",
         });
       }
+
     } catch (error: unknown) {
       console.error("Update check failed:", error);
       await message(`Error while checking for updates: ${String(error)}`, {

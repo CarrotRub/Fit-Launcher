@@ -145,6 +145,7 @@ async fn read_meta_ts() -> Option<DateTime<Utc>> {
         .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
         .map(|dt| dt.with_timezone(&Utc))
 }
+
 async fn write_meta_ts() {
     let _ = fs::write(
         meta_path(),
@@ -172,7 +173,7 @@ pub async fn get_100_games_unordered(app: AppHandle) -> Result<(), Box<ScrapingE
         fs::write(json_path(), serde_json::to_vec_pretty(&queue).unwrap())
             .await
             .unwrap();
-        println!("cache fresh (<{REFRESH_DAYS} days) – shuffled only");
+        println!("cache fresh (<{REFRESH_DAYS} days) - shuffled only");
         return Ok(());
     }
 

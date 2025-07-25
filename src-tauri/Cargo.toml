@@ -20,7 +20,7 @@ tauri-plugin-fs = "2.2.1"
 tauri-plugin-process = "2.2.1"
 tauri-plugin-store = "2.2.0"
 tauri-plugin-single-instance = "2.2.3"
-tauri-plugin-updater = { version = "2.7.1", features = ["rustls-tls"] }
+tauri-plugin-updater = { version = "2.9.0", features = ["rustls-tls"] }
 tauri-helper = { workspace = true }
 
 # Specta for bindings & TypeScript generation
@@ -98,7 +98,7 @@ members = [
 
 #TODO: Clean unused deps
 [workspace.dependencies]
-tauri = { version = "2.2.0", features = ["protocol-asset", "tray-icon"] }
+tauri = { version = "2.7.0", features = ["protocol-asset", "tray-icon"] }
 tauri-helper = "0.1.4"
 tauri-plugin-shell = "2.2.0"
 specta = { version = "2.0.0-rc.22", features = [
