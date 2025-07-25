@@ -18,6 +18,14 @@ fn get_app_subdir(app: &AppHandle, subpath: &[&str]) -> PathBuf {
         base.push(part);
     }
 
+    if let Some(parent) = base.parent() {
+        std::fs::create_dir_all(parent).expect("Failed to create parent directories");
+    }
+
+    if !base.exists() {
+        std::fs::File::create(&base).expect("Failed to create file");
+    }
+
     base
 }
 
@@ -83,11 +91,12 @@ async fn get_games_from_file(app: &AppHandle, filename: &str) -> Result<Vec<Game
     let file_path = game_file_path(app, filename);
 
     if let Some(parent) = file_path.parent()
-        && !parent.exists() {
-            tokio_fs::create_dir_all(parent)
-                .await
-                .map_err(|e| ScrapingError::IOError(e.to_string()))?;
-        }
+        && !parent.exists()
+    {
+        tokio_fs::create_dir_all(parent)
+            .await
+            .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+    }
 
     if !file_path.exists() {
         let mut file = tokio_fs::File::create(&file_path)
@@ -130,11 +139,12 @@ pub async fn get_singular_game_local(app: AppHandle, url: &str) -> Result<Game, 
     let file_path = singular_game_path(&app, &filename);
 
     if let Some(parent) = file_path.parent()
-        && !parent.exists() {
-            tokio_fs::create_dir_all(parent)
-                .await
-                .map_err(|e| ScrapingError::IOError(e.to_string()))?;
-        }
+        && !parent.exists()
+    {
+        tokio_fs::create_dir_all(parent)
+            .await
+            .map_err(|e| ScrapingError::IOError(e.to_string()))?;
+    }
 
     if !file_path.exists() {
         let mut file = tokio_fs::File::create(&file_path)
