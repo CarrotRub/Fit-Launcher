@@ -1,9 +1,12 @@
 import { getTauriVersion, getVersion } from '@tauri-apps/api/app';
 import { For, JSX, Show, createSignal, onMount } from 'solid-js';
-import { Check, Github, InfoIcon, MessageCircle } from 'lucide-solid';
+import { Check, Github, InfoIcon, MessageCircle, Code2 } from 'lucide-solid';
 import PageGroup from '../../Components/PageGroup';
 import LabelButtonSettings from '../../Components/UI/LabelButton/LabelButton';
 import { open } from '@tauri-apps/plugin-shell';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { commands } from '../../../../../bindings';
 
 export default function AppInfoSettings(): JSX.Element {
     return (
@@ -72,6 +75,20 @@ function AppInfoContent() {
                         <InfoItem label="Last Updated" value={appInfo()!.lastUpdated} />
                     </div>
                 </Show>
+
+                {/* Dev Mode Button */}
+                <div class="mt-6">
+                    <button
+                        onClick={async () => await commands.openDevtools()}
+                        class="group relative flex items-center gap-3 px-4 py-3 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 transition-colors w-full"
+                    >
+                        <div class="w-8 h-8 rounded-full bg-accent flex items-center justify-center">
+                            <Code2 class="w-4 h-4 text-white" />
+                        </div>
+                        <span class="font-medium text-text">Open Dev Tools</span>
+                        <div class="absolute inset-0 rounded-lg bg-accent/0 group-hover:bg-accent/5 transition-colors" />
+                    </button>
+                </div>
             </div>
 
             {/* Social Links */}
@@ -104,7 +121,6 @@ function AppInfoContent() {
                     </button>
                 </div>
             </div>
-
         </div>
     );
 }

@@ -758,7 +758,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         };
 
         return (
-            <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading()}>
+            <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading}>
                 <div class="space-y-6">
                     <Show when={error()}>
                         <div class="bg-red-500/10 text-red-500 rounded-lg p-3 text-sm">

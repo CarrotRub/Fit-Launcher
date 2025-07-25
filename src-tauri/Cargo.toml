@@ -98,7 +98,11 @@ members = [
 
 #TODO: Clean unused deps
 [workspace.dependencies]
-tauri = { version = "2.7.0", features = ["protocol-asset", "tray-icon"] }
+tauri = { version = "2.7.0", features = [
+    "protocol-asset",
+    "tray-icon",
+    "devtools",
+] }
 tauri-helper = "0.1.4"
 tauri-plugin-shell = "2.2.0"
 specta = { version = "2.0.0-rc.22", features = [

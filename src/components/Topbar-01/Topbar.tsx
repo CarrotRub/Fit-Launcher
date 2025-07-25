@@ -19,6 +19,7 @@ export default function Topbar() {
 
 
   const appWindow = getCurrentWebviewWindow();
+
   async function handleWindowClose() {
     const hasSeenTrayMessage = localStorage.getItem("hasSeenTrayMessage");
     if (hasSeenTrayMessage) {
@@ -39,7 +40,7 @@ export default function Topbar() {
 
     createBasicChoicePopup({
       infoTitle: "Heads up!",
-      infoMessage: "Fit Launcher is still running in the background. You can find it in the taskbar tray.",
+      infoMessage: "Fit Launcher is still running in the background.\nYou can find it in the taskbar tray.\nYou're gonna have to wait 5 seconds with me right now so you read everything but don't worry it's only a one time thing :) ",
       disabledConfirm,
       action: () => {
         if (disabledConfirm()) return;
@@ -51,8 +52,6 @@ export default function Topbar() {
     await done;
     await appWindow.hide();
   }
-
-
 
   async function handleMaximize() {
     if (isFullscreen()) {

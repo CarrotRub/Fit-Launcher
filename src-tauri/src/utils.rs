@@ -17,7 +17,7 @@ use lru::LruCache;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use specta::{Type, specta};
-use tauri::{Manager, State, Window};
+use tauri::{AppHandle, Manager, State, Window};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 // Define a shared boolean flag
@@ -136,6 +136,7 @@ struct CachedGameImages {
     game_link: String,
     images: Vec<String>,
 }
+
 #[tauri::command]
 #[specta]
 pub async fn get_games_images(
@@ -271,4 +272,11 @@ pub async fn close_splashscreen(window: Window) {
         .expect("no window labeled 'main' found")
         .show()
         .unwrap();
+}
+
+#[tauri::command]
+#[specta]
+pub fn open_devtools(app: AppHandle) {
+    let webview_window = app.get_webview_window("main").unwrap();
+    webview_window.open_devtools();
 }

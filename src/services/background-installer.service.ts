@@ -61,7 +61,7 @@ class BackgroundInstaller {
 
     this.intervalId = setInterval(
       () => this.checkDownloads(),
-      5000 // Increased interval to 5 seconds
+      5000
     ) as unknown as number;
   }
 

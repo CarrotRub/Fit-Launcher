@@ -4,6 +4,7 @@ import Button from "../../components/UI/Button/Button";
 import { ModalPopupProps } from "../../types/popup";
 import { render } from "solid-js/web";
 
+
 export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
     const [isOpen, setIsOpen] = createSignal(true);
 
@@ -14,12 +15,10 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
         props.onClose?.(...args);
     }
 
-
     const handleConfirm = async () => {
         if (props.onConfirm) {
             await props.onConfirm();
         }
-
         closePopup();
     };
 
@@ -36,13 +35,11 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
         }
     };
 
-
     if (!isOpen()) return null;
 
     return (
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div class="relative bg-popup-background rounded-xl shadow-2xl border border-secondary-20 max-h-[96vh] no-scrollbar overflow-y-auto max-w-md w-full mx-4 transition-all duration-300 transform">
-
                 {/* Close Button */}
                 <div class="w-full flex justify-end p-2">
                     <button
@@ -100,7 +97,6 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
             </div>
         </div>
     );
-
 }
 
 export function createModal(props: Omit<Parameters<typeof Modal>[0], "onClose">) {
