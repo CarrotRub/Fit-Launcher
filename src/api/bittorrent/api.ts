@@ -34,14 +34,19 @@ export class TorrentApi {
 
   async loadGameListFromDisk() {
     const savePath = await this.getSavePath();
+
     if (await exists(savePath)) {
       const content = await readTextFile(savePath);
       const obj: Record<Gid, DownloadedGame[]> = JSON.parse(content);
       this.gameList = new Map(Object.entries(obj));
-      return this.gameList;
     } else {
       console.warn("No saved gameList found at", savePath);
+      this.gameList = new Map<Gid, DownloadedGame[]>();
+
+      await writeTextFile(savePath, JSON.stringify({}, null, 2));
     }
+
+    return this.gameList;
   }
 
   private uninstalledPath: string | undefined;

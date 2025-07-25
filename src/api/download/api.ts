@@ -44,15 +44,18 @@ export class DownloadManagerApi {
 
   static async loadJobMapFromDisk() {
     const savePath = await this.getSavePath();
+
     if (await exists(savePath)) {
       const content = await readTextFile(savePath);
       const obj: Record<JobId, DdlJobEntry> = JSON.parse(content);
       this.ddlJobMap = new Map(Object.entries(obj));
-      return this.ddlJobMap;
     } else {
       console.warn("No saved job map found at", savePath);
-      return new Map();
+      this.ddlJobMap = new Map<JobId, DdlJobEntry>();
+      await writeTextFile(savePath, JSON.stringify({}, null, 2));
     }
+
+    return this.ddlJobMap;
   }
 
   static async getDatahosterLinks(

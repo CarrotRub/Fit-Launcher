@@ -18,9 +18,7 @@ fn get_app_subdir(app: &AppHandle, subpath: &[&str]) -> PathBuf {
         base.push(part);
     }
 
-    if let Some(parent) = base.parent() {
-        std::fs::create_dir_all(parent).expect("Failed to create parent directories");
-    }
+    std::fs::create_dir_all(&base).expect("Failed to create directory");
 
     if !base.exists() {
         std::fs::File::create(&base).expect("Failed to create file");

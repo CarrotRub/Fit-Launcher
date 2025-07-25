@@ -2,11 +2,11 @@ import { createSignal } from "solid-js";
 import type { JSX } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
-import { check } from "@tauri-apps/plugin-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import PageGroup from "../../Components/PageGroup";
 import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
 import { makePersisted } from "@solid-primitives/storage";
+import { check } from "@tauri-apps/plugin-updater";
 
 export default function CacheSettings(): JSX.Element {
 
@@ -66,65 +66,47 @@ function CacheContent() {
     setUpdateClicked(true);
 
     try {
-      await message("Checking for updates...", {
-        title: "FitLauncher",
-        kind: "info",
-      });
-
       const update = await check();
-      console.log("here: ", update);
-      if (update !== null) {
-        console.log(
-          `Found update ${update.version} from ${update.date} with notes:\n${update.body}`
-        );
-
-        const confirmUpdate = await confirm(
-          `Update "${update.version}" was found. Do you want to download it?`,
-          { title: "FitLauncher", kind: "info" }
-        );
-
-        if (confirmUpdate) {
-          let downloaded = 0;
-          let contentLength = 0;
-
-          await update.downloadAndInstall((event) => {
-            switch (event.event) {
-              case "Started":
-                contentLength = event.data.contentLength || 0;
-                console.log(`Started downloading ${contentLength} bytes`);
-                break;
-              case "Progress":
-                downloaded += event.data.chunkLength;
-                console.log(`Downloaded ${downloaded} / ${contentLength}`);
-                break;
-              case "Finished":
-                console.log("Download finished");
-                break;
-            }
-          });
-
-          await message("Update installed! Please close and reopen the app.", {
-            title: "FitLauncher",
-            kind: "info",
-          });
-        }
-      } else {
-        const currentVer = await getVersion();
-        await message(`No update found. You are on the latest version: ${currentVer}`, {
+      console.log("update : ", update);
+      if (!update) {
+        await message(`No update found. You are on the latest version!`, {
           title: "FitLauncher",
           kind: "info",
         });
+        return;
       }
 
-    } catch (error: unknown) {
-      console.error("Update check failed:", error);
-      await message(`Error while checking for updates: ${String(error)}`, {
-        title: "FitLauncher",
-        kind: "error",
+      const wantsUpdate = await confirm(
+        `Update "${update.version}" is available.\nDo you want to download and install it?`,
+        { title: "FitLauncher", kind: "info" }
+      );
+
+      if (!wantsUpdate) return;
+
+      await update.downloadAndInstall((event) => {
+        switch (event.event) {
+          case "Started":
+            console.log("Started downloading");
+            break;
+          case "Progress":
+            console.log(`Progress: ${event.data.chunkLength} bytes`);
+            break;
+          case "Finished":
+            console.log("Download finished");
+            break;
+        }
       });
+
+      await message("Update installed! Please restart the app.", {
+        title: "FitLauncher",
+        kind: "info",
+      });
+    } catch (err) {
+      console.error("check() failed:", err);
     } finally {
       setUpdateClicked(false);
     }
+
   }
 
   return (
