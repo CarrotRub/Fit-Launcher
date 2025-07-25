@@ -29,6 +29,8 @@ macro_rules! sel {
 
 async fn head_ok(url: &str) -> bool {
     CUSTOM_DNS_CLIENT
+        .read()
+        .await
         .head(url)
         .send()
         .await

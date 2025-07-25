@@ -18,7 +18,14 @@ pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<Dire
         // download raw HTML
         .map(|link| -> HtmlDownloadFuture {
             Box::pin(async move {
-                let text = CUSTOM_DNS_CLIENT.get(&link).send().await?.text().await?;
+                let text = CUSTOM_DNS_CLIENT
+                    .read()
+                    .await
+                    .get(&link)
+                    .send()
+                    .await?
+                    .text()
+                    .await?;
                 let filename = link.split_once('#').unwrap_or_default().1.to_string();
                 Ok::<(String, String), reqwest::Error>((text, filename))
             })

@@ -14,7 +14,6 @@ use fit_launcher_scraping::discovery::get_100_games_unordered;
 use fit_launcher_scraping::get_sitemaps_website;
 use fit_launcher_scraping::global::functions::run_all_scrapers;
 use fit_launcher_torrent::LibrqbitSession;
-use fit_launcher_torrent::functions::ARIA2_DAEMON;
 use fit_launcher_torrent::functions::TorrentSession;
 use lru::LruCache;
 use serde_json::Value;

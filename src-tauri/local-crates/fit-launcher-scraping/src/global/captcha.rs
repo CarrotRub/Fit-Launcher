@@ -1,48 +1,24 @@
-use fit_launcher_config::client::cookies::{Cookie, Cookies};
+use fit_launcher_config::client::{
+    cookies::{Cookie, Cookies},
+    dns::{CUSTOM_DNS_CLIENT, build_dns_client},
+};
 use once_cell::sync::Lazy;
-use reqwest::{Client, ClientBuilder};
-use tauri::{Listener, Url, WindowEvent, http::HeaderValue};
+use tauri::{Listener, Url, WindowEvent};
 use time::format_description::well_known::Rfc2822;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::errors::ScrapingError;
 
-fn update_client_cookies(client: &mut Client, new_cookies: Vec<Cookie>) {
-    let mut current_cookies = Cookies::load_cookies().unwrap_or_else(|_| Cookies(Vec::new()));
+async fn update_client_cookies(new_cookies: Vec<Cookie>) {
+    Cookies(new_cookies).save().unwrap();
 
-    Cookies::save_local(&new_cookies).unwrap();
-
-    for new_cookie in new_cookies {
-        if let Some(cookie) = current_cookies
-            .0
-            .iter_mut()
-            .find(|c| c.name == new_cookie.name)
-        {
-            *cookie = new_cookie;
-        } else {
-            current_cookies.0.push(new_cookie);
-        }
-    }
-
-    if let Err(e) = current_cookies.save() {
-        error!("Failed to save cookies: {e}");
-    }
-
-    if let Ok(header_value) = HeaderValue::from_str(&current_cookies.to_header()) {
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(reqwest::header::COOKIE, header_value);
-        *client = ClientBuilder::new()
-            .default_headers(headers)
-            .build()
-            .expect("Failed to rebuild client");
-    }
+    *CUSTOM_DNS_CLIENT.write().await = build_dns_client();
 }
 
 pub(crate) async fn handle_ddos_guard_captcha(
     app: &tauri::AppHandle,
     url: &str,
-    client: &mut Client,
 ) -> Result<(), ScrapingError> {
     static COOKIES_UPDATED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
@@ -138,7 +114,7 @@ pub(crate) async fn handle_ddos_guard_captcha(
         .collect();
 
     info!("updating cookies...");
-    update_client_cookies(client, captured_cookies);
+    update_client_cookies(captured_cookies).await;
     *cookies_updated = true;
 
     Ok(())

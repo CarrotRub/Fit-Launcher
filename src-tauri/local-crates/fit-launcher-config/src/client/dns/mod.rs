@@ -11,6 +11,7 @@ use std::io::Write;
 use std::sync::Arc;
 use tauri::http::HeaderMap;
 use tauri::http::HeaderValue;
+use tokio::sync::RwLock;
 use tracing::error;
 use tracing::info;
 use tracing::warn;
@@ -90,8 +91,7 @@ fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
     dns_config
 }
 
-// Only ONE custom_dns_client, protocol decided by the DnsConfig file found in the
-pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
+pub fn build_dns_client() -> Client {
     let dns_config = ensure_and_load_dns_config();
 
     // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
@@ -105,12 +105,10 @@ pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
 
     match Cookies::load_cookies() {
         Ok(cookies) => {
-            client_builder = client_builder.default_headers(
-              HeaderMap::from_iter([(
+            client_builder = client_builder.default_headers(HeaderMap::from_iter([(
                 COOKIE,
                 HeaderValue::from_str(&cookies.to_header()).expect("invalid cookies value"),
-              )])
-            )
+            )]))
         }
         Err(e) => {
             warn!("failed to read cookies: {e}");
@@ -126,7 +124,10 @@ pub static CUSTOM_DNS_CLIENT: Lazy<Client> = Lazy::new(|| {
     client_builder
         .build()
         .expect("Failed to build custom DNS reqwest client")
-});
+}
+
+// Only ONE custom_dns_client, protocol decided by the DnsConfig file found in the
+pub static CUSTOM_DNS_CLIENT: Lazy<RwLock<Client>> = Lazy::new(|| RwLock::new(build_dns_client()));
 
 mod resolver;
 pub use resolver::HickoryResolverWithProtocol;

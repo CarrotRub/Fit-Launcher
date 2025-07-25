@@ -113,6 +113,8 @@ pub async fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
 
 async fn check_url_status(url: &str) -> bool {
     CUSTOM_DNS_CLIENT
+        .read()
+        .await
         .head(url)
         .header(RANGE, "bytes=0-8")
         .send()

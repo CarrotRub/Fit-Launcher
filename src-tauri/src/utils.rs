@@ -30,7 +30,13 @@ pub struct Payload {
 
 /// Helper function.
 async fn check_url_status(url: &str) -> anyhow::Result<bool> {
-    let response = CUSTOM_DNS_CLIENT.head(url).send().await.unwrap();
+    let response = CUSTOM_DNS_CLIENT
+        .read()
+        .await
+        .head(url)
+        .send()
+        .await
+        .unwrap();
     Ok(response.status().is_success())
 }
 
@@ -81,9 +87,7 @@ async fn fetch_image_links(body: &str) -> anyhow::Result<Vec<String>> {
     let tasks: Vec<_> = initial_images
         .into_iter()
         .map(|img_link| {
-            tokio::task::spawn(async move {
-                (process_image_link(img_link).await).ok()
-            })
+            tokio::task::spawn(async move { (process_image_link(img_link).await).ok() })
         })
         .collect();
 
@@ -105,7 +109,14 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
 
-    let body = CUSTOM_DNS_CLIENT.get(url).send().await?.text().await?;
+    let body = CUSTOM_DNS_CLIENT
+        .read()
+        .await
+        .get(url)
+        .send()
+        .await?
+        .text()
+        .await?;
     let images = fetch_image_links(&body).await?;
 
     Ok(images)
@@ -177,11 +188,12 @@ async fn merge_cache_from_file(
     cache: &mut LruCache<String, Vec<String>>,
 ) -> Result<()> {
     if let Ok(data) = tokio::fs::read_to_string(cache_file_path).await
-        && let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data) {
-            for (key, value) in loaded_cache {
-                cache.put(key, value);
-            }
+        && let Ok(loaded_cache) = serde_json::from_str::<HashMap<String, Vec<String>>>(&data)
+    {
+        for (key, value) in loaded_cache {
+            cache.put(key, value);
         }
+    }
     Ok(())
 }
 
