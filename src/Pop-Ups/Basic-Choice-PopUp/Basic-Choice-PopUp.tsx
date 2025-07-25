@@ -15,10 +15,15 @@ export default function createBasicChoicePopup(props: PopupProps) {
 
     render(
         () => (
-            <Modal {...props} onConfirm={async () => props.action?.()} onClose={destroy}>
+            <Modal
+                {...props}
+                onConfirm={async () => props.action?.()}
+                onClose={destroy}
+                disabledConfirm={props.disabledConfirm}
+            >
                 <div class="space-y-4">
                     <Show when={props.infoMessage}>
-                        <div class="text-text ">
+                        <div class="text-text">
                             <p innerHTML={props.infoMessage!}></p>
                         </div>
                     </Show>
@@ -28,4 +33,3 @@ export default function createBasicChoicePopup(props: PopupProps) {
         container
     );
 }
-

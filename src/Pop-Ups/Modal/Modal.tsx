@@ -94,7 +94,7 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
                         id="popup-confirm-button"
                         onClick={handleConfirm}
                         label={props.confirmLabel || "Confirm"}
-                        disabled={props.disabledConfirm}
+                        disabled={props.disabledConfirm ? props.disabledConfirm() : false}
                     />
                 </div>
             </div>

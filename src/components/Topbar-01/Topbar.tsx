@@ -5,6 +5,7 @@ import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
 import { listen } from "@tauri-apps/api/event";
 import { TorrentApi } from "../../api/bittorrent/api";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 
 export default function Topbar() {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -13,13 +14,45 @@ export default function Topbar() {
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
-  const torrentApi = new TorrentApi();
-  const appWindow = getCurrentWebviewWindow();
+  const [showTrayDialog, setShowTrayDialog] = createSignal(false);
+  const [canConfirmTrayDialog, setCanConfirmTrayDialog] = createSignal(false);
 
-  function handleWindowClose() {
-    //todo: add pause all torrent
-    appWindow.hide();
+
+  const appWindow = getCurrentWebviewWindow();
+  async function handleWindowClose() {
+    const hasSeenTrayMessage = localStorage.getItem("hasSeenTrayMessage");
+    if (hasSeenTrayMessage) {
+      await appWindow.hide();
+      return;
+    }
+
+    let resolveFn: () => void;
+    const done = new Promise<void>((resolve) => {
+      resolveFn = resolve;
+    });
+
+    const [disabledConfirm, setDisabledConfirm] = createSignal(true);
+
+    setTimeout(() => {
+      setDisabledConfirm(false);
+    }, 5000);
+
+    createBasicChoicePopup({
+      infoTitle: "Heads up!",
+      infoMessage: "Fit Launcher is still running in the background. You can find it in the taskbar tray.",
+      disabledConfirm,
+      action: () => {
+        if (disabledConfirm()) return;
+        localStorage.setItem("hasSeenTrayMessage", "true");
+        resolveFn();
+      },
+    });
+
+    await done;
+    await appWindow.hide();
   }
+
+
 
   async function handleMaximize() {
     if (isFullscreen()) {

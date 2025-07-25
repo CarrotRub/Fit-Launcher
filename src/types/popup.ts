@@ -1,4 +1,4 @@
-import { JSX } from "solid-js";
+import { Accessor, JSX } from "solid-js";
 import { DownloadedGame, Game, GameCollection } from "../bindings";
 import { PathInputProps, TextInputProps } from "./components/types";
 import { GameDetails } from "./game";
@@ -14,13 +14,13 @@ export type PopupProps<T extends unknown[] = []> = {
   confirmLabel?: string;
   action?: (...args: T) => void | Promise<void>;
   onConfirm?: () => void | Promise<void>;
+  disabledConfirm?: Accessor<boolean>;
 };
 
 export type ModalPopupProps<T extends unknown[] = []> = PopupProps<T> & {
   children: JSX.Element;
   variant?: PopupTypeVariant;
   onClose?: (...args: T) => void | Promise<void>;
-  disabledConfirm?: boolean;
 };
 
 export type PopupPathInputProps<T extends any[] = any[]> = PathInputProps &
