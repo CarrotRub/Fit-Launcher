@@ -1,7 +1,5 @@
 import { createSignal, For, JSX, Suspense, createResource, lazy, createEffect, Show } from 'solid-js';
-import { appDataDir, join } from '@tauri-apps/api/path';
-import { readTextFile } from '@tauri-apps/plugin-fs';
-import { commands, DiscoveryGame } from '../../bindings';
+import { DiscoveryGame } from '../../bindings';
 import LoadingPage from '../LoadingPage-01/LoadingPage';
 import Button from '../../components/UI/Button/Button';
 import { GamesCacheApi } from '../../api/cache/api';
