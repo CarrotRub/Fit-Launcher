@@ -7,6 +7,7 @@ import { commands } from '../../../../bindings';
 import { CircleArrowLeft, CircleArrowRight, Star, Info, Languages, HardDrive, Tags, Factory, ChevronLeft, ChevronRight } from 'lucide-solid';
 import Button from '../../../../components/UI/Button/Button';
 import { LibraryApi } from '../../../../api/library/api';
+import { DOMElement } from 'solid-js/jsx-runtime';
 
 const defaultPath: string = await commands.getNewlyAddedGamesPath();
 const library = new LibraryApi();
@@ -115,19 +116,26 @@ function HorizontalImagesCarousel({
         await handleAddToDownloadLater(gameItemObject, isChecked);
     }
 
-    async function handleGoToGamePage(gameTitle: string, filePath: string, gameHref: string) {
+    async function handleGoToGamePage(e: MouseEvent & { target: DOMElement; }) {
+        
+        if(e.target?.closest('.ignore-game-selection')) return
+
         if (!clicked()) {
             setClicked(true);
-            const uuid = await commands.hashUrl(gameHref);
+            const uuid = await commands.hashUrl(gameItemObject.game_href);
             navigate(`/game/${uuid}`, {
-                state: { gameHref, gameTitle, filePath }
+                state: { gameHref: gameItemObject.game_href, gameTitle: gameItemObject.game_title, filePath: defaultPath }
             });
         }
     }
 
     return (
         <Show when={imagesList().length > 0}>
-            <div class="relative w-full flex flex-col gap-4 max-w-6xl mx-auto p-6 bg-popup rounded-xl shadow-2xl border border-secondary-20 transition-all will-change-transform hover:shadow-accent/20">
+            <div 
+                onClick={async (e) =>
+                            await handleGoToGamePage(e)
+                        } 
+                class="cursor-pointer relative w-full flex flex-col gap-4 max-w-6xl mx-auto p-6 bg-popup rounded-xl shadow-2xl border border-secondary-20 transition-all will-change-transform hover:shadow-accent/20">
                 {/* 3D Carousel */}
                 <div class="relative flex justify-center h-96 w-full overflow-hidden  will-change-transform perspective-1000">
                     {imagesList().map((image, index) => (
@@ -145,21 +153,14 @@ function HorizontalImagesCarousel({
                                 src={image}
                                 alt={`Slide ${index}`}
                                 loading="lazy"
-                                class="w-full h-[80%] rounded-xl object-cover shadow-lg cursor-pointer transition-transform duration-300 hover:scale-102 hover:shadow-secondary-30"
-                                onClick={async () =>
-                                    await handleGoToGamePage(
-                                        gameItemObject.game_title,
-                                        defaultPath,
-                                        gameItemObject.game_href
-                                    )
-                                }
+                                class="w-full h-[80%] rounded-xl object-cover shadow-lg transition-transform duration-300 hover:scale-102 hover:shadow-secondary-30"
                             />
                         </div>
                     ))}
                 </div>
 
                 {/* Navigation Arrows */}
-                <div class="w-full flex justify-between transform pointer-events-none z-40 px-2">
+                <div class="w-full flex justify-between transform pointer-events-none z-40 px-2 ignore-game-selection">
 
                     <button
                         onClick={prevSlide}
@@ -177,7 +178,7 @@ function HorizontalImagesCarousel({
 
                 </div>
                 <Show when={imagesList().length > 1}>
-                    <div class="flex flex-row self-center gap-2 z-30">
+                    <div class="flex flex-row self-center gap-2 z-30 ignore-game-selection">
                         <For each={imagesList()}>
                             {(_, index) => (
                                 <button
@@ -236,7 +237,7 @@ function HorizontalImagesCarousel({
                     </div>
                 </div>
 
-                <label class="absolute bottom-4 right-4 cursor-pointer select-none z-10 group">
+                <label class="absolute bottom-4 right-4 cursor-pointer select-none z-10 group ignore-game-selection">
                     <input
                         type="checkbox"
                         checked={isToDownloadLater()}
