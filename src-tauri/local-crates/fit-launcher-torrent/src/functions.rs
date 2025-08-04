@@ -15,7 +15,6 @@ use std::{
 
 use tokio::{
     sync::{
-        Mutex,
         oneshot::{Receiver, Sender, channel},
     },
     time::sleep,
@@ -94,53 +93,83 @@ fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> 
 }
 
 pub async fn kill_existing_aria2c() -> anyhow::Result<()> {
-    info!("Attempting to kill existing aria2c.exe processes...");
+    info!("Attempting to kill existing aria2c processes...");
 
-    let graceful_status = Command::new("taskkill")
-        .args(["/IM", "aria2c.exe", "/T"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
+    #[cfg(windows)]
+    {
+        let graceful_status = Command::new("taskkill")
+            .args(["/IM", "aria2c.exe", "/T"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
 
-    match graceful_status {
-        Ok(status) if status.success() => {
-            info!("Successfully terminated aria2c.exe processes gracefully");
-            return Ok(());
+        if let Ok(status) = graceful_status {
+            if status.success() {
+                info!("Successfully terminated aria2c.exe processes gracefully");
+                return Ok(());
+            }
         }
-        _ => {
-            warn!("Graceful termination failed, trying forceful method");
+        warn!("Graceful termination failed, trying forceful method");
+
+        let force_status = Command::new("taskkill")
+            .args(["/IM", "aria2c.exe", "/F", "/T"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+
+        match force_status {
+            Ok(status) if status.success() => {
+                info!("Successfully force-killed aria2c.exe processes");
+                Ok(())
+            }
+            Ok(status) => {
+                if status.code() == Some(128) {
+                    info!("No aria2c.exe processes were running");
+                    Ok(())
+                } else {
+                    warn!(
+                        "Failed to kill aria2c.exe processes with status: {:?}",
+                        status.code()
+                    );
+                    Err(anyhow::anyhow!(
+                        "Failed to kill processes with status {}",
+                        status
+                    ))
+                }
+            }
+            Err(e) => {
+                warn!("Failed to execute taskkill: {}", e);
+                Err(anyhow::anyhow!("Failed to execute taskkill: {}", e))
+            }
         }
     }
 
-    let force_status = Command::new("taskkill")
-        .args(["/IM", "aria2c.exe", "/F", "/T"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
+    #[cfg(not(windows))]
+    {
+        let status = Command::new("killall")
+            .arg("aria2c")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
 
-    match force_status {
-        Ok(status) if status.success() => {
-            info!("Successfully force-killed aria2c.exe processes");
-            Ok(())
-        }
-        Ok(status) => {
-            if status.code() == Some(128) {
-                info!("No aria2c.exe processes were running");
+        match status {
+            Ok(status) if status.success() => {
+                info!("Successfully killed aria2c processes");
                 Ok(())
-            } else {
-                warn!(
-                    "Failed to kill aria2c.exe processes with status: {:?}",
-                    status.code()
-                );
-                Err(anyhow::anyhow!(
-                    "Failed to kill processes with status {}",
-                    status
-                ))
             }
-        }
-        Err(e) => {
-            warn!("Failed to execute taskkill: {}", e);
-            Err(anyhow::anyhow!("Failed to execute taskkill: {}", e))
+            Ok(status) => {
+                if status.code() == Some(1) { // killall returns 1 if no process is found
+                    info!("No aria2c processes were running");
+                    Ok(())
+                } else {
+                    warn!("Failed to kill aria2c processes with status: {:?}", status.code());
+                    Err(anyhow::anyhow!("killall command failed with status {}", status))
+                }
+            }
+            Err(e) => {
+                warn!("Failed to execute killall: {}", e);
+                Err(anyhow::anyhow!("Failed to execute killall: {}", e))
+            }
         }
     }
 }
@@ -243,14 +272,12 @@ pub async fn aria2_client_from_config(
     }
 
     if *start_daemon {
-        //TODO: Make it cross-platform
-        #[cfg(windows)]
-        kill_existing_aria2c().await;
+        kill_existing_aria2c().await?;
 
         let exec = if cfg!(windows) {
             current_exe().unwrap().parent().unwrap().join("aria2c.exe")
         } else {
-            PathBuf::from("aria2c")
+            PathBuf::from("/usr/bin/aria2c")
         };
 
         let rpc_port = find_port_in_range(*port, 5, None).await.ok_or_else(|| {

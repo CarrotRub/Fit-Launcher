@@ -1,12 +1,15 @@
 use std::path::PathBuf;
 
 use specta::specta;
+#[cfg(target_os = "windows")]
 use tracing::info;
 
 use crate::{
     errors::ExtractError, extract_multiple_files, find_first_rar_file,
-    mighty_automation::windows_ui_automation::start_executable_components_args,
 };
+
+#[cfg(target_os = "windows")]
+use crate::mighty_automation::windows_ui_automation::start_executable_components_args;
 #[tauri::command]
 #[specta]
 pub fn extract_game(dir: PathBuf) -> Result<(), ExtractError> {

@@ -31,7 +31,7 @@ export class DownloadManagerApi {
 
   static async getSavePath(): Promise<string> {
     if (!this.savePath) {
-      this.savePath = (await appDataDir()) + "\\ddl_jobs.json";
+      this.savePath = await join(await appDataDir(), "ddl_jobs.json");
     }
     return this.savePath;
   }

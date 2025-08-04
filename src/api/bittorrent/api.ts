@@ -1,4 +1,4 @@
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import {
   Aria2Error,
   Error,
@@ -21,7 +21,7 @@ export class TorrentApi {
   gameList = new Map<Gid, DownloadedGame[]>();
 
   private async getSavePath(): Promise<string> {
-    return (await appDataDir()) + "\\torrent_game_map.json";
+    return await join(await appDataDir(), "torrent_game_map.json");
   }
 
   async saveGameListToDisk() {
@@ -54,7 +54,10 @@ export class TorrentApi {
 
   private async getUninstalledPath(): Promise<string> {
     if (!this.uninstalledPath) {
-      this.uninstalledPath = (await appDataDir()) + "\\uninstalled_games.json";
+      this.uninstalledPath = await join(
+        await appDataDir(),
+        "uninstalled_games.json"
+      );
     }
     return this.uninstalledPath;
   }
