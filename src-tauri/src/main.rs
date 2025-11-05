@@ -445,13 +445,13 @@ fn main() {
     let logs_dir = directories::BaseDirs::new()
         .expect("Could not determine base directories")
         .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
-        .join("fit.launcher.carrotrub")
+        .join("com.fitlauncher.carrotrub")
         .join("logs");
 
     let settings_dir = directories::BaseDirs::new()
         .expect("Could not determine base directories")
         .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
-        .join("fit.launcher.carrotrub")
+        .join("com.fitlauncher.carrotrub")
         .join("fitgirlConfig");
 
     // Ensure the logs directory exists

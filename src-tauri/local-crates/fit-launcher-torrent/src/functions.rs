@@ -5,7 +5,7 @@ use std::{
     env::current_exe,
     ffi::OsStr,
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter},
+    io::{BufReader, BufWriter, Write},
     net::TcpListener,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -92,53 +92,101 @@ fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> 
     Ok(())
 }
 
+fn get_pid_file_path() -> PathBuf {
+    directories::BaseDirs::new()
+        .expect("Could not determine base directories")
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("aria2.pid")
+}
+
+fn write_pid_file(pid: u32) -> anyhow::Result<()> {
+    let pid_path = get_pid_file_path();
+    let parent_dir = pid_path.parent().context("no parent")?;
+    if !parent_dir.exists() {
+        std::fs::create_dir_all(parent_dir).context("failed to create pid directory")?;
+    }
+    let mut file = File::create(&pid_path)?;
+    write!(file, "{}", pid)?;
+    info!("Saved aria2c PID {} to {:?}", pid, pid_path);
+    Ok(())
+}
+
+fn read_pid_file() -> Option<u32> {
+    let pid_path = get_pid_file_path();
+    if !pid_path.exists() {
+        return None;
+    }
+    std::fs::read_to_string(&pid_path)
+        .ok()
+        .and_then(|s| s.trim().parse::<u32>().ok())
+}
+
+fn delete_pid_file() {
+    let pid_path = get_pid_file_path();
+    if pid_path.exists() {
+        let _ = std::fs::remove_file(&pid_path);
+    }
+}
+
 pub async fn kill_existing_aria2c() -> anyhow::Result<()> {
-    info!("Attempting to kill existing aria2c processes...");
+    info!("Attempting to kill existing aria2c process managed by this application...");
+
+    let pid = match read_pid_file() {
+        Some(p) => p,
+        None => {
+            info!("No PID file found, no managed aria2c process to kill");
+            return Ok(());
+        }
+    };
+
+    info!("Found PID {} in PID file, attempting to terminate process", pid);
 
     #[cfg(windows)]
     {
+        // Try graceful termination first
         let graceful_status = Command::new("taskkill")
-            .args(["/IM", "aria2c.exe", "/T"])
+            .args(["/PID", &pid.to_string(), "/T"])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status();
 
         if let Ok(status) = graceful_status {
             if status.success() {
-                info!("Successfully terminated aria2c.exe processes gracefully");
+                info!("Successfully terminated aria2c process (PID {}) gracefully", pid);
+                delete_pid_file();
                 return Ok(());
             }
         }
-        warn!("Graceful termination failed, trying forceful method");
+        warn!("Graceful termination failed for PID {}, trying forceful method", pid);
 
+        // Try forceful termination
         let force_status = Command::new("taskkill")
-            .args(["/IM", "aria2c.exe", "/F", "/T"])
+            .args(["/PID", &pid.to_string(), "/F", "/T"])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status();
 
         match force_status {
             Ok(status) if status.success() => {
-                info!("Successfully force-killed aria2c.exe processes");
+                info!("Successfully force-killed aria2c process (PID {})", pid);
+                delete_pid_file();
                 Ok(())
             }
             Ok(status) => {
                 if status.code() == Some(128) {
-                    info!("No aria2c.exe processes were running");
+                    info!("Process {} not found (already terminated)", pid);
+                    delete_pid_file();
                     Ok(())
                 } else {
-                    warn!(
-                        "Failed to kill aria2c.exe processes with status: {:?}",
-                        status.code()
-                    );
-                    Err(anyhow::anyhow!(
-                        "Failed to kill processes with status {}",
-                        status
-                    ))
+                    warn!("Failed to kill process {} with status: {:?}", pid, status.code());
+                    delete_pid_file();
+                    Err(anyhow::anyhow!("Failed to kill process with status {}", status))
                 }
             }
             Err(e) => {
                 warn!("Failed to execute taskkill: {}", e);
+                delete_pid_file();
                 Err(anyhow::anyhow!("Failed to execute taskkill: {}", e))
             }
         }
@@ -146,29 +194,49 @@ pub async fn kill_existing_aria2c() -> anyhow::Result<()> {
 
     #[cfg(not(windows))]
     {
-        let status = Command::new("killall")
-            .arg("aria2c")
+        // Try SIGTERM first (graceful)
+        let graceful_status = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status();
 
-        match status {
+        if let Ok(status) = graceful_status {
+            if status.success() {
+                info!("Sent SIGTERM to aria2c process (PID {})", pid);
+                // Wait a bit for graceful shutdown
+                sleep(Duration::from_millis(500)).await;
+                delete_pid_file();
+                return Ok(());
+            }
+        }
+
+        warn!("Graceful termination failed for PID {}, trying SIGKILL", pid);
+
+        // Try SIGKILL if SIGTERM failed
+        let force_status = Command::new("kill")
+            .args(["-KILL", &pid.to_string()])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+
+        match force_status {
             Ok(status) if status.success() => {
-                info!("Successfully killed aria2c processes");
+                info!("Sent SIGKILL to aria2c process (PID {})", pid);
+                delete_pid_file();
                 Ok(())
             }
             Ok(status) => {
-                if status.code() == Some(1) { // killall returns 1 if no process is found
-                    info!("No aria2c processes were running");
-                    Ok(())
-                } else {
-                    warn!("Failed to kill aria2c processes with status: {:?}", status.code());
-                    Err(anyhow::anyhow!("killall command failed with status {}", status))
-                }
+                // Process might already be dead
+                info!("Process {} not found or already terminated (exit code: {:?})", pid, status.code());
+                delete_pid_file();
+                Ok(())
             }
             Err(e) => {
-                warn!("Failed to execute killall: {}", e);
-                Err(anyhow::anyhow!("Failed to execute killall: {}", e))
+                // Process doesn't exist
+                info!("Process {} not found: {}", pid, e);
+                delete_pid_file();
+                Ok(())
             }
         }
     }
@@ -277,7 +345,7 @@ pub async fn aria2_client_from_config(
         let exec = if cfg!(windows) {
             current_exe().unwrap().parent().unwrap().join("aria2c.exe")
         } else {
-            PathBuf::from("/usr/bin/aria2c")
+            PathBuf::from("aria2c")
         };
 
         let rpc_port = find_port_in_range(*port, 5, None).await.ok_or_else(|| {
@@ -318,6 +386,12 @@ pub async fn aria2_client_from_config(
             .spawn()
             .context("Failed to start aria2c")?;
 
+        // Save the PID for later cleanup
+        let pid = child.id();
+        if let Err(e) = write_pid_file(pid) {
+            warn!("Failed to write PID file: {}", e);
+        }
+
         sleep(Duration::from_secs(1)).await;
 
         let client = aria2_ws::Client::connect(
@@ -340,6 +414,8 @@ pub async fn aria2_client_from_config(
                     if let Err(e) = child.wait() {
                         warn!("Failed to wait for aria2c: {}", e);
                     }
+                    // Clean up PID file after process terminates
+                    delete_pid_file();
                     let _ = done_tx.send(());
                 }
                 Err(_) => warn!("Shutdown signal dropped"),
