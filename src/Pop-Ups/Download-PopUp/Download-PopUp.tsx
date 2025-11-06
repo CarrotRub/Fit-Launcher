@@ -104,6 +104,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
           <Show when={isInitialized()} fallback={
             <div class="flex flex-col items-center justify-center py-8">
               <Loader2 class="w-8 h-8 text-accent animate-spin mb-4" />
+
               <p class="text-muted">Loading download settings...</p>
             </div>
           }>

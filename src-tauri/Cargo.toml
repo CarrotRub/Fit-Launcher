@@ -11,6 +11,17 @@ edition = "2024"
 tauri-build = { version = "2.0.3", features = [] }
 tauri-helper = "0.1.4"
 
+[profile.dev]
+incremental = false
+debug = 1
+
+[profile.release]
+incremental = false
+debug = false
+strip = "symbols"
+lto = true
+codegen-units = 1
+
 [dependencies]
 # Tauri plugins
 tauri = { workspace = true }
@@ -95,6 +106,7 @@ members = [
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",
 ]
+resolver = "3"
 
 #TODO: Clean unused deps
 [workspace.dependencies]
