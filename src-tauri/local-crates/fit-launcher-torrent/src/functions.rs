@@ -4,12 +4,10 @@ use parking_lot::RwLock;
 use std::{
     env::current_exe,
     ffi::OsStr,
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter},
     net::TcpListener,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::Arc,
+    sync::{Arc, LazyLock},
     time::Duration,
 };
 
@@ -23,14 +21,13 @@ use tokio::{
 
 use tracing::{error, info, warn};
 
-use crate::{FitLauncherConfigV2, config::FitLauncherConfigAria2, errors::TorrentApiError};
+use crate::{FitLauncherConfigV2, config::{write_cfg, load_or_migrate, FitLauncherConfigAria2}, errors::TorrentApiError};
 
-type AriaDaemonType = Arc<tokio::sync::Mutex<Option<(Sender<()>, Receiver<()>, u16)>>>;
+type AriaDaemonType = Arc<Mutex<Option<(Sender<()>, Receiver<()>, u16)>>>;
 
-lazy_static::lazy_static! {
-    pub static ref ARIA2_DAEMON: AriaDaemonType =
-        Arc::new(tokio::sync::Mutex::new(None));
-}
+pub static ARIA2_DAEMON: LazyLock<AriaDaemonType> = LazyLock::new(|| {
+    Arc::new(tokio::sync::Mutex::new(None))
+});
 
 struct StateShared {
     config: FitLauncherConfigV2,
@@ -67,82 +64,6 @@ async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Opt
     }
 
     None
-}
-
-fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
-    let rdr = BufReader::new(File::open(path)?);
-    let cfg: FitLauncherConfigV2 = serde_json::from_reader(rdr)?;
-    Ok(cfg)
-}
-
-fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> {
-    let parent_dir = Path::new(path).parent().context("no parent")?;
-    if !parent_dir.exists() {
-        std::fs::create_dir_all(parent_dir).context("failed to create config directory")?;
-    }
-    let tmp = format!("{path}.tmp");
-    let mut tmp_file = BufWriter::new(
-        OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&tmp)?,
-    );
-    serde_json::to_writer(&mut tmp_file, config)?;
-    std::fs::rename(tmp, path)?;
-    Ok(())
-}
-
-pub async fn kill_existing_aria2c() -> anyhow::Result<()> {
-    info!("Attempting to kill existing aria2c.exe processes...");
-
-    let graceful_status = Command::new("taskkill")
-        .args(["/IM", "aria2c.exe", "/T"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
-
-    match graceful_status {
-        Ok(status) if status.success() => {
-            info!("Successfully terminated aria2c.exe processes gracefully");
-            return Ok(());
-        }
-        _ => {
-            warn!("Graceful termination failed, trying forceful method");
-        }
-    }
-
-    let force_status = Command::new("taskkill")
-        .args(["/IM", "aria2c.exe", "/F", "/T"])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
-
-    match force_status {
-        Ok(status) if status.success() => {
-            info!("Successfully force-killed aria2c.exe processes");
-            Ok(())
-        }
-        Ok(status) => {
-            if status.code() == Some(128) {
-                info!("No aria2c.exe processes were running");
-                Ok(())
-            } else {
-                warn!(
-                    "Failed to kill aria2c.exe processes with status: {:?}",
-                    status.code()
-                );
-                Err(anyhow::anyhow!(
-                    "Failed to kill processes with status {}",
-                    status
-                ))
-            }
-        }
-        Err(e) => {
-            warn!("Failed to execute taskkill: {}", e);
-            Err(anyhow::anyhow!("Failed to execute taskkill: {}", e))
-        }
-    }
 }
 
 fn build_aria2_args(
@@ -217,6 +138,7 @@ fn build_aria2_args(
 pub async fn aria2_client_from_config(
     config: &FitLauncherConfigV2,
     session_path: impl AsRef<OsStr>,
+    v2_path: impl AsRef<Path>,
 ) -> anyhow::Result<aria2_ws::Client> {
     let FitLauncherConfigAria2 {
         port,
@@ -243,23 +165,25 @@ pub async fn aria2_client_from_config(
     }
 
     if *start_daemon {
-        //TODO: Make it cross-platform
-        #[cfg(windows)]
-        kill_existing_aria2c().await;
-
         let exec = if cfg!(windows) {
             current_exe().unwrap().parent().unwrap().join("aria2c.exe")
         } else {
             PathBuf::from("aria2c")
         };
 
-        let rpc_port = find_port_in_range(*port, 5, None).await.ok_or_else(|| {
+        let rpc_port = find_port_in_range(*port, 10, None).await.ok_or_else(|| {
             anyhow::anyhow!(
                 "Could not find available port in range {}-{}",
                 *port,
                 *port + 4
             )
         })?;
+        if &rpc_port != port {
+            let mut new_cfg = config.clone();
+            new_cfg.rpc.port = rpc_port;
+            write_cfg(v2_path, &new_cfg)?;
+        }
+
 
         let bt_port = find_port_in_range(config.bittorrent.listen_port, 5, Some(rpc_port))
             .await
@@ -322,15 +246,10 @@ pub async fn aria2_client_from_config(
         *guard = Some((close_tx, done_rx, rpc_port));
         Ok(client)
     } else {
-        let rpc_port = find_port_in_range(*port, 5, None).await.ok_or_else(|| {
-            anyhow::anyhow!(
-                "Could not find available port in range {}-{}",
-                *port,
-                *port + 4
-            )
-        })?;
+        // when we don't start `aria2` ourself,
+        // try to connect to the existing instance with configured port
         aria2_ws::Client::connect(
-            &format!("ws://127.0.0.1:{rpc_port}/jsonrpc"),
+            &format!("ws://127.0.0.1:{port}/jsonrpc"),
             token.as_deref(),
         )
         .await
@@ -352,26 +271,21 @@ impl TorrentSession {
 
         let aria2_session = config_dir.join("aria2.session");
 
-        let config_filename = config_dir
+        let v2_path = &*config_dir
+            .join("config.json");
+        let legacy_path = &*config_dir
             .join("torrentConfig")
-            .join("config.json")
-            .to_string_lossy()
-            .to_string();
+            .join("config.json");
 
-        if !Path::new(&config_filename).exists() {
-            if let Err(e) = write_config(&config_filename, &FitLauncherConfigV2::default()) {
+        if !Path::new(&legacy_path).exists() {
+            if let Err(e) = write_cfg(v2_path, &FitLauncherConfigV2::default()) {
                 error!("Error writing default config: {}", e);
             }
         }
 
-        let final_config = match read_config(&config_filename) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                return Err(anyhow::anyhow!("Failed to read config: {}", e));
-            }
-        };
+        let final_config = load_or_migrate(legacy_path, v2_path);
 
-        let aria2_client = match aria2_client_from_config(&final_config, aria2_session).await {
+        let aria2_client = match aria2_client_from_config(&final_config, aria2_session, v2_path).await {
             Ok(c) => {
                 info!("Connected to aria2c successfully");
                 Some(c)
@@ -402,48 +316,34 @@ impl TorrentSession {
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
             .join("com.fitlauncher.carrotrub");
 
-        let config_filename = config_dir
+        let v2_path = config_dir
+            .join("config.json");
+        let legacy_path = config_dir
             .join("torrentConfig")
-            .join("config.json")
-            .to_string_lossy()
-            .to_string();
+            .join("config.json");
 
-        if !Path::new(&config_filename).exists() {
-            match write_config(&config_filename, &FitLauncherConfigV2::default()) {
+        if !legacy_path.exists() && !v2_path.exists() {
+            match write_cfg(&v2_path, &FitLauncherConfigV2::default()) {
                 Ok(_) => info!(
-                    "Default config written successfully to: {}",
-                    &config_filename
+                    "Default config written successfully to: {:?}",
+                    v2_path
                 ),
                 Err(e) => error!("Error writing default config: {}", e),
             }
         }
-        warn!("Config Path: {}", &config_filename);
-        if let Ok(config) = read_config(&config_filename) {
-            match write_config(&config_filename, &config) {
-                Ok(_) => info!(
-                    "Default config written successfully to: {}",
-                    &config_filename
-                ),
-                Err(e) => error!("Error writing default config: {}", e),
-            }
+        warn!("Config Path: {:?}", v2_path);
 
-            let aria2_client = None;
+        let config = load_or_migrate(&legacy_path, &v2_path) ;
+        let aria2_client = None;
 
-            let shared = Arc::new(RwLock::new(Some(StateShared {
-                config,
-                aria2_client,
-            })));
-
-            return Self {
-                config_filename,
-                shared,
-                init_lock: Arc::new(tokio::sync::Mutex::new(())),
-            };
-        }
+        let shared = Arc::new(RwLock::new(Some(StateShared {
+            config,
+            aria2_client,
+        })));
 
         Self {
-            config_filename,
-            shared: Arc::new(RwLock::new(None)),
+            config_filename: v2_path.to_string_lossy().into(),
+            shared,
             init_lock: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
@@ -474,7 +374,7 @@ impl TorrentSession {
     }
 
     pub async fn configure(&self, config: FitLauncherConfigV2) -> Result<(), TorrentApiError> {
-        if let Err(e) = write_config(&self.config_filename, &config) {
+        if let Err(e) = write_cfg(&self.config_filename, &config) {
             error!("error writing config: {:#}", e);
         }
 
