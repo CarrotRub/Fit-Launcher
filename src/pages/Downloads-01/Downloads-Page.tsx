@@ -782,9 +782,9 @@ function DownloadActionButton(props: { item: DownloadItem; status?: any; refresh
                         await DownloadManagerApi.pauseJob(jobId);
                         break;
                     case "install":
-                        const firstFilePath = props.item.statuses?.[0]?.files?.[0]?.path;
-                        if (firstFilePath) {
-                            await installationApi.startExtractionDdl(firstFilePath);
+                        const targetPath = props.item.job.targetPath;
+                        if (targetPath) {
+                            await installationApi.startExtractionDdl(targetPath);
                         }
                         break;
                 }
