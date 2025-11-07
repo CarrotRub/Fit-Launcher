@@ -47,7 +47,6 @@ serde_json = { workspace = true }
 # Utilities
 directories = { workspace = true }
 once_cell = { workspace = true }
-lazy_static = "1.5.0"
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 

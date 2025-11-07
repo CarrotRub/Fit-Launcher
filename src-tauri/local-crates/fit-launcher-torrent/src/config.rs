@@ -9,6 +9,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use specta::Type;
+use tracing::error;
 
 use crate::legacy_config::LegacyFitLauncherConfig;
 
@@ -178,15 +179,10 @@ impl From<LegacyFitLauncherConfig> for FitLauncherConfigV2 {
 //
 // 5. Helpers for TorrentSession
 //
-fn read_cfg<T: for<'de> Deserialize<'de>>(path: &str) -> anyhow::Result<T> {
-    let rdr = BufReader::new(File::open(path)?);
-    let cfg = serde_json::from_reader(rdr)?;
-    Ok(cfg)
-}
-
-fn write_cfg<T: Serialize>(path: &str, cfg: &T) -> anyhow::Result<()> {
+pub(crate) fn write_cfg<T: Serialize>(path: impl AsRef<Path>, cfg: &T) -> anyhow::Result<()> {
+    let path = path.as_ref();
     std::fs::create_dir_all(Path::new(path).parent().context("no parent")?)?;
-    let tmp_path = format!("{path}.tmp");
+    let tmp_path = path.with_file_name(path.file_name().unwrap_or_default().to_string_lossy().to_string() + ".tmp");
     let mut tmp = BufWriter::new(
         OpenOptions::new()
             .write(true)
@@ -202,25 +198,31 @@ fn write_cfg<T: Serialize>(path: &str, cfg: &T) -> anyhow::Result<()> {
 /// Load the config (migrating from legacy if needed). Returns the in‑memory V2 object.
 /// If a legacy config is found, it is replaced on disk and the old `torrentConfig` folder
 /// is removed.
-pub fn load_or_migrate(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
-    if let Ok(cfg) = read_cfg::<FitLauncherConfigV2>(path) {
-        return Ok(cfg);
+pub(crate) fn load_or_migrate(legacy_path: impl AsRef<Path>, v2_path: impl AsRef<Path>) -> FitLauncherConfigV2 {
+    if let Ok(cfg) = read_cfg::<FitLauncherConfigV2>(&v2_path) {
+        return cfg;
     }
 
     #[allow(deprecated)]
-    if let Ok(legacy) = read_cfg::<LegacyFitLauncherConfig>(path) {
+    if let Ok(legacy) = read_cfg::<LegacyFitLauncherConfig>(legacy_path) {
         let new_cfg: FitLauncherConfigV2 = legacy.into();
-        write_cfg(path, &new_cfg)?;
+        _ = write_cfg(&v2_path, &new_cfg).inspect_err(|e| {
+            error!("Failed to place default configuration: {e}");
+        });
 
-        // delete obsolete "torrentConfig" in the same parent dir
-        if let Some(parent) = Path::new(path).parent() {
-            let _ = std::fs::remove_dir_all(parent.join("torrentConfig"));
-        }
-
-        return Ok(new_cfg);
+        return new_cfg;
     }
 
     let fresh = FitLauncherConfigV2::default();
-    write_cfg(path, &fresh)?;
-    Ok(fresh)
+    _ = write_cfg(v2_path, &fresh).inspect_err(|e| {
+        error!("Failed to place default configuration: {e}");
+    });
+    fresh
 }
+
+fn read_cfg<T: for<'de> Deserialize<'de>>(path: impl AsRef<Path>) -> anyhow::Result<T> {
+    let rdr = BufReader::new(File::open(path)?);
+    let cfg = serde_json::from_reader(rdr)?;
+    Ok(cfg)
+}
+
