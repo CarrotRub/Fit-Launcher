@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use specta::specta;
+use tracing::info;
 
 use crate::{
     errors::ExtractError, extract_archive,
@@ -8,6 +9,7 @@ use crate::{
 #[tauri::command]
 #[specta]
 pub fn extract_game(dir: PathBuf) -> Result<(), ExtractError> {
+    info!("received dir: {dir:?}");
     let list = dir.read_dir()?;
     let mut groups = HashMap::new();
     for rar in list.flatten() {
