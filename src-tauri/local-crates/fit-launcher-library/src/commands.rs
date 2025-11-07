@@ -87,7 +87,10 @@ pub async fn get_collection_list() -> Vec<GameCollection> {
                         name: file_name,
                         games_list,
                     }),
-                    Err(err) => error!("Failed to parse {}: {:?}", file_name, err),
+                    Err(err) => {
+                        error!("Failed to parse {}: {:?}", file_name, err);
+                        _ = std::fs::write(&path, "[]");
+                    },
                 },
                 Err(err) => {
                     error!("Failed to read file {}: {:?}", file_name, err);
@@ -143,7 +146,9 @@ pub async fn remove_game_to_download(game_title: String) -> Result<(), String> {
     let path = get_games_to_download_path();
 
     let file_content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let mut games: Vec<Game> = serde_json::from_str(&file_content).unwrap_or_default();
+    let mut games: Vec<Game> = serde_json::from_str(&file_content).inspect_err(|_| {
+        _ = std::fs::write(&path, "[]");
+    }).unwrap_or_default();
     let original_len = games.len();
     games.retain(|game| game.title != game_title);
 
