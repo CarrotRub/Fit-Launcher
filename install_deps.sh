@@ -16,6 +16,8 @@ if [ -f /etc/debian_version ]; then
     DISTRO="debian"
 elif [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ]; then
     DISTRO="fedora"
+elif command -v pacman &> /dev/null; then
+    DISTRO="arch"
 else
     fail "Unsupported Linux distribution."
 fi
@@ -29,17 +31,6 @@ install_if_missing_deb() {
         else
             log "Installing $pkg"
             sudo apt-get install -y "$pkg"
-        fi
-    done
-}
-
-install_if_missing_rpm() {
-    for pkg in "$@"; do
-        if rpm -q "$pkg" >/dev/null 2>&1; then
-            log "$pkg already installed"
-        else
-            log "Installing $pkg"
-            sudo dnf install -y "$pkg"
         fi
     done
 }
@@ -63,6 +54,9 @@ elif [ "$DISTRO" = "fedora" ]; then
         webkit2gtk4.1-devel \
         libappindicator-gtk3-devel \
         librsvg2-devel
+elif [ "$DISTRO" = "arch" ]; then
+    # TODO: add archlinux install instructions
+    sudo pacman -Syu curl llvm base-devel
 fi
 
 
@@ -72,8 +66,10 @@ else
     echo "==> Installing fnm (Fast Node Manager)..."
     curl -fsSL https://fnm.vercel.app/install | bash
     export PATH="$HOME/.local/share/fnm:$HOME/.fnm:$PATH"
-    eval "$(fnm env)"
 fi
+
+log "loading fnm environments"
+eval "$(fnm env)"
 
 
 if ! command -v node >/dev/null 2>&1; then
@@ -89,7 +85,12 @@ if command -v cargo >/dev/null 2>&1; then
     log "Rust & Cargo already installed"
 else
     log "Installing Rust & Cargo"
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    if [ "$DISTRO" = "arch" ]; then
+        pacman -Syu rustup
+        rustup default stable
+    else
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    fi
     source "$HOME/.cargo/env"
 fi
 
@@ -101,6 +102,3 @@ else
 fi
 
 log "All dependencies installed successfully"
-echo "Restart your shell or add to ~/.bashrc:"
-echo 'export PATH="$HOME/.fnm:$PATH"'
-echo 'eval "$(fnm env)"'
