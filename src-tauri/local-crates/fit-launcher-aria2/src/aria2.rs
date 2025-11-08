@@ -72,7 +72,7 @@ async fn file_allocation_method(dir: impl AsRef<str>) -> Map<String, Value> {
         use crossbeam_skiplist::SkipMap;
         use listdisk_rs::{
             win32::{
-                drive_info::diskindex_by_win32_path,
+                drive_info::diskindex_by_driveletter,
                 physical_disk::{MediaType, PhysicalDisk},
             },
             wmi::WMIConnection,
@@ -87,14 +87,24 @@ async fn file_allocation_method(dir: impl AsRef<str>) -> Map<String, Value> {
             let dir = dir.to_string();
             media_type = tauri::async_runtime::spawn_blocking(
                 move || -> Result<MediaType, Box<dyn Error + Send + Sync>> {
-                    use std::collections::HashMap;
+                    use std::{
+                        collections::HashMap,
+                        path::{PathBuf, absolute},
+                    };
 
                     use listdisk_rs::wmi::FilterValue;
 
                     let wmi_conn =
                         WMIConnection::with_namespace_path("ROOT\\Microsoft\\Windows\\Storage")?;
 
-                    let disk_index = diskindex_by_win32_path(dir)?.to_string();
+                    let disk_index = diskindex_by_driveletter(
+                        absolute(PathBuf::from(dir))?
+                            .to_string_lossy()
+                            .chars()
+                            .next()
+                            .unwrap(),
+                    )?
+                    .to_string();
                     let mut filters = HashMap::new();
                     filters.insert("DeviceId".to_string(), FilterValue::String(disk_index));
                     Ok(
