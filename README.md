@@ -69,16 +69,53 @@ This project provides a unified setup script for Debian/Ubuntu and Fedora.
 ---
 
 #### **Ubuntu / Debian / Fedora / Arch**
+
 If you're on a Debian-based distro (Ubuntu, Pop!\_OS, Linux Mint, etc...), Fedora or Arch-based:
 
 ```bash
 chmod +x install_deps.sh
-./install_deps_ubuntu.sh
+./install_deps.sh
 npm run tauri dev
 ```
 
 This works for both fish and bash !
 
+#### Manual setup
+
+[tauri documentation]: https://v2.tauri.app/start/prerequisites/#linux
+
+You could go to [tauri documentation] for tauri dependencies,
+
+Then install rustup:
+
+```bash
+# For general distributions
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+You may also need llvm-libs and lld for rustc.
+
+Optionally setup fast node manager:
+
+```bash
+curl -fsSL https://fnm.vercel.app/install | bash
+export PATH="$HOME/.local/share/fnm:$HOME/.fnm:$PATH"
+eval "$(fnm env)"
+fnm install --lts
+fnm default --lts
+```
+
+Install node.js dependencies:
+
+```bash
+npm install
+```
+
+Build the project:
+
+```bash
+npm run tauri dev # development mode
+```
 
 ## Create your own themes !
 Now you can even customize the launcher to your liking, you can go check the tutorial on how to create a theme in doc/theme_creation.md

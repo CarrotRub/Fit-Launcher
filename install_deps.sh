@@ -24,40 +24,32 @@ fi
 
 log "Detected $DISTRO-based system"
 
-install_if_missing_deb() {
-    for pkg in "$@"; do
-        if dpkg -s "$pkg" >/dev/null 2>&1; then
-            log "$pkg already installed"
-        else
-            log "Installing $pkg"
-            sudo apt-get install -y "$pkg"
-        fi
-    done
-}
-
+# See https://v2.tauri.app/start/prerequisites/#linux
 log "Updating package lists..."
 if [ "$DISTRO" = "debian" ]; then
-    sudo apt-get update
-    install_if_missing_deb build-essential curl pkg-config libssl-dev aria2
-    install_if_missing_deb libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
+    sudo apt update
+    sudo apt install libwebkit2gtk-4.1-dev \
+        build-essential \
+        aria2 curl wget \
+        file \
+        libxdo-dev \
+        libssl-dev \
+        libayatana-appindicator3-dev \
+        librsvg2-dev
 elif [ "$DISTRO" = "fedora" ]; then
-    sudo dnf update -y
-    sudo dnf install -y \
-        gcc \
-        gcc-c++ \
-        make \
-        curl \
-        pkg-config \
-        openssl-devel \
-        aria2 \
-        gtk3-devel \
-        webkit2gtk4.1-devel \
-        libappindicator-gtk3-devel \
-        librsvg2-devel
+    sudo dnf check-update
+    sudo dnf install webkit2gtk4.1-devel \
+            openssl-devel \
+            wget aria2 curl \
+            file \
+            libappindicator-gtk3-devel \
+            librsvg2-devel \
+            libxdo-devel
+    sudo dnf group install "c-development"
 elif [ "$DISTRO" = "arch" ]; then
     # clang.lld is needed as of Rust 1.90
     sudo pacman -Syu --needed \
-        curl lld base-devel \
+        aria2 curl lld base-devel \
         webkit2gtk-4.1 \
         wget \
         file \
@@ -83,8 +75,8 @@ eval "$(fnm env)"
 
 if ! command -v node >/dev/null 2>&1; then
     log "Installing Node LTS"
-    fnm install -- --lts
-    fnm default -- --lts
+    fnm install --lts
+    fnm default --lts
 else
     log "Node already installed"
 fi
