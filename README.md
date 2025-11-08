@@ -3,9 +3,9 @@
 Fit Launcher is a 🚀 **blazingly fast** 🚀 (sorry it's made in rust, I have to write that) game launcher designed specifically for cracked games from FitGirl Repack. Built with Rust, Tauri, and SolidJS, this launcher delivers the best performance and a sleek, modern design. 
 
 ## Features
-- ⚡ **Lightning Fast**: Powered by Rust and Tauri for better speed and efficiency.
-- 🛠️ **Easy to Use**: Simple setup and easy to run—just execute the launcher and you're good to go!
-- 🌌 **Quick Download**: Using **aria2c** for torrenting and DDL for optimal speed.
+- **Lightning Fast**: Powered by Rust and Tauri for better speed and efficiency.
+- **Easy to Use**: Simple setup and easy to run, just execute the launcher and you're good to go!
+- **Quick Download**: Using **aria2c** for torrenting and DDL for optimal speed.
 
 ## Getting Started
 
@@ -63,7 +63,7 @@ npm run tauri build
 
 ### Building on Linux
 
-This project provides separate setup scripts for Debian/Ubuntu and Fedora.
+This project provides a unified setup script for Debian/Ubuntu and Fedora.
 
 ---
 
@@ -114,7 +114,6 @@ Enjoy your games with Fit Launcher!
 
 ## TODO List 📝
 
-- 🖥️ **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
-- 🌄 **Quicker Image Loading**: Optimize the speed at which images are retrieved and displayed.
-- 🎮 **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
-- 📟 **Control CPU Usage**: Allow the user to limit the CPU usage of the setup.
+- **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
+- **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
+- **Control CPU Usage**: Allow the user to limit the CPU usage of the setup.
