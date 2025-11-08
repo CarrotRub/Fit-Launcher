@@ -122,6 +122,12 @@ async fn file_allocation_method(dir: impl AsRef<str>) -> Map<String, Value> {
             }
         };
 
+        if media_type.is_ok() {
+            use tracing::info;
+
+            info!("MediaType for {dir}: {media_type:?}");
+        }
+
         CACHE.insert(dir.into(), media_type.unwrap_or(MediaType::HDD));
         result
     };
