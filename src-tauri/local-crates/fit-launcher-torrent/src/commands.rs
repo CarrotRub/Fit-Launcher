@@ -164,7 +164,7 @@ pub async fn config_change_only_path(
 #[specta]
 pub async fn run_automate_setup_install(
     _state: tauri::State<'_, TorrentSession>,
-    _path: PathBuf,
+    path: PathBuf,
 ) -> Result<(), TorrentApiError> {
     #[cfg(target_os = "windows")]
     {
