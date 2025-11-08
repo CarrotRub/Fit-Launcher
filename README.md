@@ -48,7 +48,7 @@ npm install
 npm run tauri dev
 ```
 
-### Building from Source
+### Building from Source on Windows
 
 If you'd like to build Fit Launcher yourself, follow these steps:
 
@@ -61,25 +61,23 @@ If you'd like to build Fit Launcher yourself, follow these steps:
 npm run tauri build
 ```
 
-### Building on Linux (Ubuntu/Debian)
+### Building on Linux
 
-If you are on a Debian-based Linux distribution like Ubuntu, you can use a helper script to install all the necessary dependencies.
+This project provides separate setup scripts for Debian/Ubuntu and Fedora.
 
-1. Clone this repository.
-2. Run the dependency installation script:
-    ```bash
-    chmod +x install_deps_ubuntu.sh
-    ./install_deps_ubuntu.sh
-    ```
-3. After the script finishes, you **must** source the cargo environment or restart your terminal:
-    ```bash
-    source "$HOME/.cargo/env"
-    ```
-4. Now you can build and run the app in development mode:
-    ```bash
-    npm install
-    npm run tauri dev
-    ```
+---
+
+#### **Ubuntu / Debian / Fedora**
+If you're on a Debian-based distro (Ubuntu, Pop!\_OS, Linux Mint, etc...) or Fedora :
+
+```bash
+chmod +x install_deps.sh
+./install_deps_ubuntu.sh
+npm run tauri dev
+```
+
+This works for both fish and bash !
+
 
 ## Create your own themes !
 Now you can even customize the launcher to your liking, you can go check the tutorial on how to create a theme in doc/theme_creation.md
