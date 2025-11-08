@@ -55,7 +55,8 @@ If you'd like to build Fit Launcher yourself, follow these steps:
 1. Ensure you have any **C++ Compiler**, **Rust**, and **Cargo** installed on your system.
 2. Ensure you have these extensions on VSCode **C/C++ Microsoft** or **CodeLLDB** and **rust-analyzer**.
 3. Clone this repository.
-4. Run the build command:
+4. Download and extract [aria2c.exe](https://github.com/mokurin000/aria2c-windows-hide-console/releases/) to `src-tauri/binaries/aria2c-x86_64-pc-windows-msvc.exe`.
+5. Run the build command:
 
 ```bash
 npm run tauri build
@@ -67,8 +68,8 @@ This project provides a unified setup script for Debian/Ubuntu and Fedora.
 
 ---
 
-#### **Ubuntu / Debian / Fedora**
-If you're on a Debian-based distro (Ubuntu, Pop!\_OS, Linux Mint, etc...) or Fedora :
+#### **Ubuntu / Debian / Fedora / Arch**
+If you're on a Debian-based distro (Ubuntu, Pop!\_OS, Linux Mint, etc...), Fedora or Arch-based:
 
 ```bash
 chmod +x install_deps.sh
