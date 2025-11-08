@@ -55,8 +55,17 @@ elif [ "$DISTRO" = "fedora" ]; then
         libappindicator-gtk3-devel \
         librsvg2-devel
 elif [ "$DISTRO" = "arch" ]; then
-    # TODO: add archlinux install instructions
-    sudo pacman -Syu curl llvm base-devel
+    # clang.lld is needed as of Rust 1.90
+    sudo pacman -Syu --needed \
+        curl lld base-devel \
+        webkit2gtk-4.1 \
+        wget \
+        file \
+        openssl \
+        appmenu-gtk-module \
+        libappindicator-gtk3 \
+        librsvg \
+        xdotool
 fi
 
 
@@ -86,7 +95,7 @@ if command -v cargo >/dev/null 2>&1; then
 else
     log "Installing Rust & Cargo"
     if [ "$DISTRO" = "arch" ]; then
-        sudo pacman -Syu rustup
+        sudo pacman -S --needed rustup
         rustup default stable
     else
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
