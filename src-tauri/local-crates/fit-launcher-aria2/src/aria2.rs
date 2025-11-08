@@ -9,8 +9,10 @@ pub async fn aria2_add_uri(
     url: Vec<String>,
     dir: Option<String>,
     filename: Option<String>,
+    aria2_priviledged: bool,
 ) -> Result<String, Aria2Error> {
-    let extra_options = file_allocation_method(dir.as_deref().unwrap_or(".")).await;
+    let extra_options =
+        file_allocation_method(dir.as_deref().unwrap_or("."), aria2_priviledged).await;
     Ok(aria2_client
         .add_uri(
             url,
@@ -62,7 +64,10 @@ pub async fn aria2_add_torrent(
         })
 }
 
-async fn file_allocation_method(dir: impl AsRef<str>) -> Map<String, Value> {
+async fn file_allocation_method(
+    dir: impl AsRef<str>,
+    #[allow(unused)] aria2_priviledged: bool,
+) -> Map<String, Value> {
     let dir = dir.as_ref();
 
     #[cfg(windows)]
@@ -120,10 +125,7 @@ async fn file_allocation_method(dir: impl AsRef<str>) -> Map<String, Value> {
         }
 
         let result = match &media_type {
-            // for the best performance, we could choose `falloc`,
-            // but the aria2 daemon can be configured as user started,
-            // because we have no idea about it's permission, on SSD/SCM we use none,
-            // to avoid falling back to prealloc, which will cause zero fills.
+            Ok(MediaType::SCM | MediaType::SSD) if aria2_priviledged => "falloc",
             Ok(MediaType::SCM | MediaType::SSD) => "none",
             Ok(_) => "falloc",
             Err(e) => {
