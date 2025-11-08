@@ -106,10 +106,10 @@ fn ensure_path(path: &PathBuf, is_file: bool) {
                 error!("Failed to create parent directories: {e}");
             }
         }
-        if !path.exists() {
-            if let Err(e) = std::fs::File::create(path) {
-                error!("Failed to create file {}: {e}", path.display());
-            }
+        if !path.exists()
+            && let Err(e) = std::fs::File::create(path)
+        {
+            error!("Failed to create file {}: {e}", path.display());
         }
     } else if let Err(e) = std::fs::create_dir_all(path) {
         error!("Failed to create directory: {e}");

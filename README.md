@@ -3,9 +3,9 @@
 Fit Launcher is a 🚀 **blazingly fast** 🚀 (sorry it's made in rust, I have to write that) game launcher designed specifically for cracked games from FitGirl Repack. Built with Rust, Tauri, and SolidJS, this launcher delivers the best performance and a sleek, modern design. 
 
 ## Features
-- ⚡ **Lightning Fast**: Powered by Rust and Tauri for better speed and efficiency.
-- 🛠️ **Easy to Use**: Simple setup and easy to run—just execute the launcher and you're good to go!
-- 🌌 **Quick Download**: Using **aria2c** for torrenting and DDL for optimal speed.
+- **Lightning Fast**: Powered by Rust and Tauri for better speed and efficiency.
+- **Easy to Use**: Simple setup and easy to run, just execute the launcher and you're good to go!
+- **Quick Download**: Using **aria2c** for torrenting and DDL for optimal speed.
 
 ## Getting Started
 
@@ -48,7 +48,7 @@ npm install
 npm run tauri dev
 ```
 
-### Building from Source
+### Building from Source on Windows
 
 If you'd like to build Fit Launcher yourself, follow these steps:
 
@@ -60,6 +60,24 @@ If you'd like to build Fit Launcher yourself, follow these steps:
 ```bash
 npm run tauri build
 ```
+
+### Building on Linux
+
+This project provides a unified setup script for Debian/Ubuntu and Fedora.
+
+---
+
+#### **Ubuntu / Debian / Fedora**
+If you're on a Debian-based distro (Ubuntu, Pop!\_OS, Linux Mint, etc...) or Fedora :
+
+```bash
+chmod +x install_deps.sh
+./install_deps_ubuntu.sh
+npm run tauri dev
+```
+
+This works for both fish and bash !
+
 
 ## Create your own themes !
 Now you can even customize the launcher to your liking, you can go check the tutorial on how to create a theme in doc/theme_creation.md
@@ -96,7 +114,6 @@ Enjoy your games with Fit Launcher!
 
 ## TODO List 📝
 
-- 🖥️ **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
-- 🌄 **Quicker Image Loading**: Optimize the speed at which images are retrieved and displayed.
-- 🎮 **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
-- 📟 **Control CPU Usage**: Allow the user to limit the CPU usage of the setup.
+- **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
+- **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
+- **Control CPU Usage**: Allow the user to limit the CPU usage of the setup.

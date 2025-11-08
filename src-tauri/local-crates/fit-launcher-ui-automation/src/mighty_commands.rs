@@ -2,6 +2,7 @@
 use std::process::Command;
 
 use specta::specta;
+#[cfg(target_os = "windows")]
 use tracing::{error, info};
 
 /// Start an executable using tauri::command

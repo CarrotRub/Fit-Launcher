@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+#[cfg(target_os = "windows")]
 use fit_launcher_ui_automation::InstallationError;
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::Engine;
@@ -13,6 +14,7 @@ use tracing::{error, info};
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
 use crate::model::FileInfo;
+#[cfg(target_os = "windows")]
 use fit_launcher_ui_automation::mighty_automation::windows_ui_automation::{
     automate_until_download, start_executable_components_args,
 };
@@ -164,23 +166,33 @@ pub async fn run_automate_setup_install(
     _state: tauri::State<'_, TorrentSession>,
     path: PathBuf,
 ) -> Result<(), TorrentApiError> {
-    let setup_executable_path = path.join("setup.exe");
-    info!("Setup path is: {}", setup_executable_path.to_string_lossy());
+    #[cfg(target_os = "windows")]
+    {
+        let setup_executable_path = path.join("setup.exe");
+        info!("Setup path is: {}", setup_executable_path.to_string_lossy());
 
-    start_executable_components_args(setup_executable_path).map_err(|e| match e {
-        InstallationError::AdminModeError => TorrentApiError::AdminModeError,
-        InstallationError::IOError(msg) => {
-            TorrentApiError::IOError(format!("Installation IO error: {msg}"))
-        }
-    })?;
+        start_executable_components_args(setup_executable_path).map_err(|e| match e {
+            InstallationError::AdminModeError => TorrentApiError::AdminModeError,
+            InstallationError::IOError(msg) => {
+                TorrentApiError::IOError(format!("Installation IO error: {msg}"))
+            }
+        })?;
 
-    let game_output_folder = path.to_string_lossy().replace(" [FitGirl Repack]", "");
+        let game_output_folder = path.to_string_lossy().replace(" [FitGirl Repack]", "");
 
-    automate_until_download(&game_output_folder).await;
+        automate_until_download(&game_output_folder).await;
 
-    info!("Torrent has completed!");
-    info!("Game Installation has been started");
+        info!("Torrent has completed!");
+        info!("Game Installation has been started");
+    }
 
+    #[cfg(not(target_os = "windows"))]
+    {
+        info!("Automated setup installation is not supported on this platform");
+        return Err(TorrentApiError::IOError("Automated setup installation is not supported on this platform".to_string()));
+    }
+
+    #[cfg(target_os = "windows")]
     Ok(())
 }
 
