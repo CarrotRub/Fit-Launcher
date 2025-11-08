@@ -86,7 +86,7 @@ if command -v cargo >/dev/null 2>&1; then
 else
     log "Installing Rust & Cargo"
     if [ "$DISTRO" = "arch" ]; then
-        pacman -Syu rustup
+        sudo pacman -Syu rustup
         rustup default stable
     else
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
