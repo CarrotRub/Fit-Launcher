@@ -4,6 +4,8 @@ use parking_lot::RwLock;
 use std::{
     env::current_exe,
     ffi::OsStr,
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter},
     net::TcpListener,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -12,21 +14,22 @@ use std::{
 };
 
 use tokio::{
-    sync::{
-        oneshot::{Receiver, Sender, channel},
-    },
+    sync::oneshot::{Receiver, Sender, channel},
     time::sleep,
 };
 
 use tracing::{error, info, warn};
 
-use crate::{FitLauncherConfigV2, config::{write_cfg, load_or_migrate, FitLauncherConfigAria2}, errors::TorrentApiError};
+use crate::{
+    FitLauncherConfigV2,
+    config::{FitLauncherConfigAria2, load_or_migrate, write_cfg},
+    errors::TorrentApiError,
+};
 
-type AriaDaemonType = Arc<Mutex<Option<(Sender<()>, Receiver<()>, u16)>>>;
+type AriaDaemonType = Arc<tokio::sync::Mutex<Option<(Sender<()>, Receiver<()>, u16)>>>;
 
-pub static ARIA2_DAEMON: LazyLock<AriaDaemonType> = LazyLock::new(|| {
-    Arc::new(tokio::sync::Mutex::new(None))
-});
+pub static ARIA2_DAEMON: LazyLock<AriaDaemonType> =
+    LazyLock::new(|| Arc::new(tokio::sync::Mutex::new(None)));
 
 struct StateShared {
     config: FitLauncherConfigV2,
@@ -207,7 +210,6 @@ pub async fn aria2_client_from_config(
             write_cfg(v2_path, &new_cfg)?;
         }
 
-
         let bt_port = find_port_in_range(config.bittorrent.listen_port, 5, Some(rpc_port))
             .await
             .ok_or_else(|| {
@@ -271,12 +273,9 @@ pub async fn aria2_client_from_config(
     } else {
         // when we don't start `aria2` ourself,
         // try to connect to the existing instance with configured port
-        aria2_ws::Client::connect(
-            &format!("ws://127.0.0.1:{port}/jsonrpc"),
-            token.as_deref(),
-        )
-        .await
-        .context("Could not connect to already running aria2 RPC server")
+        aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+            .await
+            .context("Could not connect to already running aria2 RPC server")
     }
 }
 
@@ -294,11 +293,8 @@ impl TorrentSession {
 
         let aria2_session = config_dir.join("aria2.session");
 
-        let v2_path = &*config_dir
-            .join("config.json");
-        let legacy_path = &*config_dir
-            .join("torrentConfig")
-            .join("config.json");
+        let v2_path = &*config_dir.join("config.json");
+        let legacy_path = &*config_dir.join("torrentConfig").join("config.json");
 
         if !Path::new(&legacy_path).exists() {
             if let Err(e) = write_cfg(v2_path, &FitLauncherConfigV2::default()) {
@@ -308,16 +304,17 @@ impl TorrentSession {
 
         let final_config = load_or_migrate(legacy_path, v2_path);
 
-        let aria2_client = match aria2_client_from_config(&final_config, aria2_session, v2_path).await {
-            Ok(c) => {
-                info!("Connected to aria2c successfully");
-                Some(c)
-            }
-            Err(e) => {
-                error!("Failed to connect to aria2: {:#}", e);
-                None
-            }
-        };
+        let aria2_client =
+            match aria2_client_from_config(&final_config, aria2_session, v2_path).await {
+                Ok(c) => {
+                    info!("Connected to aria2c successfully");
+                    Some(c)
+                }
+                Err(e) => {
+                    error!("Failed to connect to aria2: {:#}", e);
+                    None
+                }
+            };
 
         let mut shared_guard = self.shared.write();
         if let Some(shared) = shared_guard.as_mut() {
@@ -339,24 +336,18 @@ impl TorrentSession {
             .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
             .join("com.fitlauncher.carrotrub");
 
-        let v2_path = config_dir
-            .join("config.json");
-        let legacy_path = config_dir
-            .join("torrentConfig")
-            .join("config.json");
+        let v2_path = config_dir.join("config.json");
+        let legacy_path = config_dir.join("torrentConfig").join("config.json");
 
         if !legacy_path.exists() && !v2_path.exists() {
             match write_cfg(&v2_path, &FitLauncherConfigV2::default()) {
-                Ok(_) => info!(
-                    "Default config written successfully to: {:?}",
-                    v2_path
-                ),
+                Ok(_) => info!("Default config written successfully to: {:?}", v2_path),
                 Err(e) => error!("Error writing default config: {}", e),
             }
         }
         warn!("Config Path: {:?}", v2_path);
 
-        let config = load_or_migrate(&legacy_path, &v2_path) ;
+        let config = load_or_migrate(&legacy_path, &v2_path);
         let aria2_client = None;
 
         let shared = Arc::new(RwLock::new(Some(StateShared {

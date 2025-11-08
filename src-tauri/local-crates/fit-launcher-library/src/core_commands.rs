@@ -5,15 +5,15 @@ use tracing::error;
 
 fn ensure_path(path: &PathBuf, is_file: bool) {
     if is_file {
-        if let Some(parent) = path.parent() {
-            if let Err(e) = fs::create_dir_all(parent) {
-                error!("Failed to create parent directories: {e}");
-            }
+        if let Some(parent) = path.parent()
+            && let Err(e) = fs::create_dir_all(parent)
+        {
+            error!("Failed to create parent directories: {e}");
         }
-        if !path.exists() {
-            if let Err(e) = fs::File::create(path) {
-                error!("Failed to create file {}: {e}", path.display());
-            }
+        if !path.exists()
+            && let Err(e) = fs::File::create(path)
+        {
+            error!("Failed to create file {}: {e}", path.display());
         }
     } else if let Err(e) = fs::create_dir_all(path) {
         error!("Failed to create directory: {e}");
