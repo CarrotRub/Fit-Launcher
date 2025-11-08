@@ -75,11 +75,21 @@ eval "$(fnm env)"
 
 if ! command -v node >/dev/null 2>&1; then
     log "Installing Node LTS"
-    fnm install --lts
-    fnm default --lts
+    
+    CURRENT_SHELL="$(basename "$SHELL")"
+
+    if [ "$CURRENT_SHELL" = "fish" ]; then
+        fnm install -- --lts
+        fnm default -- --lts
+    else
+        fnm install --lts
+        fnm default --lts
+    fi
+
 else
     log "Node already installed"
 fi
+
 
 
 if command -v cargo >/dev/null 2>&1; then
