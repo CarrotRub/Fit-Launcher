@@ -4,8 +4,6 @@ use parking_lot::RwLock;
 use std::{
     env::current_exe,
     ffi::OsStr,
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter},
     net::TcpListener,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -66,30 +64,6 @@ async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Opt
     }
 
     None
-}
-
-fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
-    let rdr = BufReader::new(File::open(path)?);
-    let cfg: FitLauncherConfigV2 = serde_json::from_reader(rdr)?;
-    Ok(cfg)
-}
-
-fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> {
-    let parent_dir = Path::new(path).parent().context("no parent")?;
-    if !parent_dir.exists() {
-        std::fs::create_dir_all(parent_dir).context("failed to create config directory")?;
-    }
-    let tmp = format!("{path}.tmp");
-    let mut tmp_file = BufWriter::new(
-        OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&tmp)?,
-    );
-    serde_json::to_writer(&mut tmp_file, config)?;
-    std::fs::rename(tmp, path)?;
-    Ok(())
 }
 
 fn build_aria2_args(

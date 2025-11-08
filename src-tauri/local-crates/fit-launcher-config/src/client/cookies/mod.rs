@@ -4,7 +4,6 @@ use directories::BaseDirs;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use thiserror::Error;
-use tracing::error;
 
 #[derive(Debug, Error)]
 pub enum Error {
