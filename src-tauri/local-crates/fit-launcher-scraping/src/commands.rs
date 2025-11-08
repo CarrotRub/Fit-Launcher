@@ -1,4 +1,4 @@
-use std::{fs::File, io::Read, path::PathBuf};
+use std::path::PathBuf;
 
 use specta::specta;
 use tauri::{AppHandle, Manager};
@@ -68,21 +68,20 @@ pub fn get_discovery_meta_path(app: AppHandle) -> PathBuf {
 pub fn get_discovery_games(app: AppHandle) -> Result<Vec<DiscoveryGame>, ScrapingError> {
     let path = discovery_file_path(&app, "games_list.json");
 
-    let mut file = File::open(&path).map_err(|e| {
-        error!("Failed to open discovery file: {}", e);
-        ScrapingError::IOError(e.to_string())
-    })?;
+    if !path.exists() {
+        std::fs::write(&path, "[]").inspect_err(|e| {
+            error!("Failed to init discovery file: {}", e);
+        })?;
+    }
 
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).map_err(|e| {
+    let contents = std::fs::read_to_string(&path).inspect_err(|e| {
         error!("Failed to read discovery file: {}", e);
-        ScrapingError::IOError(e.to_string())
     })?;
 
-    serde_json::from_str::<Vec<DiscoveryGame>>(&contents).map_err(|e| {
-        error!("Failed to parse discovery JSON: {}", e);
-        ScrapingError::FileJSONError(e.to_string())
-    })
+    Ok(serde_json::from_str::<Vec<DiscoveryGame>>(&contents).inspect_err(|e| {
+            error!("Failed to parse discovery JSON: {}", e);
+            _ = std::fs::write(&path, "[]");
+        }).unwrap_or_default())
 }
 
 async fn get_games_from_file(app: &AppHandle, filename: &str) -> Result<Vec<Game>, ScrapingError> {
