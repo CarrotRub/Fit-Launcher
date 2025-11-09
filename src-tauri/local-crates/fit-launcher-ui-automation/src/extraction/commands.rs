@@ -2,8 +2,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use specta::specta;
 use tracing::info;
-#[cfg(target_os = "windows")]
-use tracing::info;
 
 use crate::{errors::ExtractError, extract_archive};
 
