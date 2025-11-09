@@ -3520,9 +3520,9 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
 name = "listdisk-rs"
-version = "0.1.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b65b970a760e8da0aaa6b1451e69eff07c0dc4223de0b9fb8826a4ef21d4f74"
+checksum = "a4f7415652db5e0294a04eef5e62379c4fd6e007bd71e27318c7ca6498bdd78e"
 dependencies = [
  "log",
  "serde",

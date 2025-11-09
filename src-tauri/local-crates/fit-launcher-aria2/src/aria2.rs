@@ -77,8 +77,8 @@ async fn file_allocation_method(
         use crossbeam_skiplist::SkipMap;
         use listdisk_rs::{
             win32::{
-                drive_info::diskindex_by_driveletter,
                 physical_disk::{MediaType, PhysicalDisk},
+                utils::diskindex_by_driveletter,
             },
             wmi::WMIConnection,
         };
@@ -103,6 +103,7 @@ async fn file_allocation_method(
                         WMIConnection::with_namespace_path("ROOT\\Microsoft\\Windows\\Storage")?;
 
                     let disk_index = diskindex_by_driveletter(
+                        &wmi_conn,
                         absolute(PathBuf::from(dir))?
                             .to_string_lossy()
                             .chars()
