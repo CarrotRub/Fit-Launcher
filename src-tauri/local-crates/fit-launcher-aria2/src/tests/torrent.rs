@@ -2,7 +2,9 @@
 use std::time::Duration;
 
 use crate::aria2::{aria2_add_torrent, aria2_add_uri};
-use fit_launcher_torrent::{decrypt_torrent_from_paste, functions::TorrentSession};
+use fit_launcher_torrent::{
+    FitLauncherConfigAria2, decrypt_torrent_from_paste, functions::TorrentSession,
+};
 use tracing_subscriber::{EnvFilter, fmt};
 
 fn init_test_logging() {
@@ -25,7 +27,14 @@ async fn add_magnet() -> Result<(), Box<dyn std::error::Error>> {
     let magnet = "magnet:?xt=urn:btih:a492f8b92a25b0399c87715fc228c864ac5a7bfb&dn=archlinux-2025.06.01-x86_64.iso";
     let dir = Some("./downloads".to_string());
 
-    aria2_add_uri(&client, vec![magnet.to_string()], dir, None).await?;
+    aria2_add_uri(
+        &client,
+        vec![magnet.to_string()],
+        dir,
+        None,
+        FitLauncherConfigAria2::default(),
+    )
+    .await?;
 
     Ok(())
 }

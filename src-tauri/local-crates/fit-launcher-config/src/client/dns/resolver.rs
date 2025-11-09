@@ -3,7 +3,9 @@ use std::{
     sync::Arc,
 };
 
-use hickory_resolver::TokioAsyncResolver;
+use hickory_resolver::{
+    TokioResolver, name_server::TokioConnectionProvider, proto::xfer::Protocol,
+};
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use tracing::info;
 
@@ -16,7 +18,7 @@ use std::io;
 /// Protocol is determined from the dns config.
 #[derive(Debug, Clone)]
 pub struct HickoryResolverWithProtocol {
-    state: Arc<once_cell::sync::OnceCell<TokioAsyncResolver>>,
+    state: Arc<once_cell::sync::OnceCell<TokioResolver>>,
     dns_config: FitLauncherDnsConfig,
     rng: Option<rand::rngs::SmallRng>,
 }
@@ -75,9 +77,7 @@ impl Resolve for HickoryResolverWithProtocol {
 
 /// A generalized function to create a new resolver given a `DnsConfig`.
 /// We determine the protocol and primary DNS server, then construct the resolver.
-pub fn new_resolver_with_config(
-    dns_config: &FitLauncherDnsConfig,
-) -> io::Result<TokioAsyncResolver> {
+pub fn new_resolver_with_config(dns_config: &FitLauncherDnsConfig) -> io::Result<TokioResolver> {
     // Determine protocol
     let protocol = match dns_config.protocol.to_uppercase().as_str() {
         "UDP" => Protocol::Udp,
@@ -110,10 +110,9 @@ pub fn new_resolver_with_config(
     let mut custom_resolver_dns_config = ResolverConfig::new();
     custom_resolver_dns_config.add_name_server(custom_name_server_config);
 
-    let custom_resolver_opts = ResolverOpts::default();
-
-    Ok(TokioAsyncResolver::tokio(
+    Ok(TokioResolver::builder_with_config(
         custom_resolver_dns_config,
-        custom_resolver_opts,
-    ))
+        TokioConnectionProvider::default(),
+    )
+    .build())
 }

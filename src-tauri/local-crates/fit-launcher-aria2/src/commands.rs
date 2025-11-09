@@ -41,7 +41,14 @@ pub async fn aria2_start_download(
         .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    aria2_add_uri(&aria2_client, url, dir, filename).await
+    aria2_add_uri(
+        &aria2_client,
+        url,
+        dir,
+        filename,
+        state.get_config().await.rpc,
+    )
+    .await
 }
 
 /// `selected_files`: list of torrent metadata files index
@@ -227,6 +234,7 @@ pub async fn aria2_task_spawn(
             vec![url.clone()],
             dir.clone(),
             Some(filename.clone()),
+            state.get_config().await.rpc,
         )
         .await;
 

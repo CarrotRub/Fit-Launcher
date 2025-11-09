@@ -5,8 +5,6 @@ use tracing::info;
 
 use crate::{errors::ExtractError, extract_archive};
 
-#[cfg(target_os = "windows")]
-use crate::mighty_automation::windows_ui_automation::start_executable_components_args;
 #[tauri::command]
 #[specta]
 pub fn extract_game(dir: PathBuf) -> Result<(), ExtractError> {

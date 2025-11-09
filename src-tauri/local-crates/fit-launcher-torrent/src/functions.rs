@@ -4,8 +4,6 @@ use parking_lot::RwLock;
 use std::{
     env::current_exe,
     ffi::OsStr,
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter},
     net::TcpListener,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -21,7 +19,7 @@ use tokio::{
 use tracing::{error, info, warn};
 
 use crate::{
-    FitLauncherConfigV2,
+    FileAllocation, FitLauncherConfigV2,
     config::{FitLauncherConfigAria2, load_or_migrate, write_cfg},
     errors::TorrentApiError,
 };
@@ -66,30 +64,6 @@ async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Opt
     }
 
     None
-}
-
-fn read_config(path: &str) -> anyhow::Result<FitLauncherConfigV2> {
-    let rdr = BufReader::new(File::open(path)?);
-    let cfg: FitLauncherConfigV2 = serde_json::from_reader(rdr)?;
-    Ok(cfg)
-}
-
-fn write_config(path: &str, config: &FitLauncherConfigV2) -> anyhow::Result<()> {
-    let parent_dir = Path::new(path).parent().context("no parent")?;
-    if !parent_dir.exists() {
-        std::fs::create_dir_all(parent_dir).context("failed to create config directory")?;
-    }
-    let tmp = format!("{path}.tmp");
-    let mut tmp_file = BufWriter::new(
-        OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(&tmp)?,
-    );
-    serde_json::to_writer(&mut tmp_file, config)?;
-    std::fs::rename(tmp, path)?;
-    Ok(())
 }
 
 fn build_aria2_args(
@@ -158,6 +132,17 @@ fn build_aria2_args(
     a.push("--save-session".into());
     a.push(session_path.display().to_string());
 
+    match cfg.rpc.file_allocation {
+        FileAllocation::Auto => {
+            if !cfg!(windows) {
+                a.push("--file-allocation=falloc".into());
+            }
+        }
+        FileAllocation::Falloc => a.push("--file-allocation=falloc".into()),
+        FileAllocation::Prealloc => a.push("--file-allocation=prealloc".into()),
+        FileAllocation::None => a.push("--file-allocation=none".into()),
+    }
+
     a
 }
 
@@ -170,6 +155,7 @@ pub async fn aria2_client_from_config(
         port,
         token,
         start_daemon,
+        ..
     } = &config.rpc;
 
     let download_location = &config.general.download_dir;
