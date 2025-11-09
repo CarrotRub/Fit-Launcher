@@ -19,7 +19,7 @@ use tokio::{
 use tracing::{error, info, warn};
 
 use crate::{
-    FitLauncherConfigV2,
+    FileAllocation, FitLauncherConfigV2,
     config::{FitLauncherConfigAria2, load_or_migrate, write_cfg},
     errors::TorrentApiError,
 };
@@ -132,6 +132,17 @@ fn build_aria2_args(
     a.push("--save-session".into());
     a.push(session_path.display().to_string());
 
+    match cfg.rpc.file_allocation {
+        FileAllocation::Auto => {
+            if !cfg!(windows) {
+                a.push("--file-allocation=falloc".into());
+            }
+        }
+        FileAllocation::Falloc => a.push("--file-allocation=falloc".into()),
+        FileAllocation::Prealloc => a.push("--file-allocation=prealloc".into()),
+        FileAllocation::None => a.push("--file-allocation=none".into()),
+    }
+
     a
 }
 
@@ -144,6 +155,7 @@ pub async fn aria2_client_from_config(
         port,
         token,
         start_daemon,
+        ..
     } = &config.rpc;
 
     let download_location = &config.general.download_dir;

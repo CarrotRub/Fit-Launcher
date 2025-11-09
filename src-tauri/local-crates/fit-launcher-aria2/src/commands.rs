@@ -46,7 +46,7 @@ pub async fn aria2_start_download(
         url,
         dir,
         filename,
-        state.get_config().await.rpc.start_daemon,
+        state.get_config().await.rpc,
     )
     .await
 }
@@ -234,7 +234,7 @@ pub async fn aria2_task_spawn(
             vec![url.clone()],
             dir.clone(),
             Some(filename.clone()),
-            state.get_config().await.rpc.start_daemon,
+            state.get_config().await.rpc,
         )
         .await;
 

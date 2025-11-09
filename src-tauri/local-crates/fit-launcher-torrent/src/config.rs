@@ -22,6 +22,15 @@ pub struct FitLauncherConfigAria2 {
     pub port: u16,
     pub token: Option<String>,
     pub start_daemon: bool,
+    pub file_allocation: FileAllocation,
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type, Debug, strum::EnumIs)]
+pub enum FileAllocation {
+    Auto,
+    Falloc,
+    Prealloc,
+    None,
 }
 
 impl Default for FitLauncherConfigAria2 {
@@ -30,6 +39,7 @@ impl Default for FitLauncherConfigAria2 {
             port: 6899,
             token: None,
             start_daemon: true,
+            file_allocation: FileAllocation::Auto,
         }
     }
 }
@@ -182,7 +192,13 @@ impl From<LegacyFitLauncherConfig> for FitLauncherConfigV2 {
 pub(crate) fn write_cfg<T: Serialize>(path: impl AsRef<Path>, cfg: &T) -> anyhow::Result<()> {
     let path = path.as_ref();
     std::fs::create_dir_all(Path::new(path).parent().context("no parent")?)?;
-    let tmp_path = path.with_file_name(path.file_name().unwrap_or_default().to_string_lossy().to_string() + ".tmp");
+    let tmp_path = path.with_file_name(
+        path.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string()
+            + ".tmp",
+    );
     let mut tmp = BufWriter::new(
         OpenOptions::new()
             .write(true)
@@ -198,7 +214,10 @@ pub(crate) fn write_cfg<T: Serialize>(path: impl AsRef<Path>, cfg: &T) -> anyhow
 /// Load the config (migrating from legacy if needed). Returns the in‑memory V2 object.
 /// If a legacy config is found, it is replaced on disk and the old `torrentConfig` folder
 /// is removed.
-pub(crate) fn load_or_migrate(legacy_path: impl AsRef<Path>, v2_path: impl AsRef<Path>) -> FitLauncherConfigV2 {
+pub(crate) fn load_or_migrate(
+    legacy_path: impl AsRef<Path>,
+    v2_path: impl AsRef<Path>,
+) -> FitLauncherConfigV2 {
     if let Ok(cfg) = read_cfg::<FitLauncherConfigV2>(&v2_path) {
         return cfg;
     }
@@ -225,4 +244,3 @@ fn read_cfg<T: for<'de> Deserialize<'de>>(path: impl AsRef<Path>) -> anyhow::Res
     let cfg = serde_json::from_reader(rdr)?;
     Ok(cfg)
 }
-

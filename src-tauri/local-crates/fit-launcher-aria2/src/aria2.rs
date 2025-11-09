@@ -1,4 +1,5 @@
 use aria2_ws::{Client, Map, TaskOptions};
+use fit_launcher_torrent::FitLauncherConfigAria2;
 use serde_json::Value;
 use tracing::error;
 
@@ -9,25 +10,23 @@ pub async fn aria2_add_uri(
     url: Vec<String>,
     dir: Option<String>,
     filename: Option<String>,
-    aria2_priviledged: bool,
+    aria2_cfg: FitLauncherConfigAria2,
 ) -> Result<String, Aria2Error> {
-    let extra_options =
-        file_allocation_method(dir.as_deref().unwrap_or("."), aria2_priviledged).await;
-    Ok(aria2_client
-        .add_uri(
-            url,
-            Some(TaskOptions {
-                split: Some(1),
-                out: filename,
-                dir,
-                r#continue: Some(true),
-                extra_options,
-                ..TaskOptions::default()
-            }),
-            None,
-            None,
-        )
-        .await?)
+    let mut options = TaskOptions {
+        split: Some(1),
+        out: filename,
+        dir: dir.clone(),
+        r#continue: Some(true),
+        ..TaskOptions::default()
+    };
+
+    #[cfg(windows)]
+    if aria2_cfg.file_allocation.is_auto() {
+        options.extra_options =
+            file_allocation_method(dir.as_deref().unwrap_or("."), aria2_cfg.start_daemon).await;
+    };
+
+    Ok(aria2_client.add_uri(url, Some(options), None, None).await?)
 }
 
 pub async fn aria2_add_torrent(
@@ -64,13 +63,13 @@ pub async fn aria2_add_torrent(
         })
 }
 
+#[cfg(windows)]
 async fn file_allocation_method(
     dir: impl AsRef<str>,
-    #[allow(unused)] aria2_priviledged: bool,
+    aria2_priviledged: bool,
 ) -> Map<String, Value> {
     let dir = dir.as_ref();
 
-    #[cfg(windows)]
     let file_allocation = {
         use std::{error::Error, sync::LazyLock};
 
@@ -144,9 +143,6 @@ async fn file_allocation_method(
         CACHE.insert(dir.into(), media_type.unwrap_or(MediaType::HDD));
         result
     };
-    #[cfg(not(windows))]
-    // stick to falloc, fallocate() requires no priviledge
-    let file_allocation = "falloc";
 
     let mut extra_options = Map::new();
     extra_options.insert("file-allocation".into(), file_allocation.into());
