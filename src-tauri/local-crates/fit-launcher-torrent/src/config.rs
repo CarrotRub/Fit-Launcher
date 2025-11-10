@@ -48,7 +48,6 @@ impl Default for FitLauncherConfigAria2 {
 // 3. V2 – user config (the one the UI will edit from now on)
 //
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type, Debug)]
-#[serde(default)]
 pub struct General {
     pub download_dir: PathBuf,
     #[serde(default = "General::default_concurrent_downloads")]
@@ -76,7 +75,7 @@ impl Default for General {
 
 /// In bytes/sec – `None` means unlimited
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type, Debug, Default)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct TransferLimits {
     /// In bytes/sec – `None` means unlimited
     pub max_overall_download: Option<u64>,
@@ -91,6 +90,7 @@ pub struct TransferLimits {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type, Debug)]
 #[serde(default)]
+#[serde(rename_all = "kebab-case")]
 pub struct Connection {
     pub max_connection_per_server: u32,
     pub split: u32,
@@ -113,7 +113,7 @@ impl Default for Connection {
 
 /// https://aria2.github.io/manual/en/html/aria2c.html
 #[derive(Clone, Serialize, Deserialize, PartialEq, Type, Debug)]
-#[serde(default)]
+#[serde(default, rename_all = "kebab-case")]
 pub struct Bittorrent {
     /// Whether DHT is enabled for peer discovery.
     /// Disabling this will reduce the ability to find peers in public swarms.
