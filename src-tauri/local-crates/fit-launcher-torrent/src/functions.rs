@@ -76,6 +76,7 @@ fn build_aria2_args(
 
     // RPC ------------------------------------------------------------------
     a.push("--enable-rpc".into());
+    let rpc_port = rpc_port.clamp(1024, 65535);
     a.push(format!("--rpc-listen-port={rpc_port}"));
     if let Some(tok) = &cfg.rpc.token {
         a.push(format!("--rpc-secret={tok}"));
@@ -118,7 +119,8 @@ fn build_aria2_args(
     if !cfg.bittorrent.enable_dht {
         a.push("--enable-dht=false".into());
     }
-    a.push(format!("--listen-port={bt_port}"));
+    let bt_listen = bt_port.clamp(1024, 65535);
+    a.push(format!("--listen-port={bt_listen}"));
     a.push(format!("--bt-max-peers={}", cfg.bittorrent.max_peers));
     if let Some(r) = cfg.bittorrent.seed_ratio {
         a.push(format!("--seed-ratio={r}"));
