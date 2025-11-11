@@ -1,71 +1,50 @@
 import { useNavigate } from "@solidjs/router";
-import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, Box, Check, ChevronDown, ChevronRight, Download, Info, Languages, Loader2, MemoryStick, X } from "lucide-solid";
-import { Accessor, createEffect, createSignal, For, onMount, Show } from "solid-js";
+import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X } from "lucide-solid";
+import { createSignal, For, onMount, Show, Component, Accessor } from "solid-js";
 import { render } from "solid-js/web";
-import { DirectLink, DownloadedGame, FileInfo, InstallationSettings } from "../../bindings";
+import { DirectLink, DownloadedGame, FileInfo } from "../../bindings";
 import { Modal } from "../Modal/Modal";
 import { DownloadPopupProps } from "../../types/popup";
-import { DownloadSettingsApi, GlobalSettingsApi } from "../../api/settings/api";
-import TitleLabel from "../../pages/Settings-01/Settings-Categories/Components/UI/TitleLabel/TitleLabel";
+import { DownloadSettingsApi } from "../../api/settings/api";
 import { TorrentApi } from "../../api/bittorrent/api";
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
-import { formatBytes, toTitleCase, toTitleCaseExceptions } from "../../helpers/format";
+import { formatBytes, toTitleCaseExceptions } from "../../helpers/format";
 import LoadingPage from "../../pages/LoadingPage-01/LoadingPage";
 import { DownloadManagerApi } from "../../api/download/api";
+import { downloadStore } from "../../stores/download";
 import { DirectLinkWrapper } from "../../types/download";
+import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
 
 const downloadSettingsInst = new DownloadSettingsApi();
-const settingsInst = new GlobalSettingsApi();
 const torrentInst = new TorrentApi();
 
+const TorrentFileItem: Component<{ originalName: string; displayName: string; index: number; selected: Set<number>; onToggle: (i: number) => void; files: FileInfo[] }> = (props) => {
+    const file = props.files.find((f) => f.file_name === props.originalName);
+    const size = file ? formatBytes(file.length) : "-";
+    return (
+        <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.originalName}>
+            <span class="text-sm text-text truncate max-w-[55%]" title={props.originalName}>{props.displayName}</span>
+            <div class="flex items-center gap-3">
+                <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">{size}</div>
+                <Checkbox checked={props.selected.has(props.index)} action={() => props.onToggle(props.index)} />
+            </div>
+        </label>
+    );
+};
+
+const DDLFileItem: Component<{ file: DirectLinkWrapper; selected: Set<string>; onToggle: (url: string) => void }> = (props) => {
+    return (
+        <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.file.filename}>
+            <span class="text-sm text-text truncate max-w-[55%]" title={props.file.filename}>{props.file.displayName || props.file.filename}</span>
+            <div class="flex items-center gap-3">
+                <Checkbox checked={props.selected.has(props.file.url)} action={() => props.onToggle(props.file.url)} />
+            </div>
+        </label>
+    );
+};
+
 export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
-    const languageMap: Record<string, string> = {
-        chinese: "Chinese",
-        brazilian: "Brazilian",
-        mexican: "Mexican",
-        french: "French",
-        german: "German",
-        japanese: "Japanese",
-        russian: "Russian",
-        spanish: "Spanish",
-        arabic: "Arabic",
-        italian: "Italian",
-        portuguese: "Portuguese",
-        dutch: "Dutch",
-        korean: "Korean",
-        hindi: "Hindi",
-        turkish: "Turkish",
-        swedish: "Swedish",
-        greek: "Greek",
-        polish: "Polish",
-        hebrew: "Hebrew",
-        norwegian: "Norwegian",
-        danish: "Danish",
-        finnish: "Finnish",
-        swahili: "Swahili",
-        bengali: "Bengali",
-        vietnamese: "Vietnamese",
-        tamil: "Tamil",
-        malay: "Malay",
-        thai: "Thai",
-        czech: "Czech",
-        filipino: "Filipino",
-        ukrainian: "Ukrainian",
-        hungarian: "Hungarian",
-        romanian: "Romanian",
-        indonesian: "Indonesian",
-        slovak: "Slovak",
-        serbian: "Serbian",
-        bulgarian: "Bulgarian",
-        catalan: "Catalan",
-        croatian: "Croatian",
-        nepali: "Nepali",
-        estonian: "Estonian",
-        latvian: "Latvian",
-        lithuanian: "Lithuanian",
-    };
     const container = document.createElement("div");
     document.body.appendChild(container);
     const destroy = () => {
@@ -76,7 +55,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
     const LastStepPopup = () => {
         const [loading, setLoading] = createSignal(true);
         const [error, setError] = createSignal<string | null>(null);
-        const [showAdvanced, setShowAdvanced] = createSignal(false);
 
         // Torrent state
         const [listFiles, setListFiles] = createSignal<FileInfo[]>([]);
@@ -84,669 +62,324 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         const [categorizedFiles, setCategorizedFiles] = createSignal<{
             Languages: Record<string, string>;
             Others: Record<string, string>;
-        }>({ Languages: {}, Others: {} });
+        }>({
+            Languages: {},
+            Others: {},
+        });
         const [uncategorizedFiles, setUncategorizedFiles] = createSignal<string[]>([]);
+        const [showTorrentAdvanced, setShowTorrentAdvanced] = createSignal(false);
 
         // DDL state
         const [selectedHoster, setSelectedHoster] = createSignal<"fuckingfast" | "datanodes" | null>(null);
         const [directLinks, setDirectLinks] = createSignal<DirectLinkWrapper[]>([]);
-        const [ddlSelectedIndices, setDdlSelectedIndices] = createSignal(new Set<number>());
         const [ddlSelectedUrls, setDdlSelectedUrls] = createSignal(new Set<string>());
+        const [showDdlAdvanced, setShowDdlAdvanced] = createSignal(false);
 
         onMount(async () => {
             try {
                 if (props.downloadType === "bittorrent") {
-                    await initializeTorrent();
-                } else if (props.downloadType === "direct_download") {
-                    await initializeDDL();
+                    await initTorrent();
+                } else {
+                    await initDDL();
                 }
-            } catch (error) {
-                console.error("Error initializing download:", error);
+            } catch (e) {
+                console.error("init error", e);
                 setError("Failed to initialize download");
             } finally {
                 setLoading(false);
             }
         });
 
-        async function initializeTorrent() {
-            const downloadSettings = await downloadSettingsInst.getDownloadSettings();
-            if (downloadSettings.status === "ok") {
-                console.log("settings: ", downloadSettings.data);
+        async function initTorrent() {
+            const settings = await downloadSettingsInst.getDownloadSettings();
+            if (settings.status !== "ok") {
+                console.warn("Couldn't load download settings", settings.error);
             }
 
             const resultFiles = await torrentInst.getTorrentFileList(props.downloadedGame.magnetlink);
-
             if (resultFiles.status === "ok") {
                 setListFiles(resultFiles.data);
-                const categorized = classifyFiles(resultFiles.data);
-                setCategorizedFiles(categorized);
+                const classified = classifyTorrentFiles(resultFiles.data);
+                setCategorizedFiles({ Languages: classified.Languages, Others: classified.Others });
+                setUncategorizedFiles(classified.Uncategorized);
 
-                const allIndices = new Set(resultFiles.data.map((_, index) => index));
-                setSelectedFileIndices(allIndices);
+                const all = new Set(resultFiles.data.map((_, i) => i));
+                setSelectedFileIndices(all);
             } else {
-                console.error("Error: ", resultFiles.error);
-                await message("Failed to get list of files, fix is coming soon!",
-                    { title: "File List Error", kind: "warning" }
-                );
+                console.error("getTorrentFileList failed", resultFiles.error);
                 setError("Failed to get torrent file list");
             }
         }
 
-        async function initializeDDL() {
-            const allLinks = await DownloadManagerApi.getDatahosterLinks(
-                props.downloadedGame.href,
-                ""
-            );
-
-            if (!allLinks || allLinks.length === 0) {
-                setError("No download links found for this game");
-                return;
-            }
-
-            const supportedHosters = ["fuckingfast", "datanodes"];
-            const hasSupportedHoster = supportedHosters.some(hoster =>
-                allLinks.some(link => link.toLowerCase().includes(hoster))
-            );
-
-            if (!hasSupportedHoster) {
-                setError("No supported download hosters available");
+        async function initDDL() {
+            try {
+                const links = await DownloadManagerApi.getDatahosterLinks(props.downloadedGame.href, "");
+                if (!links || links.length === 0) {
+                    setError("No download links found for this game");
+                    return;
+                }
+                // don't auto-select hoster here — user picks one
+            } catch (e) {
+                console.error("initDDL error", e);
+                setError("Failed to initialize DDL links");
             }
         }
 
         function toggleFileSelection(index: number) {
-            setSelectedFileIndices(prev => {
+            setSelectedFileIndices((prev) => {
                 const next = new Set(prev);
-                if (next.has(index)) {
-                    next.delete(index);
-                } else {
-                    next.add(index);
-                }
+                next.has(index) ? next.delete(index) : next.add(index);
                 return next;
             });
         }
 
         function toggleDdlSelection(url: string) {
-            setDdlSelectedUrls(prev => {
+            setDdlSelectedUrls((prev) => {
                 const next = new Set(prev);
-                if (next.has(url)) {
-                    next.delete(url);
-                } else {
-                    next.add(url);
-                }
+                next.has(url) ? next.delete(url) : next.add(url);
                 return next;
             });
         }
 
         async function handleStartDownload() {
+            setLoading(true);
+            setError(null);
+
             const currentSettings = await downloadSettingsInst.getDownloadSettings();
             if (currentSettings.status !== "ok") {
-                await message('Error downloading! ' + currentSettings.error, {
-                    title: 'FitLauncher',
-                    kind: 'error'
-                });
+                await message('Error downloading! ' + currentSettings.error, { title: 'FitLauncher', kind: 'error' });
+                setLoading(false);
                 return;
             }
 
             const path = currentSettings.data.general.download_dir;
 
             if (props.downloadType === "bittorrent") {
-
-                torrentInst.downloadTorrent(
-                    props.downloadedGame.magnetlink,
-                    props.downloadedGame,
-                    Array.from(selectedFileIndices()),
-                    path
-                );
-            } else if (props.downloadType === "direct_download") {
-                const selectedLinks = directLinks().filter(link =>
-                    ddlSelectedUrls().has(link.url)
-                );
-
-                const result = await DownloadManagerApi.startDownload(
-                    selectedLinks,
-                    props.downloadedGame,
-                    path
-                );
-
-                if (result.status === "ok") {
-                    console.log("DDL download started with job ID:", result.data);
+                const indices = Array.from(selectedFileIndices());
+                const res = await torrentInst.downloadTorrent(props.downloadedGame.magnetlink, props.downloadedGame, indices, path);
+                if (res.status === "ok") {
+                    // ensure UI updates
+                    try { await downloadStore.refresh(); } catch (e) { console.warn("refresh failed", e); }
                 } else {
-                    await message(`Failed to start download: ${result.error}`, {
-                        title: 'Download Error',
-                        kind: 'error'
-                    });
+                    await message(`Failed to start torrent: ${res.error}`, { title: 'Torrent Error', kind: 'error' });
+                    setError("Failed to start torrent");
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                const selected = directLinks().filter((l) => ddlSelectedUrls().has(l.url));
+                if (selected.length === 0) {
+                    await message('No files selected to download', { title: 'Download', kind: 'warning' });
+                    setLoading(false);
+                    return;
+                }
+
+                const result = await DownloadManagerApi.startDownload(selected, props.downloadedGame, path);
+                if (result.status === "ok") {
+                    try { await downloadStore.refresh(); } catch (e) { console.warn("refresh failed", e); }
+                } else {
+                    await message(`Failed to start download: ${result.error}`, { title: 'Download Error', kind: 'error' });
+                    setError("Failed to start download");
+                    setLoading(false);
+                    return;
                 }
             }
 
+            setLoading(false);
             props.onFinish?.();
-        }
-
-        function classifyFiles(files: FileInfo[]) {
-            const categorizedFiles = {
-                Languages: {} as Record<string, string>,
-                Others: {} as Record<string, string>
-            };
-            const uncategorizedFiles: string[] = [];
-
-            files.forEach((file) => {
-                const lowerFile = file.file_name.toLowerCase();
-
-                // Check if file matches any language
-                const matchedLanguage = Object.keys(languageMap).find((language) =>
-                    lowerFile.includes(language)
-                );
-
-                if (matchedLanguage) {
-                    let formattedFile = `${languageMap[matchedLanguage]} Language`;
-                    if (lowerFile.includes("vo")) {
-                        formattedFile += " VO";
-                    }
-                    categorizedFiles.Languages[file.file_name] = formattedFile;
-                } else if (lowerFile.includes("optional") || lowerFile.includes("selective")) {
-                    const fileLabel = file.file_name
-                        .replace(/fg-optional-/i, "")
-                        .replace(/-/g, " ")
-                        .replace(/\..*$/, "");
-                    categorizedFiles.Others[file.file_name] = fileLabel;
-                } else {
-                    uncategorizedFiles.push(file.file_name);
-                }
-            });
-
-            setUncategorizedFiles(uncategorizedFiles);
-            return categorizedFiles;
-        }
-
-        function classifyDdlFiles(files: DirectLinkWrapper[]) {
-            const result = {
-                Languages: [] as DirectLinkWrapper[],
-                Others: [] as DirectLinkWrapper[],
-                Main: [] as DirectLinkWrapper[],
-                Parts: [] as DirectLinkWrapper[],
-            };
-
-            files.forEach((file) => {
-                const lowerFilename = file.filename.toLowerCase();
-
-                const matchedLanguage = Object.keys(languageMap).find((language) =>
-                    lowerFilename.includes(language)
-                );
-
-                if (matchedLanguage) {
-                    let displayName = `${languageMap[matchedLanguage]} Language`;
-                    if (lowerFilename.includes("vo")) {
-                        displayName += " VO";
-                    }
-                    result.Languages.push({
-                        ...file,
-                        displayName
-                    });
-                }
-                else if (lowerFilename.includes("optional") || lowerFilename.includes("selective")) {
-                    const label = file.filename
-                        .replace(/fg-optional-|optional-|selective-/gi, "")
-                        .replace(/\.[^/.]+$/, "")
-                        .replace(/[-_.]/g, " ")
-                        .trim();
-
-                    result.Others.push({
-                        ...file,
-                        displayName: toTitleCase(label || "Optional Content")
-                    });
-                }
-                else if (lowerFilename.includes("part")) {
-                    const partMatch = file.filename.match(/part(\d+)/i);
-                    result.Parts.push({
-                        ...file,
-                        displayName: partMatch ? `Part ${partMatch[1]}` : "Game Part"
-                    });
-                }
-                else if (lowerFilename.includes("setup") || lowerFilename.includes("install")) {
-                    result.Main.push({
-                        ...file,
-                        displayName: "Game Installer"
-                    });
-                }
-                else if (
-                    !lowerFilename.includes("part") &&
-                    (file.filename.match(/\.(rar|001|zip)$/i) ||
-                        file.filename.includes("fitgirl-repacks") ||
-                        file.filename.includes("--_"))
-                ) {
-                    result.Parts.push({
-                        ...file,
-                        displayName: "Part 1"
-                    });
-                }
-                else {
-                    result.Main.push({
-                        ...file,
-                        displayName: file.filename.replace(/\.[^/.]+$/, "")
-                    });
-                }
-            });
-
-            return result;
+            destroy();
         }
 
         async function loadHosterLinks(hoster: "fuckingfast" | "datanodes") {
             setLoading(true);
-            setSelectedHoster(hoster);
             setError(null);
+            setSelectedHoster(hoster);
 
             try {
-                const links = await DownloadManagerApi.getDatahosterLinks(
-                    props.downloadedGame.href,
-                    hoster
-                );
-
+                const links = await DownloadManagerApi.getDatahosterLinks(props.downloadedGame.href, hoster);
                 if (!links || links.length === 0) {
                     setError(`No ${toTitleCaseExceptions(hoster)} links found`);
+                    setLoading(false);
                     return;
                 }
 
                 if (hoster === "fuckingfast") {
-                    const extractedLinks = await DownloadManagerApi.extractFuckingfastDDL(links);
-                    if (!extractedLinks || extractedLinks.length === 0) {
+                    const extracted = await DownloadManagerApi.extractFuckingfastDDL(links);
+                    if (!extracted || extracted.length === 0) {
                         setError("Failed to extract direct download links");
+                        setLoading(false);
                         return;
                     }
-                    console.log(extractedLinks)
-                    setDirectLinks(extractedLinks);
-
-                    const allIndices = new Set(extractedLinks.map((_, index) => index));
-                    setDdlSelectedIndices(allIndices);
-                    const allUrls = new Set(extractedLinks.map(link => link.url));
-                    setDdlSelectedUrls(allUrls);
+                    // adapt to wrapper
+                    const wrapped = extracted.map((e) => ({ ...e } as DirectLinkWrapper));
+                    setDirectLinks(wrapped);
+                    setDdlSelectedUrls(new Set(wrapped.map((w) => w.url)));
                 } else {
-                    // For DataNodes, create DirectLink objects from URLs
-                    const dataNodeLinks = links.map(url => ({
-                        url,
-                        filename: url.split("/").pop() || "file.bin"
-                    }));
-                    setDirectLinks(dataNodeLinks);
-
-                    const allIndices = new Set(dataNodeLinks.map((_, index) => index));
-                    setDdlSelectedIndices(allIndices);
-                    const allUrls = new Set(dataNodeLinks.map(link => link.url));
-                    setDdlSelectedUrls(allUrls);
+                    const wrapped = links.map((url) => ({ url, filename: url.split("/").pop() || "file.bin" } as DirectLinkWrapper));
+                    setDirectLinks(wrapped);
+                    setDdlSelectedUrls(new Set(wrapped.map((w) => w.url)));
                 }
-            } catch (err) {
+            } catch (e) {
+                console.error("loadHosterLinks error", e);
                 setError(`Failed to load ${toTitleCaseExceptions(hoster)} links`);
-                console.error("Hoster load error:", err);
             } finally {
                 setLoading(false);
             }
         }
 
-        const findFileIndex = (fileName: string) => {
-            return listFiles().findIndex(f => f.file_name === fileName);
-        };
+        const findFileIndex = (name: string) => listFiles().findIndex((f) => f.file_name === name);
 
         function deselectOptionalFiles() {
             if (props.downloadType === "bittorrent") {
-                const { Languages, Others } = categorizedFiles();
-                const indicesToUnselect = new Set<number>();
-
-                for (const filename of [...Object.keys(Languages), ...Object.keys(Others)]) {
-                    const index = listFiles().findIndex(f => f.file_name === filename);
-                    if (index !== -1) indicesToUnselect.add(index);
+                const c = categorizedFiles();
+                const indicesToRemove = new Set<number>();
+                for (const name of [...Object.keys(c.Languages), ...Object.keys(c.Others)]) {
+                    const idx = findFileIndex(name);
+                    if (idx !== -1) indicesToRemove.add(idx);
                 }
-
-                setSelectedFileIndices(prev => {
+                setSelectedFileIndices((prev) => {
                     const next = new Set(prev);
-                    for (const idx of indicesToUnselect) next.delete(idx);
+                    for (const i of indicesToRemove) next.delete(i);
                     return next;
                 });
-            } else if (props.downloadType === "direct_download") {
+            } else {
                 const categorized = classifyDdlFiles(directLinks());
-                const urlsToUnselect = new Set([
-                    ...categorized.Languages.map(f => f.url),
-                    ...categorized.Others.map(f => f.url)
-                ]);
-
-                setDdlSelectedUrls(prev => {
+                const urlsToRemove = new Set([...categorized.Languages.map(f => f.url), ...categorized.Others.map(f => f.url)]);
+                setDdlSelectedUrls((prev) => {
                     const next = new Set(prev);
-                    for (const url of urlsToUnselect) next.delete(url);
+                    for (const u of urlsToRemove) next.delete(u);
                     return next;
                 });
             }
         }
 
-        const TorrentFileItem = (props: {
-            originalName: string;
-            displayName: string;
-            index: number;
-        }) => {
-            const file = listFiles().find(f => f.file_name === props.originalName);
-            const size = file ? formatBytes(file.length) : "-";
-
+        // renderers re-using previous markup (kept classes identical)
+        const renderTorrentUI = () => {
+            const categorized = classifyTorrentFiles(listFiles());
+            // update signals so the UI reflects classification if needed
+            // we keep original categorizedFiles signal for compatibility
+            // (but don't clobber user selections)
             return (
-                <label
-                    class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50"
-                    title={props.originalName}
-                >
-                    <span class="text-sm text-text truncate max-w-[55%]" title={props.originalName}>{props.displayName}</span>
-                    <div class="flex items-center gap-3">
-                        <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">
-                            {size}
+                <>
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Box class="w-8 h-8 text-accent" />
                         </div>
-                        <Checkbox
-                            checked={selectedFileIndices().has(props.index)}
-                            action={() => toggleFileSelection(props.index)}
-                        />
+                        <h2 class="text-xl font-bold text-text mb-2">Choose What to Download</h2>
+                        <p class="text-muted">Select the files you want from the torrent. You can proceed without selecting to download everything.</p>
                     </div>
-                </label>
-            );
-        };
 
-        const DDLFileItem = (props: {
-            file: DirectLink & { displayName?: string };
-        }) => {
-            return (
-                <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.file.filename}>
-                    <span class="text-sm text-text truncate max-w-[55%]" title={props.file.filename}>
-                        {props.file.displayName || props.file.filename}
-                    </span>
-                    <div class="flex items-center gap-3">
-                        <Checkbox
-                            checked={ddlSelectedUrls().has(props.file.url)}
-                            action={() => toggleDdlSelection(props.file.url)}
-                        />
-                    </div>
-                </label>
-            );
-        };
+                    <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
+                        <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50">
+                            <h3 class="text-sm font-semibold text-text flex items-center gap-2"><MemoryStick class="w-4 h-4 text-accent" /> Files in Torrent</h3>
+                        </div>
 
+                        <div class="px-2">
+                            <Show when={!loading()} fallback={<LoadingPage />}>
+                                <Show when={listFiles().length !== 0} fallback={
+                                    <div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">No files were detected in this torrent. This may happen if the game uses an old format without Pastebin support. A future update will fix this for older titles.</div>
+                                }>
+                                    <div class="divide-y divide-secondary-20 -mx-2">
+                                        <Show when={Object.entries(categorized.Languages).length > 0 || Object.entries(categorized.Others).length > 0}>
+                                            <div class="w-full flex justify-end px-4 py-2">
+                                                <button onClick={deselectOptionalFiles} class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"><X class="w-3 h-3" /><span>Deselect All Languages & Extras</span></button>
+                                            </div>
+                                        </Show>
 
-        const renderTorrentUI = () => (
-            <>
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Box class="w-8 h-8 text-accent" />
-                    </div>
-                    <h2 class="text-xl font-bold text-text mb-2">Choose What to Download</h2>
-                    <p class="text-muted">
-                        Select the files you want from the torrent. You can proceed without selecting to download everything.
-                    </p>
-                </div>
-
-                <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
-                    <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50">
-                        <h3 class="text-sm font-semibold text-text flex items-center gap-2">
-                            <MemoryStick class="w-4 h-4 text-accent" />
-                            Files in Torrent
-                        </h3>
-                    </div>
-                    <div class="px-2">
-                        <Show when={!loading()} fallback={<LoadingPage />}>
-                            <Show when={listFiles().length !== 0} fallback={
-                                <div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">
-                                    No files were detected in this torrent. This may happen if the game uses an old format without Pastebin support.
-                                    A future update will fix this for older titles.
-                                </div>
-                            }>
-                                <div class="divide-y divide-secondary-20 -mx-2">
-                                    <Show when={Object.entries(categorizedFiles().Others).length > 0 || Object.entries(categorizedFiles().Languages).length > 0}>
-                                        <div class="w-full flex justify-end px-4 py-2">
-                                            <button
-                                                onClick={deselectOptionalFiles}
-                                                class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"
-                                            >
-                                                <X class="w-3 h-3" />
-                                                <span>Deselect All Languages & Extras</span>
-                                            </button>
-                                        </div>
-                                    </Show>
-                                    {/* Show categorized files (Languages and Optional) */}
-                                    <For each={Object.entries(categorizedFiles().Languages)}>
-                                        {([originalName, displayName], _index) => (
-                                            <TorrentFileItem
-                                                originalName={originalName}
-                                                displayName={toTitleCaseExceptions(displayName)}
-                                                index={findFileIndex(originalName)}
-                                            />
-                                        )}
-                                    </For>
-
-                                    <For each={Object.entries(categorizedFiles().Others)}>
-                                        {([originalName, displayName], _index) => (
-                                            <TorrentFileItem
-                                                originalName={originalName}
-                                                displayName={toTitleCaseExceptions(displayName)}
-                                                index={findFileIndex(originalName)}
-                                            />
-                                        )}
-                                    </For>
-
-                                    {/* Advanced options toggle */}
-                                    <div class="px-4 py-2">
-                                        <button
-                                            onClick={() => setShowAdvanced(!showAdvanced())}
-                                            class="text-xs text-accent hover:underline flex items-center gap-1"
-                                        >
-                                            <Show when={showAdvanced()} fallback={
-                                                <>
-                                                    <ChevronRight class="w-3 h-3" />
-                                                    Show advanced options
-                                                </>
-                                            }>
-                                                <>
-                                                    <ChevronDown class="w-3 h-3" />
-                                                    Hide advanced options
-                                                </>
-                                            </Show>
-                                        </button>
-                                    </div>
-
-                                    {/* Advanced files (hidden by default) */}
-                                    <Show when={showAdvanced()}>
-                                        <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
-                                            <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" />
-                                            Warning: Only modify these if you know what you're doing
-                                        </div>
-                                        <For each={uncategorizedFiles()}>
-                                            {(fileName, index) => (
-                                                <TorrentFileItem
-                                                    originalName={fileName}
-                                                    displayName={fileName}
-                                                    index={findFileIndex(fileName)}
-                                                />
+                                        <For each={Object.entries(categorized.Languages)}>
+                                            {([originalName, displayName]) => (
+                                                <TorrentFileItem originalName={originalName} displayName={toTitleCaseExceptions(displayName)} index={findFileIndex(originalName)} selected={selectedFileIndices()} onToggle={toggleFileSelection} files={listFiles()} />
                                             )}
                                         </For>
-                                    </Show>
-                                </div>
+
+                                        <For each={Object.entries(categorized.Others)}>
+                                            {([originalName, displayName]) => (
+                                                <TorrentFileItem originalName={originalName} displayName={toTitleCaseExceptions(displayName)} index={findFileIndex(originalName)} selected={selectedFileIndices()} onToggle={toggleFileSelection} files={listFiles()} />
+                                            )}
+                                        </For>
+
+                                        <div class="px-4 py-2">
+                                            <button onClick={() => setShowTorrentAdvanced(!showTorrentAdvanced())} class="text-xs text-accent hover:underline flex items-center gap-1">
+                                                <Show when={showTorrentAdvanced()} fallback={<><ChevronRight class="w-3 h-3" /> Show advanced options</>}>
+                                                    <><ChevronDown class="w-3 h-3" /> Hide advanced options</>
+                                                </Show>
+                                            </button>
+                                        </div>
+
+                                        <Show when={showTorrentAdvanced()}>
+                                            <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing</div>
+                                            <For each={uncategorizedFiles()}>{(fileName) => (
+                                                <TorrentFileItem originalName={fileName} displayName={fileName} index={findFileIndex(fileName)} selected={selectedFileIndices()} onToggle={toggleFileSelection} files={listFiles()} />
+                                            )}</For>
+                                        </Show>
+
+                                    </div>
+                                </Show>
                             </Show>
-                        </Show>
+                        </div>
                     </div>
-                </div>
-            </>
-        );
+                </>
+            );
+        };
 
         const renderDDLUI = () => {
             const categorized = classifyDdlFiles(directLinks());
             return (
                 <>
                     <div class="text-center">
-                        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Download class="w-8 h-8 text-accent" />
-                        </div>
+                        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4"><Download class="w-8 h-8 text-accent" /></div>
                         <h2 class="text-xl font-bold text-text mb-2">Direct Download</h2>
-                        <p class="text-muted">
-                            Choose your download source and select files to download
-                        </p>
+                        <p class="text-muted">Choose your download source and select files to download</p>
                     </div>
 
-                    {/* Hoster Selection */}
                     {!selectedHoster() && (
                         <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm backdrop-blur-sm bg-opacity-80">
                             <div class="p-6">
-                                <h3 class="text-lg font-semibold text-text mb-6 text-center">
-                                    Select Download Provider
-                                    <div class="text-xs font-normal text-muted mt-1">
-                                        Choose your preferred download source
-                                    </div>
-                                </h3>
+                                <h3 class="text-lg font-semibold text-text mb-6 text-center">Select Download Provider<div class="text-xs font-normal text-muted mt-1">Choose your preferred download source</div></h3>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    {/* FuckingFast Button */}
-                                    <button
-                                        onClick={() => loadHosterLinks("fuckingfast")}
-                                        class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 transition-all duration-200"
-                                    >
-                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 transition-colors group-hover:border-accent/50">
-                                            <img
-                                                src="https://fuckingfast.co/static/favicon.ico"
-                                                alt="FuckingFast"
-                                                class="size-12 object-contain rounded-md"
-                                            />
-                                        </div>
-                                        <span class="font-medium text-text transition-colors group-hover:text-primary">
-                                            FuckingFast
-                                        </span>
-                                        <span class="text-xs text-muted mt-1 transition-colors group-hover:text-accent/80">
-                                            Ultra-fast downloads
-                                        </span>
+                                    <button onClick={() => loadHosterLinks("fuckingfast")} class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 transition-all duration-200">
+                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 transition-colors group-hover:border-accent/50"><img src="https://fuckingfast.co/static/favicon.ico" alt="FuckingFast" class="size-12 object-contain rounded-md" /></div>
+                                        <span class="font-medium text-text transition-colors group-hover:text-primary">FuckingFast</span>
+                                        <span class="text-xs text-muted mt-1 transition-colors group-hover:text-accent/80">Ultra-fast downloads</span>
                                         <div class="absolute inset-0 rounded-xl bg-accent/0 transition-colors duration-300 group-hover:bg-accent/5" />
                                     </button>
 
-                                    {/* DataNodes Button */}
-                                    <button
-                                        onClick={() => loadHosterLinks("datanodes")}
-                                        class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 transition-all duration-200"
-                                    >
-                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 transition-colors group-hover:border-accent/50">
-                                            <img
-                                                src="https://datanodes.to/favicon.ico"
-                                                alt="DataNodes"
-                                                class="size-12 object-contain"
-                                            />
-                                        </div>
-                                        <span class="font-medium text-text transition-colors group-hover:text-primary">
-                                            DataNodes
-                                        </span>
-                                        <span class="text-xs text-muted mt-1 transition-colors group-hover:text-accent/80">
-                                            Reliable file hosting
-                                        </span>
+                                    <button onClick={() => loadHosterLinks("datanodes")} class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 transition-all duration-200">
+                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 transition-colors group-hover:border-accent/50"><img src="https://datanodes.to/favicon.ico" alt="DataNodes" class="size-12 object-contain" /></div>
+                                        <span class="font-medium text-text transition-colors group-hover:text-primary">DataNodes</span>
+                                        <span class="text-xs text-muted mt-1 transition-colors group-hover:text-accent/80">Reliable file hosting</span>
                                         <div class="absolute inset-0 rounded-xl bg-accent/0 transition-colors duration-300 group-hover:bg-accent/5" />
                                     </button>
                                 </div>
 
-                                <div class="text-xs text-center text-muted mt-6">
-                                    <span class="inline-flex items-center gap-1">
-                                        <Info class="w-3 h-3" />
-                                        Selection affects download speed and availability
-                                    </span>
-                                </div>
+                                <div class="text-xs text-center text-muted mt-6"><span class="inline-flex items-center gap-1"><Info class="w-3 h-3" />Selection affects download speed and availability</span></div>
                             </div>
                         </div>
                     )}
 
-                    {/* File Selection */}
                     <Show when={selectedHoster()}>
                         <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
-                            <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50">
-                                <h3 class="text-sm font-semibold text-text flex items-center gap-2">
-                                    <Box class="w-4 h-4 text-accent" />
-                                    Files from {toTitleCaseExceptions(selectedHoster()!)}
-                                </h3>
-                            </div>
+                            <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50"><h3 class="text-sm font-semibold text-text flex items-center gap-2"><Box class="w-4 h-4 text-accent" /> Files from {toTitleCaseExceptions(selectedHoster()!)}</h3></div>
                             <div class="px-2">
                                 <Show when={!loading()} fallback={<LoadingPage />}>
-                                    <Show when={directLinks().length > 0} fallback={
-                                        <div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">
-                                            No downloadable files found
-                                        </div>
-                                    }>
+                                    <Show when={directLinks().length > 0} fallback={<div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">No downloadable files found</div>}>
                                         <div class="divide-y divide-secondary-20 -mx-2">
                                             <Show when={categorized.Others.length > 0}>
-                                                <div class="w-full flex justify-end px-4 py-2">
-                                                    <button
-                                                        onClick={deselectOptionalFiles}
-                                                        class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"
-                                                    >
-                                                        <X class="w-3 h-3" />
-                                                        <span>Deselect All Languages & Extras</span>
-                                                    </button>
-                                                </div>
-                                            </Show>
-                                            {/* Main Files */}
-                                            <For each={categorized.Main}>
-                                                {(file, index) => (
-                                                    <DDLFileItem file={file} />
-                                                )}
-                                            </For>
-
-                                            {/* Language Files */}
-                                            <Show when={categorized.Languages.length > 0}>
-                                                <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
-                                                    <Languages class="w-4 h-4 inline mr-1 text-accent" />
-                                                    Language Files - Select languages you need
-                                                </div>
-
-                                                <For each={categorized.Languages}>
-                                                    {(file, index) => (
-                                                        <DDLFileItem
-                                                            file={file}
-
-                                                        />
-                                                    )}
-                                                </For>
+                                                <div class="w-full flex justify-end px-4 py-2"><button onClick={deselectOptionalFiles} class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"><X class="w-3 h-3" /><span>Deselect All Languages & Extras</span></button></div>
                                             </Show>
 
-                                            {/* Other Files */}
-                                            <Show when={categorized.Others.length > 0}>
-                                                <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
-                                                    <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" />
-                                                    Optional Content - Only download if needed
-                                                </div>
-                                                <For each={categorized.Others}>
-                                                    {(file, index) => (
-                                                        <DDLFileItem
-                                                            file={file}
+                                            <For each={categorized.Main}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For>
 
-                                                        />
-                                                    )}
-                                                </For>
-                                            </Show>
+                                            <Show when={categorized.Languages.length > 0}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><Languages class="w-4 h-4 inline mr-1 text-accent" /> Language Files - Select languages you need</div><For each={categorized.Languages}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For></Show>
 
-                                            {/* Advanced options toggle - Only show if there are parts */}
+                                            <Show when={categorized.Others.length > 0}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Optional Content - Only download if needed</div><For each={categorized.Others}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For></Show>
+
                                             <Show when={categorized.Parts.length > 0}>
-                                                <div class="px-4 py-2">
-                                                    <button
-                                                        onClick={() => setShowAdvanced(!showAdvanced())}
-                                                        class="text-xs text-accent hover:underline flex items-center gap-1"
-                                                    >
-                                                        <Show when={showAdvanced()} fallback={
-                                                            <>
-                                                                <ChevronRight class="w-3 h-3" />
-                                                                Show file parts
-                                                            </>
-                                                        }>
-                                                            <>
-                                                                <ChevronDown class="w-3 h-3" />
-                                                                Hide file parts
-                                                            </>
-                                                        </Show>
-                                                    </button>
-                                                </div>
-
-                                                {/* Advanced files */}
-                                                <Show when={showAdvanced()}>
-                                                    <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
-                                                        <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" />
-                                                        Warning: Only modify these if you know what you're doing
-                                                    </div>
-                                                    <For each={categorized.Parts}>
-                                                        {(file, index) => (
-                                                            <DDLFileItem
-                                                                file={file}
-
-                                                            />
-                                                        )}
-                                                    </For>
-                                                </Show>
+                                                <div class="px-4 py-2"><button onClick={() => setShowDdlAdvanced(!showDdlAdvanced())} class="text-xs text-accent hover:underline flex items-center gap-1"><Show when={showDdlAdvanced()} fallback={<><ChevronRight class="w-3 h-3" /> Show file parts</>}><><ChevronDown class="w-3 h-3" /> Hide file parts</></Show></button></div>
+                                                <Show when={showDdlAdvanced()}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing</div><For each={categorized.Parts}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For></Show>
                                             </Show>
+
                                         </div>
                                     </Show>
                                 </Show>
@@ -761,9 +394,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading}>
                 <div class="space-y-6">
                     <Show when={error()}>
-                        <div class="bg-red-500/10 text-red-500 rounded-lg p-3 text-sm">
-                            {error()}
-                        </div>
+                        <div class="bg-red-500/10 text-red-500 rounded-lg p-3 text-sm">{error()}</div>
                     </Show>
 
                     {props.downloadType === "bittorrent" ? renderTorrentUI() : renderDDLUI()}

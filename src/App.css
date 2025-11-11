@@ -12,21 +12,36 @@ body::-webkit-scrollbar {
 }
 
 
-.notification-wrapper {
-  position: fixed;
-  /* Makes sure it stays in a specific spot */
-  top: 16px;
-  /* Adjust the position to your preference */
-  right: 16px;
-  /* Aligns it to the right corner */
-  max-width: 450px;
-  /* Keeps it from stretching too wide */
-  z-index: 1000;
-  /* Ensures it's on top of other components */
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* Adds space between multiple notifications */
+.sn-theme-dark {
+  --sn-toast-bg-color: rgba(15, 10, 20, 0.75);
+  --sn-toast-text-color: var(--color-text);
+
+  --sn-toast-border-radius: 10px;
+  --sn-toast-box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(200, 170, 215, 0.12);
+
+
+  --sn-toast-padding: 14px 18px;
+  --sn-toast-gap: 14px;
+  --sn-toast-font-size: 0.95rem;
+  --sn-wrapper-max-width: 380px;
+
+  --sn-progress-bar-height: 3px;
+  --sn-progress-bar-color: var(--color-accent);
+
+  --sn-icon-size: 1.15rem;
+  --sn-icon-fill: var(--color-accent);
+  --sn-icon-stroke: var(--color-text);
+
+  --sn-dismiss-btn-size: 1.3rem;
+  --sn-dismiss-btn-border-radius: 6px;
+  --sn-dismiss-btn-color: var(--color-muted);
+  --sn-dismiss-btn-hover-color: var(--color-text);
+}
+
+.sn-toast {
+  backdrop-filter: blur(10px) saturate(150%);
 }
 
 /* Scrollbar customization */

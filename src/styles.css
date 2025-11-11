@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "solid-notifications/index.css";
 
 @theme {
   --font-mulish-variable: "Mulish Variable", sans-serif;

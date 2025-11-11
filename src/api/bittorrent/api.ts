@@ -13,7 +13,6 @@ import {
 } from "../../bindings";
 import { exists, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
-import { TorrentItem } from "../../pages/Downloads-01/Downloads-Page";
 
 export type Gid = string;
 
@@ -105,6 +104,8 @@ export class TorrentApi {
           console.warn("Warning: Tried to save empty gameList");
         }
         await this.saveGameListToDisk();
+        const { downloadStore } = await import("../../stores/download");
+        await downloadStore.refresh();
 
         return { status: "ok", data: res.data };
       } else {
@@ -131,34 +132,6 @@ export class TorrentApi {
 
   async getTorrentListActive(): Promise<Result<Status[], Aria2Error>> {
     return await commands.aria2GetListActive();
-  }
-
-  async getActiveTorrents(): Promise<TorrentItem[]> {
-    try {
-      const res = await commands.aria2GetListActive();
-      if (res.status !== "ok") return [];
-
-      const gidStatusMap = new Map(res.data.map((s) => [s.gid, s]));
-      const torrentItems: TorrentItem[] = [];
-
-      for (const [gid, games] of this.gameList.entries()) {
-        if (gidStatusMap.has(gid)) {
-          for (const game of games) {
-            torrentItems.push({
-              type: "torrent",
-              gid,
-              game,
-              status: gidStatusMap.get(gid),
-            });
-          }
-        }
-      }
-
-      return torrentItems;
-    } catch (err) {
-      console.error("getActiveTorrents exception:", err);
-      return [];
-    }
   }
 
   async getTorrentListWaiting(): Promise<Result<Status[], Aria2Error>> {

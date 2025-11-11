@@ -48,11 +48,11 @@ async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Opt
     let mut attempts = 0;
 
     while attempts < count {
-        if let Some(excluded) = exclude
-            && port == excluded
-        {
-            port = port.wrapping_add(1);
-            continue;
+        if let Some(excluded) = exclude {
+            if port == excluded {
+                port = port.wrapping_add(1);
+                continue;
+            }
         }
 
         if is_port_available(port) {
@@ -222,8 +222,8 @@ pub async fn aria2_client_from_config(
                 bt_port,
             ))
             .current_dir(download_location)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn()
             .context("Failed to start aria2c")?;
 
@@ -283,10 +283,10 @@ impl TorrentSession {
         let v2_path = &*config_dir.join("config.json");
         let legacy_path = &*config_dir.join("torrentConfig").join("config.json");
 
-        if !Path::new(&legacy_path).exists()
-            && let Err(e) = write_cfg(v2_path, &FitLauncherConfigV2::default())
-        {
-            error!("Error writing default config: {}", e);
+        if !Path::new(&legacy_path).exists() {
+            if let Err(e) = write_cfg(v2_path, &FitLauncherConfigV2::default()) {
+                error!("Error writing default config: {}", e);
+            }
         }
 
         let final_config = load_or_migrate(legacy_path, v2_path);
@@ -354,10 +354,10 @@ impl TorrentSession {
 
         {
             let g = self.shared.read();
-            if let Some(shared) = g.as_ref()
-                && let Some(client) = &shared.aria2_client
-            {
-                return Ok(client.clone());
+            if let Some(shared) = g.as_ref() {
+                if let Some(client) = &shared.aria2_client {
+                    return Ok(client.clone());
+                }
             }
         }
 
@@ -365,10 +365,10 @@ impl TorrentSession {
         self.init_client().await?;
 
         let g = self.shared.read();
-        if let Some(shared) = g.as_ref()
-            && let Some(client) = &shared.aria2_client
-        {
-            return Ok(client.clone());
+        if let Some(shared) = g.as_ref() {
+            if let Some(client) = &shared.aria2_client {
+                return Ok(client.clone());
+            }
         }
 
         Err(anyhow::anyhow!("Failed to initialize aria2 client"))

@@ -7,6 +7,7 @@ import { commands } from '../../../../bindings';
 import { CircleArrowLeft, CircleArrowRight, Star, Info, Languages, HardDrive, Tags, Factory, ChevronLeft, ChevronRight } from 'lucide-solid';
 import Button from '../../../../components/UI/Button/Button';
 import { LibraryApi } from '../../../../api/library/api';
+import { useToast } from 'solid-notifications';
 
 const defaultPath: string = await commands.getNewlyAddedGamesPath();
 const library = new LibraryApi();
@@ -30,7 +31,7 @@ function HorizontalImagesCarousel({
     const [gameLanguages, setLanguage] = createSignal('N/A');
     const [originalSize, setOriginalSize] = createSignal('N/A');
     const [repackSize, setRepackSize] = createSignal('N/A');
-
+    const { notify } = useToast();
     async function checkIfInDownloadLater(title: string) {
         try {
             const list = await library.getGamesToDownload();
@@ -102,8 +103,14 @@ function HorizontalImagesCarousel({
         if (!gameData) return;
         if (checked) {
             await library.addGameToCollection("games_to_download", library.discoveryGameToGame(gameData));
+            notify(`${gameData.game_title} has been addded to favorites`, {
+                type: "success",
+            })
         } else {
             await library.removeGameToDownload(gameData.game_title);
+            notify(`${gameData.game_title} has been removed from favorites`, {
+                type: "success",
+            })
         }
 
     }

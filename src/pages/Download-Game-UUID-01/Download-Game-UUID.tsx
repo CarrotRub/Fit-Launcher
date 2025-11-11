@@ -11,6 +11,7 @@ import Button from "../../components/UI/Button/Button";
 import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { GameDetails, GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
+import { useToast } from "solid-notifications";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -33,6 +34,7 @@ const DownloadGameUUIDPage = () => {
     repackSize: "N/A"
   });
 
+  const { notify } = useToast();
   const navigate = useNavigate();
   const params = useParams();
 
@@ -175,12 +177,19 @@ const DownloadGameUUIDPage = () => {
       if (isToDownloadLater()) {
         await library.removeGameToDownload(game.title);
         setToDownloadLater(false);
+        notify(`${game.title} has been removed from favorites`, {
+          type: "success",
+        })
       } else {
         await library.addGameToCollection("games_to_download", library.downloadedGameToGame(game));
         setToDownloadLater(true);
+        notify(`${game.title} has been added to favorites`, {
+          type: "success",
+        });
       }
     } catch (err) {
       console.error("Error toggling download later", err);
+      notify("Error adding to favorites", { type: "error" });
     }
   }
 

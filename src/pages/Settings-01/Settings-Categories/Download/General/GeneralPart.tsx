@@ -6,6 +6,7 @@ import LabelTextInputSettings from "../../Components/UI/LabelTextInput/LabelText
 import { General } from "../../../../../bindings";
 import LabelPathInputSettings from "../../Components/UI/LabelPathInput/LabelPathInput";
 import LabelNumericalInput from "../../Components/UI/LabelNumericalInput/LabelNumericalInput";
+import LabelDropdownSettings from "../../Components/UI/LabelDropdown/LabelDropdown";
 
 export default function GeneralSettingsPart({
     settings,
@@ -35,6 +36,7 @@ export default function GeneralSettingsPart({
                 value={settings().concurrent_downloads || 5}
                 onInput={(value) => handleTextCheckChange?.("general.concurrent_downloads", value)}
             />
+
         </PageGroup>
 
     );

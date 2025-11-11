@@ -1,6 +1,6 @@
 {
   "name": "fit-launcher",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "",
   "type": "module",
   "scripts": {
@@ -32,6 +32,7 @@
     "chart.js": "4.4.4",
     "lucide-solid": "^0.515.0",
     "solid-js": "^1.7.8",
+    "solid-notifications": "^1.2.0",
     "sweetalert2": "^11.12.4",
     "xml2js": "^0.6.2"
   },
