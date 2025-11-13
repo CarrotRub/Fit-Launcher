@@ -78,34 +78,28 @@ pub fn fetch_game_info(article: ElementRef<'_>) -> Game {
     }
 }
 
-pub async fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
+pub fn find_preview_image(article: scraper::element_ref::ElementRef<'_>) -> Option<String> {
     for i in 3..10 {
         let selector = match scraper::Selector::parse(&format!(
             ".entry-content > p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
         )) {
-            Ok(sel) => sel,
+            Ok(s) => s,
             Err(_) => continue,
         };
-
-        let Some(src) = article
-            .select(&selector)
-            .next()
-            .and_then(|element| element.value().attr("src"))
-        else {
-            continue;
-        };
-
-        let final_url = if src.contains("240p") {
-            let hi_res = src.replace("240p", "1080p");
-            if check_url_status(&hi_res).await {
-                hi_res
-            } else {
-                src.replace("jpg.1080p.", "")
+        if let Some(img_el) = article.select(&selector).next() {
+            if let Some(src) = img_el.value().attr("src") {
+                return Some(src.to_string());
             }
-        } else {
-            src.to_string()
-        };
-        return Some(final_url);
+        }
+    }
+
+    if let Some(img_el) = article
+        .select(&scraper::Selector::parse(".entry-content img").unwrap())
+        .next()
+    {
+        if let Some(src) = img_el.value().attr("src") {
+            return Some(src.to_string());
+        }
     }
 
     None

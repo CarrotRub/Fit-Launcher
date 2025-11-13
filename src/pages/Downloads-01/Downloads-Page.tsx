@@ -1,44 +1,29 @@
-import { Component, createMemo, createSignal, For, onCleanup, onMount } from "solid-js";
+import { Component, createMemo, createSignal, onMount } from "solid-js";
 import { CloudDownload, Filter, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, ArrowUp, Activity } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
-import { createStore, reconcile } from "solid-js/store";
-import { TorrentApi } from "../../api/bittorrent/api";
-import { DdlJobEntry, DownloadManagerApi } from "../../api/download/api";
-import { commands, Status, DownloadedGame } from "../../bindings";
+import { downloadStore } from "../../stores/download";
+
 import DownloadList from "./Downloads-List";
 import { formatSpeed } from "../../helpers/format";
 import { backgroundInstaller } from "../../services/background-installer.service";
-
-const torrentApi = new TorrentApi();
-
-export type DownloadItem =
-    | { type: "torrent"; game: DownloadedGame; status?: Status; gid: string }
-    | { type: "ddl"; job: DdlJobEntry; statuses: Status[]; jobId: string };
+import { GlobalDownloadManager } from "../../api/manager/api";
 
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
-    const [state, setState] = createStore({
-        items: [] as DownloadItem[],
-        refreshing: false,
-    });
-
-    const [expandedStates, setExpandedStates] = createSignal<Record<string, boolean>>({});
     const [activeFilter, setActiveFilter] = createSignal<"all" | "torrent" | "ddl" | "active">("all");
-
-    function getItemKey(item: DownloadItem) {
-        return item.type === "torrent" ? `torrent:${item.gid}` : `ddl:${item.jobId}`;
-    }
+    const items = () => downloadStore.jobs;
 
     const filteredItems = createMemo(() => {
-        return state.items.filter((item) => {
-            const f = activeFilter();
+        const f = activeFilter();
+        return items().filter((job) => {
             if (f === "all") return true;
-            if (f === "torrent") return item.type === "torrent";
-            if (f === "ddl") return item.type === "ddl";
+            if (f === "torrent") return job.source === "torrent";
+            if (f === "ddl") return job.source === "ddl";
             if (f === "active") {
-                if (item.type === "torrent") return item.status?.status === "active";
-                return item.statuses.some((s) => s.status === "active");
+                if (job.state === "downloading" || job.state === "uploading") return true;
+                const statuses = (job as any).statuses || (job as any).status ? (job as any).statuses || [(job as any).status] : [];
+                return statuses.some((s: any) => s?.status === "active");
             }
             return true;
         });
@@ -50,94 +35,36 @@ const DownloadPage: Component = () => {
         let activeCount = 0;
         let torrentCount = 0;
         let ddlCount = 0;
-
-        for (const item of state.items) {
-            if (item.type === "torrent" && item.status) {
-                totalDownloadSpeed += Number(item.status.downloadSpeed ?? 0);
-                totalUploadSpeed += Number(item.status.uploadSpeed ?? 0);
-                if (item.status.status === "active") activeCount++;
-                torrentCount++;
-            } else if (item.type === "ddl") {
-                for (const s of item.statuses) {
-                    totalDownloadSpeed += Number(s.downloadSpeed ?? 0);
-                    totalUploadSpeed += Number(s.uploadSpeed ?? 0);
-                    if (s.status === "active") activeCount++;
-                }
-                ddlCount++;
+        for (const job of items()) {
+            const statuses = (job as any).statuses || (job as any).status ? (job as any).statuses || [(job as any).status] : [];
+            for (const s of statuses) {
+                totalDownloadSpeed += Number(s?.downloadSpeed ?? 0);
+                totalUploadSpeed += Number(s?.uploadSpeed ?? 0);
+                if (s?.status === "active") activeCount++;
             }
+            if (job.source === "torrent") torrentCount++;
+            else ddlCount++;
         }
-
         return { totalDownloadSpeed, totalUploadSpeed, activeCount, torrentCount, ddlCount };
     });
 
     async function refreshDownloads() {
-        setState("refreshing", true);
-        await Promise.all([torrentApi.loadGameListFromDisk(), DownloadManagerApi.loadJobMapFromDisk()]);
-
-        const [activeRes, waitingRes] = await Promise.all([
-            torrentApi.getTorrentListActive(),
-            torrentApi.getTorrentListWaiting(),
-        ]);
-
-        const torrentStatusMap = new Map<string, Status>();
-        if (activeRes.status === "ok") activeRes.data.forEach((s) => torrentStatusMap.set(s.gid, s));
-        if (waitingRes.status === "ok") waitingRes.data.forEach((s) => torrentStatusMap.set(s.gid, s));
-
-        const ddlJobs = DownloadManagerApi.getAllJobs();
-        const ddlStatusPromises = Array.from(ddlJobs).map(async ([jobId, job]) => {
-            const statusPromises = job.gids.map((gid) => commands.aria2GetStatus(gid));
-            const results = await Promise.all(statusPromises);
-            return { jobId, statuses: results.filter((r) => r.status === "ok").map((r) => r.data) };
-        });
-
-        const ddlStatusResults = await Promise.all(ddlStatusPromises);
-        const ddlStatuses = new Map<string, Status[]>();
-        ddlStatusResults.forEach((r) => ddlStatuses.set(r.jobId, r.statuses));
-
-        const newItems: DownloadItem[] = [];
-
-        for (const [gid, games] of torrentApi.gameList.entries()) {
-            const status = torrentStatusMap.get(gid);
-            for (const game of games) newItems.push({ type: "torrent", game, status, gid });
-        }
-
-        for (const [jobId, job] of ddlJobs) {
-            newItems.push({ type: "ddl", job, statuses: ddlStatuses.get(jobId) || [], jobId });
-        }
-
-        const reconciled = newItems.map((item) => ({ ...item, reconcileKey: getItemKey(item) as any }));
-        setState("items", reconcile(reconciled, { key: "reconcileKey" }));
-        setState("refreshing", false);
+        if (downloadStore.refresh) await downloadStore.refresh();
+        else await GlobalDownloadManager.load();
     }
 
     async function deleteAllDownloads() {
-        try {
-            await torrentApi.removeAllTorrents({ force: true });
-        } catch (e) {
-            console.error("removeAllTorrents", e);
+        const jobs = items().slice();
+        for (const job of jobs) {
+            await GlobalDownloadManager.remove(job.id);
         }
-        const ddlJobs = DownloadManagerApi.getAllJobs();
-        for (const [jobId] of ddlJobs) {
-            try {
-                await DownloadManagerApi.removeJob(jobId);
-            } catch (e) {
-                console.error("remove job", jobId, e);
-            }
-        }
-        setState("items", reconcile([]));
         await refreshDownloads();
     }
 
     onMount(() => {
         backgroundInstaller.start();
+        GlobalDownloadManager.load();
         return () => backgroundInstaller.stop();
-    });
-
-    onMount(async () => {
-        await Promise.all([torrentApi.loadGameListFromDisk(), DownloadManagerApi.loadJobMapFromDisk(), torrentApi.loadUninstalledFromDisk()]);
-        await refreshDownloads();
-        const id = setInterval(refreshDownloads, 2000);
-        onCleanup(() => clearInterval(id));
     });
 
     return (
@@ -234,11 +161,11 @@ const DownloadPage: Component = () => {
             <div class="max-w-[1800px] mx-auto">
                 <DownloadList
                     items={filteredItems()}
-                    expandedStates={expandedStates}
-                    onToggleExpand={(id) => setExpandedStates((s) => ({ ...s, [id]: !s[id] }))}
+                    expandedStates={() => ({})}
+                    onToggleExpand={() => { }}
                     refreshDownloads={refreshDownloads}
                 />
-                {state.items.length === 0 && (
+                {items().length === 0 && (
                     <div class="flex flex-col items-center justify-center py-24 text-center bg-popup/30 backdrop-blur-sm rounded-3xl border-2 border-dashed border-accent/30 hover:border-accent/50 transition-all hover:shadow-lg hover:shadow-accent/10">
                         <div class="relative mb-8">
                             <div class="absolute inset-0 bg-accent/10 rounded-full animate-ping opacity-20"></div>

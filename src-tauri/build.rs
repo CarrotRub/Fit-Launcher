@@ -53,7 +53,7 @@ pub fn kill_existing_aria2c() -> Result<(), String> {
 
 fn main() {
     let _ = kill_existing_aria2c();
-    let tauri_options = tauri_helper::TauriHelperOptions::new(true);
+    let tauri_options = tauri_helper::TauriHelperOptions::new(true, None);
     tauri_helper::generate_command_file(tauri_options);
     let win_attr = if tauri_build::is_dev() {
         WindowsAttributes::new()

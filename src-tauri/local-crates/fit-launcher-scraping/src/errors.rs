@@ -58,6 +58,9 @@ pub enum ScrapingError {
     UrlParseError(String),
 }
 
+unsafe impl Send for ScrapingError {}
+unsafe impl Sync for ScrapingError {}
+
 impl From<reqwest::Error> for ScrapingError {
     fn from(error: reqwest::Error) -> Self {
         ScrapingError::ReqwestError(error.to_string())

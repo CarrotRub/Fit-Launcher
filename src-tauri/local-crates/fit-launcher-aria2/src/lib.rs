@@ -1,4 +1,4 @@
-pub(crate) mod aria2;
+pub mod aria2;
 mod commands;
 mod error;
 mod structs;

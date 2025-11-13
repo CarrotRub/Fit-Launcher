@@ -178,8 +178,8 @@ pub async fn aria2_get_list_waiting(
         .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    let active = aria2_client.tell_waiting(0, 100).await?;
-    Ok(active)
+    let waiting = aria2_client.tell_waiting(0, 100).await?;
+    Ok(waiting)
 }
 
 #[tauri::command]
@@ -192,8 +192,31 @@ pub async fn aria2_get_list_stopped(
         .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    let active = aria2_client.tell_stopped(0, 100).await?;
-    Ok(active)
+    let stopped = aria2_client.tell_stopped(0, 100).await?;
+    Ok(stopped)
+}
+
+#[tauri::command]
+#[specta]
+pub async fn aria2_get_all_list(
+    state: tauri::State<'_, TorrentSession>,
+) -> Result<Vec<Status>, Aria2Error> {
+    let aria2_client = state
+        .aria2_client()
+        .await
+        .map_err(|_| Aria2Error::NotConfigured)?;
+
+    let mut active = aria2_client.tell_active().await?;
+    let mut waiting = aria2_client.tell_waiting(0, 100).await?;
+    let mut stopped = aria2_client.tell_stopped(0, 100).await?;
+
+    let mut list: Vec<Status> = Vec::new();
+
+    list.append(&mut active);
+    list.append(&mut waiting);
+    list.append(&mut stopped);
+
+    Ok(list)
 }
 
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.getVersion

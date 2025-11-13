@@ -1,62 +1,119 @@
+use std::error::Error;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use scraper::Html;
 use specta::specta;
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 use tracing::{error, info};
 
 use anyhow::Result;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
-
+use futures::future::join_all;
+use regex::Regex;
+use reqwest::Client;
+use thiserror::Error;
+use tokio::{fs, task};
+use tokio::sync::AcquireError;
 use crate::errors::ScrapingError;
 use crate::global::functions::download_sitemap;
 use crate::global::functions::helper::fetch_game_info;
 use crate::singular_game_path;
 use crate::structs::Game;
 
-#[tokio::main]
-pub async fn get_sitemaps_website(
-    app_handle: tauri::AppHandle,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut all_files_exist = true;
 
-    let mut binding = app_handle.path().app_data_dir().unwrap();
+const BASE_URL: &str = "https://fitgirl-repacks.site/sitemap_index.xml";
+const MAX_CONCURRENT: usize = 4;
 
-    binding.push("sitemaps");
 
-    match Path::new(&binding).exists() {
-        true => (),
-        false => {
-            tokio::fs::create_dir_all(&binding).await?;
-        }
+pub async fn get_sitemaps_website(app_handle: AppHandle) -> Result<(), SitemapError> {
+    let client = Client::new();
+    let sitemap_index = client.get(BASE_URL).send().await?.text().await?;
+
+    let re = Regex::new(r"https://fitgirl-repacks\.site/post-sitemap(?:\d*)\.xml")?;
+    let mut urls: Vec<String> = re
+        .find_iter(&sitemap_index)
+        .map(|m| m.as_str().to_string())
+        .collect();
+
+    urls.sort();
+    urls.dedup();
+
+    if urls.is_empty() {
+        tracing::warn!("No post-sitemap entries found in sitemap_index.xml");
+        return Ok(());
     }
 
-    // Check for the first 5 files
-    for page_number in 1..=7 {
-        let relative_filename = format!("post-sitemap{page_number}.xml");
-        let concrete_path = &binding.join(relative_filename);
-        if !Path::new(concrete_path).try_exists().unwrap() {
-            all_files_exist = false;
-            break;
-        }
+    let sitemaps_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("Failed to get app data dir")
+        .join("sitemaps");
+
+    fs::create_dir_all(&sitemaps_dir).await?;
+
+    let check_tasks = urls.iter().map(|url| {
+        let filename = extract_filename(url);
+        let path = sitemaps_dir.join(&filename);
+        task::spawn(async move { fs::try_exists(&path).await.unwrap_or(false) })
+    });
+    let existing = join_all(check_tasks).await;
+
+    let to_download: Vec<_> = urls
+        .into_iter()
+        .zip(existing)
+        .filter_map(|(url, exists)| match exists {
+            Ok(true) => None,
+            _ => Some(url),
+        })
+        .collect();
+
+    if to_download.is_empty() {
+        tracing::info!("All sitemap files already up to date");
+        return Ok(());
     }
 
-    // If all first 5 files exist, only download the 5th file
-    let range = if all_files_exist { 8..=8 } else { 1..=8 };
+    tracing::info!("Downloading {} missing sitemaps", to_download.len());
 
-    // Download files as needed
-    for page_number in range {
-        let relative_url = format!("https://fitgirl-repacks.site/post-sitemap{page_number}.xml");
-        let relative_filename = format!("post-sitemap{page_number}");
+    let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT));
+    let mut tasks = Vec::new();
 
-        let my_app_handle = app_handle.clone();
-        download_sitemap(my_app_handle, &relative_url, &relative_filename).await?;
+    for url in to_download {
+        let filename = extract_filename(&url);
+        let dest_path = sitemaps_dir.join(&filename);
+        let handle = app_handle.clone();
+        let client = client.clone();
+        let permit = sem.clone().acquire_owned().await?;
+
+        tasks.push(task::spawn(async move {
+            let _permit = permit;
+            match download_sitemap_file(&client, &url, &dest_path).await {
+                Ok(_) => tracing::info!("Downloaded {filename}"),
+                Err(e) => tracing::error!("Failed {filename}: {e}"),
+            }
+        }));
     }
 
+    join_all(tasks).await;
     Ok(())
 }
 
+fn extract_filename(url: &str) -> String {
+    url.split('/')
+        .last()
+        .unwrap_or("unknown.xml")
+        .to_string()
+}
+
+async fn download_sitemap_file(
+    client: &reqwest::Client,
+    url: &str,
+    dest_path: &PathBuf,
+) -> Result<(), Box<dyn Error>> {
+    let data = client.get(url).send().await?.bytes().await?;
+    fs::write(dest_path, &data).await?;
+    Ok(())
+}
 #[tauri::command]
 #[specta]
 pub fn hash_url(url: &str) -> String {
@@ -164,4 +221,23 @@ pub async fn get_singular_game_info(
     );
 
     Ok(())
+}
+
+
+#[derive(Debug, Error)]
+pub enum SitemapError {
+    #[error("Network error: {0}")]
+    Network(#[from] reqwest::Error),
+
+    #[error("Regex error: {0}")]
+    Regex(#[from] regex::Error),
+
+    #[error("Filesystem error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("App data directory missing")]
+    AppDataDirMissing,
+
+    #[error("Semaphore error: {0}")]
+    SemaphorePermit(#[from] AcquireError),
 }

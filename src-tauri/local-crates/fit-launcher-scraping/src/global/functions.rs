@@ -1,16 +1,15 @@
-use anyhow::Result;
+
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use futures::{StreamExt, stream::FuturesOrdered};
+use futures::{StreamExt, stream, stream::FuturesOrdered};
 use reqwest::Response;
 use std::{
-    sync::Arc,
+
     time::{Duration, Instant},
 };
-use tauri::{Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::{
     fs,
     io::{AsyncWriteExt, BufWriter},
-    task::LocalSet,
     time::timeout,
 };
 use tracing::{error, info, warn};
@@ -24,19 +23,17 @@ use crate::{
     structs::Game,
 };
 
-pub async fn download_sitemap(
-    app_handle: tauri::AppHandle,
-    url: &str,
-    filename: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+/// Download a sitemap file with DNS client and write it to app data.
+pub async fn download_sitemap(app_handle: AppHandle, url: &str, filename: &str) -> anyhow::Result<()> {
     let mut response = CUSTOM_DNS_CLIENT.read().await.get(url).send().await?;
 
     let mut binding = app_handle.path().app_data_dir().unwrap();
     binding.push("sitemaps");
+    fs::create_dir_all(&binding).await?;
 
     let file_path = binding.join(format!("{filename}.xml"));
-
     let mut file = tokio::fs::File::create(&file_path).await?;
+
     while let Some(chunk) = response.chunk().await? {
         file.write_all(&chunk).await?;
     }
@@ -46,22 +43,24 @@ pub async fn download_sitemap(
 
 fn likely_guarded(resp: &Response) -> bool {
     resp.status().as_u16() == 403
-        && match resp.headers().get("server").map(|header| header.to_str()) {
-            Some(Ok(server_name)) if server_name.to_lowercase().contains("ddos-guard") => true,
-            _ => false,
-        }
+        && resp
+            .headers()
+            .get("server")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_lowercase().contains("ddos-guard"))
+            .unwrap_or(false)
 }
 
 async fn get_response(client: &reqwest::Client, url: &str) -> Result<Response, ScrapingError> {
     let fetch = client.get(url).send();
-
     timeout(Duration::from_secs(60), fetch)
         .await
         .map_err(|_| ScrapingError::TimeoutError(url.into()))?
         .map_err(|e| ScrapingError::ReqwestError(e.to_string()))
 }
 
-pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<String, ScrapingError> {
+/// Fetch a page with DDOS-Guard bypass if needed.
+pub(crate) async fn fetch_page(url: &str, app: &AppHandle) -> Result<String, ScrapingError> {
     let client = CUSTOM_DNS_CLIENT.read().await.clone();
     loop {
         let resp = get_response(&client, url).await?;
@@ -71,10 +70,8 @@ pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<Stri
             warn!("cookies: {cookies:?}, status: {}", resp.status().as_u16());
 
             match handle_ddos_guard_captcha(app, url).await {
-                Ok(_) => {
-                    continue;
-                }
-                Err(e) => error!("scrape error: {e}"),
+                Ok(_) => continue,
+                Err(e) => error!("captcha handler error: {e}"),
             }
         }
 
@@ -91,8 +88,9 @@ pub(crate) async fn fetch_page(url: &str, app: &tauri::AppHandle) -> Result<Stri
     }
 }
 
+/// Write list of games into a JSON file (atomic write).
 async fn write_games_to_file(
-    app: &tauri::AppHandle,
+    app: &AppHandle,
     games: &[Game],
     file: &str,
 ) -> Result<(), ScrapingError> {
@@ -134,12 +132,10 @@ async fn write_games_to_file(
     })
 }
 
-async fn scrape_new_games_page(
-    page: u32,
-    app: &tauri::AppHandle,
-) -> Result<Vec<Game>, ScrapingError> {
-    let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{page}",);
-    let body = fetch_page(&url, app).await?;
+/// Scrape a new games page.
+async fn scrape_new_games_page(page: u32, app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
+    let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{page}");
+    let body = fetch_page(&url, &app).await?;
     let document = scraper::Html::parse_document(&body);
     let article_selector = scraper::Selector::parse("article")
         .map_err(|e| ScrapingError::SelectorError(e.to_string()))?;
@@ -147,28 +143,29 @@ async fn scrape_new_games_page(
     let mut games = Vec::new();
     for article in document.select(&article_selector) {
         let game = fetch_game_info(article);
-
-        match game {
-            _ if game.title.is_empty() => continue,
-            _ if game.desc.is_empty() => continue,
-            _ if game.img.is_empty() => continue,
-            _ if game.href.is_empty() => continue,
-            // _ if !game.img.contains("imageban") => continue,
-            _ => (),
+        if game.title.is_empty()
+            || game.desc.is_empty()
+            || game.img.is_empty()
+            || game.href.is_empty()
+        {
+            continue;
         }
         games.push(game);
     }
     Ok(games)
 }
 
-pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<ScrapingError>> {
+/// Scrape newly added games.
+pub async fn scraping_func(app_handle: AppHandle) -> Result<(), ScrapingError> {
     let start = Instant::now();
-    let pages = FuturesOrdered::from_iter(
-        (1..=2).map(async |page| scrape_new_games_page(page, &app_handle).await),
-    );
 
-    let results: Vec<_> = pages.collect().await;
+    let futures = (1..=2).map(|page| {
+        let ah = app_handle.clone();
+        async move { scrape_new_games_page(page, ah).await }
+    });
+
     let mut games = Vec::new();
+    let results: Vec<_> = FuturesOrdered::from_iter(futures).collect().await;
 
     for result in results {
         match result {
@@ -208,7 +205,8 @@ pub async fn scraping_func(app_handle: tauri::AppHandle) -> Result<(), Box<Scrap
     Ok(())
 }
 
-async fn scrape_popular_game(link: &str, app: &tauri::AppHandle) -> Result<Game, ScrapingError> {
+/// Scrape one popular game.
+async fn scrape_popular_game(link: &str, app: &AppHandle) -> Result<Game, ScrapingError> {
     let body = fetch_page(link, app).await?;
     let doc = scraper::Html::parse_document(&body);
     let article = doc
@@ -216,39 +214,36 @@ async fn scrape_popular_game(link: &str, app: &tauri::AppHandle) -> Result<Game,
         .next()
         .ok_or(ScrapingError::ArticleNotFound(link.into()))?;
 
-    let game = fetch_game_info(article);
-    Ok(Game {
-        img: find_preview_image(article).await.unwrap_or_default(),
-        ..game
-    })
+    let mut game = fetch_game_info(article);
+    game.img = find_preview_image(article).unwrap_or_default();
+    Ok(game)
 }
 
-pub async fn popular_games_scraping_func(
-    app_handle: tauri::AppHandle,
-) -> Result<(), Box<ScrapingError>> {
+pub async fn popular_games_scraping_func(app_handle: AppHandle) -> Result<(), ScrapingError> {
     let start = Instant::now();
     let body = fetch_page("https://fitgirl-repacks.site/popular-repacks/", &app_handle).await?;
     let doc = scraper::Html::parse_document(&body);
 
-    let links = doc
+    let links: Vec<String> = doc
         .select(&scraper::Selector::parse(".widget-grid-view-image > a").unwrap())
         .filter_map(|e| e.value().attr("href"))
         .take(8)
         .map(str::to_owned)
-        .collect::<Vec<_>>();
+        .collect();
 
-    let games = FuturesOrdered::from_iter(
-        links
-            .iter()
-            .map(|link| scrape_popular_game(link, &app_handle)),
-    )
-    .collect::<Vec<_>>()
-    .await;
+    let stream = futures::stream::iter(links.into_iter().map(|link| {
+        let ah = app_handle.clone();
+        async move {
+            scrape_popular_game(&link, &ah).await
+        }
+    }))
+        .buffer_unordered(3);
 
     let mut valid_games = Vec::new();
-    for game in games {
-        match game {
-            Ok(g) => valid_games.push(g),
+    futures::pin_mut!(stream);
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok(game) => valid_games.push(game),
             Err(e) => error!("Popular game scrape failed: {:?}", e),
         }
     }
@@ -258,8 +253,9 @@ pub async fn popular_games_scraping_func(
     Ok(())
 }
 
-async fn scrape_recent_update(link: &str, app: &tauri::AppHandle) -> Result<Game, ScrapingError> {
-    let body = fetch_page(link, app).await?;
+/// Scrape one recently updated game.
+async fn scrape_recent_update(link: &str, app: AppHandle) -> Result<Game, ScrapingError> {
+    let body = fetch_page(link, &app).await?;
     let doc = scraper::Html::parse_document(&body);
     let article = doc
         .select(&scraper::Selector::parse("article").unwrap())
@@ -269,9 +265,10 @@ async fn scrape_recent_update(link: &str, app: &tauri::AppHandle) -> Result<Game
     Ok(fetch_game_info(article))
 }
 
+/// Scrape recently updated games.
 pub async fn recently_updated_games_scraping_func(
-    app_handle: tauri::AppHandle,
-) -> Result<(), Box<ScrapingError>> {
+    app_handle: AppHandle,
+) -> Result<(), ScrapingError> {
     let start = Instant::now();
     let body = fetch_page(
         "https://fitgirl-repacks.site/category/updates-digest/",
@@ -280,65 +277,49 @@ pub async fn recently_updated_games_scraping_func(
     .await?;
     let doc = scraper::Html::parse_document(&body);
 
-    let links = doc
+    let links: Vec<String> = doc
         .select(&scraper::Selector::parse(".su-spoiler-content > a:first-child").unwrap())
         .filter_map(|e| e.value().attr("href"))
         .take(20)
         .map(str::to_owned)
-        .collect::<Vec<_>>();
+        .collect();
 
-    let games = FuturesOrdered::from_iter(
-        links
-            .iter()
-            .map(|link| scrape_recent_update(link, &app_handle)),
-    )
-    .collect::<Vec<_>>()
-    .await;
+    let futures = links.into_iter().map(|link| {
+        let ah = app_handle.clone();
+        async move { scrape_recent_update(&link, ah).await }
+    });
 
-    let mut valid_games = Vec::new();
-    for game in games {
-        match game {
-            Ok(g) => valid_games.push(g),
-            Err(e) => {
-                app_handle
-                    .emit("scraping_failed", format!("Game scrape failed: {e}"))
-                    .unwrap();
-            }
-        }
-    }
+    let games: Vec<_> = FuturesOrdered::from_iter(futures).collect().await;
+    let valid_games: Vec<Game> = games.into_iter().filter_map(|r| r.ok()).collect();
 
     write_games_to_file(&app_handle, &valid_games, "recently_updated_games.json").await?;
     app_handle
         .emit("scraping_complete", "Recent updates scraped")
-        .unwrap();
+        .ok();
     info!("Recent updates scraped in {:?}", start.elapsed());
     Ok(())
 }
 
-pub async fn run_all_scrapers(app_handle: Arc<tauri::AppHandle>) -> anyhow::Result<()> {
+/// Run all scrapers concurrently, Send-safe.
+pub async fn run_all_scrapers(app_handle: AppHandle) -> anyhow::Result<()> {
     let start = Instant::now();
-    // We need LocalSet because scraper’s HTML nodes aren’t Send.
-    let local = LocalSet::new();
-    let app = app_handle.clone();
 
-    local
-        .run_until(async {
-            let a = tokio::task::spawn_local(scraping_func(app.as_ref().clone()));
-            let b = tokio::task::spawn_local(popular_games_scraping_func(app.as_ref().clone()));
-            let c = tokio::task::spawn_local(recently_updated_games_scraping_func(
-                app.as_ref().clone(),
-            ));
+    let local = tokio::task::LocalSet::new();
 
-            // if one fails we still await the others
-            let (ra, rb, rc) = tokio::join!(a, b, c);
-            ra??;
-            rb??;
-            rc??;
-            Ok::<_, anyhow::Error>(())
-        })
-        .await?;
+    let a = tokio::spawn(scraping_func(app_handle.clone()));
+    let c = tokio::spawn(recently_updated_games_scraping_func(app_handle.clone()));
 
-    info!("ALL scrapers done in {:?}", start.elapsed());
+    let b = local.run_until(async {
+        popular_games_scraping_func(app_handle.clone()).await
+    });
+
+    let (ra, rb, rc) = tokio::join!(a, b, c);
+
+    ra??;
+    rb?;
+    rc??;
+
+    info!("All scrapers done in {:?}", start.elapsed());
     Ok(())
 }
 

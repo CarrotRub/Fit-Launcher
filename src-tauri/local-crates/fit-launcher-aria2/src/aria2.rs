@@ -1,6 +1,10 @@
-use aria2_ws::{Client, Map, TaskOptions};
+use std::{sync::Arc, time::Duration};
+
+use aria2_ws::{Client, Map, TaskOptions, response::Status};
 use fit_launcher_torrent::FitLauncherConfigAria2;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
+use tauri::{AppHandle, Emitter};
 use tracing::error;
 
 use crate::error::Aria2Error;
@@ -63,6 +67,43 @@ pub async fn aria2_add_torrent(
         })
 }
 
+async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Aria2Error> {
+    let mut active = aria2_client.tell_active().await?;
+    let mut waiting = aria2_client.tell_waiting(0, 100).await?;
+    let mut stopped = aria2_client.tell_stopped(0, 100).await?;
+
+    let mut list: Vec<Status> = Vec::new();
+
+    list.append(&mut active);
+    list.append(&mut waiting);
+    list.append(&mut stopped);
+
+    Ok(list)
+}
+
+pub fn start_aria2_monitor(app: AppHandle, aria2_client: Arc<tokio::sync::Mutex<Client>>) {
+    tauri::async_runtime::spawn(async move {
+        let mut last_hash = String::new();
+        let client = aria2_client.lock().await;
+        loop {
+            let statuses_result = aria2_get_all_list(&client).await;
+
+            if let Ok(statuses) = statuses_result
+                && let Ok(serialized) = serde_json::to_string(&statuses)
+            {
+                let hash = format!("{:x}", Sha256::digest(serialized.as_bytes()));
+                if hash != last_hash {
+                    last_hash = hash;
+
+                    let _ = app.emit("aria2_status_update", statuses);
+                }
+            }
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    });
+}
+
 #[cfg(windows)]
 async fn file_allocation_method(
     dir: impl AsRef<str>,
@@ -82,7 +123,7 @@ async fn file_allocation_method(
             wmi::WMIConnection,
         };
 
-        static CACHE: LazyLock<SkipMap<String, MediaType>> = LazyLock::new(|| SkipMap::new());
+        static CACHE: LazyLock<SkipMap<String, MediaType>> = LazyLock::new(SkipMap::new);
 
         let media_type;
         if let Some(result) = CACHE.get(dir) {

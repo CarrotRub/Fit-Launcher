@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-aria2/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-config/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-ddl/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-library/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-scraping/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-torrent/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-torrent/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-ui-automation/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/src-tauri/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

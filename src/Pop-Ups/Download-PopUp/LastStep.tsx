@@ -7,17 +7,19 @@ import { DirectLink, DownloadedGame, FileInfo } from "../../bindings";
 import { Modal } from "../Modal/Modal";
 import { DownloadPopupProps } from "../../types/popup";
 import { DownloadSettingsApi } from "../../api/settings/api";
-import { TorrentApi } from "../../api/bittorrent/api";
+
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
 import { formatBytes, toTitleCaseExceptions } from "../../helpers/format";
 import LoadingPage from "../../pages/LoadingPage-01/LoadingPage";
-import { DownloadManagerApi } from "../../api/download/api";
+
 import { downloadStore } from "../../stores/download";
 import { DirectLinkWrapper } from "../../types/download";
 import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
+import { useToast } from "solid-notifications";
+import { GlobalDownloadManager } from "../../api/manager/api";
 
 const downloadSettingsInst = new DownloadSettingsApi();
-const torrentInst = new TorrentApi();
+
 
 const TorrentFileItem: Component<{ originalName: string; displayName: string; index: number; selected: Set<number>; onToggle: (i: number) => void; files: FileInfo[] }> = (props) => {
     const file = props.files.find((f) => f.file_name === props.originalName);
@@ -55,7 +57,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
     const LastStepPopup = () => {
         const [loading, setLoading] = createSignal(true);
         const [error, setError] = createSignal<string | null>(null);
-
+        const { notify } = useToast();
         // Torrent state
         const [listFiles, setListFiles] = createSignal<FileInfo[]>([]);
         const [selectedFileIndices, setSelectedFileIndices] = createSignal(new Set<number>());
@@ -96,7 +98,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 console.warn("Couldn't load download settings", settings.error);
             }
 
-            const resultFiles = await torrentInst.getTorrentFileList(props.downloadedGame.magnetlink);
+            const resultFiles = await GlobalDownloadManager.getTorrentFileList(props.downloadedGame.magnetlink);
             if (resultFiles.status === "ok") {
                 setListFiles(resultFiles.data);
                 const classified = classifyTorrentFiles(resultFiles.data);
@@ -113,7 +115,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
         async function initDDL() {
             try {
-                const links = await DownloadManagerApi.getDatahosterLinks(props.downloadedGame.href, "");
+                const links = await GlobalDownloadManager.getDatahosterLinks(props.downloadedGame.href, "");
                 if (!links || links.length === 0) {
                     setError("No download links found for this game");
                     return;
@@ -145,50 +147,43 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             setLoading(true);
             setError(null);
 
-            const currentSettings = await downloadSettingsInst.getDownloadSettings();
-            if (currentSettings.status !== "ok") {
-                await message('Error downloading! ' + currentSettings.error, { title: 'FitLauncher', kind: 'error' });
+            try {
+                const settings = await downloadSettingsInst.getDownloadSettings();
+                if (settings.status !== "ok") {
+                    throw new Error(String(settings.error));
+                }
+
+                const path = settings.data.general.download_dir;
+                const id = crypto.randomUUID(); // unique job ID
+                const game = props.downloadedGame;
+
+                if (props.downloadType === "bittorrent") {
+                    const selected = Array.from(selectedFileIndices());
+                    await GlobalDownloadManager.addTorrent(id, game.magnetlink, game, path, selected);
+                } else {
+                    const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
+                    if (!selectedLinks.length) throw new Error("No files selected");
+
+                    await GlobalDownloadManager.addDirectLinks(id, selectedLinks, game, path);
+                }
+
+                notify(`${game.title} download started`, { type: "success" });
+                props.onFinish?.();
+                destroy();
+
+            } catch (err: any) {
+                await message(`Failed: ${err.message ?? err}`, {
+                    title: "Error",
+                    kind: "error",
+                });
+                notify(`${props.downloadedGame.title} failed to start`, { type: "error" });
+                setError(err.message ?? "Failed");
+            } finally {
                 setLoading(false);
-                return;
             }
-
-            const path = currentSettings.data.general.download_dir;
-
-            if (props.downloadType === "bittorrent") {
-                const indices = Array.from(selectedFileIndices());
-                const res = await torrentInst.downloadTorrent(props.downloadedGame.magnetlink, props.downloadedGame, indices, path);
-                if (res.status === "ok") {
-                    // ensure UI updates
-                    try { await downloadStore.refresh(); } catch (e) { console.warn("refresh failed", e); }
-                } else {
-                    await message(`Failed to start torrent: ${res.error}`, { title: 'Torrent Error', kind: 'error' });
-                    setError("Failed to start torrent");
-                    setLoading(false);
-                    return;
-                }
-            } else {
-                const selected = directLinks().filter((l) => ddlSelectedUrls().has(l.url));
-                if (selected.length === 0) {
-                    await message('No files selected to download', { title: 'Download', kind: 'warning' });
-                    setLoading(false);
-                    return;
-                }
-
-                const result = await DownloadManagerApi.startDownload(selected, props.downloadedGame, path);
-                if (result.status === "ok") {
-                    try { await downloadStore.refresh(); } catch (e) { console.warn("refresh failed", e); }
-                } else {
-                    await message(`Failed to start download: ${result.error}`, { title: 'Download Error', kind: 'error' });
-                    setError("Failed to start download");
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            setLoading(false);
-            props.onFinish?.();
-            destroy();
         }
+
+
 
         async function loadHosterLinks(hoster: "fuckingfast" | "datanodes") {
             setLoading(true);
@@ -196,7 +191,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             setSelectedHoster(hoster);
 
             try {
-                const links = await DownloadManagerApi.getDatahosterLinks(props.downloadedGame.href, hoster);
+                const links = await GlobalDownloadManager.getDatahosterLinks(props.downloadedGame.href, hoster);
                 if (!links || links.length === 0) {
                     setError(`No ${toTitleCaseExceptions(hoster)} links found`);
                     setLoading(false);
@@ -204,7 +199,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 }
 
                 if (hoster === "fuckingfast") {
-                    const extracted = await DownloadManagerApi.extractFuckingfastDDL(links);
+                    const extracted = await GlobalDownloadManager.extractFuckingfastDDL(links);
                     if (!extracted || extracted.length === 0) {
                         setError("Failed to extract direct download links");
                         setLoading(false);
