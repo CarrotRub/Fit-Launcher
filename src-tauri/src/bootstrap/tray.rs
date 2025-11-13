@@ -22,7 +22,7 @@ pub fn setup_tray(app: &App) -> TauriResult<()> {
             "quit" => {
                 static PROCESSING: AtomicBool = AtomicBool::new(false);
 
-                info!("quit menu item clicked — attempting graceful aria2 shutdown");
+                info!("quit menu item clicked... attempting graceful aria2 shutdown...");
 
                 if PROCESSING.load(Ordering::Acquire) {
                     return;
@@ -46,10 +46,10 @@ pub fn setup_tray(app: &App) -> TauriResult<()> {
             }
             "hide_app" => {
                 info!("hide_app menu item clicked");
-                if let Some(win) = app.get_webview_window("main") {
-                    if win.is_visible().unwrap_or(false) {
-                        let _ = win.hide();
-                    }
+                if let Some(win) = app.get_webview_window("main")
+                    && win.is_visible().unwrap_or(false)
+                {
+                    let _ = win.hide();
                 }
             }
             _ => {

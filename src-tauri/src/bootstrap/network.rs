@@ -23,10 +23,8 @@ pub async fn perform_network_request(app_handle: AppHandle) {
             let app_handle_inner = app_handle_clone.clone();
 
             spawn(async move {
-                // keep same target URL as before
                 match reqwest::get("https://fitgirl-repacks.site").await {
                     Ok(resp) => {
-                        // we don't need the contents; just validate fetch worked
                         let _ = resp.text().await;
                         info!("perform_network_request: network request successful");
                     }

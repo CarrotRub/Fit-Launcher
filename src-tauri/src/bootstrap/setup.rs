@@ -26,15 +26,12 @@ use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
 
-
-
 pub async fn start_app() -> Result<(), Box<dyn Error>> {
     info!("start_app: starting");
 
     let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
         NonZeroUsize::new(30).unwrap(),
     )));
-
 
     let specta_builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
@@ -50,7 +47,6 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
             )
             .expect("Failed to export TS bindings");
     }
-
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -142,7 +138,6 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
                 });
             });
 
-
             spawn({
                 let app_clone = app_handle.clone();
                 async move {
@@ -151,7 +146,6 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
                     }
                 }
             });
-
 
             spawn({
                 let app_clone = app_handle.clone();
@@ -175,9 +169,6 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
         .manage(TorrentSession::new().await)
         .manage(LibrqbitSession::new().await);
 
-    //
-    // ------------------- RUN APP -----------------------
-    //
     let app = app.build(tauri::generate_context!())?;
     app.run(|app_handle, event| {
         if let tauri::RunEvent::ExitRequested { api, .. } = event {
