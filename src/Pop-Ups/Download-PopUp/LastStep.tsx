@@ -57,7 +57,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
     const LastStepPopup = () => {
         const [loading, setLoading] = createSignal(true);
         const [error, setError] = createSignal<string | null>(null);
-        const { notify } = useToast();
+
         // Torrent state
         const [listFiles, setListFiles] = createSignal<FileInfo[]>([]);
         const [selectedFileIndices, setSelectedFileIndices] = createSignal(new Set<number>());
@@ -167,7 +167,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     await GlobalDownloadManager.addDirectLinks(id, selectedLinks, game, path);
                 }
 
-                notify(`${game.title} download started`, { type: "success" });
                 props.onFinish?.();
                 destroy();
 
@@ -176,7 +175,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     title: "Error",
                     kind: "error",
                 });
-                notify(`${props.downloadedGame.title} failed to start`, { type: "error" });
                 setError(err.message ?? "Failed");
             } finally {
                 setLoading(false);

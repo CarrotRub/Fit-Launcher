@@ -13,7 +13,7 @@ body::-webkit-scrollbar {
 
 
 .sn-theme-dark {
-  --sn-toast-bg-color: rgba(15, 10, 20, 0.75);
+  --sn-toast-bg-color: var(--color-popup-background);
   --sn-toast-text-color: var(--color-text);
 
   --sn-toast-border-radius: 10px;
