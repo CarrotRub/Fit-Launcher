@@ -17,7 +17,7 @@ import NetworkPart from "./Network/NetworkPart";
 import BittorrentPart from "./Bittorrent/BittorrentPart";
 import AriaPart from "./AriaPart/AriaPart";
 
-const downloadConfigAPI = new DownloadSettingsApi();
+
 
 function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }): JSX.Element {
   const [globalTorrentConfig, setGlobalTorrentConfig] = createSignal<DownloadSettings | null>(null);
@@ -26,7 +26,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
   console.log("Selected part:", props);
 
   onMount(async () => {
-    let settings = await downloadConfigAPI.getDownloadSettings();
+    let settings = await DownloadSettingsApi.getDownloadSettings();
     if (settings.status === "ok") {
       setGlobalTorrentConfig(settings.data);
     } else {
@@ -70,7 +70,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
     const config = globalTorrentConfig();
     if (!config) return;
 
-    const result = await downloadConfigAPI.changeDownloadSettings(config);
+    const result = await DownloadSettingsApi.changeDownloadSettings(config);
     if (result.status === "ok") {
       await message("Settings Saved Successfully", {
         title: "FitLauncher",

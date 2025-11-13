@@ -17,7 +17,7 @@ export default function TransferLimitsPart({
             <LabelNumericalInput
                 text="Maximum download rate per download"
                 typeText="Each download can have this rate, by default, in KB/sec"
-                value={(settings().max_download ?? 0) / 1024}
+                value={(settings()["max-download"] ?? 0) / 1024}
                 onInput={(value) =>
                     handleTextCheckChange?.("limits.max_download", value === 0 ? null : value * 1024)
                 }
@@ -29,7 +29,7 @@ export default function TransferLimitsPart({
             <LabelNumericalInput
                 text="Maximum upload rate per upload"
                 typeText="Each upload can have this rate, by default, in KB/sec"
-                value={(settings().max_upload ?? 0) / 1024}
+                value={(settings()["max-upload"] ?? 0) / 1024}
                 onInput={(value) =>
                     handleTextCheckChange?.("limits.max_upload", value === 0 ? null : value * 1024)
                 }
@@ -41,7 +41,7 @@ export default function TransferLimitsPart({
             <LabelNumericalInput
                 text="Maximum overall download rate"
                 typeText="Total download bandwidth limit, by default, in KB/sec"
-                value={(settings().max_overall_download ?? 0) / 1024}
+                value={(settings()["max-overall-download"] ?? 0) / 1024}
                 onInput={(value) =>
                     handleTextCheckChange?.("limits.max_overall_download", value === 0 ? null : value * 1024)
                 }
@@ -53,7 +53,7 @@ export default function TransferLimitsPart({
             <LabelNumericalInput
                 text="Maximum overall upload rate"
                 typeText="Total upload bandwidth limit, by default, in KB/sec"
-                value={(settings().max_overall_upload ?? 0) / 1024}
+                value={(settings()["max-overall-upload"] ?? 0) / 1024}
                 onInput={(value) =>
                     handleTextCheckChange?.("limits.max_overall_upload", value === 0 ? null : value * 1024)
                 }

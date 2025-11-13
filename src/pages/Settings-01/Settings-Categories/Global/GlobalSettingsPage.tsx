@@ -20,7 +20,7 @@ import AppInfoSettings from "./AppInfoSettings/AppInfo";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
-  const settingsInst = new GlobalSettingsApi();
+
 
   const selectedPart = () =>
     (props.settingsPart.replace("global-", "") || "display") as
@@ -32,10 +32,9 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
   async function getCurrentSettings() {
     try {
-      let glob_settings_inst = new GlobalSettingsApi();
-      const dns = await glob_settings_inst.getDnsSettings();
-      const installation_settings = await glob_settings_inst.getInstallationSettings();
-      const display = await glob_settings_inst.getGamehubSettings();
+      const dns = await GlobalSettingsApi.getDnsSettings();
+      const installation_settings = await GlobalSettingsApi.getInstallationSettings();
+      const display = await GlobalSettingsApi.getGamehubSettings();
 
       setGlobalSettings({ dns, installation_settings, display });
     } catch (error: unknown) {
@@ -58,13 +57,13 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
     try {
       if (settings.dns) {
-        await settingsInst.setDnsSettings(settings.dns);
+        await GlobalSettingsApi.setDnsSettings(settings.dns);
       }
       if (settings.installation_settings) {
-        await settingsInst.setInstallationSettings(settings.installation_settings);
+        await GlobalSettingsApi.setInstallationSettings(settings.installation_settings);
       }
       if (settings.display) {
-        await settingsInst.setGamehubSettings(settings.display);
+        await GlobalSettingsApi.setGamehubSettings(settings.display);
       }
 
       await message("Settings saved successfully!", {

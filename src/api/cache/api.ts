@@ -59,9 +59,8 @@ export class GamesCacheApi {
   async removeNSFW<T extends { tag?: string; game_tags?: string }>(
     gameList: T[]
   ): Promise<T[]> {
-    const settingsInst = new GlobalSettingsApi();
     const nsfw =
-      (await settingsInst.getGamehubSettings()).nsfw_censorship ?? false;
+      (await GlobalSettingsApi.getGamehubSettings()).nsfw_censorship ?? false;
 
     if (!nsfw) return gameList;
 

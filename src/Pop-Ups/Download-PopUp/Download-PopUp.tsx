@@ -18,8 +18,7 @@ import createLastStepDownloadPopup from "./LastStep";
 import { invoke } from "@tauri-apps/api/core";
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
 
-const downloadSettingsInst = new DownloadSettingsApi();
-const settingsInst = new GlobalSettingsApi();
+
 
 export default function createDownloadPopup(props: DownloadPopupProps) {
   const container = document.createElement("div");
@@ -58,7 +57,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
       setInstallationSettings(newSettings);
 
-      const result = await settingsInst.setInstallationSettings(newSettings);
+      const result = await GlobalSettingsApi.setInstallationSettings(newSettings);
       if (result.status === "error") {
         console.error("Failed to update installation settings:", result.error);
         await message("Could not save installation settings", {
@@ -72,8 +71,8 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
     onMount(async () => {
       try {
-        let downloadSettings = await downloadSettingsInst.getDownloadSettings();
-        let settings = await settingsInst.getInstallationSettings();
+        let downloadSettings = await DownloadSettingsApi.getDownloadSettings();
+        let settings = await GlobalSettingsApi.getInstallationSettings();
         if (downloadSettings.status === "ok") {
           console.log("settings: ", downloadSettings.data)
           setPathInput(downloadSettings.data.general.download_dir);
@@ -122,7 +121,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                     setIsPathValid(valid);
                     if (valid) {
                       try {
-                        const currentSettings = await downloadSettingsInst.getDownloadSettings();
+                        const currentSettings = await DownloadSettingsApi.getDownloadSettings();
 
                         if (currentSettings.status !== "ok") {
                           throw new Error("Failed to load current download settings");
@@ -136,7 +135,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                           }
                         };
 
-                        await downloadSettingsInst.changeDownloadSettings(updatedSettings);
+                        await DownloadSettingsApi.changeDownloadSettings(updatedSettings);
                       } catch (err) {
                         console.error("Failed to update path setting:", err);
                         await message("Failed to save download path", {

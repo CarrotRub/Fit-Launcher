@@ -18,7 +18,7 @@ import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
 import { useToast } from "solid-notifications";
 import { GlobalDownloadManager } from "../../api/manager/api";
 
-const downloadSettingsInst = new DownloadSettingsApi();
+
 
 
 const TorrentFileItem: Component<{ originalName: string; displayName: string; index: number; selected: Set<number>; onToggle: (i: number) => void; files: FileInfo[] }> = (props) => {
@@ -93,7 +93,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         });
 
         async function initTorrent() {
-            const settings = await downloadSettingsInst.getDownloadSettings();
+            const settings = await DownloadSettingsApi.getDownloadSettings();
             if (settings.status !== "ok") {
                 console.warn("Couldn't load download settings", settings.error);
             }
@@ -148,7 +148,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             setError(null);
 
             try {
-                const settings = await downloadSettingsInst.getDownloadSettings();
+                const settings = await DownloadSettingsApi.getDownloadSettings();
                 if (settings.status !== "ok") {
                     throw new Error(String(settings.error));
                 }

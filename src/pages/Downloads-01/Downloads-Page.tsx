@@ -6,7 +6,6 @@ import { downloadStore } from "../../stores/download";
 
 import DownloadList from "./Downloads-List";
 import { formatSpeed } from "../../helpers/format";
-import { backgroundInstaller } from "../../services/background-installer.service";
 import { GlobalDownloadManager } from "../../api/manager/api";
 
 const DownloadPage: Component = () => {
@@ -61,11 +60,7 @@ const DownloadPage: Component = () => {
         await refreshDownloads();
     }
 
-    onMount(() => {
-        backgroundInstaller.start();
-        GlobalDownloadManager.load();
-        return () => backgroundInstaller.stop();
-    });
+
 
     return (
         <div class="min-h-screen bg-gradient-to-br from-background to-background-950 p-4 w-full">

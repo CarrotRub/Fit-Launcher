@@ -9,14 +9,14 @@ export default function NetworkPart({
     handleTextCheckChange,
 }: SettingsSectionProps<Connection>): JSX.Element {
     onMount(() => {
-        console.log("connect_timeout: ", settings().connect_timeout, " rw_timeout: ", settings().rw_timeout)
+        console.log("connect_timeout: ", settings()["connect-timeout"], " rw_timeout: ", settings()["rw-timeout"])
     })
     return (
         <PageGroup title="Network Configuration">
             <LabelNumericalInput
                 text="Minimum split size"
                 typeText="The smallest size a split part of a file can be, by default, in MB"
-                value={settings().min_split_size || 4}
+                value={settings()["min-split-size"] || 4}
                 onInput={(value) =>
                     handleTextCheckChange?.("network.min_split_size", value)
                 }
@@ -26,7 +26,7 @@ export default function NetworkPart({
             <LabelNumericalInput
                 text="Connect timeout"
                 typeText="How long to wait when trying to establish a connection (in seconds)"
-                value={settings().connect_timeout?.secs ?? 0}
+                value={settings()["connect-timeout"]?.secs ?? 0}
                 onInput={(e) =>
                     handleTextCheckChange?.("network.connect_timeout", { secs: +e.valueOf(), nanos: 0 })
                 }
@@ -36,7 +36,7 @@ export default function NetworkPart({
             <LabelNumericalInput
                 text="Read/write timeout"
                 typeText="How long to wait for read/write operations to complete (in seconds)"
-                value={settings().rw_timeout.secs || 5}
+                value={settings()["rw-timeout"].secs || 5}
                 onInput={(value) =>
                     handleTextCheckChange?.("network.rw_timeout", { secs: value, nanos: 0 })
                 }
@@ -55,7 +55,7 @@ export default function NetworkPart({
             <LabelNumericalInput
                 text="Maximum number of connections per server"
                 typeText="Limits how many concurrent connections are allowed per server"
-                value={settings().max_connection_per_server || 10}
+                value={settings()["max-connection-per-server"] || 10}
                 onInput={(value) =>
                     handleTextCheckChange?.("network.max_connection_per_server", value)
                 }

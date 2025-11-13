@@ -11,12 +11,18 @@ import { check } from '@tauri-apps/plugin-updater';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { ThemeManagerApi } from './api/theme/api';
 import { Toaster, ToastProvider } from 'solid-notifications';
+import { GlobalDownloadManager } from './api/manager/api';
+import { installerService } from './api/installer/api';
 
 
 const themeManager = new ThemeManagerApi();
 
 function App(props: { children: number | boolean | Node | JSX.ArrayElement | (string & {}) | null | undefined; }) {
   onMount(async () => {
+    GlobalDownloadManager.setup();
+    GlobalDownloadManager.load();
+
+    installerService.start();
 
 
     try {

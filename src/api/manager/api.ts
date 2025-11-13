@@ -9,7 +9,8 @@ import { join, appDataDir } from "@tauri-apps/api/path";
 import { exists, writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
 import { commands } from "../../bindings";
 import { downloadStore } from "../../stores/download";
-import { EventEmitter } from "@tauri-apps/plugin-shell";
+import { listen } from "@tauri-apps/api/event";
+import { FitEmitter } from "../../services/emitter";
 
 export type DownloadSource = "torrent" | "ddl";
 
@@ -29,14 +30,25 @@ export interface DownloadJob {
 export class GlobalDownloadManager {
   private static jobs = new Map<string, DownloadJob>();
   private static savePath: string | null = null;
-  private static pollInterval: number | null = null;
-  private emitter = new EventEmitter();
 
-  onCompleted(cb: (job: DownloadJob) => void) {
+  private static emitter = new FitEmitter();
+
+  //!  CALL THIS ONCE ON APP START
+  static setup() {
+    listen<Record<string, any>>("aria2_status_update", (event) => {
+      GlobalDownloadManager.updateStatus(event.payload);
+    });
+  }
+
+  static onCompleted(cb: (job: DownloadJob) => void) {
     this.emitter.on("completed", cb);
   }
 
-  updateStatus(statusMap: Record<string, any>) {
+  private static isComplete(job: DownloadJob) {
+    return job.state === "done";
+  }
+
+  static updateStatus(statusMap: Record<string, any>) {
     for (const [id, st] of Object.entries(statusMap)) {
       const job = this.jobs.get(id);
       if (!job) continue;
@@ -48,6 +60,8 @@ export class GlobalDownloadManager {
         this.emitter.emit("completed", updated);
       }
     }
+
+    downloadStore.updateStatus(statusMap);
   }
 
   private static async ensureSavePath() {
@@ -72,7 +86,6 @@ export class GlobalDownloadManager {
       this.jobs = new Map(Object.entries(obj));
     }
     downloadStore.setJobs(this.getAll());
-    this.startPolling();
   }
 
   static get(jobId: string) {
@@ -135,6 +148,12 @@ export class GlobalDownloadManager {
     }
   }
 
+  static async getTorrentFileList(
+    magnet: string
+  ): Promise<Result<FileInfo[], TorrentApiError>> {
+    return await commands.listTorrentFiles(magnet);
+  }
+
   static async addTorrent(
     id: string,
     magnetLink: string,
@@ -143,45 +162,28 @@ export class GlobalDownloadManager {
     listFiles: number[]
   ) {
     const bytesRes = await commands.magnetToFile(magnetLink);
-    if (bytesRes.status === "ok") {
-      let bytes = bytesRes.data;
-      const res = await commands.aria2StartTorrent(
-        bytes,
-        targetPath,
-        listFiles
-      );
+    if (bytesRes.status !== "ok") throw new Error(`magnet -> file failed`);
 
-      if (res.status !== "ok") {
-        throw new Error(`Torrent spawn failed`);
-      }
+    const bytes = bytesRes.data;
+    const res = await commands.aria2StartTorrent(bytes, targetPath, listFiles);
+    if (res.status !== "ok") throw new Error(`Torrent spawn failed`);
 
-      const gid = res.data;
+    const job: DownloadJob = {
+      id,
+      source: "torrent",
+      magnetLink,
+      torrentFileBytes: bytes,
+      game,
+      torrentFiles: listFiles,
+      targetPath,
+      gids: [res.data],
+      state: "downloading",
+    };
 
-      const job: DownloadJob = {
-        id,
-        source: "torrent",
-        magnetLink,
-        torrentFileBytes: bytes,
-        game,
-        torrentFiles: listFiles,
-        targetPath,
-        gids: [gid],
-        state: "downloading",
-      };
-
-      this.jobs.set(id, job);
-      await this.save();
-      downloadStore.setJobs(this.getAll());
-      return job;
-    } else {
-      console.error("Error converting magnet to file !");
-    }
-  }
-
-  static async getTorrentFileList(
-    magnet: string
-  ): Promise<Result<FileInfo[], TorrentApiError>> {
-    return await commands.listTorrentFiles(magnet);
+    this.jobs.set(id, job);
+    await this.save();
+    downloadStore.setJobs(this.getAll());
+    return job;
   }
 
   static async remove(jobId: string) {
@@ -222,12 +224,11 @@ export class GlobalDownloadManager {
       if (result.status === "ok") {
         job.gids = result.data.flatMap((r) => r.task?.gid || []);
         job.state = "downloading";
-        await this.save();
-        downloadStore.setJobs(this.getAll());
       } else {
         job.state = "error";
-        await this.save();
       }
+      await this.save();
+      downloadStore.setJobs(this.getAll());
       return;
     }
 
@@ -237,29 +238,14 @@ export class GlobalDownloadManager {
         job.targetPath,
         job.torrentFiles!
       );
-
       if (res.status === "ok") {
         job.gids = [res.data];
         job.state = "downloading";
-        await this.save();
-        downloadStore.setJobs(this.getAll());
       } else {
         job.state = "error";
-        await this.save();
       }
-      return;
+      await this.save();
+      downloadStore.setJobs(this.getAll());
     }
-  }
-
-  static startPolling() {
-    if (this.pollInterval !== null) return;
-
-    this.pollInterval = setInterval(async () => {
-      const all = this.getAll();
-      if (!all.length) return;
-
-      const statuses = await commands.aria2GetAllList();
-      downloadStore.updateStatus(statuses);
-    }, 2000) as any;
   }
 }
