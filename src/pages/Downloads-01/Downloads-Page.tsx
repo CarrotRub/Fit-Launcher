@@ -22,7 +22,7 @@ const DownloadPage: Component = () => {
             if (f === "torrent") return job.source === "torrent";
             if (f === "ddl") return job.source === "ddl";
             if (f === "active") {
-                if (job.state === "downloading" || job.state === "uploading") return true;
+                if (job.state === "active" || job.state === "installing") return true;
                 if (job.status) {
                     return
                 }
@@ -56,8 +56,8 @@ const DownloadPage: Component = () => {
     });
 
     async function refreshDownloads() {
-        if (downloadStore.refresh) await downloadStore.refresh();
-        else await GlobalDownloadManager.load();
+
+        await GlobalDownloadManager.load();
     }
 
     async function deleteAllDownloads() {

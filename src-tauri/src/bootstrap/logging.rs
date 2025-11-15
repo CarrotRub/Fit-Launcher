@@ -1,6 +1,10 @@
+use once_cell::sync::OnceCell;
 use std::error::Error;
 use std::fs;
 use tracing::{info, warn};
+
+static LOG_GUARD: once_cell::sync::OnceCell<tracing_appender::non_blocking::WorkerGuard> =
+    OnceCell::new();
 
 pub fn init_logging() {
     let logs_dir = directories::BaseDirs::new()
@@ -23,14 +27,24 @@ pub fn init_logging() {
     }
 
     let file_appender = tracing_appender::rolling::never(&logs_dir, "app.log");
-    let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
+    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+    LOG_GUARD.set(guard).unwrap();
+    // #[cfg(debug_assertions)]
+    // tracing_subscriber::fmt()
+    //     .with_writer(file_writer)
+    //     .with_ansi(false)
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
 
     tracing_subscriber::fmt()
         .with_writer(file_writer)
         .with_ansi(false)
         .with_max_level(tracing::Level::INFO)
-        .init();
+        .try_init()
+        .unwrap_or_else(|_| {
+            eprintln!("Global tracing subscriber already set");
+        });
 
-    warn!("Logging initialized, logs_dir: {}", logs_dir.display());
+    info!("Logging initialized, logs_dir: {}", logs_dir.display());
     info!("init_logging complete");
 }

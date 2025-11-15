@@ -22,6 +22,7 @@ use fit_launcher_torrent::LibrqbitSession;
 use specta::specta;
 use tauri_helper::specta_collect_commands;
 
+use crate::bootstrap::init_logging;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;

@@ -15,6 +15,13 @@ import { listen } from "@tauri-apps/api/event";
 import { FitEmitter } from "../../services/emitter";
 
 export type DownloadSource = "torrent" | "ddl";
+export type DownloadState =
+  | "active"
+  | "paused"
+  | "waiting"
+  | "error"
+  | "complete"
+  | "installing";
 
 export interface DownloadJob {
   id: string;
@@ -26,7 +33,7 @@ export interface DownloadJob {
   torrentFileBytes?: number[];
   game: DownloadedGame;
   targetPath: string;
-  state: "pending" | "downloading" | "paused" | "error" | "done" | "uploading";
+  state: DownloadState;
 
   status: Status | null;
 }
@@ -62,28 +69,26 @@ export class GlobalDownloadManager {
   static mapAriaState(s: TaskStatus): DownloadJob["state"] {
     switch (s) {
       case "active":
-        return "downloading";
-      case "waiting":
-        return "pending";
+        return "active";
       case "paused":
         return "paused";
       case "error":
         return "error";
       case "complete":
-        return "done";
+        return "complete";
       case "removed":
         return "error";
       default:
-        return "pending";
+        return "waiting";
     }
   }
 
   static onCompleted(cb: (job: DownloadJob) => void) {
-    this.emitter.on("completed", cb);
+    this.emitter.on("download::completed", cb);
   }
 
   private static isComplete(job: DownloadJob) {
-    return job.state === "done";
+    return job.state === "complete";
   }
 
   static updateStatus(statusMap: Record<string, Status> | Status[]) {
@@ -107,7 +112,7 @@ export class GlobalDownloadManager {
       this.jobs.set(job.id, updated);
 
       if (this.isComplete(updated)) {
-        this.emitter.emit("completed", updated);
+        this.emitter.emit("download::completed", updated);
       }
     }
 
@@ -135,7 +140,8 @@ export class GlobalDownloadManager {
       const obj: Record<string, DownloadJob> = JSON.parse(raw);
       this.jobs = new Map(Object.entries(obj));
     }
-    downloadStore.setJobs(this.getAll());
+
+    downloadStore.setJobsFull(this.getAll());
   }
 
   static get(jobId: string) {
@@ -166,13 +172,14 @@ export class GlobalDownloadManager {
       game,
       targetPath,
       gids,
-      state: "downloading",
+      state: "active",
       status: null,
     };
 
     this.jobs.set(id, job);
     await this.save();
-    downloadStore.setJobs(this.getAll());
+
+    downloadStore.addJob(job);
     return job;
   }
 
@@ -228,13 +235,13 @@ export class GlobalDownloadManager {
       torrentFiles: listFiles,
       targetPath,
       gids: [res.data],
-      state: "downloading",
+      state: "active",
       status: null,
     };
 
     this.jobs.set(id, job);
     await this.save();
-    downloadStore.setJobs(this.getAll());
+    downloadStore.addJob(job);
     return job;
   }
 
@@ -248,26 +255,21 @@ export class GlobalDownloadManager {
 
     this.jobs.delete(jobId);
     await this.save();
-    downloadStore.setJobs(this.getAll());
+    downloadStore.removeJobById(jobId);
   }
 
   static async pause(jobId: string) {
     const job = this.jobs.get(jobId);
     if (!job) return;
-
-    for (const gid of job.gids) {
-      await commands.aria2Pause(gid);
-    }
-
+    for (const gid of job.gids) await commands.aria2Pause(gid);
     job.state = "paused";
     await this.save();
-    downloadStore.setJobs(this.getAll());
+    downloadStore.setJobState(jobId, "paused");
   }
 
   static async resume(jobId: string) {
     const job = this.jobs.get(jobId);
     if (!job) return;
-
     if (job.source === "ddl") {
       const result = await commands.aria2TaskSpawn(
         job.ddlFiles!,
@@ -275,29 +277,45 @@ export class GlobalDownloadManager {
       );
       if (result.status === "ok") {
         job.gids = result.data.flatMap((r) => r.task?.gid || []);
-        job.state = "downloading";
+        job.state = "active";
+        await this.save();
+        downloadStore.setJobGids(jobId, job.gids);
+        downloadStore.setJobState(jobId, "active");
       } else {
         job.state = "error";
+        await this.save();
+        downloadStore.setJobState(jobId, "error");
       }
-      await this.save();
-      downloadStore.setJobs(this.getAll());
       return;
     }
-
     if (job.source === "torrent") {
-      const res = await commands.aria2StartTorrent(
-        job.torrentFileBytes!,
-        job.targetPath,
-        job.torrentFiles!
-      );
-      if (res.status === "ok") {
-        job.gids = [res.data];
-        job.state = "downloading";
+      console.log(job.torrentFileBytes, job.targetPath, job.torrentFiles);
+      console.log(jobId);
+      let gid = job.status?.gid;
+      let res_res = await commands.aria2Resume(gid!);
+      if (res_res.status === "ok") {
+        if (res_res.status === "ok") {
+          job.state = "active";
+        } else {
+          job.state = "error";
+        }
+        await this.save();
+        downloadStore.setJobGids(jobId, job.gids);
+        downloadStore.setJobState(jobId, "active");
       } else {
-        job.state = "error";
+        console.error("Error unpausing torrent: ", res_res.error);
+
+        downloadStore.setJobState(jobId, "error");
       }
+    }
+    let gid = job.status?.gid;
+    const res_res = await commands.aria2Resume(gid!);
+    if (res_res.status === "ok") {
+      job.state = "active";
       await this.save();
-      downloadStore.setJobs(this.getAll());
+      downloadStore.setJobState(jobId, "active");
+    } else {
+      console.error("Error unpausing torrent: ", res_res.error);
     }
   }
 }

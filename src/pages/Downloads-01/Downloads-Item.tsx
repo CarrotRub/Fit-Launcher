@@ -1,4 +1,3 @@
-// src/pages/Downloads-Item.tsx
 import { Component, createMemo, createSignal, For, Show } from "solid-js";
 import {
     HardDrive,
@@ -15,9 +14,9 @@ import {
 import Button from "../../components/UI/Button/Button";
 import { InstallationApi } from "../../api/installation/api";
 import { formatBytes, formatSpeed, toNumber } from "../../helpers/format";
-import { DownloadJob, GlobalDownloadManager } from "../../api/manager/api";
+import { DownloadJob, DownloadState, GlobalDownloadManager } from "../../api/manager/api";
 import { downloadStore } from "../../stores/download";
-import { File } from "../../bindings";
+import { File, Status } from "../../bindings";
 import DownloadFiles from "./Download-Files";
 
 const installationApi = new InstallationApi();
@@ -32,60 +31,58 @@ const DownloadItem: Component<{
     const status = () => props.item.status;
 
     const aggregatedStatus = createMemo(() => {
-        const allJobs = downloadStore.jobs;
         const gids = props.item.gids ?? [];
+        const statuses = gids
+            .map(gid => downloadStore.jobs.find(j => j.status?.gid === gid)?.status)
+            .filter(Boolean) as Status[];
 
-        if (props.item.source === "torrent") return props.item.status ?? { status: "waiting", totalLength: 0, completedLength: 0, downloadSpeed: 0, uploadSpeed: 0, files: [] };
+        if (props.item.source === "torrent")
+            return props.item.status;
 
-        let totalLength = 0,
-            completedLength = 0,
-            downloadSpeed = 0,
-            uploadSpeed = 0,
-            allComplete = true,
-            anyActive = false,
-            files: File[] = [];
+        if (!statuses.length)
+            return {
+                status: "waiting",
+                totalLength: 0,
+                completedLength: 0,
+                downloadSpeed: 0,
+                uploadSpeed: 0,
+                files: []
+            };
 
-        for (const gid of gids) {
-            const jobForGid = allJobs.find(j => Array.isArray(j.gids) && j.gids.includes(gid));
-            const s = jobForGid?.status ?? (props.item.status?.gid === gid ? props.item.status : null);
+        const totalLength = statuses.reduce((a, s) => a + toNumber(s.totalLength), 0);
+        const completedLength = statuses.reduce((a, s) => a + toNumber(s.completedLength), 0);
+        const downloadSpeed = statuses.reduce((a, s) => a + toNumber(s.downloadSpeed), 0);
+        const uploadSpeed = statuses.reduce((a, s) => a + toNumber(s.uploadSpeed), 0);
+        const files = statuses.flatMap(s => s.files ?? []);
 
-            if (!s) { allComplete = false; continue; }
-
-            totalLength += Number(s.totalLength ?? 0);
-            completedLength += Number(s.completedLength ?? 0);
-            downloadSpeed += Number(s.downloadSpeed ?? 0);
-            uploadSpeed += Number(s.uploadSpeed ?? 0);
-
-            if (s.status !== "complete" || completedLength !== totalLength) allComplete = false;
-            if (s.status === "active") anyActive = true;
-
-            if (Array.isArray(s.files)) files.push(...s.files);
-        }
+        const allComplete = statuses.every(s => s.status === "complete");
 
         return {
-            status: allComplete ? "complete" : anyActive ? "active" : "paused",
+            status: allComplete ? "complete"
+                : statuses.some(s => s.status === "active") ? "active"
+                    : statuses.some(s => s.status === "paused") ? "paused"
+                        : "waiting",
             totalLength,
             completedLength,
             downloadSpeed,
             uploadSpeed,
-            files,
+            files
         };
     });
 
 
 
-    const files = createMemo(() => {
-        if (props.item.source === "torrent") {
-            console.log("files: ", status()?.files)
-            return status()?.files ?? [];
+
+    const files = () => {
+        if (props.item.source === 'torrent') {
+            return status()?.files || [];
         }
-        const agg = aggregatedStatus();
-        return Array.isArray(agg?.files) ? agg.files : [];
-    });
+        return aggregatedStatus()?.files || [];
+    };
+
 
     const progressPercent = createMemo(() => {
         const agg = aggregatedStatus();
-        console.log("agg: ", agg)
         if (!agg) return 0;
         const total = agg.totalLength ?? 0;
         const completed = agg.completedLength ?? 0;
@@ -93,18 +90,15 @@ const DownloadItem: Component<{
     });
 
     const [optimisticState, setOptimisticState] = createSignal<
-        "active" | "paused" | "complete" | "installing" | null
+        DownloadState | null
     >(null);
 
-    const effectiveStatus = createMemo(() => {
-        if (optimisticState()) return optimisticState();
-        const agg = aggregatedStatus();
-        if (!agg) return null;
-        if (agg.completedLength === agg.totalLength && agg.totalLength > 0) return "complete";
-        if (agg.status === "active") return "active";
-        if (agg.status === "paused" || agg.status === "waiting") return "paused";
-        return "paused";
+    const effectiveStatus = createMemo<DownloadState>(() => {
+        if (optimisticState()) return optimisticState()!;
+        const s = aggregatedStatus();
+        return s?.status as DownloadState ?? "waiting";
     });
+
 
     const actionLabel = createMemo(() => {
         switch (effectiveStatus()) {
@@ -113,9 +107,10 @@ const DownloadItem: Component<{
             case "active":
                 return "PAUSE";
             case "paused":
+            case "waiting":
                 return "RESUME";
             default:
-                return "UNKNOWN";
+                return "RESUME";
         }
     });
 
@@ -272,8 +267,9 @@ const DownloadItem: Component<{
                             Downloading Files
                         </h4>
 
-                        <DownloadFiles files={files()} />
+                        <DownloadFiles gameFiles={files} />
                     </div>
+
                 </div>
             </Show>
 
