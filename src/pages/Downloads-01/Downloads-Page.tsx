@@ -7,6 +7,7 @@ import { downloadStore } from "../../stores/download";
 import DownloadList from "./Downloads-List";
 import { formatSpeed } from "../../helpers/format";
 import { GlobalDownloadManager } from "../../api/manager/api";
+import { Status } from "../../bindings";
 
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
@@ -15,14 +16,16 @@ const DownloadPage: Component = () => {
 
     const filteredItems = createMemo(() => {
         const f = activeFilter();
+        const statuses: Status[] = [];
         return items().filter((job) => {
             if (f === "all") return true;
             if (f === "torrent") return job.source === "torrent";
             if (f === "ddl") return job.source === "ddl";
             if (f === "active") {
                 if (job.state === "downloading" || job.state === "uploading") return true;
-                const statuses = (job as any).statuses || (job as any).status ? (job as any).statuses || [(job as any).status] : [];
-                return statuses.some((s: any) => s?.status === "active");
+                if (job.status) {
+                    return
+                }
             }
             return true;
         });
@@ -34,15 +37,20 @@ const DownloadPage: Component = () => {
         let activeCount = 0;
         let torrentCount = 0;
         let ddlCount = 0;
+
+
+        const statuses: Status[] = [];
         for (const job of items()) {
-            const statuses = (job as any).statuses || (job as any).status ? (job as any).statuses || [(job as any).status] : [];
-            for (const s of statuses) {
-                totalDownloadSpeed += Number(s?.downloadSpeed ?? 0);
-                totalUploadSpeed += Number(s?.uploadSpeed ?? 0);
-                if (s?.status === "active") activeCount++;
+            if (job.status) {
+                statuses.push(job.status);
+                for (const s of statuses) {
+                    totalDownloadSpeed += Number(s?.downloadSpeed ?? 0);
+                    totalUploadSpeed += Number(s?.uploadSpeed ?? 0);
+                    if (s?.status === "active") activeCount++;
+                }
+                if (job.source === "torrent") torrentCount++;
+                else ddlCount++;
             }
-            if (job.source === "torrent") torrentCount++;
-            else ddlCount++;
         }
         return { totalDownloadSpeed, totalUploadSpeed, activeCount, torrentCount, ddlCount };
     });
@@ -156,8 +164,6 @@ const DownloadPage: Component = () => {
             <div class="max-w-[1800px] mx-auto">
                 <DownloadList
                     items={filteredItems()}
-                    expandedStates={() => ({})}
-                    onToggleExpand={() => { }}
                     refreshDownloads={refreshDownloads}
                 />
                 {items().length === 0 && (

@@ -3,6 +3,8 @@ import {
   DownloadedGame,
   FileInfo,
   Result,
+  Status,
+  TaskStatus,
   TorrentApiError,
 } from "../../bindings";
 import { join, appDataDir } from "@tauri-apps/api/path";
@@ -25,8 +27,11 @@ export interface DownloadJob {
   game: DownloadedGame;
   targetPath: string;
   state: "pending" | "downloading" | "paused" | "error" | "done" | "uploading";
+
+  status: Status | null;
 }
 
+//todo: fix download not working
 export class GlobalDownloadManager {
   private static jobs = new Map<string, DownloadJob>();
   private static savePath: string | null = null;
@@ -40,6 +45,39 @@ export class GlobalDownloadManager {
     });
   }
 
+  static async testEventEmit() {
+    await commands.aria2TestEvent();
+  }
+
+  static mapStatusToJob(status: Status): Partial<DownloadJob> {
+    return {
+      id: status.gid,
+
+      state: this.mapAriaState(status.status),
+
+      status,
+    };
+  }
+
+  static mapAriaState(s: TaskStatus): DownloadJob["state"] {
+    switch (s) {
+      case "active":
+        return "downloading";
+      case "waiting":
+        return "pending";
+      case "paused":
+        return "paused";
+      case "error":
+        return "error";
+      case "complete":
+        return "done";
+      case "removed":
+        return "error";
+      default:
+        return "pending";
+    }
+  }
+
   static onCompleted(cb: (job: DownloadJob) => void) {
     this.emitter.on("completed", cb);
   }
@@ -48,20 +86,32 @@ export class GlobalDownloadManager {
     return job.state === "done";
   }
 
-  static updateStatus(statusMap: Record<string, any>) {
-    for (const [id, st] of Object.entries(statusMap)) {
-      const job = this.jobs.get(id);
+  static updateStatus(statusMap: Record<string, Status> | Status[]) {
+    const statusesArray: Status[] = Array.isArray(statusMap)
+      ? statusMap
+      : Object.values(statusMap as Record<string, Status>);
+
+    const statusMapByGid: Record<string, Status> = {};
+    statusesArray.forEach((s) => {
+      if (s && s.gid) statusMapByGid[String(s.gid)] = s;
+    });
+
+    for (const s of statusesArray) {
+      const gid = String(s.gid);
+      const job = Array.from(this.jobs.values()).find(
+        (job) => Array.isArray(job.gids) && job.gids.includes(gid)
+      );
       if (!job) continue;
 
-      const updated = { ...job, ...st };
-      this.jobs.set(id, updated);
+      const updated: DownloadJob = { ...job, status: { ...(s as any) } };
+      this.jobs.set(job.id, updated);
 
       if (this.isComplete(updated)) {
         this.emitter.emit("completed", updated);
       }
     }
 
-    downloadStore.updateStatus(statusMap);
+    downloadStore.updateStatus(statusMapByGid);
   }
 
   private static async ensureSavePath() {
@@ -117,6 +167,7 @@ export class GlobalDownloadManager {
       targetPath,
       gids,
       state: "downloading",
+      status: null,
     };
 
     this.jobs.set(id, job);
@@ -178,6 +229,7 @@ export class GlobalDownloadManager {
       targetPath,
       gids: [res.data],
       state: "downloading",
+      status: null,
     };
 
     this.jobs.set(id, job);

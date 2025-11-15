@@ -1,6 +1,7 @@
 use aria2_ws::response::{GlobalStat, Status, Version};
 use fit_launcher_ddl::DirectLink;
 use specta::specta;
+use tauri::{AppHandle, Emitter};
 use tracing::error;
 
 use crate::{
@@ -325,4 +326,10 @@ pub async fn aria2_global_stat(
 
     let stat = aria2_client.get_global_stat().await?;
     Ok(stat)
+}
+
+#[tauri::command]
+#[specta]
+pub fn aria2_test_event(app: AppHandle) -> () {
+    let _ = app.emit("aria2_status_update", "Nothingg :3");
 }

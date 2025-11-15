@@ -12,6 +12,7 @@ import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { GameDetails, GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
+import { GlobalDownloadManager } from "../../api/manager/api";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -170,6 +171,7 @@ const DownloadGameUUIDPage = () => {
   }
 
   async function toggleDownloadLater() {
+    await GlobalDownloadManager.testEventEmit();
     const game = gameInfo();
     if (!game) return;
 

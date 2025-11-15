@@ -48,11 +48,11 @@ async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Opt
     let mut attempts = 0;
 
     while attempts < count {
-        if let Some(excluded) = exclude {
-            if port == excluded {
-                port = port.wrapping_add(1);
-                continue;
-            }
+        if let Some(excluded) = exclude
+            && port == excluded
+        {
+            port = port.wrapping_add(1);
+            continue;
         }
 
         if is_port_available(port) {
@@ -236,6 +236,8 @@ pub async fn aria2_client_from_config(
         .await
         .context("Failed to connect to aria2c")?;
 
+        info!("Successfully connected to newly created aria2c instance on port: {rpc_port}");
+
         let (close_tx, close_rx) = channel::<()>();
         let (done_tx, done_rx) = channel::<()>();
 
@@ -260,9 +262,19 @@ pub async fn aria2_client_from_config(
     } else {
         // when we don't start `aria2` ourself,
         // try to connect to the existing instance with configured port
-        aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
+        match aria2_ws::Client::connect(&format!("ws://127.0.0.1:{port}/jsonrpc"), token.as_deref())
             .await
-            .context("Could not connect to already running aria2 RPC server")
+            .context("Could not connect to already running aria2c RPC server")
+        {
+            Ok(client) => {
+                info!("Connected to existing aria2c instance on port: {port}");
+                Ok(client)
+            }
+            Err(err) => {
+                error!("Failed to connect to existing aria2c instance on port {port}: {err}");
+                Err(err)
+            }
+        }
     }
 }
 
@@ -283,10 +295,10 @@ impl TorrentSession {
         let v2_path = &*config_dir.join("config.json");
         let legacy_path = &*config_dir.join("torrentConfig").join("config.json");
 
-        if !Path::new(&legacy_path).exists() {
-            if let Err(e) = write_cfg(v2_path, &FitLauncherConfigV2::default()) {
-                error!("Error writing default config: {}", e);
-            }
+        if !Path::new(&legacy_path).exists()
+            && let Err(e) = write_cfg(v2_path, &FitLauncherConfigV2::default())
+        {
+            error!("Error writing default config: {}", e);
         }
 
         let final_config = load_or_migrate(legacy_path, v2_path);
@@ -354,10 +366,10 @@ impl TorrentSession {
 
         {
             let g = self.shared.read();
-            if let Some(shared) = g.as_ref() {
-                if let Some(client) = &shared.aria2_client {
-                    return Ok(client.clone());
-                }
+            if let Some(shared) = g.as_ref()
+                && let Some(client) = &shared.aria2_client
+            {
+                return Ok(client.clone());
             }
         }
 
@@ -365,10 +377,10 @@ impl TorrentSession {
         self.init_client().await?;
 
         let g = self.shared.read();
-        if let Some(shared) = g.as_ref() {
-            if let Some(client) = &shared.aria2_client {
-                return Ok(client.clone());
-            }
+        if let Some(shared) = g.as_ref()
+            && let Some(client) = &shared.aria2_client
+        {
+            return Ok(client.clone());
         }
 
         Err(anyhow::anyhow!("Failed to initialize aria2 client"))
