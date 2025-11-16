@@ -1,30 +1,31 @@
-use std::error::Error;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use scraper::Html;
 use specta::specta;
+use std::error::Error;
 use tauri::{AppHandle, Manager};
 use tracing::{error, info};
 
 use anyhow::Result;
 
-use std::path::{Path, PathBuf};
-use std::time::Instant;
-use futures::future::join_all;
-use regex::Regex;
-use reqwest::Client;
-use thiserror::Error;
-use tokio::{fs, task};
-use tokio::sync::AcquireError;
 use crate::errors::ScrapingError;
 use crate::global::functions::download_sitemap;
 use crate::global::functions::helper::fetch_game_info;
+use crate::search_index::{
+    SearchIndex, SearchIndexEntry, build_search_index, get_search_index_path,
+};
 use crate::singular_game_path;
 use crate::structs::Game;
-
+use futures::future::join_all;
+use regex::Regex;
+use reqwest::Client;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+use thiserror::Error;
+use tokio::sync::AcquireError;
+use tokio::{fs, task};
 
 const BASE_URL: &str = "https://fitgirl-repacks.site/sitemap_index.xml";
 const MAX_CONCURRENT: usize = 4;
-
 
 pub async fn get_sitemaps_website(app_handle: AppHandle) -> Result<(), SitemapError> {
     let client = Client::new();
@@ -51,6 +52,40 @@ pub async fn get_sitemaps_website(app_handle: AppHandle) -> Result<(), SitemapEr
         .join("sitemaps");
 
     fs::create_dir_all(&sitemaps_dir).await?;
+
+    let max_number = urls
+        .iter()
+        .filter_map(|url| {
+            let re_num = Regex::new(r"post-sitemap(\d*)\.xml").unwrap();
+            re_num
+                .captures(url)
+                .and_then(|cap| cap.get(1))
+                .and_then(|m| {
+                    if m.as_str().is_empty() {
+                        Some(1)
+                    } else {
+                        m.as_str().parse::<usize>().ok()
+                    }
+                })
+        })
+        .max()
+        .unwrap_or(1);
+
+    let largest_sitemap = format!("post-sitemap{}.xml", max_number);
+    let largest_path = sitemaps_dir.join(&largest_sitemap);
+
+    if !largest_path.exists() {
+        tracing::warn!(
+            "Largest sitemap {} missing. Clearing all sitemaps and redownloading...",
+            largest_sitemap
+        );
+
+        if let Ok(mut entries) = fs::read_dir(&sitemaps_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let _ = fs::remove_file(entry.path()).await;
+            }
+        }
+    }
 
     let check_tasks = urls.iter().map(|url| {
         let filename = extract_filename(url);
@@ -81,7 +116,7 @@ pub async fn get_sitemaps_website(app_handle: AppHandle) -> Result<(), SitemapEr
     for url in to_download {
         let filename = extract_filename(&url);
         let dest_path = sitemaps_dir.join(&filename);
-        let handle = app_handle.clone();
+
         let client = client.clone();
         let permit = sem.clone().acquire_owned().await?;
 
@@ -100,7 +135,7 @@ pub async fn get_sitemaps_website(app_handle: AppHandle) -> Result<(), SitemapEr
 
 fn extract_filename(url: &str) -> String {
     url.split('/')
-        .last()
+        .next_back()
         .unwrap_or("unknown.xml")
         .to_string()
 }
@@ -142,35 +177,29 @@ pub async fn get_singular_game_info(
     if let Ok(mut entries) = fs::read_dir(&cache_dir).await {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let file_name = entry.file_name();
-            if file_name.to_string_lossy().starts_with("singular_game_") {
-                if let Ok(metadata) = entry.metadata().await {
-                    if let Ok(modified) = metadata.modified() {
-                        if SystemTime::now()
-                            .duration_since(modified)
-                            .unwrap_or_default()
-                            > Duration::from_secs(60 * 60 * 24)
-                        {
-                            let _ = fs::remove_file(entry.path()).await;
-                        }
-                    }
-                }
+            if file_name.to_string_lossy().starts_with("singular_game_")
+                && let Ok(metadata) = entry.metadata().await
+                && let Ok(modified) = metadata.modified()
+                && SystemTime::now()
+                    .duration_since(modified)
+                    .unwrap_or_default()
+                    > Duration::from_secs(60 * 60 * 24)
+            {
+                let _ = fs::remove_file(entry.path()).await;
             }
         }
     }
 
-    if path.exists() {
-        if let Ok(metadata) = fs::metadata(&path).await {
-            if let Ok(modified) = metadata.modified() {
-                if SystemTime::now()
-                    .duration_since(modified)
-                    .unwrap_or_default()
-                    < Duration::from_secs(60 * 60 * 24)
-                {
-                    info!("Using cached game info for {}", hash);
-                    return Ok(());
-                }
-            }
-        }
+    if path.exists()
+        && let Ok(metadata) = fs::metadata(&path).await
+        && let Ok(modified) = metadata.modified()
+        && SystemTime::now()
+            .duration_since(modified)
+            .unwrap_or_default()
+            < Duration::from_secs(60 * 60 * 24)
+    {
+        info!("Using cached game info for {}", hash);
+        return Ok(());
     }
 
     let response = CUSTOM_DNS_CLIENT
@@ -223,6 +252,57 @@ pub async fn get_singular_game_info(
     Ok(())
 }
 
+#[tauri::command]
+#[specta]
+pub async fn rebuild_search_index(app_handle: AppHandle) -> Result<(), ScrapingError> {
+    build_search_index(&app_handle).await
+}
+
+#[tauri::command]
+#[specta]
+pub fn get_search_index_path_cmd(app_handle: AppHandle) -> String {
+    get_search_index_path(&app_handle)
+        .to_string_lossy()
+        .to_string()
+}
+
+#[tauri::command]
+#[specta]
+pub async fn query_search_index(
+    app_handle: AppHandle,
+    query: String,
+) -> Result<Vec<SearchIndexEntry>, ScrapingError> {
+    use tokio::fs;
+
+    let index_path = get_search_index_path(&app_handle);
+
+    if !index_path.exists() {
+        return Err(ScrapingError::IOError(format!(
+            "Search index not found at {}",
+            index_path.display()
+        )));
+    }
+
+    let content = fs::read_to_string(&index_path)
+        .await
+        .map_err(|e| ScrapingError::IOError(format!("Failed to read search index: {}", e)))?;
+
+    let index: SearchIndex = serde_json::from_str(&content).map_err(|e| {
+        ScrapingError::FileJSONError(format!("Failed to parse search index: {}", e))
+    })?;
+
+    let query_lower = query.to_lowercase();
+    let filtered: Vec<SearchIndexEntry> = index
+        .into_iter()
+        .filter(|entry| {
+            entry.title.to_lowercase().contains(&query_lower)
+                || entry.slug.to_lowercase().contains(&query_lower)
+        })
+        .take(25)
+        .collect();
+
+    Ok(filtered)
+}
 
 #[derive(Debug, Error)]
 pub enum SitemapError {
