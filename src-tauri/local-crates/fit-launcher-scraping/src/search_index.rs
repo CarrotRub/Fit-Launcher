@@ -26,7 +26,6 @@ pub(crate) fn extract_slug_and_title(url: &str) -> Option<(String, String)> {
     // Find the game slug (usually the 4th part after https://, domain, empty)
     if parts.len() >= 4 {
         let slug = parts[3].to_string();
-        // Convert slug to display title: replace hyphens with spaces and capitalize
         let title = slug
             .replace('-', " ")
             .split_whitespace()
@@ -124,14 +123,14 @@ pub async fn build_search_index(app_handle: &AppHandle) -> Result<(), ScrapingEr
                 Ok(urls) => {
                     for url in urls {
                         // Deduplicate by href
-                        if seen_hrefs.insert(url.clone()) {
-                            if let Some((slug, title)) = extract_slug_and_title(&url) {
-                                entries.push(SearchIndexEntry {
-                                    slug,
-                                    title,
-                                    href: url,
-                                });
-                            }
+                        if seen_hrefs.insert(url.clone())
+                            && let Some((slug, title)) = extract_slug_and_title(&url)
+                        {
+                            entries.push(SearchIndexEntry {
+                                slug,
+                                title,
+                                href: url,
+                            });
                         }
                     }
                 }
