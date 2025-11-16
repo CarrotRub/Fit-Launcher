@@ -25,19 +25,20 @@ const DownloadItem: Component<{
     item: DownloadJob;
     refreshDownloads: () => Promise<void>;
 }> = (props) => {
-    const [filesExpanded, setFilesExpanded] = createSignal<boolean>(false);
+    const [filesExpanded, setFilesExpanded] = createSignal(false);
     const game = createMemo(() => props.item.game);
 
+    // Direct status for torrent jobs
     const status = () => props.item.status;
 
+    // Aggregate status for multi-GID direct downloads
     const aggregatedStatus = createMemo(() => {
         const gids = props.item.gids ?? [];
         const statuses = gids
-            .map(gid => downloadStore.jobs.find(j => j.status?.gid === gid)?.status)
+            .map((gid) => downloadStore.jobs.find((j) => j.status?.gid === gid)?.status)
             .filter(Boolean) as Status[];
 
-        if (props.item.source === "torrent")
-            return props.item.status;
+        if (props.item.source === "torrent") return props.item.status;
 
         if (!statuses.length)
             return {
@@ -46,41 +47,40 @@ const DownloadItem: Component<{
                 completedLength: 0,
                 downloadSpeed: 0,
                 uploadSpeed: 0,
-                files: []
+                files: [],
             };
 
         const totalLength = statuses.reduce((a, s) => a + toNumber(s.totalLength), 0);
         const completedLength = statuses.reduce((a, s) => a + toNumber(s.completedLength), 0);
         const downloadSpeed = statuses.reduce((a, s) => a + toNumber(s.downloadSpeed), 0);
         const uploadSpeed = statuses.reduce((a, s) => a + toNumber(s.uploadSpeed), 0);
-        const files = statuses.flatMap(s => s.files ?? []);
+        const files = statuses.flatMap((s) => s.files ?? []);
 
-        const allComplete = statuses.every(s => s.status === "complete");
+        const allComplete = statuses.every((s) => s.status === "complete");
 
         return {
-            status: allComplete ? "complete"
-                : statuses.some(s => s.status === "active") ? "active"
-                    : statuses.some(s => s.status === "paused") ? "paused"
+            status: allComplete
+                ? "complete"
+                : statuses.some((s) => s.status === "active")
+                    ? "active"
+                    : statuses.some((s) => s.status === "paused")
+                        ? "paused"
                         : "waiting",
             totalLength,
             completedLength,
             downloadSpeed,
             uploadSpeed,
-            files
+            files,
         };
     });
 
-
-
-
+    // Files to show
     const files = () => {
-        if (props.item.source === 'torrent') {
-            return status()?.files || [];
-        }
+        if (props.item.source === "torrent") return status()?.files || [];
         return aggregatedStatus()?.files || [];
     };
 
-
+    // Progress %
     const progressPercent = createMemo(() => {
         const agg = aggregatedStatus();
         if (!agg) return 0;
@@ -89,19 +89,10 @@ const DownloadItem: Component<{
         return total > 0 ? Math.floor((completed / total) * 100) : 0;
     });
 
-    const [optimisticState, setOptimisticState] = createSignal<
-        DownloadState | null
-    >(null);
-
-    const effectiveStatus = createMemo<DownloadState>(() => {
-        if (optimisticState()) return optimisticState()!;
-        const s = aggregatedStatus();
-        return s?.status as DownloadState ?? "waiting";
-    });
-
-
+    // Action label based on actual RPC state
     const actionLabel = createMemo(() => {
-        switch (effectiveStatus()) {
+        const s = aggregatedStatus()?.status;
+        switch (s) {
             case "complete":
                 return "INSTALL";
             case "active":
@@ -114,41 +105,7 @@ const DownloadItem: Component<{
         }
     });
 
-    async function toggleAction() {
-        const current = effectiveStatus();
-        if (current === "active") setOptimisticState("paused");
-        if (current === "paused") setOptimisticState("active");
-        try {
-            const id = props.item.id;
-            if (current === "active") {
-                await GlobalDownloadManager.pause(id);
-            } else {
-                await GlobalDownloadManager.resume(id);
-            }
-        } catch (e) {
-            setOptimisticState(current);
-        } finally {
-            await props.refreshDownloads();
-            setOptimisticState(null);
-        }
-    }
-
-    async function removeDownload() {
-        try {
-            GlobalDownloadManager.remove(props.item.id)
-        } finally {
-            await props.refreshDownloads();
-        }
-    }
-
-    async function installIfReady() {
-        const targetPath = props.item.targetPath;
-        if (targetPath) {
-            if (props.item.source === "torrent") await installationApi.startInstallation(targetPath);
-            else await installationApi.startExtractionDdl(targetPath);
-        }
-    }
-
+    // Icons based on action
     const actionIcon = createMemo(() => {
         const lbl = actionLabel();
         if (lbl === "PAUSE") return <Pause class="w-5 h-5" />;
@@ -156,10 +113,39 @@ const DownloadItem: Component<{
         return <Play class="w-5 h-5" />;
     });
 
-    const getFileNameFromPath = (path: string) => path.split(/[\\/]/).pop() || path;
+    // Handle pause/resume
+    async function toggleAction() {
+        const current = aggregatedStatus()?.status;
 
-    function toggleExpand() {
-        filesExpanded() ? setFilesExpanded(false) : setFilesExpanded(true);
+        try {
+            const id = props.item.id;
+
+            if (current === "active") {
+                await GlobalDownloadManager.pause(id);
+            } else {
+                await GlobalDownloadManager.resume(id);
+            }
+        } finally {
+            await props.refreshDownloads();
+        }
+    }
+
+    async function removeDownload() {
+        try {
+            await GlobalDownloadManager.remove(props.item.id);
+        } finally {
+            await props.refreshDownloads();
+        }
+    }
+
+    async function installIfReady() {
+        const targetPath = props.item.targetPath;
+        if (!targetPath) return;
+
+        if (props.item.source === "torrent")
+            await installationApi.startInstallation(targetPath);
+        else
+            await installationApi.startExtractionDdl(targetPath);
     }
 
     return (
@@ -181,7 +167,9 @@ const DownloadItem: Component<{
                         class="w-16 h-16 rounded-lg object-cover mt-5 mr-4 border border-secondary-20/30 group-hover:border-accent/30 transition-colors"
                     />
                     <div class="flex-1 min-w-0 mt-5">
-                        <h3 class="font-medium line-clamp-2 text-text group-hover:text-primary transition-colors">{game().title}</h3>
+                        <h3 class="font-medium line-clamp-2 text-text group-hover:text-primary transition-colors">
+                            {game().title}
+                        </h3>
                         <div class="flex items-center gap-2 mt-1 text-sm text-muted/80">
                             <HardDrive class="w-4 h-4 opacity-70" />
                             <span>{formatBytes(aggregatedStatus()?.totalLength)}</span>
@@ -191,6 +179,7 @@ const DownloadItem: Component<{
 
                 <div class="flex-1 flex flex-col">
                     <div class="flex flex-col h-full sm:flex-row items-center gap-4 p-4">
+                        {/* Speeds */}
                         <div class="flex gap-4 sm:gap-6">
                             <div class="flex items-center gap-2 min-w-[100px]">
                                 <div class="p-1.5 rounded-md bg-green-500/10">
@@ -198,7 +187,9 @@ const DownloadItem: Component<{
                                 </div>
                                 <div class="text-sm">
                                     <p class="text-xs text-muted/80">DOWNLOAD</p>
-                                    <p class="font-medium text-text">{formatSpeed(aggregatedStatus()?.downloadSpeed)}</p>
+                                    <p class="font-medium text-text">
+                                        {formatSpeed(aggregatedStatus()?.downloadSpeed)}
+                                    </p>
                                 </div>
                             </div>
 
@@ -208,15 +199,22 @@ const DownloadItem: Component<{
                                 </div>
                                 <div class="text-sm">
                                     <p class="text-xs text-muted/80">UPLOAD</p>
-                                    <p class="font-medium text-text">{formatSpeed(aggregatedStatus()?.uploadSpeed)}</p>
+                                    <p class="font-medium text-text">
+                                        {formatSpeed(aggregatedStatus()?.uploadSpeed)}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Progress bar */}
                         <div class="flex-1 min-w-0 w-full">
                             <div class="flex justify-between text-xs text-muted/80 mb-1.5">
                                 <span class="capitalize">
-                                    {aggregatedStatus()?.status === "complete" ? "Completed" : aggregatedStatus() ? "Downloading..." : "Waiting..."}
+                                    {aggregatedStatus()?.status === "complete"
+                                        ? "Completed"
+                                        : aggregatedStatus()
+                                            ? "Downloading..."
+                                            : "Waiting..."}
                                 </span>
                                 <span class="font-medium text-text">{progressPercent()}%</span>
                             </div>
@@ -228,23 +226,33 @@ const DownloadItem: Component<{
                             </div>
                         </div>
 
+                        {/* Buttons */}
                         <div class="flex items-center gap-2 ml-auto">
                             <Button
                                 variant="bordered"
-                                onClick={() => {
-                                    if (actionLabel() === "INSTALL") installIfReady();
-                                    else toggleAction();
-                                }}
+                                onClick={() =>
+                                    actionLabel() === "INSTALL"
+                                        ? installIfReady()
+                                        : toggleAction()
+                                }
                                 label={actionLabel()}
                                 icon={actionIcon()}
                             />
+
                             <Button
                                 variant="glass"
                                 size="sm"
-                                onClick={toggleExpand}
-                                icon={filesExpanded() ? <ChevronUp class="w-4 h-4" /> : <ChevronDown class="w-4 h-4" />}
+                                onClick={() => setFilesExpanded(!filesExpanded())}
+                                icon={
+                                    filesExpanded() ? (
+                                        <ChevronUp class="w-4 h-4" />
+                                    ) : (
+                                        <ChevronDown class="w-4 h-4" />
+                                    )
+                                }
                                 class="hover:bg-secondary-20/30"
                             />
+
                             <Button
                                 variant="bordered"
                                 onClick={removeDownload}
@@ -269,10 +277,8 @@ const DownloadItem: Component<{
 
                         <DownloadFiles gameFiles={files} />
                     </div>
-
                 </div>
             </Show>
-
         </div>
     );
 };

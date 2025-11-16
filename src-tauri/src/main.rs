@@ -16,6 +16,7 @@ pub use crate::utils::*;
 #[tokio::main]
 async fn main() {
     init_logging();
+
     warn!("Starting application (bootstrap)");
 
     if let Err(e) = start_app().await {

@@ -1,3 +1,4 @@
+pub mod hooks;
 pub mod json_cleanup;
 pub mod logging;
 pub mod network;

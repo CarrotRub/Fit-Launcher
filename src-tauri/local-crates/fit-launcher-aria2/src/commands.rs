@@ -330,6 +330,6 @@ pub async fn aria2_global_stat(
 
 #[tauri::command]
 #[specta]
-pub fn aria2_test_event(app: AppHandle) -> () {
-    let _ = app.emit("aria2_status_update", "Nothingg :3");
+pub fn panic_force(app: AppHandle) -> () {
+    panic!("INTENTIONAL PANIC");
 }

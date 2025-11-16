@@ -6,13 +6,16 @@ use std::{
     ffi::OsStr,
     net::TcpListener,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
-    sync::{Arc, LazyLock},
+    process::Stdio,
+    sync::{Arc, LazyLock, OnceLock},
     time::Duration,
 };
 
 use tokio::{
-    sync::oneshot::{Receiver, Sender, channel},
+    sync::{
+        Mutex,
+        oneshot::{Receiver, Sender, channel},
+    },
     time::sleep,
 };
 
@@ -38,6 +41,7 @@ pub struct TorrentSession {
     pub config_filename: String,
     shared: Arc<RwLock<Option<StateShared>>>,
     init_lock: Arc<tokio::sync::Mutex<()>>,
+    aria2_child: Arc<tokio::sync::Mutex<Option<tokio::process::Child>>>,
 }
 
 unsafe impl Send for TorrentSession {}
@@ -214,7 +218,7 @@ pub async fn aria2_client_from_config(
             ));
         }
 
-        let mut child = Command::new(&exec)
+        let mut child = tokio::process::Command::new(&exec)
             .args(build_aria2_args(
                 config,
                 Path::new(&session_path.as_ref()),
@@ -228,7 +232,12 @@ pub async fn aria2_client_from_config(
             .context("Failed to start aria2c")?;
 
         sleep(Duration::from_secs(1)).await;
+        #[cfg(windows)]
+        {
+            use crate::hooks::windows::set_child_in_job;
 
+            set_child_in_job(&child)
+        }
         let client = aria2_ws::Client::connect(
             &format!("ws://127.0.0.1:{rpc_port}/jsonrpc"),
             token.as_deref(),
@@ -242,15 +251,12 @@ pub async fn aria2_client_from_config(
         let (done_tx, done_rx) = channel::<()>();
 
         let client_clone = client.clone();
-        tokio::task::spawn(async move {
+
+        tokio::spawn(async move {
             match close_rx.await {
                 Ok(()) => {
-                    if let Err(e) = client_clone.force_shutdown().await {
-                        warn!("Failed to shutdown aria2: {}", e);
-                    }
-                    if let Err(e) = child.wait() {
-                        warn!("Failed to wait for aria2c: {}", e);
-                    }
+                    let _ = client_clone.force_shutdown().await;
+                    let _ = child.kill().await;
                     let _ = done_tx.send(());
                 }
                 Err(_) => warn!("Shutdown signal dropped"),
@@ -358,6 +364,7 @@ impl TorrentSession {
             config_filename: v2_path.to_string_lossy().into(),
             shared,
             init_lock: Arc::new(tokio::sync::Mutex::new(())),
+            aria2_child: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -412,14 +419,24 @@ impl TorrentSession {
     }
 
     pub async fn shutdown(&self) {
-        let handles = {
-            let mut guard = ARIA2_DAEMON.lock().await;
-            guard.take()
-        };
+        {
+            let handles = {
+                let mut guard = ARIA2_DAEMON.lock().await;
+                guard.take()
+            };
+            if let Some((close_tx, done_rx, _port)) = handles {
+                let _ = close_tx.send(());
+                let _ = done_rx.await;
+            }
+        }
 
-        if let Some((close_tx, done_rx, _port)) = handles {
-            let _ = close_tx.send(());
-            let _ = done_rx.await;
+        if let Some(mut child) = self.aria2_child.lock().await.take() {
+            info!("Killing aria2c child process...");
+            if let Err(e) = child.kill().await {
+                error!("Failed to kill aria2c: {:?}", e);
+            } else {
+                let _ = child.wait().await;
+            }
         }
     }
 }

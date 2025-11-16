@@ -54,10 +54,6 @@ export class GlobalDownloadManager {
     });
   }
 
-  static async testEventEmit() {
-    await commands.aria2TestEvent();
-  }
-
   static mapStatusToJob(status: Status): Partial<DownloadJob> {
     return {
       id: status.gid,
@@ -179,9 +175,9 @@ export class GlobalDownloadManager {
     };
 
     this.jobs.set(id, job);
-    await this.save();
 
     downloadStore.addJob(job);
+    await this.save();
     return job;
   }
 
@@ -242,8 +238,9 @@ export class GlobalDownloadManager {
     };
 
     this.jobs.set(id, job);
-    await this.save();
     downloadStore.addJob(job);
+
+    await this.save();
     return job;
   }
 
@@ -252,12 +249,16 @@ export class GlobalDownloadManager {
     if (!job) return;
 
     for (const gid of job.gids) {
+      console.debug("Removing GID: ", gid);
       await commands.aria2Remove(gid);
     }
 
+    let list = await this.listDownlaods();
+    console.log("list downloads after removing: ", list);
+
     this.jobs.delete(jobId);
-    await this.save();
     downloadStore.removeJobById(jobId);
+    await this.save();
   }
 
   static async pause(jobId: string) {
@@ -265,8 +266,9 @@ export class GlobalDownloadManager {
     if (!job) return;
     for (const gid of job.gids) await commands.aria2Pause(gid);
     job.state = "paused";
-    await this.save();
+
     downloadStore.setJobState(jobId, "paused");
+    await this.save();
   }
 
   static async resume(jobId: string) {
@@ -284,13 +286,15 @@ export class GlobalDownloadManager {
       if (result.status === "ok") {
         job.gids = result.data.flatMap((r) => r.task?.gid || []);
         job.state = "active";
-        await this.save();
+
         downloadStore.setJobGids(jobId, job.gids);
         downloadStore.setJobState(jobId, "active");
+        await this.save();
       } else {
         job.state = "error";
-        await this.save();
+
         downloadStore.setJobState(jobId, "error");
+        await this.save();
       }
       return;
     }

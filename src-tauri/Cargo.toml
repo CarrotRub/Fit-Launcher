@@ -100,6 +100,7 @@ fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 
+
 # Workspace configuration
 [workspace]
 members = [

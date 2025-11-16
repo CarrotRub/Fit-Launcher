@@ -23,7 +23,7 @@ use fit_launcher_torrent::LibrqbitSession;
 use specta::specta;
 use tauri_helper::specta_collect_commands;
 
-use crate::bootstrap::init_logging;
+use crate::bootstrap::hooks::shutdown_hook;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
@@ -69,6 +69,9 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
         }))
         .setup(|app| {
             let app_handle = app.handle().clone();
+            let app_handle_clone = app_handle.clone();
+
+            shutdown_hook(app_handle_clone);
 
             if let Err(err) = delete_invalid_json_files(&app_handle) {
                 error!("Error deleting JSON: {:#?}", err);
@@ -190,6 +193,7 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
     let app = app.build(tauri::generate_context!())?;
     app.run(|app_handle, event| {
         if let tauri::RunEvent::ExitRequested { api, .. } = event {
+            let app_clone = app_handle.clone();
             if let Some(main) = app_handle.get_webview_window("main") {
                 let _ = main.hide();
             }

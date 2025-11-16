@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
-import { DownloadedGame } from "../../bindings";
+import { commands, DownloadedGame } from "../../bindings";
 import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
@@ -171,8 +171,8 @@ const DownloadGameUUIDPage = () => {
   }
 
   async function toggleDownloadLater() {
-    await GlobalDownloadManager.testEventEmit();
     const game = gameInfo();
+    // await commands.panicForce();
     if (!game) return;
 
     try {
