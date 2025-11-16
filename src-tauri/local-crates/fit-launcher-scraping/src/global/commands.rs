@@ -116,7 +116,7 @@ pub async fn get_sitemaps_website(app_handle: AppHandle) -> Result<(), SitemapEr
     for url in to_download {
         let filename = extract_filename(&url);
         let dest_path = sitemaps_dir.join(&filename);
-        let handle = app_handle.clone();
+
         let client = client.clone();
         let permit = sem.clone().acquire_owned().await?;
 
@@ -177,35 +177,29 @@ pub async fn get_singular_game_info(
     if let Ok(mut entries) = fs::read_dir(&cache_dir).await {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let file_name = entry.file_name();
-            if file_name.to_string_lossy().starts_with("singular_game_") {
-                if let Ok(metadata) = entry.metadata().await {
-                    if let Ok(modified) = metadata.modified() {
-                        if SystemTime::now()
-                            .duration_since(modified)
-                            .unwrap_or_default()
-                            > Duration::from_secs(60 * 60 * 24)
-                        {
-                            let _ = fs::remove_file(entry.path()).await;
-                        }
-                    }
-                }
+            if file_name.to_string_lossy().starts_with("singular_game_")
+                && let Ok(metadata) = entry.metadata().await
+                && let Ok(modified) = metadata.modified()
+                && SystemTime::now()
+                    .duration_since(modified)
+                    .unwrap_or_default()
+                    > Duration::from_secs(60 * 60 * 24)
+            {
+                let _ = fs::remove_file(entry.path()).await;
             }
         }
     }
 
-    if path.exists() {
-        if let Ok(metadata) = fs::metadata(&path).await {
-            if let Ok(modified) = metadata.modified() {
-                if SystemTime::now()
-                    .duration_since(modified)
-                    .unwrap_or_default()
-                    < Duration::from_secs(60 * 60 * 24)
-                {
-                    info!("Using cached game info for {}", hash);
-                    return Ok(());
-                }
-            }
-        }
+    if path.exists()
+        && let Ok(metadata) = fs::metadata(&path).await
+        && let Ok(modified) = metadata.modified()
+        && SystemTime::now()
+            .duration_since(modified)
+            .unwrap_or_default()
+            < Duration::from_secs(60 * 60 * 24)
+    {
+        info!("Using cached game info for {}", hash);
+        return Ok(());
     }
 
     let response = CUSTOM_DNS_CLIENT
