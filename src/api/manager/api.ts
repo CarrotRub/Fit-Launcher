@@ -1,4 +1,5 @@
 import {
+  Aria2Error,
   DirectLink,
   DownloadedGame,
   FileInfo,
@@ -13,6 +14,7 @@ import { commands } from "../../bindings";
 import { downloadStore } from "../../stores/download";
 import { listen } from "@tauri-apps/api/event";
 import { FitEmitter } from "../../services/emitter";
+import { AriaError } from "../../error/aria";
 
 export type DownloadSource = "torrent" | "ddl";
 export type DownloadState =
@@ -269,7 +271,11 @@ export class GlobalDownloadManager {
 
   static async resume(jobId: string) {
     const job = this.jobs.get(jobId);
+    await this.listDownlaods();
+
     if (!job) return;
+    console.log("somehow continues");
+
     if (job.source === "ddl") {
       const result = await commands.aria2TaskSpawn(
         job.ddlFiles!,
@@ -288,34 +294,44 @@ export class GlobalDownloadManager {
       }
       return;
     }
+
     if (job.source === "torrent") {
-      console.log(job.torrentFileBytes, job.targetPath, job.torrentFiles);
-      console.log(jobId);
       let gid = job.status?.gid;
-      let res_res = await commands.aria2Resume(gid!);
-      if (res_res.status === "ok") {
-        if (res_res.status === "ok") {
-          job.state = "active";
-        } else {
-          job.state = "error";
-        }
+      let resume_response = await commands.aria2Resume(gid!);
+      if (resume_response.status === "ok") {
         await this.save();
         downloadStore.setJobGids(jobId, job.gids);
         downloadStore.setJobState(jobId, "active");
       } else {
-        console.error("Error unpausing torrent: ", res_res.error);
+        console.warn("Error unpausing torrent: ", resume_response.error);
 
-        downloadStore.setJobState(jobId, "error");
+        if (AriaError.isRPCError(resume_response.error)) {
+          const res = await commands.aria2StartTorrent(
+            job.torrentFileBytes!,
+            job.targetPath,
+            job.torrentFiles!
+          );
+
+          if (res.status === "ok") {
+            job.gids = Array(res.data);
+            downloadStore.setJobState(jobId, "active");
+          }
+        } else {
+          console.error("Error contacting aria2c: ", resume_response.error);
+          downloadStore.setJobState(jobId, "error");
+        }
       }
     }
-    let gid = job.status?.gid;
-    const res_res = await commands.aria2Resume(gid!);
-    if (res_res.status === "ok") {
-      job.state = "active";
-      await this.save();
-      downloadStore.setJobState(jobId, "active");
+  }
+
+  static async listDownlaods(): Promise<Status[]> {
+    const res = await commands.aria2GetAllList();
+    if (res.status === "ok") {
+      console.log(res.data);
+      return res.data;
     } else {
-      console.error("Error unpausing torrent: ", res_res.error);
+      console.error("Error getting aria2c downloads: ", res.error);
+      return [];
     }
   }
 }

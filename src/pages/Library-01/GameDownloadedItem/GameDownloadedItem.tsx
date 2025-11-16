@@ -58,7 +58,7 @@ export default function GameDownloadedItem(props: {
       infoTitle: "Select game executable",
       infoMessage: "Choose the .exe file for this game",
       initialPath: folder,
-      filters: [{ name: "Executable", extensions: ["exe"] }],
+      filters: [{ name: "Executable", extensions: ["exe", "bat"] }],
       multipleFiles: false,
       isDirectory: false,
       placeholder: "Executable Path",
