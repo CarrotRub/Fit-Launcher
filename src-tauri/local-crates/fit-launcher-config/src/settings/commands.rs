@@ -12,6 +12,7 @@ use crate::client::dns::FitLauncherDnsConfig;
 
 use super::creation::GamehubSettings;
 use super::creation::InstallationSettings;
+use super::creation::RealDebridSettings;
 
 #[tauri::command]
 #[specta]
@@ -391,5 +392,56 @@ pub fn open_logs_directory() -> Result<(), String> {
         }
     }
 
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
+pub fn get_realdebrid_settings() -> RealDebridSettings {
+    let base_dirs = BaseDirs::new()
+        .ok_or_else(|| error!("Failed to determine base directories"))
+        .unwrap();
+
+    let realdebrid_file_path = base_dirs
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig")
+        .join("settings")
+        .join("realdebrid")
+        .join("realdebrid.json");
+
+    let file_content = fs::read_to_string(&realdebrid_file_path)
+        .map_err(|err| {
+            error!(
+                "Error reading the file at {:?}: {:#?}",
+                realdebrid_file_path, err
+            );
+        })
+        .unwrap_or("{}".to_string());
+
+    serde_json::from_str::<RealDebridSettings>(&file_content).unwrap_or_default()
+}
+
+#[tauri::command]
+#[specta]
+pub fn change_realdebrid_settings(
+    settings: RealDebridSettings,
+) -> Result<(), SettingsConfigurationError> {
+    let base_dirs = BaseDirs::new().ok_or_else(|| SettingsConfigurationError {
+        message: "Failed to determine base directories".to_string(),
+    })?;
+    let realdebrid_file_path = base_dirs
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig")
+        .join("settings")
+        .join("realdebrid")
+        .join("realdebrid.json");
+
+    let settings_json_string =
+        serde_json::to_string_pretty(&settings).map_err(SettingsConfigurationError::from)?;
+
+    fs::write(realdebrid_file_path, settings_json_string)
+        .map_err(SettingsConfigurationError::from)?;
     Ok(())
 }

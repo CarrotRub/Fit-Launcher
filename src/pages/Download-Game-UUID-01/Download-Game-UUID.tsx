@@ -4,7 +4,7 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags, Zap } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
@@ -13,6 +13,7 @@ import { GameDetails, GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
 import { GlobalDownloadManager } from "../../api/manager/api";
+import { RealDebridSettingsApi } from "../../api/realdebrid/api";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -34,6 +35,7 @@ const DownloadGameUUIDPage = () => {
     originalSize: "N/A",
     repackSize: "N/A"
   });
+  const [realdebridEnabled, setRealdebridEnabled] = createSignal(false);
 
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -79,6 +81,16 @@ const DownloadGameUUIDPage = () => {
       console.error("Failed to load game info", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function checkRealDebridEnabled() {
+    try {
+      const settings = await RealDebridSettingsApi.getRealDebridSettings();
+      setRealdebridEnabled(settings.enabled && settings.api_token.length > 0);
+    } catch (err) {
+      console.error("Failed to check Real-Debrid settings:", err);
+      setRealdebridEnabled(false);
     }
   }
 
@@ -207,6 +219,7 @@ const DownloadGameUUIDPage = () => {
       console.log(state.gameHref)
       fetchGame(state.gameHref);
       fetchImages(state.gameHref);
+      checkRealDebridEnabled();
     }
   });
 
@@ -338,6 +351,23 @@ const DownloadGameUUIDPage = () => {
                   variant="bordered"
                 />
               </div>
+              <Show when={realdebridEnabled()}>
+                <div class="flex flex-col sm:flex-row gap-3 w-full">
+                  <div class="relative flex items-center justify-center flex-1">
+                    <div class="absolute inset-0 flex items-center">
+                      <div class="w-full border-t border-secondary-20"></div>
+                    </div>
+                    <div class="relative px-2 text-xs text-muted">OR</div>
+                  </div>
+                  <Button
+                    icon={<Zap class="size-5" />}
+                    label="Real-Debrid Download"
+                    onClick={() => handleDownloadPopup("realdebrid")}
+                    class="flex-1 py-3 hover:bg-accent/90 transition-colors"
+                    variant="bordered"
+                  />
+                </div>
+              </Show>
               <p class="text-xs text-muted text-center">
                 Choose your preferred download method
               </p>

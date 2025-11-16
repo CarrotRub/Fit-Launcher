@@ -98,6 +98,7 @@ fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-scraping = { path = "./local-crates/fit-launcher-scraping" }
 fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
+fit-launcher-real-debrid = { path = "./local-crates/fit-launcher-real-debrid" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 
 # Workspace configuration
@@ -111,6 +112,7 @@ members = [
     "local-crates/fit-launcher-scraping",
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",
+    "local-crates/fit-launcher-real-debrid",
 ]
 resolver = "3"
 

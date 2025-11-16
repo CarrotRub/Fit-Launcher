@@ -16,7 +16,7 @@ import { listen } from "@tauri-apps/api/event";
 import { FitEmitter } from "../../services/emitter";
 import { AriaError } from "../../error/aria";
 
-export type DownloadSource = "torrent" | "ddl";
+export type DownloadSource = "torrent" | "ddl" | "realdebrid";
 export type DownloadState =
   | "active"
   | "paused"
@@ -33,6 +33,8 @@ export interface DownloadJob {
   magnetLink?: string;
   torrentFiles?: number[];
   torrentFileBytes?: number[];
+  realdebridTorrentId?: string;
+  realdebridToken?: string;
   game: DownloadedGame;
   targetPath: string;
   state: DownloadState;
@@ -276,7 +278,7 @@ export class GlobalDownloadManager {
     if (!job) return;
     console.log("somehow continues");
 
-    if (job.source === "ddl") {
+    if (job.source === "ddl" || job.source === "realdebrid") {
       const result = await commands.aria2TaskSpawn(
         job.ddlFiles!,
         job.targetPath
@@ -332,6 +334,93 @@ export class GlobalDownloadManager {
     } else {
       console.error("Error getting aria2c downloads: ", res.error);
       return [];
+    }
+  }
+
+  static async addRealDebridTorrent(
+    id: string,
+    magnetLink: string,
+    game: DownloadedGame,
+    targetPath: string,
+    listFiles: number[],
+    token: string
+  ) {
+    try {
+      // Step 1: Add magnet link to Real-Debrid
+      const addMagnetRes = await commands.addRealdebridMagnet(magnetLink, token);
+      if (addMagnetRes.status !== "ok") {
+        throw new Error(`Failed to add magnet to Real-Debrid: ${addMagnetRes.error}`);
+      }
+      const torrentId = addMagnetRes.data;
+
+      // Step 2: Wait for torrent to be ready (downloaded on Real-Debrid)
+      const maxWaitSeconds = 1800; // 30 minutes
+      const waitRes = await commands.waitRealdebridTorrentReady(
+        torrentId,
+        token,
+        maxWaitSeconds
+      );
+      if (waitRes.status !== "ok") {
+        throw new Error(
+          `Torrent processing timeout or error: ${waitRes.error}`
+        );
+      }
+
+      // Step 3: Select files if specified
+      if (listFiles.length > 0) {
+        const selectRes = await commands.selectRealdebridFiles(
+          torrentId,
+          listFiles,
+          token
+        );
+        if (selectRes.status !== "ok") {
+          throw new Error(`Failed to select files: ${selectRes.error}`);
+        }
+      }
+
+      // Step 4: Get download links
+      const linksRes = await commands.getRealdebridDownloadLinks(torrentId, token);
+      if (linksRes.status !== "ok") {
+        throw new Error(`Failed to get download links: ${linksRes.error}`);
+      }
+
+      const directLinks = linksRes.data;
+
+      if (directLinks.length === 0) {
+        throw new Error("No download links available from Real-Debrid");
+      }
+
+      // Step 5: Start download with aria2 using direct links
+      const res = await commands.aria2TaskSpawn(directLinks, targetPath);
+      if (res.status !== "ok") {
+        throw new Error(`DDL spawn failed: ${res.error}`);
+      }
+
+      const gids = res.data.flatMap((r) => r.task?.gid || []);
+
+      // Create job with Real-Debrid specific info
+      const job: DownloadJob = {
+        id,
+        source: "realdebrid",
+        ddlFiles: directLinks,
+        magnetLink,
+        realdebridTorrentId: torrentId,
+        realdebridToken: token,
+        game,
+        targetPath,
+        gids,
+        state: "active",
+        status: null,
+      };
+
+      this.jobs.set(id, job);
+      await this.save();
+
+      downloadStore.addJob(job);
+      return job;
+    } catch (error) {
+      console.error("Real-Debrid download failed:", error);
+      throw error;
     }
   }
 }

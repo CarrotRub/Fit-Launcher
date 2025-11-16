@@ -1,0 +1,18 @@
+[package]
+name = "fit-launcher-real-debrid"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tauri = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+specta = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+urlencoding = "2.1"
+fit-launcher-ddl = { path = "../fit-launcher-ddl" }
+
