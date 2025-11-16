@@ -1,5 +1,6 @@
 use fit_launcher_scraping::discovery::get_100_games_unordered;
 use fit_launcher_scraping::get_sitemaps_website;
+use fit_launcher_scraping::global::commands::rebuild_search_index;
 use fit_launcher_scraping::global::functions::run_all_scrapers;
 use fit_launcher_torrent::functions::TorrentSession;
 use lru::LruCache;
@@ -125,6 +126,22 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
                     }
                     if sitemap_res.is_err() {
                         error!("get_sitemaps_website failed");
+                    }
+
+                    // Build search index after sitemaps are downloaded
+                    match rebuild_search_index(app_for_scrapers.clone()).await {
+                        Ok(_) => {
+                            info!("Search index built successfully");
+                            if let Some(main) = app_for_scrapers.get_window("main") {
+                                let _ = main.emit("search-index-ready", ());
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to build search index: {:#?}", e);
+                            if let Some(main) = app_for_scrapers.get_window("main") {
+                                let _ = main.emit("search-index-error", e.to_string());
+                            }
+                        }
                     }
 
                     if let Some(splash) = app_for_scrapers.get_window("splashscreen") {

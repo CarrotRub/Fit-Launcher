@@ -18,6 +18,7 @@ use tokio::sync::AcquireError;
 use crate::errors::ScrapingError;
 use crate::global::functions::download_sitemap;
 use crate::global::functions::helper::fetch_game_info;
+use crate::search_index::{build_search_index, get_search_index_path, SearchIndex, SearchIndexEntry};
 use crate::singular_game_path;
 use crate::structs::Game;
 
@@ -221,6 +222,56 @@ pub async fn get_singular_game_info(
     );
 
     Ok(())
+}
+
+#[tauri::command]
+#[specta]
+pub async fn rebuild_search_index(app_handle: AppHandle) -> Result<(), ScrapingError> {
+    build_search_index(&app_handle).await
+}
+
+#[tauri::command]
+#[specta]
+pub fn get_search_index_path_cmd(app_handle: AppHandle) -> String {
+    get_search_index_path(&app_handle).to_string_lossy().to_string()
+}
+
+#[tauri::command]
+#[specta]
+pub async fn query_search_index(
+    app_handle: AppHandle,
+    query: String,
+) -> Result<Vec<SearchIndexEntry>, ScrapingError> {
+    use tokio::fs;
+    
+    let index_path = get_search_index_path(&app_handle);
+    
+    if !index_path.exists() {
+        return Err(ScrapingError::IOError(format!(
+            "Search index not found at {}",
+            index_path.display()
+        )));
+    }
+
+    let content = fs::read_to_string(&index_path).await.map_err(|e| {
+        ScrapingError::IOError(format!("Failed to read search index: {}", e))
+    })?;
+
+    let index: SearchIndex = serde_json::from_str(&content).map_err(|e| {
+        ScrapingError::FileJSONError(format!("Failed to parse search index: {}", e))
+    })?;
+
+    let query_lower = query.to_lowercase();
+    let filtered: Vec<SearchIndexEntry> = index
+        .into_iter()
+        .filter(|entry| {
+            entry.title.to_lowercase().contains(&query_lower)
+                || entry.slug.to_lowercase().contains(&query_lower)
+        })
+        .take(25)
+        .collect();
+
+    Ok(filtered)
 }
 
 
