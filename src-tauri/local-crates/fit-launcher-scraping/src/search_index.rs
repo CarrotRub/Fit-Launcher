@@ -1,11 +1,11 @@
+use serde::{Deserialize, Serialize};
+use specta::Type;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tracing::{error, info, warn};
-use serde::{Deserialize, Serialize};
-use specta::Type;
 
 use crate::errors::{CreatingFileErrorStruct, ScrapingError};
 
@@ -22,7 +22,7 @@ pub type SearchIndex = Vec<SearchIndexEntry>;
 pub(crate) fn extract_slug_and_title(url: &str) -> Option<(String, String)> {
     // URLs are like: https://fitgirl-repacks.site/game-name/
     let parts: Vec<&str> = url.split('/').collect();
-    
+
     // Find the game slug (usually the 4th part after https://, domain, empty)
     if parts.len() >= 4 {
         let slug = parts[3].to_string();
@@ -39,7 +39,7 @@ pub(crate) fn extract_slug_and_title(url: &str) -> Option<(String, String)> {
             })
             .collect::<Vec<String>>()
             .join(" ");
-        
+
         return Some((slug, title));
     }
     None
@@ -50,21 +50,25 @@ async fn parse_sitemap_file(file_path: &PathBuf) -> Result<Vec<String>, Scraping
     use scraper::{Html, Selector};
 
     let content = fs::read_to_string(file_path).await.map_err(|e| {
-        ScrapingError::IOError(format!("Failed to read sitemap file {}: {}", file_path.display(), e))
+        ScrapingError::IOError(format!(
+            "Failed to read sitemap file {}: {}",
+            file_path.display(),
+            e
+        ))
     })?;
 
     let doc = Html::parse_document(&content);
-    
+
     let url_selector = Selector::parse("url").map_err(|e| {
         ScrapingError::SelectorError(format!("Failed to parse URL selector: {}", e))
     })?;
-    
+
     let loc_selector = Selector::parse("loc").map_err(|e| {
         ScrapingError::SelectorError(format!("Failed to parse loc selector: {}", e))
     })?;
 
     let mut urls = Vec::new();
-    
+
     // Find all <url><loc>...</loc></url> entries
     for url_node in doc.select(&url_selector) {
         if let Some(loc_node) = url_node.select(&loc_selector).next() {
@@ -81,15 +85,18 @@ async fn parse_sitemap_file(file_path: &PathBuf) -> Result<Vec<String>, Scraping
 /// Build search index from all sitemap files
 pub async fn build_search_index(app_handle: &AppHandle) -> Result<(), ScrapingError> {
     let start = std::time::Instant::now();
-    
+
     let sitemaps_dir = app_handle
         .path()
         .app_data_dir()
-        .ok_or_else(|| ScrapingError::IOError("Failed to get app data dir".into()))?
+        .map_err(|e| ScrapingError::IOError(format!("Failed to get app data dir: {}", e)))?
         .join("sitemaps");
 
     if !sitemaps_dir.exists() {
-        warn!("Sitemaps directory does not exist: {}", sitemaps_dir.display());
+        warn!(
+            "Sitemaps directory does not exist: {}",
+            sitemaps_dir.display()
+        );
         return Err(ScrapingError::IOError(format!(
             "Sitemaps directory does not exist: {}",
             sitemaps_dir.display()
@@ -100,9 +107,9 @@ pub async fn build_search_index(app_handle: &AppHandle) -> Result<(), ScrapingEr
     let mut entries = Vec::new();
     let mut seen_hrefs = HashSet::new();
 
-    let mut dir_entries = fs::read_dir(&sitemaps_dir).await.map_err(|e| {
-        ScrapingError::IOError(format!("Failed to read sitemaps directory: {}", e))
-    })?;
+    let mut dir_entries = fs::read_dir(&sitemaps_dir)
+        .await
+        .map_err(|e| ScrapingError::IOError(format!("Failed to read sitemaps directory: {}", e)))?;
 
     while let Ok(Some(entry)) = dir_entries.next_entry().await {
         let file_name = entry.file_name();
@@ -178,7 +185,11 @@ pub async fn build_search_index(app_handle: &AppHandle) -> Result<(), ScrapingEr
         })
     })?;
 
-    info!("Search index written to {} in {:?}", final_path.display(), start.elapsed());
+    info!(
+        "Search index written to {} in {:?}",
+        final_path.display(),
+        start.elapsed()
+    );
     Ok(())
 }
 
@@ -191,4 +202,3 @@ pub fn get_search_index_path(app_handle: &AppHandle) -> PathBuf {
         .join("sitemaps")
         .join("search-index.json")
 }
-
