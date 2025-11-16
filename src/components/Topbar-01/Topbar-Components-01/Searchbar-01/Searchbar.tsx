@@ -1,15 +1,21 @@
-import { createSignal, createEffect, Show, onMount, For } from "solid-js";
+import { createSignal, createEffect, Show, onMount, For, onCleanup } from "solid-js";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readTextFile } from "@tauri-apps/plugin-fs";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { useNavigate } from "@solidjs/router";
-import { Search, X, Sparkles } from "lucide-solid";
+import { Search, X, Sparkles, Loader2 } from "lucide-solid";
 import { commands } from "../../../../bindings";
+import { listen } from "@tauri-apps/api/event";
 
 interface SearchbarProps {
   isTopBar?: boolean;
   setSearchValue?: (value: string) => void;
   class?: string;
+}
+
+interface SearchIndexEntry {
+  slug: string;
+  title: string;
+  href: string;
 }
 
 export default function Searchbar(props: SearchbarProps) {
@@ -19,17 +25,59 @@ export default function Searchbar(props: SearchbarProps) {
 
   const [clicked, setClicked] = createSignal(false);
   const [searchTerm, setSearchTerm] = createSignal("");
-  const [searchResults, setSearchResults] = createSignal<string[]>([]);
+  const [searchResults, setSearchResults] = createSignal<SearchIndexEntry[]>([]);
+  const [searchIndex, setSearchIndex] = createSignal<SearchIndexEntry[]>([]);
+  const [indexLoading, setIndexLoading] = createSignal(true);
+  const [indexError, setIndexError] = createSignal<string | null>(null);
   const [showDragonBallSVG, setShowDragonBallSVG] = createSignal(false);
   const [isFocused, setIsFocused] = createSignal(false);
   const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
+  let debounceTimer: number | undefined;
 
 
-  onMount(() => {
-    const urlParameter = getUrlParameter("url");
-    if (urlParameter !== "") {
-      showResults(urlParameter);
+  async function loadSearchIndex() {
+    try {
+      setIndexLoading(true);
+      setIndexError(null);
+      const dirPath = await appDataDir();
+      const indexPath = await join(dirPath, "sitemaps", "search-index.json");
+      
+      const content = await readTextFile(indexPath);
+      const index: SearchIndexEntry[] = JSON.parse(content);
+      setSearchIndex(index);
+      setIndexLoading(false);
+      
+      // If there was a URL parameter, search for it now
+      const urlParameter = getUrlParameter("url");
+      if (urlParameter !== "") {
+        filterResults(urlParameter);
+      }
+    } catch (err) {
+      console.error("Failed to load search index:", err);
+      setIndexError(err instanceof Error ? err.message : "Failed to load search index");
+      setIndexLoading(false);
     }
+  }
+
+  onMount(async () => {
+    await loadSearchIndex();
+    
+    // Listen for index rebuild events
+    const readyUnlisten = await listen("search-index-ready", async () => {
+      await loadSearchIndex();
+    });
+    
+    const errorUnlisten = await listen("search-index-error", (event: any) => {
+      setIndexError(event.payload || "Search index error");
+    });
+
+    onCleanup(() => {
+      readyUnlisten();
+      errorUnlisten();
+      if (debounceTimer !== undefined) {
+        clearTimeout(debounceTimer);
+      }
+    });
   });
 
   function getUrlParameter(name: string): string {
@@ -42,85 +90,73 @@ export default function Searchbar(props: SearchbarProps) {
     setSearchTerm("");
     setSearchResults([]);
     setClicked(false);
+    if (debounceTimer !== undefined) {
+      clearTimeout(debounceTimer);
+    }
   }
 
   createEffect(() => {
     setShowDragonBallSVG(searchTerm().toLowerCase().includes("dragon ball"));
   });
 
-  async function showResults(query: string) {
-    try {
-      const requests = [];
-      const dirPath = await appDataDir();
-
-      for (let i = 1; i <= 10; i++) {
-        const sitemapURL = await join(dirPath, "sitemaps", `post-sitemap${i}.xml`);
-        const converted = convertFileSrc(sitemapURL);
-        requests.push(fetch(converted));
-      }
-
-      const responses = await Promise.all(requests);
-      const postURLs: string[] = [];
-
-      for (const response of responses) {
-        if (response.ok) {
-          const text = await response.text();
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(text, "text/xml");
-          const urls = xmlDoc.getElementsByTagName("url");
-
-          for (const url of urls) {
-            const loc = url.getElementsByTagName("loc")[0]?.textContent;
-            if (loc) postURLs.push(loc);
-          }
-        } else {
-          console.error("Failed to fetch sitemap:", response.statusText);
-        }
-      }
-
-      const results = postURLs.filter((postURL) => {
-        const title = getTitleFromUrl(postURL).toUpperCase().replace(/-/g, " ");
-        return title.includes(query.toUpperCase().trim());
-      });
-
-      setSearchResults(results.slice(0, 25));
-
-    } catch (err) {
-      console.error("Failed to fetch sitemap data:", err);
+  function filterResults(query: string) {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
     }
-  }
 
-  function capitalizeTitle(title: string): string {
-    return title.replace(/-/g, " ").toUpperCase();
-  }
+    const index = searchIndex();
+    if (index.length === 0) {
+      setSearchResults([]);
+      return;
+    }
 
-  function getTitleFromUrl(url: string): string {
-    const parts = url.split("/");
-    return parts[3] || "";
+    const queryLower = query.toLowerCase().trim();
+    const filtered = index.filter((entry) => {
+      return (
+        entry.title.toLowerCase().includes(queryLower) ||
+        entry.slug.toLowerCase().includes(queryLower)
+      );
+    });
+
+    setSearchResults(filtered.slice(0, 25));
   }
 
   function handleInputChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const value = target.value.toLowerCase();
+    const value = target.value;
     setSearchTerm(value);
-    value ? showResults(value) : clearSearch();
-
+    
+    // Clear previous debounce timer
+    if (debounceTimer !== undefined) {
+      clearTimeout(debounceTimer);
+    }
+    
+    if (!value.trim()) {
+      clearSearch();
+      return;
+    }
+    
+    // Debounce the search
+    debounceTimer = window.setTimeout(() => {
+      filterResults(value);
+    }, 150);
   }
 
-  async function handleGoToGamePage(gameHref: string) {
+  async function handleGoToGamePage(entry: SearchIndexEntry) {
     if (!clicked()) {
       setClicked(true);
 
       if (isTopBar && navigate) {
-        const uuid = await commands.hashUrl(gameHref);
+        const uuid = await commands.hashUrl(entry.href);
         navigate(`/game/${uuid}`, {
-          state: { gameHref, gameTitle: "", filePath: "" }
+          state: { gameHref: entry.href, gameTitle: entry.title, filePath: "" }
         });
         clearSearch();
       } else if (!isTopBar && setSearchValue) {
-        setSearchTerm(capitalizeTitle(getTitleFromUrl(gameHref)));
+        setSearchTerm(entry.title);
         setSearchResults([]);
-        setSearchValue(gameHref);
+        setSearchValue(entry.href);
         setClicked(false);
       }
     }
@@ -144,10 +180,14 @@ export default function Searchbar(props: SearchbarProps) {
           'border-secondary-20 hover:border-accent/50'}
       `}>
         <div class="absolute left-4 text-muted">
-          <Search size={20} class={`
-            transition-all duration-300
-            ${isFocused() ? 'text-accent scale-110' : ''}
-          `} />
+          <Show when={!indexLoading()} fallback={
+            <Loader2 size={20} class="animate-spin" />
+          }>
+            <Search size={20} class={`
+              transition-all duration-300
+              ${isFocused() ? 'text-accent scale-110' : ''}
+            `} />
+          </Show>
         </div>
 
         <input
@@ -165,8 +205,9 @@ export default function Searchbar(props: SearchbarProps) {
 
             if (e.key === "Tab") {
               e.preventDefault();
-              if (results[index]) {
-                handleGoToGamePage(results[index]);
+              const targetIndex = index >= 0 ? index : 0;
+              if (results[targetIndex]) {
+                handleGoToGamePage(results[targetIndex]);
               }
             }
 
@@ -182,7 +223,10 @@ export default function Searchbar(props: SearchbarProps) {
 
             if (e.key === "Enter") {
               e.preventDefault();
-              if (results[index]) handleGoToGamePage(results[index]);
+              const targetIndex = index >= 0 ? index : 0;
+              if (results[targetIndex]) {
+                handleGoToGamePage(results[targetIndex]);
+              }
             }
           }}
           class={`
@@ -214,8 +258,15 @@ export default function Searchbar(props: SearchbarProps) {
         </Show>
       </div>
 
+      {/* Error Message */}
+      <Show when={indexError() !== null && !indexLoading()}>
+        <div class="absolute z-80 mt-2 w-full bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-sm text-red-400">
+          Search index unavailable: {indexError()}
+        </div>
+      </Show>
+
       {/* Search Results */}
-      <Show when={searchResults().length > 0}>
+      <Show when={searchResults().length > 0 && !indexLoading()}>
         <div class={`
           absolute z-80 mt-2 w-full
           max-h-60 overflow-y-auto
@@ -250,7 +301,7 @@ export default function Searchbar(props: SearchbarProps) {
                       `}
                     >
                       <Search size={14} class="text-muted flex-shrink-0" />
-                      <span class="truncate">{capitalizeTitle(getTitleFromUrl(result))}</span>
+                      <span class="truncate">{result.title}</span>
                     </button>
                   </li>
                 );

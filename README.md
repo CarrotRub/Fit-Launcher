@@ -150,6 +150,10 @@ Got questions or want to hang out with our users? Join us on Discord! Big thanks
 
 Enjoy your games with Fit Launcher!
 
+## Search Functionality
+
+Fit Launcher includes a fast, backend-driven search system. The search index is automatically built from sitemap files during app startup. For detailed information about how search works, troubleshooting, and developer workflows, see [Search Index Documentation](doc/search_index.md).
+
 ## TODO List 📝
 
 - **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
