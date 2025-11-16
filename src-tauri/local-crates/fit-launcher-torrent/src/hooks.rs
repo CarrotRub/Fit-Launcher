@@ -64,7 +64,7 @@ pub(crate) mod windows {
                 let child_ptr = child.raw_handle().unwrap();
                 let child_handle: HANDLE = HANDLE(child_ptr);
                 let ok = AssignProcessToJobObject(JOB_OBJECT.get().unwrap().0, child_handle);
-                if ok.is_ok() {
+                if ok.is_err() {
                     panic!("Failed to assign aria2c to job object");
                 }
             }
