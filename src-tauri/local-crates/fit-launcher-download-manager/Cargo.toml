@@ -1,0 +1,22 @@
+[package]
+name = "fit-launcher-download-manager"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aria2-ws = { workspace = true }
+chrono = "0.4.42"
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = "1.18.1"
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+fit-launcher-aria2 = { workspace = true }
+fit-launcher-torrent = { workspace = true }
+sha2 = "0.10.9"
+tauri = { workspace = true }
+directories = { workspace = true }
+specta = { workspace = true }
+thiserror = { workspace = true }
+fit-launcher-scraping = { path = "../fit-launcher-scraping" }

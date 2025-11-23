@@ -1,73 +1,192 @@
 #[cfg(windows)]
 pub(crate) mod windows {
-    #[cfg(windows)]
+    use anyhow::{Context, Result, bail};
+    use std::ffi::{OsStr, OsString};
+    use std::iter::once;
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::Path;
+    use std::ptr::null_mut;
     use std::sync::OnceLock;
-
     use tokio::process::Child;
-    use windows::Win32::Foundation::HANDLE;
 
-    #[cfg(windows)]
-    #[derive(Clone, Copy)]
-    pub struct SafeHandle(HANDLE);
+    use windows::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectExtendedLimitInformation,
+        SetInformationJobObject,
+    };
+    use windows::Win32::System::Threading::{
+        CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateProcessW, GetExitCodeProcess,
+        PROCESS_INFORMATION, ResumeThread, STARTUPINFOW, TerminateProcess, WaitForSingleObject,
+    };
+    use windows::Win32::System::Threading::{INFINITE, PROCESS_CREATION_FLAGS};
 
-    #[cfg(windows)]
-    unsafe impl Send for SafeHandle {}
+    use windows::core::{PCWSTR, PWSTR};
+    #[derive(Clone, Copy, Debug)]
+    pub struct JobHandle(pub HANDLE);
 
-    #[cfg(windows)]
-    unsafe impl Sync for SafeHandle {}
+    unsafe impl Send for JobHandle {}
+    unsafe impl Sync for JobHandle {}
 
-    #[cfg(windows)]
-    pub static JOB_OBJECT: OnceLock<SafeHandle> = OnceLock::new();
+    static JOB_OBJECT: OnceLock<JobHandle> = OnceLock::new();
 
-    pub(crate) fn set_child_in_job(child: &Child) {
-        #[cfg(windows)]
-        {
-            unsafe {
-                use windows::Win32::{
-                    Foundation::HANDLE, System::JobObjects::AssignProcessToJobObject,
-                };
+    fn ensure_job() -> Result<JobHandle> {
+        if let Some(h) = JOB_OBJECT.get() {
+            return Ok(*h);
+        }
 
-                if JOB_OBJECT.get().is_none() {
-                    use windows::{
-                        Win32::System::JobObjects::{
-                            CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-                            JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-                            JobObjectExtendedLimitInformation, SetInformationJobObject,
-                        },
-                        core::PCWSTR,
-                    };
+        unsafe {
+            let h = CreateJobObjectW(None, PCWSTR::null())
+                .ok()
+                .context("CreateJobObject failed")?;
 
-                    let h = CreateJobObjectW(Some(std::ptr::null_mut()), PCWSTR::null());
-                    if h.is_err() {
-                        panic!("Failed to create job object");
-                    }
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
-                    let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
-                    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            SetInformationJobObject(
+                h,
+                JobObjectExtendedLimitInformation,
+                &mut info as *mut _ as *mut _,
+                std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+            )
+            .ok()
+            .context("SetInformationJobObject failed")?;
 
-                    let handle = h.unwrap();
+            JOB_OBJECT.set(JobHandle(h)).unwrap();
+            Ok(JobHandle(h))
+        }
+    }
 
-                    if SetInformationJobObject(
-                        handle,
-                        JobObjectExtendedLimitInformation,
-                        &mut info as *mut _ as *mut _,
-                        std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
-                    )
-                    .is_err()
-                    {
-                        panic!("Failed to set job object kill-on-close");
-                    }
+    fn make_command_line(program: &OsStr, args: &[OsString]) -> Vec<u16> {
+        let mut cmd: Vec<u16> = Vec::new();
 
-                    JOB_OBJECT.set(SafeHandle(handle));
-                }
+        append_quoted(program, &mut cmd);
 
-                let child_ptr = child.raw_handle().unwrap();
-                let child_handle: HANDLE = HANDLE(child_ptr);
-                let ok = AssignProcessToJobObject(JOB_OBJECT.get().unwrap().0, child_handle);
-                if ok.is_err() {
-                    panic!("Failed to assign aria2c to job object");
-                }
+        for arg in args {
+            cmd.push(' ' as u16);
+            append_quoted(arg.as_os_str(), &mut cmd);
+        }
+
+        cmd.push(0); // null-terminate
+        cmd
+    }
+
+    fn append_quoted(s: &OsStr, out: &mut Vec<u16>) {
+        out.push('"' as u16);
+        out.extend(s.encode_wide());
+        out.push('"' as u16);
+    }
+
+    /// Thin wrapper to handle adding to job before executing.
+    ///
+    /// Avoids Tokio races with assigning to job while still allowing direct killing of the Child.
+    pub struct JobChild {
+        process: HANDLE,
+        thread: HANDLE,
+        pid: u32,
+    }
+
+    unsafe impl Send for JobChild {}
+    unsafe impl Sync for JobChild {}
+
+    impl JobChild {
+        /// Gets job's child pid.
+        ///
+        /// Will probably be useful one day or another.
+        pub fn pid(&self) -> u32 {
+            self.pid
+        }
+
+        pub async fn kill(&self) -> Result<()> {
+            unsafe { TerminateProcess(self.process, 1).ok() };
+            Ok(())
+        }
+    }
+
+    /// Spawn a Child inside of a job object.
+    ///
+    /// ## Technical Description:
+    ///  
+    /// We handle the raw creation of process to have full handle over it using `CREATE_SUSPENDED` creation flag to not directly run it and instead wait for
+    /// the job assignment.
+    ///
+    /// This is needed instead tokio creation_flags since we can get the `main_thread_handle`/`hThread` from  which we cannot take from Tokio's Child Process.
+    ///
+    /// `PROCESS_INFORMATION` contains `hThread` which gets populate inside of `CreateProcessW` when we pass a mutable pointer to it.
+    ///
+    /// See more here: https://github.com/tokio-rs/tokio/issues/6153
+    ///
+    /// If you spawn normally (even with tokio::Child), the process might start executing immediately on its main thread
+    /// since some Windows APIs check if threads are already running and will refuse Job Object assignment (Access Denied) if any thread has started.
+    ///
+    /// Reminder that assigning a `CREATION_FLAG` is not possible after a process has been created.
+    ///
+    /// **TL;DR**: We create the process suspended, attach it to the Job Object, then resume it.
+    /// Tokio’s Child API can’t give the main thread handle, so normal spawning risks Access Denied errors due to races.
+    /// Creation flags can’t be changed after the process starts.
+    pub fn spawn_with_job_object(
+        exe: impl AsRef<Path>,
+        args: &[impl AsRef<OsStr>],
+        cwd: Option<&Path>,
+    ) -> Result<JobChild> {
+        let job = ensure_job()?;
+
+        let exe = exe.as_ref().as_os_str();
+        let args_os: Vec<_> = args.iter().map(|a| a.as_ref().to_owned()).collect();
+        let mut cmd = make_command_line(exe, &args_os);
+
+        unsafe {
+            let mut si: STARTUPINFOW = std::mem::zeroed();
+            si.cb = std::mem::size_of::<STARTUPINFOW>() as u32;
+
+            let mut pi: PROCESS_INFORMATION = std::mem::zeroed();
+
+            // `CreateProcessW` needs a UTF-16 encoded and null terminated string for paths so we encode, null-terminate it and turn it into a contiguous buffer.
+            let cwd_wide = cwd.map(|p| {
+                p.as_os_str()
+                    .encode_wide()
+                    .chain(once(0))
+                    .collect::<Vec<u16>>()
+            });
+
+            let lp_dir = cwd_wide
+                .as_ref()
+                .map(|v| PCWSTR(v.as_ptr()))
+                .unwrap_or(PCWSTR::null());
+
+            let ok = CreateProcessW(
+                PCWSTR::null(),
+                Some(PWSTR(cmd.as_mut_ptr())),
+                None,
+                None,
+                false,
+                CREATE_SUSPENDED,
+                None,
+                lp_dir,
+                &si,
+                // process information gets populated here.
+                &mut pi,
+            );
+
+            if ok.is_err() {
+                bail!("CreateProcessW failed: {}", ok.err().unwrap());
             }
+
+            let ok2 = AssignProcessToJobObject(job.0, pi.hProcess);
+            if ok2.is_err() {
+                // :3 who needs to propagate errors anyways
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+                bail!("AssignProcessToJobObject failed: {}", ok.err().unwrap());
+            }
+
+            ResumeThread(pi.hThread);
+
+            Ok(JobChild {
+                process: pi.hProcess,
+                thread: pi.hThread,
+                pid: pi.dwProcessId,
+            })
         }
     }
 }

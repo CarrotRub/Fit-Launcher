@@ -11,12 +11,11 @@ import { DownloadSettingsApi } from "../../api/settings/api";
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
 import { formatBytes, toTitleCaseExceptions } from "../../helpers/format";
 import LoadingPage from "../../pages/LoadingPage-01/LoadingPage";
-
-import { downloadStore } from "../../stores/download";
 import { DirectLinkWrapper } from "../../types/download";
 import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
 import { useToast } from "solid-notifications";
-import { GlobalDownloadManager } from "../../api/manager/api";
+import { DM } from "../../api/manager/api";
+
 
 
 
@@ -98,7 +97,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 console.warn("Couldn't load download settings", settings.error);
             }
 
-            const resultFiles = await GlobalDownloadManager.getTorrentFileList(props.downloadedGame.magnetlink);
+            const resultFiles = await DM.getTorrentFileList(props.downloadedGame.magnetlink);
             if (resultFiles.status === "ok") {
                 setListFiles(resultFiles.data);
                 const classified = classifyTorrentFiles(resultFiles.data);
@@ -115,7 +114,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
         async function initDDL() {
             try {
-                const links = await GlobalDownloadManager.getDatahosterLinks(props.downloadedGame.href, "");
+                const links = await DM.getDatahosterLinks(props.downloadedGame.href, "");
                 if (!links || links.length === 0) {
                     setError("No download links found for this game");
                     return;
@@ -154,17 +153,16 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 }
 
                 const path = settings.data.general.download_dir;
-                const id = crypto.randomUUID(); // unique job ID
                 const game = props.downloadedGame;
 
                 if (props.downloadType === "bittorrent") {
                     const selected = Array.from(selectedFileIndices());
-                    await GlobalDownloadManager.addTorrent(id, game.magnetlink, game, path, selected);
+                    await DM.addTorrent(game.magnetlink, selected, path, game);
                 } else {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
 
-                    await GlobalDownloadManager.addDirectLinks(id, selectedLinks, game, path);
+                    await DM.addDdl(selectedLinks, path, game);
                 }
 
                 props.onFinish?.();
@@ -189,7 +187,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             setSelectedHoster(hoster);
 
             try {
-                const links = await GlobalDownloadManager.getDatahosterLinks(props.downloadedGame.href, hoster);
+                const links = await DM.getDatahosterLinks(props.downloadedGame.href, hoster);
                 if (!links || links.length === 0) {
                     setError(`No ${toTitleCaseExceptions(hoster)} links found`);
                     setLoading(false);
@@ -197,7 +195,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 }
 
                 if (hoster === "fuckingfast") {
-                    const extracted = await GlobalDownloadManager.extractFuckingfastDDL(links);
+                    const extracted = await DM.extractFuckingfastDDL(links);
                     if (!extracted || extracted.length === 0) {
                         setError("Failed to extract direct download links");
                         setLoading(false);

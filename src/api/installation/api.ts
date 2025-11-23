@@ -8,13 +8,11 @@ import {
 import { GlobalSettingsApi } from "../settings/api";
 
 export class InstallationApi {
-  private settingsInstance = new GlobalSettingsApi();
-
   async startInstallation(
     path: string
   ): Promise<Result<null, TorrentApiError>> {
     const installationSettings =
-      await this.settingsInstance.getInstallationSettings();
+      await GlobalSettingsApi.getInstallationSettings();
 
     if (installationSettings.auto_install) {
       const result = await commands.runAutomateSetupInstall(path);
@@ -40,7 +38,7 @@ export class InstallationApi {
 
   async startExtractionDdl(path: string): Promise<Result<null, ExtractError>> {
     const installationSettings =
-      await this.settingsInstance.getInstallationSettings();
+      await GlobalSettingsApi.getInstallationSettings();
 
     if (installationSettings.auto_install) {
       const result = await commands.extractGame(path);

@@ -217,27 +217,43 @@ pub async fn aria2_client_from_config(
                 port
             ));
         }
+        let child = {
+            #[cfg(windows)]
+            {
+                use std::ffi::OsString;
 
-        let mut child = tokio::process::Command::new(&exec)
-            .args(build_aria2_args(
-                config,
-                Path::new(&session_path.as_ref()),
-                rpc_port,
-                bt_port,
-            ))
-            .current_dir(download_location)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .context("Failed to start aria2c")?;
+                use crate::hooks::windows::spawn_with_job_object;
+
+                spawn_with_job_object(
+                    exec.as_os_str(),
+                    &build_aria2_args(config, Path::new(&session_path.as_ref()), rpc_port, bt_port)
+                        .into_iter()
+                        .map(|s| s.into())
+                        .collect::<Vec<OsString>>(),
+                    Some(&download_location),
+                )
+                .context("Failed to start aria2c")?
+            }
+
+            #[cfg(not(windows))]
+            {
+                tokio::process::Command::new(&exec)
+                    .args(build_aria2_args(
+                        config,
+                        Path::new(&session_path.as_ref()),
+                        rpc_port,
+                        bt_port,
+                    ))
+                    .current_dir(download_location)
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .spawn()
+                    .context("Failed to start aria2c")?
+            }
+        };
 
         sleep(Duration::from_secs(1)).await;
-        #[cfg(windows)]
-        {
-            use crate::hooks::windows::set_child_in_job;
 
-            set_child_in_job(&child)
-        }
         let client = aria2_ws::Client::connect(
             &format!("ws://127.0.0.1:{rpc_port}/jsonrpc"),
             token.as_deref(),
@@ -406,7 +422,7 @@ impl TorrentSession {
         Ok(())
     }
 
-    pub async fn get_config(&self) -> FitLauncherConfigV2 {
+    pub async fn config(&self) -> FitLauncherConfigV2 {
         let g = self.shared.read();
         if let Some(shared) = g.as_ref() {
             shared.config.clone()

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, specta::Type, PartialEq, Eq, Clone)]
 pub struct FileInfo {
     pub file_name: PathBuf,
     pub length: u64,

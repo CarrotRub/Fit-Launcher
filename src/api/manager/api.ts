@@ -1,187 +1,182 @@
+import { invoke } from "@tauri-apps/api/core";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import {
-  Aria2Error,
+  commands,
   DirectLink,
-  DownloadedGame,
   FileInfo,
+  Game,
+  Job,
   Result,
-  Status,
-  TaskStatus,
   TorrentApiError,
 } from "../../bindings";
-import { join, appDataDir } from "@tauri-apps/api/path";
-import { exists, writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
-import { commands } from "../../bindings";
-import { downloadStore } from "../../stores/download";
-import { listen } from "@tauri-apps/api/event";
-import { FitEmitter } from "../../services/emitter";
-import { AriaError } from "../../error/aria";
 
-export type DownloadSource = "torrent" | "ddl";
-export type DownloadState =
-  | "active"
-  | "paused"
-  | "waiting"
-  | "error"
-  | "complete"
-  | "installing";
+type JobCallback = (job: Job) => void;
+type RemovedCallback = (id: string) => void;
 
-export interface DownloadJob {
-  id: string;
-  source: DownloadSource;
-  gids: string[];
-  ddlFiles?: DirectLink[];
-  magnetLink?: string;
-  torrentFiles?: number[];
-  torrentFileBytes?: number[];
-  game: DownloadedGame;
-  targetPath: string;
-  state: DownloadState;
-
-  status: Status | null;
-}
-
-//todo: fix download not working
 export class GlobalDownloadManager {
-  private static jobs = new Map<string, DownloadJob>();
-  private static savePath: string | null = null;
+  private jobs = new Map<string, Job>();
 
-  private static emitter = new FitEmitter();
+  private updatedCbs: Set<JobCallback> = new Set();
+  private completedCbs: Set<JobCallback> = new Set();
+  private removedCbs: Set<RemovedCallback> = new Set();
 
-  //!  CALL THIS ONCE ON APP START
-  static setup() {
-    listen<Record<string, any>>("aria2_status_update", (event) => {
-      GlobalDownloadManager.updateStatus(event.payload);
-    });
-  }
+  private unlistenUpdated: UnlistenFn | null = null;
+  private unlistenRemoved: UnlistenFn | null = null;
+  private unlistenCompleted: UnlistenFn | null = null;
 
-  static mapStatusToJob(status: Status): Partial<DownloadJob> {
-    return {
-      id: status.gid,
+  async setup() {
+    if (!this.unlistenUpdated) {
+      this.unlistenUpdated = await listen("download::job_updated", (e) => {
+        const job = (e.payload as any) ?? null;
+        if (!job || !job.id) return;
+        this.jobs.set(job.id, job);
 
-      state: this.mapAriaState(status.status),
-
-      status,
-    };
-  }
-
-  static mapAriaState(s: TaskStatus): DownloadJob["state"] {
-    switch (s) {
-      case "active":
-        return "active";
-      case "paused":
-        return "paused";
-      case "error":
-        return "error";
-      case "complete":
-        return "complete";
-      case "removed":
-        return "error";
-      default:
-        return "waiting";
+        this.updatedCbs.forEach((cb) => cb(job));
+      });
     }
-  }
+    if (!this.unlistenRemoved) {
+      this.unlistenRemoved = await listen("download::job_removed", (e) => {
+        const id = e.payload as string;
+        const job = this.jobs.get(id) ?? null;
+        this.jobs.delete(id);
 
-  static onCompleted(cb: (job: DownloadJob) => void) {
-    this.emitter.on("download::completed", cb);
-  }
+        this.removedCbs.forEach((cb) => cb(id));
+      });
+    }
+    if (!this.unlistenCompleted) {
+      this.unlistenCompleted = await listen("download::job_completed", (e) => {
+        const job = (e.payload as any) ?? null;
+        if (!job || !job.id) return;
+        this.jobs.set(job.id, job);
+        this.completedCbs.forEach((cb) => cb(job));
+      });
+    }
 
-  private static isComplete(job: DownloadJob) {
-    return job.state === "complete";
-  }
-
-  static updateStatus(statusMap: Record<string, Status> | Status[]) {
-    const statusesArray: Status[] = Array.isArray(statusMap)
-      ? statusMap
-      : Object.values(statusMap as Record<string, Status>);
-
-    const statusMapByGid: Record<string, Status> = {};
-    statusesArray.forEach((s) => {
-      if (s && s.gid) statusMapByGid[String(s.gid)] = s;
-    });
-
-    for (const s of statusesArray) {
-      const gid = String(s.gid);
-      const job = Array.from(this.jobs.values()).find(
-        (job) => Array.isArray(job.gids) && job.gids.includes(gid)
-      );
-      if (!job) continue;
-
-      const updated: DownloadJob = { ...job, status: { ...(s as any) } };
-      this.jobs.set(job.id, updated);
-
-      if (this.isComplete(updated)) {
-        this.emitter.emit("download::completed", updated);
+    try {
+      let resAll = await commands.dmAllJobs();
+      let all: Job[] = [];
+      if (resAll.status === "ok") {
+        all = resAll.data;
       }
+      if (Array.isArray(all)) {
+        for (const j of all) {
+          if (j && j.id) this.jobs.set(j.id, j);
+        }
+      }
+    } catch (err) {
+      console.warn("dmAllJobs failed:", err);
     }
-
-    downloadStore.updateStatus(statusMapByGid);
   }
 
-  private static async ensureSavePath() {
-    if (!this.savePath)
-      this.savePath = await join(await appDataDir(), "downloads.json");
-    return this.savePath;
-  }
-
-  static async save() {
-    const path = await this.ensureSavePath();
-    await writeTextFile(
-      path,
-      JSON.stringify(Object.fromEntries(this.jobs), null, 2)
-    );
-  }
-
-  static async load() {
-    const path = await this.ensureSavePath();
-    if (await exists(path)) {
-      const raw = await readTextFile(path);
-      const obj: Record<string, DownloadJob> = JSON.parse(raw);
-      this.jobs = new Map(Object.entries(obj));
-    }
-
-    downloadStore.setJobsFull(this.getAll());
-  }
-
-  static get(jobId: string) {
-    return this.jobs.get(jobId);
-  }
-
-  static getAll(): DownloadJob[] {
+  // getters
+  getAll(): Job[] {
     return Array.from(this.jobs.values());
   }
-
-  static async addDirectLinks(
-    id: string,
-    files: DirectLink[],
-    game: DownloadedGame,
-    targetPath: string
-  ) {
-    const res = await commands.aria2TaskSpawn(files, targetPath);
-    if (res.status !== "ok") {
-      throw new Error(`DDL spawn failed: ${res.error}`);
-    }
-
-    const gids = res.data.flatMap((r) => r.task?.gid || []);
-
-    const job: DownloadJob = {
-      id,
-      source: "ddl",
-      ddlFiles: files,
-      game,
-      targetPath,
-      gids,
-      state: "active",
-      status: null,
-    };
-
-    this.jobs.set(id, job);
-
-    downloadStore.addJob(job);
-    await this.save();
-    return job;
+  get(id: string): Job | undefined {
+    return this.jobs.get(id);
   }
 
-  static async getDatahosterLinks(
+  // commands
+  async addDdl(
+    files: DirectLink[],
+    target: string,
+    game: Game
+  ): Promise<Result<string, string>> {
+    try {
+      return await commands.dmAddDdlJob(files, target, game);
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  async addTorrent(
+    magnet: string,
+    filesList: number[],
+    target: string,
+    game: Game
+  ): Promise<Result<string, string>> {
+    try {
+      return await commands.dmAddTorrentJob(magnet, filesList, target, game);
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  async pause(jobId: string): Promise<Result<void, string>> {
+    try {
+      await commands.dmPause(jobId);
+      return { status: "ok", data: undefined };
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  async resume(jobId: string): Promise<Result<void, string>> {
+    try {
+      await commands.dmResume(jobId);
+      return { status: "ok", data: undefined };
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  async remove(jobId: string): Promise<Result<void, string>> {
+    try {
+      await commands.dmRemove(jobId);
+      return { status: "ok", data: undefined };
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  async saveNow(): Promise<Result<void, string>> {
+    try {
+      await commands.dmSaveNow();
+      return { status: "ok", data: undefined };
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  async loadFromDisk(): Promise<Result<void, string>> {
+    try {
+      await commands.dmLoadFromDisk();
+      return { status: "ok", data: undefined };
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  // misc
+
+  async getTorrentFileList(
+    magnet: string
+  ): Promise<Result<FileInfo[], TorrentApiError>> {
+    return await commands.listTorrentFiles(magnet);
+  }
+
+  async getDatahosterLinks(
     gameLink: string,
     datahosterName: string
   ): Promise<string[] | null> {
@@ -193,9 +188,7 @@ export class GlobalDownloadManager {
     }
   }
 
-  static async extractFuckingfastDDL(
-    links: string[]
-  ): Promise<DirectLink[] | null> {
+  async extractFuckingfastDDL(links: string[]): Promise<DirectLink[] | null> {
     try {
       return await commands.extractFuckingfastDdl(links);
     } catch (error) {
@@ -204,138 +197,40 @@ export class GlobalDownloadManager {
     }
   }
 
-  static async getTorrentFileList(
-    magnet: string
-  ): Promise<Result<FileInfo[], TorrentApiError>> {
-    return await commands.listTorrentFiles(magnet);
+  // subscriptions
+  onUpdated(cb: JobCallback) {
+    this.updatedCbs.add(cb);
+    return () => this.updatedCbs.delete(cb);
   }
 
-  static async addTorrent(
-    id: string,
-    magnetLink: string,
-    game: DownloadedGame,
-    targetPath: string,
-    listFiles: number[]
-  ) {
-    const bytesRes = await commands.magnetToFile(magnetLink);
-    if (bytesRes.status !== "ok") throw new Error(`magnet -> file failed`);
-
-    const bytes = bytesRes.data;
-    const res = await commands.aria2StartTorrent(bytes, targetPath, listFiles);
-    if (res.status !== "ok") throw new Error(`Torrent spawn failed`);
-
-    const job: DownloadJob = {
-      id,
-      source: "torrent",
-      magnetLink,
-      torrentFileBytes: bytes,
-      game,
-      torrentFiles: listFiles,
-      targetPath,
-      gids: [res.data],
-      state: "active",
-      status: null,
-    };
-
-    this.jobs.set(id, job);
-    downloadStore.addJob(job);
-
-    await this.save();
-    return job;
+  onRemoved(cb: RemovedCallback) {
+    this.removedCbs.add(cb);
+    return () => this.removedCbs.delete(cb);
   }
 
-  static async remove(jobId: string) {
-    const job = this.jobs.get(jobId);
-    if (!job) return;
+  onCompleted(cb: JobCallback) {
+    this.completedCbs.add(cb);
+    return () => this.completedCbs.delete(cb);
+  }
 
-    for (const gid of job.gids) {
-      console.debug("Removing GID: ", gid);
-      await commands.aria2Remove(gid);
+  async teardown() {
+    if (this.unlistenUpdated) {
+      this.unlistenUpdated();
+      this.unlistenUpdated = null;
     }
-
-    let list = await this.listDownlaods();
-    console.log("list downloads after removing: ", list);
-
-    this.jobs.delete(jobId);
-    downloadStore.removeJobById(jobId);
-    await this.save();
-  }
-
-  static async pause(jobId: string) {
-    const job = this.jobs.get(jobId);
-    if (!job) return;
-    for (const gid of job.gids) await commands.aria2Pause(gid);
-    job.state = "paused";
-
-    downloadStore.setJobState(jobId, "paused");
-    await this.save();
-  }
-
-  static async resume(jobId: string) {
-    const job = this.jobs.get(jobId);
-    await this.listDownlaods();
-
-    if (!job) return;
-    console.log("somehow continues");
-
-    if (job.source === "ddl") {
-      const result = await commands.aria2TaskSpawn(
-        job.ddlFiles!,
-        job.targetPath
-      );
-      if (result.status === "ok") {
-        job.gids = result.data.flatMap((r) => r.task?.gid || []);
-        job.state = "active";
-
-        downloadStore.setJobGids(jobId, job.gids);
-        downloadStore.setJobState(jobId, "active");
-        await this.save();
-      } else {
-        job.state = "error";
-
-        downloadStore.setJobState(jobId, "error");
-        await this.save();
-      }
-      return;
+    if (this.unlistenRemoved) {
+      this.unlistenRemoved();
+      this.unlistenRemoved = null;
     }
-
-    if (job.source === "torrent") {
-      let gid = job.status?.gid;
-      let resume_response = await commands.aria2Resume(gid!);
-      if (resume_response.status === "ok") {
-        await this.save();
-        downloadStore.setJobGids(jobId, job.gids);
-        downloadStore.setJobState(jobId, "active");
-      } else {
-        console.warn("Error unpausing torrent: ", resume_response.error);
-
-        if (AriaError.isRPCError(resume_response.error)) {
-          const res = await commands.aria2StartTorrent(
-            job.torrentFileBytes!,
-            job.targetPath,
-            job.torrentFiles!
-          );
-
-          if (res.status === "ok") {
-            job.gids = Array(res.data);
-            downloadStore.setJobState(jobId, "active");
-          }
-        } else {
-          console.error("Error contacting aria2c: ", resume_response.error);
-          downloadStore.setJobState(jobId, "error");
-        }
-      }
+    if (this.unlistenCompleted) {
+      this.unlistenCompleted();
+      this.unlistenCompleted = null;
     }
-  }
-
-  static async listDownlaods(): Promise<Status[]> {
-    const res = await commands.aria2GetAllList();
-    if (res.status === "ok") {
-      console.log(res.data);
-      return res.data;
-    } else {
-      console.error("Error getting aria2c downloads: ", res.error);
-      return [];
-    }
+    this.updatedCbs.clear();
+    this.removedCbs.clear();
+    this.completedCbs.clear();
+    this.jobs.clear();
   }
 }
+
+export const DM = new GlobalDownloadManager();

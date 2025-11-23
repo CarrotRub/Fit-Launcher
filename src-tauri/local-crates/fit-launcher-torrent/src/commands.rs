@@ -135,7 +135,7 @@ pub async fn magnet_to_file(
 pub async fn get_download_settings(
     state: tauri::State<'_, TorrentSession>,
 ) -> Result<FitLauncherConfigV2, TorrentApiError> {
-    Ok(state.get_config().await)
+    Ok(state.config().await)
 }
 
 #[tauri::command]
@@ -154,7 +154,7 @@ pub async fn config_change_only_path(
     state: tauri::State<'_, TorrentSession>,
     download_path: String,
 ) -> Result<(), TorrentApiError> {
-    let mut current_config = state.get_config().await;
+    let mut current_config = state.config().await;
     current_config.general.download_dir = PathBuf::from(download_path);
 
     state.configure(current_config).await

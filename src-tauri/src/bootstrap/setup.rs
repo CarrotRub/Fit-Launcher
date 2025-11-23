@@ -1,39 +1,26 @@
-use fit_launcher_scraping::discovery::get_100_games_unordered;
-use fit_launcher_scraping::get_sitemaps_website;
-use fit_launcher_scraping::global::commands::rebuild_search_index;
-use fit_launcher_scraping::global::functions::run_all_scrapers;
-use fit_launcher_torrent::functions::TorrentSession;
-use lru::LruCache;
-use std::error::Error;
-use std::num::NonZeroUsize;
-use std::sync::Arc;
-use std::time::Instant;
-use tauri::async_runtime::spawn;
-use tauri::ipc::InvokeHandler;
-use tauri::{Emitter, Manager};
-use tokio::sync::Mutex;
-use tracing::{error, info};
-
-use super::json_cleanup::delete_invalid_json_files;
-use super::network::perform_network_request;
-use super::tray::setup_tray;
-
-use fit_launcher_aria2::aria2::start_aria2_monitor;
-use fit_launcher_torrent::LibrqbitSession;
-use specta::specta;
-use tauri_helper::specta_collect_commands;
-
 use crate::bootstrap::hooks::shutdown_hook;
+use crate::bootstrap::json_cleanup;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
+use fit_launcher_download_manager::aria2::Aria2WsClient;
+use fit_launcher_download_manager::manager::DownloadManager;
+use fit_launcher_scraping::{
+    discovery::get_100_games_unordered, get_sitemaps_website, global::functions::run_all_scrapers,
+    rebuild_search_index,
+};
+use fit_launcher_torrent::LibrqbitSession;
+use fit_launcher_torrent::functions::TorrentSession;
+use lru::LruCache;
+use serde_json::Value;
+use std::{num::NonZeroUsize, path::PathBuf, sync::Arc, time::Instant};
+use tauri::{Emitter, Manager, async_runtime::spawn};
+use tauri_helper::specta_collect_commands;
+use tokio::sync::Mutex;
+use tracing::{error, info};
 
-pub async fn start_app() -> Result<(), Box<dyn Error>> {
+pub async fn start_app() -> anyhow::Result<()> {
     info!("start_app: starting");
-
-    let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
-        NonZeroUsize::new(30).unwrap(),
-    )));
 
     let specta_builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
@@ -49,6 +36,10 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
             )
             .expect("Failed to export TS bindings");
     }
+
+    let image_cache = Arc::new(Mutex::new(LruCache::<String, Vec<String>>::new(
+        NonZeroUsize::new(30).unwrap(),
+    )));
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -69,11 +60,10 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
         }))
         .setup(|app| {
             let app_handle = app.handle().clone();
-            let app_handle_clone = app_handle.clone();
 
-            shutdown_hook(app_handle_clone);
+            shutdown_hook(app_handle.clone());
 
-            if let Err(err) = delete_invalid_json_files(&app_handle) {
+            if let Err(err) = json_cleanup::delete_invalid_json_files(&app_handle) {
                 error!("Error deleting JSON: {:#?}", err);
             }
 
@@ -90,15 +80,30 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
             spawn({
                 let app_clone = app_handle.clone();
                 async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
                     let session = app_clone.state::<TorrentSession>();
+                    let librqbit_session = app_clone.state::<LibrqbitSession>();
+
                     match session.init_client().await {
                         Ok(_) => {
                             if let Ok(client) = session.aria2_client().await {
-                                start_aria2_monitor(
+                                let client = Arc::new(Mutex::new(client));
+
+                                let manager = DownloadManager::new(
+                                    Arc::new(Mutex::new(Aria2WsClient::new(client.clone()))),
                                     app_clone.clone(),
-                                    Arc::new(Mutex::new(client)),
+                                    session.config().await.rpc,
+                                    librqbit_session.clone(),
+                                );
+
+                                if let Err(e) = manager.load_from_disk().await {
+                                    error!("Failed to load persisted jobs: {:?}", e);
+                                }
+
+                                app_clone.manage(manager.clone());
+
+                                fit_launcher_download_manager::dispatch::spawn_dispatcher(
+                                    manager.clone(),
+                                    client,
                                 );
                             }
                         }
@@ -112,13 +117,11 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .expect("Failed to create current_thread runtime");
-
+                    .expect("Failed to create runtime");
                 let local = tokio::task::LocalSet::new();
 
                 local.block_on(&rt, async move {
                     let start = Instant::now();
-
                     let (scrapers_res, sitemap_res) = tokio::join!(
                         async { run_all_scrapers(app_for_scrapers.clone()).await },
                         async { get_sitemaps_website(app_for_scrapers.clone()).await }
@@ -131,20 +134,13 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
                         error!("get_sitemaps_website failed");
                     }
 
-                    // Build search index after sitemaps are downloaded
-                    match rebuild_search_index(app_for_scrapers.clone()).await {
-                        Ok(_) => {
-                            info!("Search index built successfully");
-                            if let Some(main) = app_for_scrapers.get_window("main") {
-                                let _ = main.emit("search-index-ready", ());
-                            }
+                    if let Err(e) = rebuild_search_index(app_for_scrapers.clone()).await {
+                        error!("Failed to build search index: {:#?}", e);
+                        if let Some(main) = app_for_scrapers.get_window("main") {
+                            let _ = main.emit("search-index-error", e.to_string());
                         }
-                        Err(e) => {
-                            error!("Failed to build search index: {:#?}", e);
-                            if let Some(main) = app_for_scrapers.get_window("main") {
-                                let _ = main.emit("search-index-error", e.to_string());
-                            }
-                        }
+                    } else if let Some(main) = app_for_scrapers.get_window("main") {
+                        let _ = main.emit("search-index-ready", ());
                     }
 
                     if let Some(splash) = app_for_scrapers.get_window("splashscreen") {
@@ -171,11 +167,11 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
             spawn({
                 let app_clone = app_handle.clone();
                 async move {
-                    perform_network_request(app_clone).await;
+                    crate::bootstrap::network::perform_network_request(app_clone).await;
                 }
             });
 
-            if let Err(e) = setup_tray(app) {
+            if let Err(e) = crate::bootstrap::tray::setup_tray(app) {
                 error!("Tray setup failed: {:#?}", e);
             }
 
@@ -193,7 +189,6 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
     let app = app.build(tauri::generate_context!())?;
     app.run(|app_handle, event| {
         if let tauri::RunEvent::ExitRequested { api, .. } = event {
-            let app_clone = app_handle.clone();
             if let Some(main) = app_handle.get_webview_window("main") {
                 let _ = main.hide();
             }

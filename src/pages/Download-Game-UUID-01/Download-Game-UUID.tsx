@@ -12,7 +12,7 @@ import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { GameDetails, GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
-import { GlobalDownloadManager } from "../../api/manager/api";
+
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -172,6 +172,7 @@ const DownloadGameUUIDPage = () => {
 
   async function toggleDownloadLater() {
     const game = gameInfo();
+    // * just keeping that here cuz i sometimes need forced panics to try out unexpectedly expected stuff :3
     // await commands.panicForce();
     if (!game) return;
 

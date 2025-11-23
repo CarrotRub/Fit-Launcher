@@ -154,7 +154,7 @@ dependencies = [
 [[package]]
 name = "aria2-ws"
 version = "0.5.2"
-source = "git+https://github.com/CarrotRub/aria2-ws-rs?branch=specta-types#ce00f62f57e42d7f0c88ee2ef6f5ccdd3f435fdc"
+source = "git+https://github.com/CarrotRub/aria2-ws-rs?rev=b76414d#b76414d8511c4efa0aea97caf3a8994c1a7aa069"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1645,6 +1645,7 @@ dependencies = [
  "fit-launcher-aria2",
  "fit-launcher-config",
  "fit-launcher-ddl",
+ "fit-launcher-download-manager",
  "fit-launcher-library",
  "fit-launcher-scraping",
  "fit-launcher-torrent",
@@ -1742,6 +1743,28 @@ dependencies = [
  "tauri",
  "thiserror 2.0.17",
  "tracing",
+]
+
+[[package]]
+name = "fit-launcher-download-manager"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "aria2-ws",
+ "chrono",
+ "directories",
+ "fit-launcher-aria2",
+ "fit-launcher-scraping",
+ "fit-launcher-torrent",
+ "serde",
+ "serde_json",
+ "sha2",
+ "specta",
+ "tauri",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -99,12 +99,13 @@ fit-launcher-scraping = { path = "./local-crates/fit-launcher-scraping" }
 fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
-
+fit-launcher-download-manager = { path = "./local-crates/fit-launcher-download-manager" }
 
 # Workspace configuration
 [workspace]
 members = [
     ".",
+    "local-crates/fit-launcher-download-manager",
     "local-crates/fit-launcher-aria2",
     "local-crates/fit-launcher-config",
     "local-crates/fit-launcher-ddl",
@@ -139,7 +140,7 @@ specta = { version = "2.0.0-rc.22", features = [
 tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 specta-typescript = "0.0.9"
 
-aria2-ws = { git = "https://github.com/CarrotRub/aria2-ws-rs", version = "0.5.2", branch = "specta-types", features = [
+aria2-ws = { git = "https://github.com/CarrotRub/aria2-ws-rs", rev = "b76414d", features = [
     "specta",
 ] }
 anyhow = "1.0.100"

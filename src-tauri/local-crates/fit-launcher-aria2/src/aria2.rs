@@ -81,37 +81,37 @@ async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Aria2E
     Ok(list)
 }
 
-pub fn start_aria2_monitor(app: AppHandle, aria2_client: Arc<tokio::sync::Mutex<Client>>) {
-    tauri::async_runtime::spawn(async move {
-        let mut last_hash = String::new();
+// pub fn start_aria2_monitor(app: AppHandle, aria2_client: Arc<tokio::sync::Mutex<Client>>) {
+//     tauri::async_runtime::spawn(async move {
+//         let mut last_hash = String::new();
 
-        loop {
-            let statuses_result = {
-                let client = aria2_client.lock().await;
-                aria2_get_all_list(&client).await
-            };
+//         loop {
+//             let statuses_result = {
+//                 let client = aria2_client.lock().await;
+//                 aria2_get_all_list(&client).await
+//             };
 
-            match statuses_result {
-                Ok(statuses) => {
-                    let Ok(serialized) = serde_json::to_string(&statuses) else {
-                        continue;
-                    };
+//             match statuses_result {
+//                 Ok(statuses) => {
+//                     let Ok(serialized) = serde_json::to_string(&statuses) else {
+//                         continue;
+//                     };
 
-                    let hash = format!("{:x}", Sha256::digest(serialized.as_bytes()));
-                    if hash != last_hash {
-                        last_hash = hash;
-                        let _ = app.emit("aria2_status_update", statuses);
-                    }
-                }
-                Err(err) => {
-                    error!("Error contacting Aria2 RPC: {:#?}", err.to_string())
-                }
-            }
+//                     let hash = format!("{:x}", Sha256::digest(serialized.as_bytes()));
+//                     if hash != last_hash {
+//                         last_hash = hash;
+//                         let _ = app.emit("aria2_status_update", statuses);
+//                     }
+//                 }
+//                 Err(err) => {
+//                     error!("Error contacting Aria2 RPC: {:#?}", err.to_string())
+//                 }
+//             }
 
-            tokio::time::sleep(Duration::from_millis(500)).await;
-        }
-    });
-}
+//             tokio::time::sleep(Duration::from_millis(500)).await;
+//         }
+//     });
+// }
 
 #[cfg(windows)]
 async fn file_allocation_method(

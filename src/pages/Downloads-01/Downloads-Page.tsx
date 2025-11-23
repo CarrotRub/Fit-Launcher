@@ -2,26 +2,35 @@ import { Component, createMemo, createSignal, onMount } from "solid-js";
 import { CloudDownload, Filter, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, ArrowUp, Activity } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
-import { downloadStore } from "../../stores/download";
+
 
 import DownloadList from "./Downloads-List";
 import { formatSpeed } from "../../helpers/format";
-import { GlobalDownloadManager } from "../../api/manager/api";
-import { Status } from "../../bindings";
+import { DM, GlobalDownloadManager } from "../../api/manager/api";
+import { AggregatedStatus, DownloadSource, Job, Status } from "../../bindings";
+import { DownloadsStore } from "../../stores/download";
+
+type FilterType = DownloadSource | "All" | "Active";
 
 const DownloadPage: Component = () => {
     const navigate = useNavigate();
-    const [activeFilter, setActiveFilter] = createSignal<"all" | "torrent" | "ddl" | "active">("all");
-    const items = () => downloadStore.jobs;
+    const [activeFilter, setActiveFilter] = createSignal<FilterType>("All");
+    const { jobs } = DownloadsStore;
+
+
+    // onMount(() => {
+    //     setJobs(DM.getAll());
+    //     console.log("Jobs: ", DM.getAll())
+    // });
 
     const filteredItems = createMemo(() => {
         const f = activeFilter();
         const statuses: Status[] = [];
-        return items().filter((job) => {
-            if (f === "all") return true;
-            if (f === "torrent") return job.source === "torrent";
-            if (f === "ddl") return job.source === "ddl";
-            if (f === "active") {
+        return jobs().filter((job) => {
+            if (f === "All") return true;
+            if (f === "Torrent") return job.source === "Torrent";
+            if (f === "Ddl") return job.source === "Ddl";
+            if (f === "Active") {
                 if (job.state === "active" || job.state === "installing") return true;
                 if (job.status) {
                     return
@@ -39,33 +48,27 @@ const DownloadPage: Component = () => {
         let ddlCount = 0;
 
 
-        const statuses: Status[] = [];
-        for (const job of items()) {
+        const statuses: AggregatedStatus[] = [];
+        for (const job of jobs()) {
             if (job.status) {
-                statuses.push(job.status);
+                statuses.push(job.status!);
                 for (const s of statuses) {
-                    totalDownloadSpeed += Number(s?.downloadSpeed ?? 0);
-                    totalUploadSpeed += Number(s?.uploadSpeed ?? 0);
-                    if (s?.status === "active") activeCount++;
+                    totalDownloadSpeed += Number(s?.download_speed ?? 0);
+                    totalUploadSpeed += Number(s?.upload_speed ?? 0);
+                    if (s?.state === "active") activeCount++;
                 }
-                if (job.source === "torrent") torrentCount++;
+                if (job.source === "Torrent") torrentCount++;
                 else ddlCount++;
             }
         }
         return { totalDownloadSpeed, totalUploadSpeed, activeCount, torrentCount, ddlCount };
     });
 
-    async function refreshDownloads() {
-
-        await GlobalDownloadManager.load();
-    }
 
     async function deleteAllDownloads() {
-        const jobs = items().slice();
-        for (const job of jobs) {
-            await GlobalDownloadManager.remove(job.id);
+        for (const job of jobs()) {
+            await DM.remove(job.id);
         }
-        await refreshDownloads();
     }
 
 
@@ -83,16 +86,16 @@ const DownloadPage: Component = () => {
 
                     <div class="flex flex-wrap gap-3 w-full md:w-auto items-center">
                         <button
-                            onClick={() => setActiveFilter("all")}
-                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "all" ? "bg-primary/20 border-primary/50 text-primary" : "bg-secondary-20/10 hover:bg-secondary-20/20 border-secondary-20/30"} border transition-all shadow-secondary-20/10 hover:shadow-secondary-20/20 group`}
+                            onClick={() => setActiveFilter("All")}
+                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "All" ? "bg-primary/20 border-primary/50 text-primary" : "bg-secondary-20/10 hover:bg-secondary-20/20 border-secondary-20/30"} border transition-all shadow-secondary-20/10 hover:shadow-secondary-20/20 group`}
                         >
                             <Filter class="w-5 h-5 opacity-70" />
                             <span>All</span>
                         </button>
 
                         <button
-                            onClick={() => setActiveFilter("torrent")}
-                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "torrent" ? "bg-blue-500/20 border-blue-500/50 text-blue-400" : "bg-blue-500/10 hover:bg-blue-500/20 border-blue-400/30"} border transition-all shadow-blue-400/10 hover:shadow-blue-400/20 group`}
+                            onClick={() => setActiveFilter("Torrent")}
+                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "Torrent" ? "bg-blue-500/20 border-blue-500/50 text-blue-400" : "bg-blue-500/10 hover:bg-blue-500/20 border-blue-400/30"} border transition-all shadow-blue-400/10 hover:shadow-blue-400/20 group`}
                         >
                             <Magnet class="w-5 h-5 text-blue-400 group-hover:animate-pulse" />
                             <span>Torrents</span>
@@ -100,8 +103,8 @@ const DownloadPage: Component = () => {
                         </button>
 
                         <button
-                            onClick={() => setActiveFilter("ddl")}
-                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "ddl" ? "bg-green-500/20 border-green-500/50 text-green-400" : "bg-green-500/10 hover:bg-green-500/20 border-green-400/30"} border transition-all shadow-green-400/10 hover:shadow-green-400/20 group`}
+                            onClick={() => setActiveFilter("Ddl")}
+                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "Ddl" ? "bg-green-500/20 border-green-500/50 text-green-400" : "bg-green-500/10 hover:bg-green-500/20 border-green-400/30"} border transition-all shadow-green-400/10 hover:shadow-green-400/20 group`}
                         >
                             <DownloadCloud class="w-5 h-5 text-green-400 group-hover:animate-bounce" />
                             <span>Direct</span>
@@ -109,8 +112,8 @@ const DownloadPage: Component = () => {
                         </button>
 
                         <button
-                            onClick={() => setActiveFilter("active")}
-                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "active" ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-400/30"} border transition-all shadow-amber-400/10 hover:shadow-amber-400/20 group`}
+                            onClick={() => setActiveFilter("Active")}
+                            class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "Active" ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-amber-500/10 hover:bg-amber-500/20 border-amber-400/30"} border transition-all shadow-amber-400/10 hover:shadow-amber-400/20 group`}
                         >
                             <Zap class="w-5 h-5 text-amber-400 group-hover:animate-pulse" />
                             <span>Active</span>
@@ -163,10 +166,14 @@ const DownloadPage: Component = () => {
 
             <div class="max-w-[1800px] mx-auto">
                 <DownloadList
-                    items={filteredItems()}
-                    refreshDownloads={refreshDownloads}
+                    items={filteredItems}
+                    refreshDownloads={async () => {
+                        //** 
+                        // * nothing :3
+                        // */
+                    }}
                 />
-                {items().length === 0 && (
+                {jobs().length === 0 && (
                     <div class="flex flex-col items-center justify-center py-24 text-center bg-popup/30 backdrop-blur-sm rounded-3xl border-2 border-dashed border-accent/30 hover:border-accent/50 transition-all hover:shadow-lg hover:shadow-accent/10">
                         <div class="relative mb-8">
                             <div class="absolute inset-0 bg-accent/10 rounded-full animate-ping opacity-20"></div>
