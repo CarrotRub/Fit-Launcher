@@ -101,6 +101,7 @@ fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 fit-launcher-real-debrid = { path = "./local-crates/fit-launcher-real-debrid" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 
+
 # Workspace configuration
 [workspace]
 members = [

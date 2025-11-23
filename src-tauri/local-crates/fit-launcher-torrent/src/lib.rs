@@ -7,4 +7,5 @@ pub use commands::*;
 pub use config::*;
 pub mod handler;
 pub use handler::*;
+pub mod hooks;
 pub mod model;

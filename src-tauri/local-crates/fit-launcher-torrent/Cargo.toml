@@ -32,3 +32,8 @@ serde_json = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 strum = { version = "0.27.2", features = ["derive"] }
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_System_JobObjects",
+] }
