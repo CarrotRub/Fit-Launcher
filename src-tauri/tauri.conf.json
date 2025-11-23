@@ -62,7 +62,7 @@
       "csp": {
         "default-src": "'self' customprotocol: asset: 'unsafe-inline'",
         "script-src": "'wasm-unsafe-eval'",
-        "connect-src": "ipc: http://ipc.localhost http://asset.localhost",
+        "connect-src": "ipc: http://ipc.localhost http://asset.localhost https://api.github.com https://*.githubusercontent.com",
         "img-src": "'self' asset: http://asset.localhost blob: data: http: https: *",
         "asset-src": "http://asset.localhost"
       }
