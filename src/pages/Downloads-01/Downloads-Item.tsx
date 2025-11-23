@@ -65,7 +65,7 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
         const state = props.item().state;
         const status = jobStatus();
 
-        if (state === "active" && status?.upload_speed && status.upload_speed > 0) {
+        if (state === "active" && status?.upload_speed && status.upload_speed > 0 && status.completed_length == status.total_length) {
             return { label: "WAITING FOR PAUSE", icon: <Pause class="w-5 h-5 animate-pulse" /> };
         }
 
@@ -84,18 +84,11 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
         try {
             switch (state) {
                 case "active":
-                    if (status?.upload_speed && status.upload_speed > 0) {
-                        notify(
-                            "The download is still uploading. Pause it first to start installation.",
-                            { type: "warning", role: "alert", duration: false }
-                        );
-                        return;
-                    }
                     await DM.pause(id);
                     break;
 
                 case "complete":
-                    if (status?.upload_speed && status.upload_speed > 0) {
+                    if (status?.upload_speed && status.upload_speed > 0 && status.completed_length == status.total_length) {
                         notify(
                             "Upload is still in progress. Pause the torrent before installing.",
                             { type: "warning", role: "alert", duration: false }

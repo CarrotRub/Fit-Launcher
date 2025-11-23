@@ -305,19 +305,17 @@ impl DownloadManager {
         let mut any_resumed = false;
         let mut need_respawn = false;
 
-        // Step 2: attempt to resume existing GIDs
         for gid in job.gids.clone() {
             let aria_guard = self.aria.lock().await;
             match aria_guard.resume(&gid).await {
                 Ok(_) => any_resumed = true,
                 Err(e) => {
                     error!("Failed to resume gid {}: {:?}", gid, e);
-                    need_respawn = true; // mark for respawn
+                    need_respawn = true;
                 }
             }
         }
 
-        // Step 3: if any GID resumed successfully, just update state
         if any_resumed {
             let mut jobs_lock = self.jobs.write().await;
             if let Some(j) = jobs_lock.get_mut(job_id) {
@@ -329,7 +327,6 @@ impl DownloadManager {
             return Ok(());
         }
 
-        // Step 4: if no GID resumed, respawn depending on source
         match job.source {
             DownloadSource::Ddl => self.resume_ddl(&job).await?,
             DownloadSource::Torrent => self.resume_torrent(&job).await?,
