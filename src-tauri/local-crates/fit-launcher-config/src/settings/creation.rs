@@ -40,6 +40,21 @@ impl Default for GamehubSettings {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Type)]
+pub struct RealDebridSettings {
+    pub api_token: String,
+    pub enabled: bool,
+}
+
+impl Default for RealDebridSettings {
+    fn default() -> Self {
+        RealDebridSettings {
+            api_token: String::new(),
+            enabled: false,
+        }
+    }
+}
+
 pub fn create_installation_settings_file() -> Result<(), std::io::Error> {
     let base_dirs = BaseDirs::new().expect("Failed to determine base directories");
     let installation_folder_path = base_dirs
@@ -189,6 +204,55 @@ pub fn create_image_cache_file() -> Result<(), std::io::Error> {
                 "Directory not found for creating installation file",
             )
         })?;
+    }
+    Ok(())
+}
+
+pub fn create_realdebrid_settings_file() -> Result<(), std::io::Error> {
+    let base_dirs = BaseDirs::new().expect("Failed to determine base directories");
+    let realdebrid_folder_path = base_dirs
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("fitgirlConfig")
+        .join("settings")
+        .join("realdebrid");
+
+    if !realdebrid_folder_path.exists() {
+        fs::create_dir_all(&realdebrid_folder_path)
+            .expect("Failed to create Real-Debrid Config directory");
+    }
+
+    let realdebrid_file_path = realdebrid_folder_path.join("realdebrid.json");
+    let default_config = RealDebridSettings::default();
+
+    let default_config_data = serde_json::to_string_pretty(&default_config).map_err(|err| {
+        error!(
+            "Failed to serialize default Real-Debrid config: {:#?}",
+            err
+        );
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "Serialization of default Real-Debrid config failed",
+        )
+    })?;
+
+    if !realdebrid_file_path.exists() {
+        let mut file = fs::File::create(&realdebrid_file_path).map_err(|err| {
+            error!("Error creating the file: {:#?}", err);
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Directory not found for creating realdebrid file",
+            )
+        })?;
+
+        file.write_all(default_config_data.as_bytes())
+            .map_err(|err| {
+                error!("Failed to write to realdebrid.json file: {:#?}", err);
+                std::io::Error::new(
+                    std::io::ErrorKind::WriteZero,
+                    "Failed to write data to realdebrid.json",
+                )
+            })?;
     }
     Ok(())
 }

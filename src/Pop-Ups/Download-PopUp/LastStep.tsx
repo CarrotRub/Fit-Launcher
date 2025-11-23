@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { message } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X } from "lucide-solid";
+import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, Loader2, MemoryStick, X } from "lucide-solid";
 import { createSignal, For, onMount, Show, Component, Accessor } from "solid-js";
 import { render } from "solid-js/web";
 import { DirectLink, DownloadedGame, FileInfo } from "../../bindings";
@@ -17,6 +17,8 @@ import { DirectLinkWrapper } from "../../types/download";
 import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
 import { useToast } from "solid-notifications";
 import { GlobalDownloadManager } from "../../api/manager/api";
+import { RealDebridSettingsApi } from "../../api/realdebrid/api";
+import { commands } from "../../bindings";
 
 
 
@@ -77,10 +79,20 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         const [ddlSelectedUrls, setDdlSelectedUrls] = createSignal(new Set<string>());
         const [showDdlAdvanced, setShowDdlAdvanced] = createSignal(false);
 
+        // Real-Debrid state
+        const [realdebridTorrentId, setRealdebridTorrentId] = createSignal<string | null>(null);
+        const [realdebridFiles, setRealdebridFiles] = createSignal<FileInfo[]>([]);
+        const [realdebridStatus, setRealdebridStatus] = createSignal<string>("");
+        const [realdebridProgress, setRealdebridProgress] = createSignal<number>(0);
+        const [realdebridSelectedFiles, setRealdebridSelectedFiles] = createSignal(new Set<number>());
+        const [realdebridToken, setRealdebridToken] = createSignal<string>("");
+
         onMount(async () => {
             try {
                 if (props.downloadType === "bittorrent") {
                     await initTorrent();
+                } else if (props.downloadType === "realdebrid") {
+                    await initRealDebrid();
                 } else {
                     await initDDL();
                 }
@@ -127,6 +139,94 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             }
         }
 
+        async function initRealDebrid() {
+            try {
+                // Get Real-Debrid settings
+                const rdSettings = await RealDebridSettingsApi.getRealDebridSettings();
+                if (!rdSettings.enabled || !rdSettings.api_token) {
+                    setError("Real-Debrid is not enabled or API token is missing. Please configure it in Settings.");
+                    return;
+                }
+                setRealdebridToken(rdSettings.api_token);
+
+                setRealdebridStatus("Adding magnet link to Real-Debrid...");
+                setRealdebridProgress(10);
+
+                // Step 1: Add magnet link
+                const addMagnetRes = await commands.addRealdebridMagnet(
+                    props.downloadedGame.magnetlink,
+                    rdSettings.api_token
+                );
+                if (addMagnetRes.status !== "ok") {
+                    throw new Error(`Failed to add magnet: ${addMagnetRes.error}`);
+                }
+                const torrentId = addMagnetRes.data;
+                setRealdebridTorrentId(torrentId);
+
+                setRealdebridStatus("Waiting for Real-Debrid to process torrent...");
+                setRealdebridProgress(30);
+
+                // Step 2: Wait for torrent to be ready (with progress updates)
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const infoRes = await commands.getRealdebridTorrentFiles(torrentId, rdSettings.api_token);
+                        if (infoRes.status === "ok") {
+                            const info = infoRes.data;
+                            setRealdebridProgress(30 + Math.floor(info.progress * 0.5)); // 30-80% for processing
+
+                            if (info.status === "downloaded") {
+                                clearInterval(pollInterval);
+                                setRealdebridProgress(80);
+                                setRealdebridStatus("Torrent ready! Loading file list...");
+
+                                // Step 3: Get file list
+                                const files = info.files.map((f, idx) => ({
+                                    file_name: f.path,
+                                    length: f.bytes,
+                                    file_index: idx,
+                                } as FileInfo));
+
+                                setRealdebridFiles(files);
+                                const classified = classifyTorrentFiles(files);
+                                setCategorizedFiles({
+                                    Languages: classified.Languages,
+                                    Others: classified.Others,
+                                });
+                                setUncategorizedFiles(classified.Uncategorized);
+
+                                // Select all files by default
+                                const all = new Set(files.map((_, i) => i));
+                                setRealdebridSelectedFiles(all);
+
+                                setRealdebridProgress(100);
+                                setRealdebridStatus("Ready to download");
+                                setLoading(false);
+                            } else if (info.status === "error" || info.status === "dead") {
+                                clearInterval(pollInterval);
+                                throw new Error(`Torrent processing failed: ${info.status}`);
+                            }
+                        }
+                    } catch (e) {
+                        clearInterval(pollInterval);
+                        throw e;
+                    }
+                }, 5000); // Poll every 5 seconds
+
+                // Timeout after 30 minutes
+                setTimeout(() => {
+                    clearInterval(pollInterval);
+                    if (realdebridTorrentId() === torrentId && realdebridFiles().length === 0) {
+                        setError("Torrent processing timeout. Please try again later.");
+                        setLoading(false);
+                    }
+                }, 1800000); // 30 minutes
+            } catch (e: any) {
+                console.error("initRealDebrid error", e);
+                setError(`Failed to initialize Real-Debrid: ${e.message || e}`);
+                setLoading(false);
+            }
+        }
+
         function toggleFileSelection(index: number) {
             setSelectedFileIndices((prev) => {
                 const next = new Set(prev);
@@ -139,6 +239,14 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             setDdlSelectedUrls((prev) => {
                 const next = new Set(prev);
                 next.has(url) ? next.delete(url) : next.add(url);
+                return next;
+            });
+        }
+
+        function toggleRealDebridFileSelection(index: number) {
+            setRealdebridSelectedFiles((prev) => {
+                const next = new Set(prev);
+                next.has(index) ? next.delete(index) : next.add(index);
                 return next;
             });
         }
@@ -160,6 +268,20 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 if (props.downloadType === "bittorrent") {
                     const selected = Array.from(selectedFileIndices());
                     await GlobalDownloadManager.addTorrent(id, game.magnetlink, game, path, selected);
+                } else if (props.downloadType === "realdebrid") {
+                    const selected = Array.from(realdebridSelectedFiles());
+                    const token = realdebridToken();
+                    if (!token) {
+                        throw new Error("Real-Debrid token not found");
+                    }
+                    await GlobalDownloadManager.addRealDebridTorrent(
+                        id,
+                        game.magnetlink,
+                        game,
+                        path,
+                        selected,
+                        token
+                    );
                 } else {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
@@ -221,6 +343,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         }
 
         const findFileIndex = (name: string) => listFiles().findIndex((f) => f.file_name === name);
+        const findRealDebridFileIndex = (name: string) => realdebridFiles().findIndex((f) => f.file_name === name);
 
         function deselectOptionalFiles() {
             if (props.downloadType === "bittorrent") {
@@ -231,6 +354,18 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     if (idx !== -1) indicesToRemove.add(idx);
                 }
                 setSelectedFileIndices((prev) => {
+                    const next = new Set(prev);
+                    for (const i of indicesToRemove) next.delete(i);
+                    return next;
+                });
+            } else if (props.downloadType === "realdebrid") {
+                const c = categorizedFiles();
+                const indicesToRemove = new Set<number>();
+                for (const name of [...Object.keys(c.Languages), ...Object.keys(c.Others)]) {
+                    const idx = findRealDebridFileIndex(name);
+                    if (idx !== -1) indicesToRemove.add(idx);
+                }
+                setRealdebridSelectedFiles((prev) => {
                     const next = new Set(prev);
                     for (const i of indicesToRemove) next.delete(i);
                     return next;
@@ -383,6 +518,130 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             );
         };
 
+        const renderRealDebridUI = () => {
+            const categorized = classifyTorrentFiles(realdebridFiles());
+            
+            // Show progress if still processing
+            if (realdebridFiles().length === 0) {
+                return (
+                    <>
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Loader2 class="w-8 h-8 text-accent animate-spin" />
+                            </div>
+                            <h2 class="text-xl font-bold text-text mb-2">Processing Torrent</h2>
+                            <p class="text-muted mb-4">{realdebridStatus()}</p>
+                            <div class="w-full max-w-md mx-auto bg-background-20 rounded-full h-2.5 mb-2">
+                                <div 
+                                    class="bg-accent h-2.5 rounded-full transition-all duration-300"
+                                    style={{ width: `${realdebridProgress()}%` }}
+                                />
+                            </div>
+                            <p class="text-xs text-muted">{realdebridProgress()}%</p>
+                        </div>
+                    </>
+                );
+            }
+
+            return (
+                <>
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Box class="w-8 h-8 text-accent" />
+                        </div>
+                        <h2 class="text-xl font-bold text-text mb-2">Choose What to Download</h2>
+                        <p class="text-muted">Select the files you want from Real-Debrid. You can proceed without selecting to download everything.</p>
+                    </div>
+
+                    <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
+                        <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50">
+                            <h3 class="text-sm font-semibold text-text flex items-center gap-2">
+                                <MemoryStick class="w-4 h-4 text-accent" /> Files from Real-Debrid
+                            </h3>
+                        </div>
+
+                        <div class="px-2">
+                            <Show when={realdebridFiles().length !== 0} fallback={
+                                <div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">
+                                    No files were detected.
+                                </div>
+                            }>
+                                <div class="divide-y divide-secondary-20 -mx-2">
+                                    <Show when={Object.entries(categorized.Languages).length > 0 || Object.entries(categorized.Others).length > 0}>
+                                        <div class="w-full flex justify-end px-4 py-2">
+                                            <button 
+                                                onClick={deselectOptionalFiles} 
+                                                class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"
+                                            >
+                                                <X class="w-3 h-3" />
+                                                <span>Deselect All Languages & Extras</span>
+                                            </button>
+                                        </div>
+                                    </Show>
+
+                                    <For each={Object.entries(categorized.Languages)}>
+                                        {([originalName, displayName]) => (
+                                            <TorrentFileItem 
+                                                originalName={originalName} 
+                                                displayName={toTitleCaseExceptions(displayName)} 
+                                                index={findRealDebridFileIndex(originalName)} 
+                                                selected={realdebridSelectedFiles()} 
+                                                onToggle={toggleRealDebridFileSelection} 
+                                                files={realdebridFiles()} 
+                                            />
+                                        )}
+                                    </For>
+
+                                    <For each={Object.entries(categorized.Others)}>
+                                        {([originalName, displayName]) => (
+                                            <TorrentFileItem 
+                                                originalName={originalName} 
+                                                displayName={toTitleCaseExceptions(displayName)} 
+                                                index={findRealDebridFileIndex(originalName)} 
+                                                selected={realdebridSelectedFiles()} 
+                                                onToggle={toggleRealDebridFileSelection} 
+                                                files={realdebridFiles()} 
+                                            />
+                                        )}
+                                    </For>
+
+                                    <Show when={uncategorizedFiles().length > 0}>
+                                        <div class="px-4 py-2">
+                                            <button 
+                                                onClick={() => setShowTorrentAdvanced(!showTorrentAdvanced())} 
+                                                class="text-xs text-accent hover:underline flex items-center gap-1"
+                                            >
+                                                <Show when={showTorrentAdvanced()} fallback={<><ChevronRight class="w-3 h-3" /> Show advanced options</>}>
+                                                    <><ChevronDown class="w-3 h-3" /> Hide advanced options</>
+                                                </Show>
+                                            </button>
+                                        </div>
+                                        <Show when={showTorrentAdvanced()}>
+                                            <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
+                                                <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing
+                                            </div>
+                                            <For each={uncategorizedFiles()}>
+                                                {(fileName) => (
+                                                    <TorrentFileItem 
+                                                        originalName={fileName} 
+                                                        displayName={fileName} 
+                                                        index={findRealDebridFileIndex(fileName)} 
+                                                        selected={realdebridSelectedFiles()} 
+                                                        onToggle={toggleRealDebridFileSelection} 
+                                                        files={realdebridFiles()} 
+                                                    />
+                                                )}
+                                            </For>
+                                        </Show>
+                                    </Show>
+                                </div>
+                            </Show>
+                        </div>
+                    </div>
+                </>
+            );
+        };
+
         return (
             <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading}>
                 <div class="space-y-6">
@@ -390,7 +649,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         <div class="bg-red-500/10 text-red-500 rounded-lg p-3 text-sm">{error()}</div>
                     </Show>
 
-                    {props.downloadType === "bittorrent" ? renderTorrentUI() : renderDDLUI()}
+                    {props.downloadType === "bittorrent" 
+                        ? renderTorrentUI() 
+                        : props.downloadType === "realdebrid" 
+                        ? renderRealDebridUI() 
+                        : renderDDLUI()}
                 </div>
             </Modal>
         );

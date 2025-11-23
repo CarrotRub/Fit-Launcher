@@ -115,6 +115,7 @@ function SettingsSidebar(): JSX.Element {
             <SidebarLink id="settings-network" label="Network" icon={Globe} onClick={() => handleActivateElem("settings-network", "network")} />
             <SidebarLink id="settings-bittorrent" label="Bittorrent" icon={Magnet} onClick={() => handleActivateElem("settings-bittorrent", "bittorrent")} />
             <SidebarLink id="settings-rpc" label="Aria2 RPC" icon={Cpu} onClick={() => handleActivateElem("settings-rpc", "rpc")} />
+            <SidebarLink id="settings-realdebrid" label="Real-Debrid" icon={Globe} onClick={() => handleActivateElem("settings-realdebrid", "realdebrid-config")} />
           </ul>
         </div>
 

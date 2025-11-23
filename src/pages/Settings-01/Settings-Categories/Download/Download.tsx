@@ -16,6 +16,7 @@ import TransferLimitsPart from "./TransferLimits/TransferLimits";
 import NetworkPart from "./Network/NetworkPart";
 import BittorrentPart from "./Bittorrent/BittorrentPart";
 import AriaPart from "./AriaPart/AriaPart";
+import RealDebridPart from "./RealDebrid/RealDebridPart";
 
 
 
@@ -121,12 +122,15 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
-          )
+          ),
+          "realdebrid-config": <RealDebridPart />
         }[selectedPart()] ?? <p>Invalid or Unsupported Part</p>}
 
-        <div class="flex flex-row self-end gap-3 ">
-          <Button onClick={handleOnSave} label="Save" variant="solid" />
-        </div>
+        <Show when={selectedPart() !== "realdebrid-config"}>
+          <div class="flex flex-row self-end gap-3 ">
+            <Button onClick={handleOnSave} label="Save" variant="solid" />
+          </div>
+        </Show>
       </div>
     </Show>
   );

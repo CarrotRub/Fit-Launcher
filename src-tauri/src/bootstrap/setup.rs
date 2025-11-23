@@ -3,6 +3,7 @@ use fit_launcher_scraping::get_sitemaps_website;
 use fit_launcher_scraping::global::commands::rebuild_search_index;
 use fit_launcher_scraping::global::functions::run_all_scrapers;
 use fit_launcher_torrent::functions::TorrentSession;
+use fit_launcher_real_debrid::*;
 use lru::LruCache;
 use std::error::Error;
 use std::num::NonZeroUsize;
@@ -81,6 +82,7 @@ pub async fn start_app() -> Result<(), Box<dyn Error>> {
                 fit_launcher_config::settings::creation::create_installation_settings_file,
                 fit_launcher_config::settings::creation::create_gamehub_settings_file,
                 fit_launcher_config::settings::creation::create_image_cache_file,
+                fit_launcher_config::settings::creation::create_realdebrid_settings_file,
             ] {
                 if let Err(err) = create_fn() {
                     error!("Error creating settings: {:#?}", err);

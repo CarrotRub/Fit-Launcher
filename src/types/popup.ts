@@ -3,7 +3,7 @@ import { DownloadedGame, Game, GameCollection } from "../bindings";
 import { PathInputProps, TextInputProps } from "./components/types";
 import { GameDetails } from "./game";
 
-export type DownloadType = "bittorrent" | "direct_download";
+export type DownloadType = "bittorrent" | "direct_download" | "realdebrid";
 export type PopupTypeVariant = "warning" | "error" | "success" | "info";
 
 export type PopupProps<T extends unknown[] = []> = {
@@ -44,6 +44,6 @@ export type AddLocalGamePopupProps<T extends any[] = any[]> = PopupProps<T> &
 export type DownloadPopupProps<T extends any[] = any[]> = PopupProps<T> & {
   downloadedGame: DownloadedGame;
   gameDetails: GameDetails;
-  downloadType: "bittorrent" | "direct_download";
+  downloadType: "bittorrent" | "direct_download" | "realdebrid";
   onFinish: () => void | Promise<void>;
 };
