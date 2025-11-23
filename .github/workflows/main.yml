@@ -31,6 +31,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
+          shared-key: "main"
           workspaces: './src-tauri -> target'
 
       - name: Get latest aria2 tag
