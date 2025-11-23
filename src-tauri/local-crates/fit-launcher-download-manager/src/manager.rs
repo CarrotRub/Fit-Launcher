@@ -88,24 +88,57 @@ impl DownloadManager {
     /// Load persisted jobs and rebuild indicess. (guys lock order: jobs -> gid_index -> infohash_index)
     pub async fn load_from_disk(self: &Arc<Self>) -> Result<()> {
         let map = load_jobs(&self.persist_path).await.context("load jobs")?;
-        let mut jobs_lock = self.jobs.write().await;
-        let mut idx_lock = self.gid_index.write().await;
-        let mut idx_hash = self.infohash_index.write().await;
 
-        *jobs_lock = map.clone();
-        idx_lock.clear();
-        idx_hash.clear();
+        {
+            let mut jobs_lock = self.jobs.write().await;
+            let mut idx_lock = self.gid_index.write().await;
+            let mut idx_hash = self.infohash_index.write().await;
 
-        for (id, job) in jobs_lock.iter() {
-            for g in job.gids.iter() {
-                idx_lock.insert(g.clone(), id.clone());
-            }
-            if let Some(t) = &job.torrent {
-                idx_hash.insert(t.info_hash.clone(), id.clone());
+            jobs_lock.clear();
+            idx_lock.clear();
+            idx_hash.clear();
+
+            for (id, mut job) in map.into_iter() {
+                job.state = DownloadState::Paused;
+                job.status = None;
+                job.metadata.updated_at = Utc::now();
+
+                for g in job.gids.iter() {
+                    idx_lock.insert(g.clone(), id.clone());
+                }
+                if let Some(t) = &job.torrent {
+                    idx_hash.insert(t.info_hash.clone(), id.clone());
+                }
+
+                jobs_lock.insert(id.clone(), job);
             }
         }
 
-        info!("Loaded {} jobs from disk", jobs_lock.len());
+        info!("Loaded {} jobs from disk", self.jobs.read().await.len());
+
+        {
+            let dm = Arc::clone(self);
+            tokio::spawn(async move {
+                let jobs_snapshot: Vec<(JobId, Vec<Gid>)> = {
+                    let jobs = dm.jobs.read().await;
+                    jobs.iter()
+                        .map(|(id, job)| (id.clone(), job.gids.clone()))
+                        .collect()
+                };
+
+                for (_id, gids) in jobs_snapshot {
+                    for gid in gids {
+                        let aria_guard = dm.aria.lock().await;
+                        if let Err(e) = aria_guard.pause(&gid).await {
+                            error!("Failed to pause gid {} during load: {:?}", gid, e);
+                        }
+                        // small yield to avoid hammering aria2 in busy startup scenarios
+                        tokio::task::yield_now().await;
+                    }
+                }
+            });
+        }
+
         Ok(())
     }
 
