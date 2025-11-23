@@ -161,8 +161,20 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
         }
     }
 
+    const ddlTotalSize = () =>
+        props.item().source === "Ddl"
+            ? props.item().ddl!.files.reduce((acc, f) => acc + f.size, 0)
+            : jobStatus()?.total_length ?? 0;
 
-    const game = () => props.item().game;
+    const completedLength = () => jobStatus()?.completed_length ?? 0;
+
+    const progressPercentage = () => {
+        const total = ddlTotalSize();
+        const completed = completedLength();
+
+        if (total === 0) return 0;
+        return Math.min((completed / total) * 100, 100).toFixed(1);
+    };
 
     return (
         <div class="bg-popup rounded-xl border border-secondary-20/60 hover:border-accent/40 transition-all overflow-hidden group">
@@ -187,7 +199,13 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
                         </h3>
                         <div class="flex items-center gap-2 mt-1 text-sm text-muted/80">
                             <HardDrive class="w-4 h-4 opacity-70" />
-                            <span>{formatBytes(jobStatus()?.total_length)}</span>
+
+                            <span>
+                                {
+                                    props.item().source === "Ddl"
+                                        ? formatBytes(ddlTotalSize())
+                                        : formatBytes(jobStatus()?.total_length)}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -231,12 +249,12 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
                                             ? "Downloading..."
                                             : "Waiting..."}
                                 </span>
-                                <span class="font-medium text-text">{jobStatus()?.progress_percentage.toFixed(1)}%</span>
+                                <span class="font-medium text-text">{props.item().source === "Ddl" ? progressPercentage() : jobStatus()?.progress_percentage.toFixed(1)}%</span>
                             </div>
                             <div class="w-full h-2 bg-secondary-20/30 rounded-full overflow-hidden">
                                 <div
                                     class="h-full bg-gradient-to-r from-accent to-primary/80 transition-all duration-500 ease-out"
-                                    style={{ width: `${jobStatus()?.progress_percentage}%` }}
+                                    style={{ width: `${props.item().source === "Ddl" ? progressPercentage() : jobStatus()?.progress_percentage.toFixed(1)}%` }}
                                 />
                             </div>
                         </div>

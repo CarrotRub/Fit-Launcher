@@ -1,5 +1,6 @@
 use aria2_ws::response::{File, TaskStatus};
 use chrono::{DateTime, Utc};
+use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
 use fit_launcher_torrent::model::FileInfo;
 use serde::{Deserialize, Serialize};
@@ -10,13 +11,6 @@ use uuid::Uuid;
 
 pub type JobId = String;
 pub type Gid = String;
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub struct DirectLink {
-    pub url: String,
-    pub filename: Option<String>,
-    pub headers: Option<Vec<(String, String)>>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
 pub enum DownloadSource {

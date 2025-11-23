@@ -77,3 +77,16 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
 
     Ok(result_links)
 }
+
+pub(crate) fn parse_size_to_bytes(size_str: &str, unit: &str) -> u64 {
+    let number: f64 = size_str.parse().unwrap_or(0.0);
+    match unit.to_uppercase().as_str() {
+        "B" => number as u64,
+        "KB" => (number * 1024.0) as u64,
+        "MB" => (number * 1024.0 * 1024.0) as u64,
+        "GB" => (number * 1024.0 * 1024.0 * 1024.0) as u64,
+        "TB" => (number * 1024.0 * 1024.0 * 1024.0 * 1024.0) as u64,
+        "PB" => (number * 1024.0 * 1024.0 * 1024.0 * 1024.0 * 1024.0) as u64,
+        _ => 0,
+    }
+}

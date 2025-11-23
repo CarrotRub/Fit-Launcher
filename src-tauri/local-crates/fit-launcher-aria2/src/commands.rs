@@ -42,14 +42,7 @@ pub async fn aria2_start_download(
         .await
         .map_err(|_| Aria2Error::NotConfigured)?;
 
-    aria2_add_uri(
-        &aria2_client,
-        url,
-        dir,
-        filename,
-        state.config().await.rpc,
-    )
-    .await
+    aria2_add_uri(&aria2_client, url, dir, filename, state.config().await.rpc).await
 }
 
 /// `selected_files`: list of torrent metadata files index
@@ -252,7 +245,12 @@ pub async fn aria2_task_spawn(
 
     let mut results = Vec::with_capacity(direct_links.len());
 
-    for DirectLink { url, filename } in direct_links {
+    for DirectLink {
+        url,
+        filename,
+        size: _,
+    } in direct_links
+    {
         let result = aria2_add_uri(
             &aria2_client,
             vec![url.clone()],

@@ -1,4 +1,5 @@
 use crate::{manager::DownloadManager, types::*};
+use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
 use specta::specta;
 use std::sync::Arc;

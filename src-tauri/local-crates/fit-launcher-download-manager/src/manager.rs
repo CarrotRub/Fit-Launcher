@@ -6,6 +6,7 @@ use crate::types::*;
 use anyhow::{Context, Result};
 use aria2_ws::response::{File, Status};
 use chrono::Utc;
+use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
 use fit_launcher_torrent::model::FileInfo;
 use fit_launcher_torrent::{FitLauncherConfigAria2, LibrqbitSession};
@@ -140,10 +141,11 @@ impl DownloadManager {
             let url = f.url.clone();
             let aria_guard = self.aria.lock().await;
             let gid = aria_guard
-                .add_uri(vec![url], dir_str.clone(), filename, cfg.clone())
+                .add_uri(vec![url], dir_str.clone(), Some(filename), cfg.clone())
                 .await?;
             gids.push(gid);
         }
+        info!("All direct links have successfully start !");
 
         // register job & indices
         job.gids = gids.clone();
@@ -301,63 +303,64 @@ impl DownloadManager {
         };
 
         let mut any_resumed = false;
-        //todo: complicated a bit but we'll check that later on
-        let mut _need_respawn = false;
+        let mut need_respawn = false;
 
+        // Step 2: attempt to resume existing GIDs
         for gid in job.gids.clone() {
             let aria_guard = self.aria.lock().await;
             match aria_guard.resume(&gid).await {
-                Ok(_) => {
-                    any_resumed = true;
-                }
+                Ok(_) => any_resumed = true,
                 Err(e) => {
-                    // We consider failures here as potential "gid dead" so we will need to schedule respawn for torrent jobs
                     error!("Failed to resume gid {}: {:?}", gid, e);
-                    _need_respawn = true;
+                    need_respawn = true; // mark for respawn
                 }
             }
         }
 
+        // Step 3: if any GID resumed successfully, just update state
         if any_resumed {
-            {
-                let mut jobs_lock = self.jobs.write().await;
-                if let Some(j) = jobs_lock.get_mut(job_id) {
-                    j.state = DownloadState::Active;
-                    j.metadata.updated_at = Utc::now();
-                    let _ = self.tauri_handle.emit("download::job_updated", j.clone());
-                }
+            let mut jobs_lock = self.jobs.write().await;
+            if let Some(j) = jobs_lock.get_mut(job_id) {
+                j.state = DownloadState::Active;
+                j.metadata.updated_at = Utc::now();
+                let _ = self.tauri_handle.emit("download::job_updated", j.clone());
             }
             self.request_save_debounced().await;
             return Ok(());
         }
 
-        if job.source == DownloadSource::Ddl {
-            self.resume_ddl(&job).await?
-        }
-
-        if job.source == DownloadSource::Torrent {
-            self.resume_torrent(&job).await?
+        // Step 4: if no GID resumed, respawn depending on source
+        match job.source {
+            DownloadSource::Ddl => self.resume_ddl(&job).await?,
+            DownloadSource::Torrent => self.resume_torrent(&job).await?,
         }
 
         Ok(())
     }
 
     async fn resume_ddl(&self, job: &Job) -> Result<()> {
-        if let Some(ddl) = job.ddl.clone() {
-            let mut new_gids = vec![];
+        if let Some(ddl) = &job.ddl {
             let cfg = self.aria_cfg.clone();
             let dir = Some(job.metadata.target_path.to_string_lossy().to_string());
+            let mut new_gids = Vec::with_capacity(ddl.files.len());
+
             for f in ddl.files.iter() {
-                let url = f.url.clone();
-                let filename = f.filename.clone();
                 let aria_guard = self.aria.lock().await;
-                let gid = aria_guard
-                    .add_uri(vec![url], dir.clone(), filename, cfg.clone())
-                    .await?;
-                new_gids.push(gid);
+                match aria_guard
+                    .add_uri(
+                        vec![f.url.clone()],
+                        dir.clone(),
+                        Some(f.filename.clone()),
+                        cfg.clone(),
+                    )
+                    .await
+                {
+                    Ok(gid) => new_gids.push(gid),
+                    Err(e) => error!("Failed to respawn DDL gid for {}: {:?}", job.id, e),
+                }
             }
 
-            {
+            if !new_gids.is_empty() {
                 let mut jobs = self.jobs.write().await;
                 if let Some(j) = jobs.get_mut(&job.id) {
                     j.gids.extend(new_gids.iter().cloned());
@@ -368,82 +371,83 @@ impl DownloadManager {
                     for g in j.gids.iter() {
                         gid_idx.insert(g.clone(), j.id.clone());
                     }
+
                     j.state = DownloadState::Active;
                     j.metadata.updated_at = Utc::now();
                     let _ = self.tauri_handle.emit("download::job_updated", j.clone());
                 }
+                self.request_save_debounced().await;
             }
-            self.request_save_debounced().await;
         }
         Ok(())
     }
 
     async fn resume_torrent(&self, job: &Job) -> Result<()> {
-        let mut torrent_bytes_opt: Option<Vec<u8>> =
-            job.torrent.as_ref().map(|t| t.torrent_bytes.clone());
-        let files_list_opt: Option<Vec<usize>> =
-            job.torrent.as_ref().map(|t| t.file_indices.clone());
-        let magnet_opt: Option<String> = job.torrent.as_ref().map(|t| t.magnet.clone());
-        let info_hash_opt: Option<String> = job.torrent.as_ref().map(|t| t.info_hash.clone());
+        let torrent_bytes = if let Some(t) = &job.torrent {
+            Some(t.torrent_bytes.clone())
+        } else {
+            None
+        };
 
-        if torrent_bytes_opt.is_none()
-            && let Some(magnet) = magnet_opt.clone()
-        {
-            match self.torrent_session.get_metadata_only(magnet.clone()).await {
-                Ok(meta) => {
-                    torrent_bytes_opt = Some(meta.torrent_bytes.to_vec());
-                }
-                Err(e) => {
-                    error!(
-                        "Failed to regenerate torrent bytes for job {}: {:?}",
-                        job.id, e
-                    );
-                }
-            }
-        }
+        let magnet = job.torrent.as_ref().map(|t| t.magnet.clone());
+        let files_list = job
+            .torrent
+            .as_ref()
+            .map(|t| t.file_indices.clone())
+            .unwrap_or_default();
+        let dir = Some(job.metadata.target_path.to_string_lossy().to_string());
 
-        if let Some(torrent_bytes) = torrent_bytes_opt {
-            let dir = Some(job.metadata.target_path.to_string_lossy().to_string());
-            let files_list = files_list_opt.unwrap_or_default();
-            let aria_guard = self.aria.lock().await;
-            match aria_guard
-                .add_torrent(torrent_bytes.clone(), dir.clone(), files_list.clone())
-                .await
-            {
-                Ok(new_gid) => {
-                    // update job entries & indices under lock, should be fast so all good
-                    {
-                        let mut jobs = self.jobs.write().await;
-                        let mut gid_idx = self.gid_index.write().await;
-                        if let Some(j) = jobs.get_mut(&job.id) {
-                            j.gids = vec![new_gid.clone()];
-                            if let Some(h) = &info_hash_opt {
-                                let mut ih = self.infohash_index.write().await;
-                                ih.insert(h.clone(), j.id.clone());
-                            }
-                            gid_idx.insert(new_gid.clone(), j.id.clone());
-                            j.state = DownloadState::Active;
-                            j.metadata.updated_at = Utc::now();
-                            let _ = self.tauri_handle.emit("download::job_updated", j.clone());
+        let torrent_bytes = match torrent_bytes {
+            Some(b) => b,
+            None => {
+                if let Some(m) = magnet.clone() {
+                    match self.torrent_session.get_metadata_only(m.clone()).await {
+                        Ok(meta) => meta.torrent_bytes.to_vec(),
+                        Err(e) => {
+                            error!("Cannot regenerate torrent for job {}: {:?}", job.id, e);
+                            return Err(DownloadManagerError::TorrentInitError(format!(
+                                "No torrent bytes available to respawn job {}",
+                                job.id
+                            ))
+                            .into());
                         }
                     }
-                    self.request_save_debounced().await;
-                    Ok(())
-                }
-                Err(e) => {
-                    error!("Failed to respawn torrent for job {}: {:?}", job.id, e);
-                    Err(e.into())
+                } else {
+                    error!("No torrent bytes or magnet for job {}", job.id);
+                    return Err(DownloadManagerError::TorrentInitError(format!(
+                        "No torrent bytes available to respawn job {}",
+                        job.id
+                    ))
+                    .into());
                 }
             }
-        } else {
-            error!("No torrent bytes available to respawn job {}", job.id);
+        };
 
-            Err(DownloadManagerError::TorrentInitError(format!(
-                "No torrent bytes available to respawn job {}",
-                job.id
-            ))
-            .into())
+        let aria_guard = self.aria.lock().await;
+        match aria_guard.add_torrent(torrent_bytes, dir, files_list).await {
+            Ok(new_gid) => {
+                let mut jobs = self.jobs.write().await;
+                if let Some(j) = jobs.get_mut(&job.id) {
+                    j.gids = vec![new_gid.clone()];
+                    j.state = DownloadState::Active;
+                    j.metadata.updated_at = Utc::now();
+                    let mut gid_idx = self.gid_index.write().await;
+                    gid_idx.insert(new_gid, j.id.clone());
+                    if let Some(t) = &j.torrent {
+                        let mut ih = self.infohash_index.write().await;
+                        ih.insert(t.info_hash.clone(), j.id.clone());
+                    }
+                    let _ = self.tauri_handle.emit("download::job_updated", j.clone());
+                }
+                self.request_save_debounced().await;
+            }
+            Err(e) => {
+                error!("Failed to respawn torrent for job {}: {:?}", job.id, e);
+                return Err(e.into());
+            }
         }
+
+        Ok(())
     }
 
     pub async fn remove(&self, job_id: &str) -> Result<()> {

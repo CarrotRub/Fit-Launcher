@@ -35,10 +35,12 @@ const TorrentFileItem: Component<{ originalName: string; displayName: string; in
 };
 
 const DDLFileItem: Component<{ file: DirectLinkWrapper; selected: Set<string>; onToggle: (url: string) => void }> = (props) => {
+    const size = formatBytes(props.file.size);
     return (
-        <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.file.filename}>
-            <span class="text-sm text-text truncate max-w-[55%]" title={props.file.filename}>{props.file.displayName || props.file.filename}</span>
+        <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.file.filename || ""}>
+            <span class="text-sm text-text truncate max-w-[55%]" title={props.file.filename || ""}>{props.file.displayName || props.file.filename}</span>
             <div class="flex items-center gap-3">
+                <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">{size}</div>
                 <Checkbox checked={props.selected.has(props.file.url)} action={() => props.onToggle(props.file.url)} />
             </div>
         </label>
@@ -244,7 +246,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             }
         }
 
-        // renderers re-using previous markup (kept classes identical)
         const renderTorrentUI = () => {
             const categorized = classifyTorrentFiles(listFiles());
             // update signals so the UI reflects classification if needed
@@ -336,12 +337,18 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                         <div class="absolute inset-0 rounded-xl bg-accent/0 transition-colors duration-300 group-hover:bg-accent/5" />
                                     </button>
 
-                                    <button onClick={() => loadHosterLinks("datanodes")} class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 transition-all duration-200">
-                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 transition-colors group-hover:border-accent/50"><img src="https://datanodes.to/favicon.ico" alt="DataNodes" class="size-12 object-contain" /></div>
-                                        <span class="font-medium text-text transition-colors group-hover:text-primary">DataNodes</span>
-                                        <span class="text-xs text-muted mt-1 transition-colors group-hover:text-accent/80">Reliable file hosting</span>
-                                        <div class="absolute inset-0 rounded-xl bg-accent/0 transition-colors duration-300 group-hover:bg-accent/5" />
+                                    <button
+                                        disabled
+                                        onClick={() => loadHosterLinks("datanodes")}
+                                        class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 opacity-50 cursor-not-allowed pointer-events-none transition-all duration-200"
+                                    >
+                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 opacity-50">
+                                            <img src="https://datanodes.to/favicon.ico" alt="DataNodes" class="size-12 object-contain" />
+                                        </div>
+                                        <span class="font-medium text-muted">DataNodes</span>
+                                        <span class="text-xs text-muted mt-1">Not working at the moment</span>
                                     </button>
+
                                 </div>
 
                                 <div class="text-xs text-center text-muted mt-6"><span class="inline-flex items-center gap-1"><Info class="w-3 h-3" />Selection affects download speed and availability</span></div>

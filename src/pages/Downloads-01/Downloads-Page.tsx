@@ -9,6 +9,7 @@ import { formatSpeed } from "../../helpers/format";
 import { DM, GlobalDownloadManager } from "../../api/manager/api";
 import { AggregatedStatus, DownloadSource, Job, Status } from "../../bindings";
 import { DownloadsStore } from "../../stores/download";
+import { GlobalStatsStore } from "../../stores/globalStats";
 
 type FilterType = DownloadSource | "All" | "Active";
 
@@ -41,9 +42,6 @@ const DownloadPage: Component = () => {
     });
 
     const downloadStats = createMemo(() => {
-        let totalDownloadSpeed = 0;
-        let totalUploadSpeed = 0;
-        let activeCount = 0;
         let torrentCount = 0;
         let ddlCount = 0;
 
@@ -52,16 +50,11 @@ const DownloadPage: Component = () => {
         for (const job of jobs()) {
             if (job.status) {
                 statuses.push(job.status!);
-                for (const s of statuses) {
-                    totalDownloadSpeed += Number(s?.download_speed ?? 0);
-                    totalUploadSpeed += Number(s?.upload_speed ?? 0);
-                    if (s?.state === "active") activeCount++;
-                }
                 if (job.source === "Torrent") torrentCount++;
                 else ddlCount++;
             }
         }
-        return { totalDownloadSpeed, totalUploadSpeed, activeCount, torrentCount, ddlCount };
+        return { torrentCount, ddlCount };
     });
 
 
@@ -117,7 +110,7 @@ const DownloadPage: Component = () => {
                         >
                             <Zap class="w-5 h-5 text-amber-400 group-hover:animate-pulse" />
                             <span>Active</span>
-                            <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold">{downloadStats().activeCount}</span>
+                            <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold">{GlobalStatsStore.stats()?.numActive}</span>
                         </button>
 
                         <button
@@ -138,7 +131,7 @@ const DownloadPage: Component = () => {
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs uppercase tracking-wider text-muted/80">Download Speed</span>
-                            <span class="font-bold text-lg">{formatSpeed(downloadStats().totalDownloadSpeed)}</span>
+                            <span class="font-bold text-lg">{formatSpeed(GlobalStatsStore.stats()?.downloadSpeed)}</span>
                         </div>
                     </div>
 
@@ -148,7 +141,7 @@ const DownloadPage: Component = () => {
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs uppercase tracking-wider text-muted/80">Upload Speed</span>
-                            <span class="font-bold text-lg">{formatSpeed(downloadStats().totalUploadSpeed)}</span>
+                            <span class="font-bold text-lg">{formatSpeed(GlobalStatsStore.stats()?.uploadSpeed)}</span>
                         </div>
                     </div>
 
@@ -158,7 +151,7 @@ const DownloadPage: Component = () => {
                         </div>
                         <div class="flex flex-col">
                             <span class="text-xs uppercase tracking-wider text-muted/80">Active Transfers</span>
-                            <span class="font-bold text-lg">{downloadStats().activeCount}</span>
+                            <span class="font-bold text-lg">{GlobalStatsStore.stats()?.numActive}</span>
                         </div>
                     </div>
                 </div>

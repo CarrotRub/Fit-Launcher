@@ -1,10 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import {
+  Aria2Error,
   commands,
   DirectLink,
   FileInfo,
   Game,
+  GlobalStat,
   Job,
   Result,
   TorrentApiError,
@@ -142,6 +144,10 @@ export class GlobalDownloadManager {
         error: e instanceof Error ? e.message : (e as any),
       };
     }
+  }
+
+  async globalStats(): Promise<Result<GlobalStat, Aria2Error>> {
+    return await commands.aria2GlobalStat();
   }
 
   async saveNow(): Promise<Result<void, string>> {
