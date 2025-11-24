@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+use fit_launcher_ui_automation::auto_installation;
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::Engine;
 use fitgirl_decrypt::base64::prelude::BASE64_STANDARD;
@@ -12,10 +13,10 @@ use tracing::{error, info};
 use crate::errors::TorrentApiError;
 use crate::functions::TorrentSession;
 use crate::model::FileInfo;
-use crate::utils::auto_install_game;
 
 use super::*;
 
+// FIXME: `decryptTorrentFromPaste` was never getting used in frontend
 #[tauri::command]
 #[specta]
 pub async fn decrypt_torrent_from_paste(
@@ -155,13 +156,14 @@ pub async fn config_change_only_path(
     state.configure(current_config).await
 }
 
+/// `setup.exe` should be placed inside `path`
 #[tauri::command]
 #[specta]
 pub async fn run_automate_setup_install(
     _state: tauri::State<'_, TorrentSession>,
     path: PathBuf,
 ) -> Result<(), TorrentApiError> {
-    auto_install_game(path).await
+    Ok(auto_installation(&path).await?)
 }
 
 #[tauri::command]
