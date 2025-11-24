@@ -6,6 +6,7 @@ use unrar::error::UnrarError;
 
 use crate::InstallationError;
 
+// TODO: rust-analyzer/specta+serde false-positive
 #[derive(Debug, Type, Deserialize, Serialize)]
 pub enum ExtractError {
     Io(String),
