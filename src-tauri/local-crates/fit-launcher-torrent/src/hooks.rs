@@ -88,13 +88,6 @@ pub(crate) mod windows {
     unsafe impl Sync for JobChild {}
 
     impl JobChild {
-        /// Gets job's child pid.
-        ///
-        /// Will probably be useful one day or another.
-        pub fn pid(&self) -> u32 {
-            self.pid
-        }
-
         pub async fn kill(&self) -> Result<()> {
             unsafe { TerminateProcess(self.process, 1).ok() };
             Ok(())

@@ -1,7 +1,7 @@
 use aria2_ws::response::{GlobalStat, Status, Version};
 use fit_launcher_ddl::DirectLink;
 use specta::specta;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use tracing::error;
 
 use crate::{
@@ -328,6 +328,6 @@ pub async fn aria2_global_stat(
 
 #[tauri::command]
 #[specta]
-pub fn panic_force(app: AppHandle) -> () {
+pub fn panic_force(_app: AppHandle) -> () {
     panic!("INTENTIONAL PANIC");
 }

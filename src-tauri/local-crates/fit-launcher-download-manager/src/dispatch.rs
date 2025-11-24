@@ -1,7 +1,4 @@
-use crate::{
-    manager::DownloadManager,
-    types::{DownloadState, FileStatus},
-};
+use crate::{manager::DownloadManager, types::FileStatus};
 use aria2_ws::Client;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;

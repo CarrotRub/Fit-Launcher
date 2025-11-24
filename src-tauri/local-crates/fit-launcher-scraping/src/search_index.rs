@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufWriter};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::errors::{CreatingFileErrorStruct, ScrapingError};
 

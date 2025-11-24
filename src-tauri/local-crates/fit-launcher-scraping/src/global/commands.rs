@@ -8,7 +8,6 @@ use tracing::{error, info};
 use anyhow::Result;
 
 use crate::errors::ScrapingError;
-use crate::global::functions::download_sitemap;
 use crate::global::functions::helper::fetch_game_info;
 use crate::search_index::{
     SearchIndex, SearchIndexEntry, build_search_index, get_search_index_path,
@@ -18,7 +17,7 @@ use crate::structs::Game;
 use futures::future::join_all;
 use regex::Regex;
 use reqwest::Client;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 use thiserror::Error;
 use tokio::sync::AcquireError;

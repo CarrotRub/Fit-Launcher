@@ -6,11 +6,7 @@ use crate::{
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream::FuturesUnordered};
 use specta::specta;
-use std::pin::Pin;
 use tracing::{error, info, warn};
-
-type HtmlDownloadFuture =
-    Pin<Box<dyn Send + std::future::Future<Output = Result<(String, String), reqwest::Error>>>>;
 
 #[tauri::command]
 #[specta]

@@ -1,10 +1,7 @@
-use std::{sync::Arc, time::Duration};
-
 use aria2_ws::{Client, Map, TaskOptions, response::Status};
 use fit_launcher_torrent::FitLauncherConfigAria2;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
-use tauri::{AppHandle, Emitter};
+
 use tracing::error;
 
 use crate::error::Aria2Error;
@@ -67,7 +64,7 @@ pub async fn aria2_add_torrent(
         })
 }
 
-async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Aria2Error> {
+pub async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Aria2Error> {
     let mut active = aria2_client.tell_active().await?;
     let mut waiting = aria2_client.tell_waiting(0, 100).await?;
     let mut stopped = aria2_client.tell_stopped(0, 100).await?;
@@ -80,38 +77,6 @@ async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Aria2E
 
     Ok(list)
 }
-
-// pub fn start_aria2_monitor(app: AppHandle, aria2_client: Arc<tokio::sync::Mutex<Client>>) {
-//     tauri::async_runtime::spawn(async move {
-//         let mut last_hash = String::new();
-
-//         loop {
-//             let statuses_result = {
-//                 let client = aria2_client.lock().await;
-//                 aria2_get_all_list(&client).await
-//             };
-
-//             match statuses_result {
-//                 Ok(statuses) => {
-//                     let Ok(serialized) = serde_json::to_string(&statuses) else {
-//                         continue;
-//                     };
-
-//                     let hash = format!("{:x}", Sha256::digest(serialized.as_bytes()));
-//                     if hash != last_hash {
-//                         last_hash = hash;
-//                         let _ = app.emit("aria2_status_update", statuses);
-//                     }
-//                 }
-//                 Err(err) => {
-//                     error!("Error contacting Aria2 RPC: {:#?}", err.to_string())
-//                 }
-//             }
-
-//             tokio::time::sleep(Duration::from_millis(500)).await;
-//         }
-//     });
-// }
 
 #[cfg(windows)]
 async fn file_allocation_method(

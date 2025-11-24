@@ -1,11 +1,7 @@
-
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use futures::{StreamExt, stream, stream::FuturesOrdered};
+use futures::{StreamExt, stream::FuturesOrdered};
 use reqwest::Response;
-use std::{
-
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::{
     fs,
@@ -24,7 +20,11 @@ use crate::{
 };
 
 /// Download a sitemap file with DNS client and write it to app data.
-pub async fn download_sitemap(app_handle: AppHandle, url: &str, filename: &str) -> anyhow::Result<()> {
+pub async fn download_sitemap(
+    app_handle: AppHandle,
+    url: &str,
+    filename: &str,
+) -> anyhow::Result<()> {
     let mut response = CUSTOM_DNS_CLIENT.read().await.get(url).send().await?;
 
     let mut binding = app_handle.path().app_data_dir().unwrap();
@@ -233,11 +233,9 @@ pub async fn popular_games_scraping_func(app_handle: AppHandle) -> Result<(), Sc
 
     let stream = futures::stream::iter(links.into_iter().map(|link| {
         let ah = app_handle.clone();
-        async move {
-            scrape_popular_game(&link, &ah).await
-        }
+        async move { scrape_popular_game(&link, &ah).await }
     }))
-        .buffer_unordered(3);
+    .buffer_unordered(3);
 
     let mut valid_games = Vec::new();
     futures::pin_mut!(stream);
@@ -309,9 +307,7 @@ pub async fn run_all_scrapers(app_handle: AppHandle) -> anyhow::Result<()> {
     let a = tokio::spawn(scraping_func(app_handle.clone()));
     let c = tokio::spawn(recently_updated_games_scraping_func(app_handle.clone()));
 
-    let b = local.run_until(async {
-        popular_games_scraping_func(app_handle.clone()).await
-    });
+    let b = local.run_until(async { popular_games_scraping_func(app_handle.clone()).await });
 
     let (ra, rb, rc) = tokio::join!(a, b, c);
 
