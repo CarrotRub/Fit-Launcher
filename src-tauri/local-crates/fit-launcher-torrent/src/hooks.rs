@@ -5,9 +5,7 @@ pub(crate) mod windows {
     use std::iter::once;
     use std::os::windows::ffi::OsStrExt;
     use std::path::Path;
-    use std::ptr::null_mut;
     use std::sync::OnceLock;
-    use tokio::process::Child;
 
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
     use windows::Win32::System::JobObjects::{
@@ -16,10 +14,9 @@ pub(crate) mod windows {
         SetInformationJobObject,
     };
     use windows::Win32::System::Threading::{
-        CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateProcessW, GetExitCodeProcess,
-        PROCESS_INFORMATION, ResumeThread, STARTUPINFOW, TerminateProcess, WaitForSingleObject,
+        CREATE_SUSPENDED, CreateProcessW, PROCESS_INFORMATION, ResumeThread, STARTUPINFOW,
+        TerminateProcess,
     };
-    use windows::Win32::System::Threading::{INFINITE, PROCESS_CREATION_FLAGS};
 
     use windows::core::{PCWSTR, PWSTR};
     #[derive(Clone, Copy, Debug)]
@@ -80,6 +77,7 @@ pub(crate) mod windows {
     /// Thin wrapper to handle adding to job before executing.
     ///
     /// Avoids Tokio races with assigning to job while still allowing direct killing of the Child.
+    #[allow(unused)]
     pub struct JobChild {
         process: HANDLE,
         thread: HANDLE,
@@ -175,8 +173,8 @@ pub(crate) mod windows {
             let ok2 = AssignProcessToJobObject(job.0, pi.hProcess);
             if ok2.is_err() {
                 // :3 who needs to propagate errors anyways
-                CloseHandle(pi.hThread);
-                CloseHandle(pi.hProcess);
+                _ = CloseHandle(pi.hThread);
+                _ = CloseHandle(pi.hProcess);
                 bail!("AssignProcessToJobObject failed: {}", ok.err().unwrap());
             }
 

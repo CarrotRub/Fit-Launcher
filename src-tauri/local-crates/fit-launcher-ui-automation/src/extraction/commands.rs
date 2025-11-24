@@ -5,6 +5,7 @@ use specta::specta;
 use tracing::info;
 
 use crate::{errors::ExtractError, extract_archive};
+
 fn sanitize_filename(input: &str) -> String {
     let invalid = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
     input
@@ -14,6 +15,7 @@ fn sanitize_filename(input: &str) -> String {
         .trim()
         .to_string()
 }
+
 #[tauri::command]
 #[specta]
 pub fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> {
@@ -42,6 +44,7 @@ pub fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> {
     }
 
     for rar_file in groups.values() {
+        info!("Extracting {rar_file:?} in-place...");
         extract_archive(&rar_file)?;
     }
 

@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use thiserror::Error;
 
+mod helper;
+pub use helper::auto_installation;
+
 #[derive(Debug, Deserialize, Serialize, Type, Error)]
 pub enum InstallationError {
     #[error("IO Error: {0}")]
