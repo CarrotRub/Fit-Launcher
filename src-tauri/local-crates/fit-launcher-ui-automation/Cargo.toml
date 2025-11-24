@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+fit-launcher-scraping = { path = "../fit-launcher-scraping" }
+
 sysinfo = { workspace = true }
 serde = { workspace = true }
 tauri = { workspace = true }
@@ -12,7 +14,6 @@ fit-launcher-config = { workspace = true }
 specta = { workspace = true }
 thiserror = { workspace = true }
 unrar = "0.5.8"
-
 [target.'cfg(windows)'.dependencies]
 uiautomation = { workspace = true }
 windows = { workspace = true }

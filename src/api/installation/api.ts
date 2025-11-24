@@ -2,6 +2,7 @@ import { message } from "@tauri-apps/plugin-dialog";
 import {
   commands,
   ExtractError,
+  Job,
   Result,
   TorrentApiError,
 } from "../../bindings";
@@ -36,12 +37,15 @@ export class InstallationApi {
     return { status: "ok", data: null };
   }
 
-  async startExtractionDdl(path: string): Promise<Result<null, ExtractError>> {
+  async startExtractionDdl(
+    path: string,
+    job: Job
+  ): Promise<Result<null, ExtractError>> {
     const installationSettings =
       await GlobalSettingsApi.getInstallationSettings();
 
     if (installationSettings.auto_install) {
-      const result = await commands.extractGame(path);
+      const result = await commands.extractGame(path, job.game);
 
       if (result.status === "error") {
         const err = result.error;

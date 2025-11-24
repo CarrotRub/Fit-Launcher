@@ -147,7 +147,7 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
             if (props.item().source === "Torrent") {
                 await installationApi.startInstallation(targetPath);
             } else {
-                await installationApi.startExtractionDdl(targetPath);
+                await installationApi.startExtractionDdl(targetPath, props.item());
             }
         } catch (err) {
             console.error("installIfReady failed:", err);

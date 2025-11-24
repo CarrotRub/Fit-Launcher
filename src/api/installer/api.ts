@@ -39,7 +39,7 @@ class InstallerService {
           );
         }
       } else {
-        result = await commands.extractGame(path);
+        result = await commands.extractGame(path, job.game);
         if (result.status === "error") {
           const err = result.error;
           if (typeof err === "object" && "InstallationError" in err) {
