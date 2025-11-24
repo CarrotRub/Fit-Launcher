@@ -1,5 +1,3 @@
-use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use reqwest::header::RANGE;
 use scraper::ElementRef;
 
 use crate::structs::Game;
@@ -103,16 +101,4 @@ pub fn find_preview_image(article: scraper::element_ref::ElementRef<'_>) -> Opti
     }
 
     None
-}
-
-async fn check_url_status(url: &str) -> bool {
-    CUSTOM_DNS_CLIENT
-        .read()
-        .await
-        .head(url)
-        .header(RANGE, "bytes=0-8")
-        .send()
-        .await
-        .map(|r| r.status().is_success())
-        .unwrap_or(false)
 }

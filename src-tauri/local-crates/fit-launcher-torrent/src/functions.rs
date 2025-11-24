@@ -6,8 +6,7 @@ use std::{
     ffi::OsStr,
     net::TcpListener,
     path::{Path, PathBuf},
-    process::Stdio,
-    sync::{Arc, LazyLock, OnceLock},
+    sync::{Arc, LazyLock},
     time::Duration,
 };
 

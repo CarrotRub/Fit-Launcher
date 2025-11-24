@@ -322,6 +322,7 @@ impl DownloadManager {
         Ok(())
     }
 
+    #[allow(unused)]
     pub async fn resume(self: &Arc<Self>, job_id: &str) -> Result<()> {
         // We'll follow lock order AGAIN: read job metadata under jobs lock then release lock before RPC.
         // Acquire a clone of the job to operate on, but keep a marker that we will update the real job later. This was decided to avoid any heavy locking.

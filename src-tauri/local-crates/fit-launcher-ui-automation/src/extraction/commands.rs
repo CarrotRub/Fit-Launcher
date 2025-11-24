@@ -4,7 +4,8 @@ use fit_launcher_scraping::structs::Game;
 use specta::specta;
 use tracing::info;
 
-use crate::{errors::ExtractError, extract_archive};
+use crate::{auto_installation, errors::ExtractError, extract_archive};
+
 fn sanitize_filename(input: &str) -> String {
     let invalid = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
     input
@@ -14,9 +15,10 @@ fn sanitize_filename(input: &str) -> String {
         .trim()
         .to_string()
 }
+
 #[tauri::command]
 #[specta]
-pub fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> {
+pub async fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> {
     let clean_title = sanitize_filename(&game.title);
     let folder_name = format!("{} [Fitgirl Repack]", clean_title);
     let target = dir.join(folder_name);
@@ -42,8 +44,11 @@ pub fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> {
     }
 
     for rar_file in groups.values() {
+        info!("Extracting {rar_file:?} in-place...");
         extract_archive(&rar_file)?;
     }
+
+    auto_installation(&target).await?;
 
     Ok(())
 }

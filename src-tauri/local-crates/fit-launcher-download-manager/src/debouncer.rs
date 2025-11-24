@@ -6,7 +6,6 @@ use tracing::error;
 
 use crate::persistence::save_jobs_atomic;
 use crate::types::{Job, JobId};
-use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

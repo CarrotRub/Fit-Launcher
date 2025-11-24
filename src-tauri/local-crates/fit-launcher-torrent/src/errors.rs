@@ -1,3 +1,4 @@
+use fit_launcher_ui_automation::InstallationError;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use thiserror::Error;
@@ -42,4 +43,13 @@ pub enum TorrentApiError {
 
     #[error("Configuration is trying to be changed during download")]
     ConfigChangeDuringDownload,
+}
+
+impl From<InstallationError> for TorrentApiError {
+    fn from(value: InstallationError) -> Self {
+        match value {
+            InstallationError::IOError(io) => TorrentApiError::IOError(io),
+            InstallationError::AdminModeError => TorrentApiError::AdminModeError,
+        }
+    }
 }
