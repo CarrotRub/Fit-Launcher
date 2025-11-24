@@ -48,7 +48,7 @@ pub async fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> 
         extract_archive(&rar_file)?;
     }
 
-    auto_installation(&dir).await?;
+    auto_installation(&target).await?;
 
     Ok(())
 }
