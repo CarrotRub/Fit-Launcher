@@ -13,7 +13,16 @@ pub async fn auto_installation(path: &Path) -> Result<(), crate::InstallationErr
 
         start_executable_components_args(setup_executable_path)?;
 
-        let game_output_folder = path.to_string_lossy().replace(" [FitGirl Repack]", "");
+        let s = path.to_string_lossy();
+        let lower = s.to_lowercase();
+        let tag = " [fitgirl repack]";
+
+        let game_output_folder = if lower.ends_with(tag) {
+            let cut_pos = s.len() - tag.len();
+            s[..cut_pos].trim_end().to_string()
+        } else {
+            s.to_string()
+        };
 
         automate_until_download(&game_output_folder).await;
 

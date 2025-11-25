@@ -223,6 +223,7 @@ pub mod windows_ui_automation {
             click_next_button();
             click_next_button();
             // Change path input, important for both cases.
+            info!("Path input will be: {}", path_to_game);
             change_path_input(path_to_game);
             click_next_button();
             // Change path input, important for both cases.

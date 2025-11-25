@@ -31,7 +31,7 @@ pub async fn extract_game(job_path: PathBuf) -> Result<(), ExtractError> {
 
     for rar_file in groups.values() {
         info!("Extracting {rar_file:?} in-place...");
-        extract_archive(&rar_file)?;
+        extract_archive(rar_file)?;
     }
 
     auto_installation(&job_path).await?;
