@@ -97,31 +97,10 @@ pub mod windows_ui_automation {
     use crate::InstallationError;
     use crate::mighty::windows_controls_processes;
     use fit_launcher_config::commands::get_installation_settings;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
     use std::process::Command;
     use std::{thread, time};
-    use tracing::{error, info};
-
-    #[allow(dead_code)]
-    #[deprecated(note = "please use `start_executable_components_args` instead")]
-    /// DEPRECATED VERSION OF THE START_EXECUTABLE.
-    ///
-    /// PLEASE USE start_executable_components_args(path: String, checkboxes_list: &\[String]) INSTEAD.
-    pub async fn start_executable<P: AsRef<Path> + std::convert::AsRef<std::ffi::OsStr>>(path: P) {
-        match Command::new(path).spawn() {
-            Ok(child) => {
-                info!("Executable started with PID: {}", child.id());
-            }
-            Err(e) => {
-                error!("Failed to start executable: {}", e);
-
-                // Optionally, you might want to check if the file is being used
-                if e.raw_os_error() == Some(32) {
-                    error!(" Some Other Process is Creeping on him.")
-                }
-            }
-        }
-    }
+    use tracing::info;
 
     #[cfg(target_os = "windows")]
     fn is_running_as_admin() -> bool {
