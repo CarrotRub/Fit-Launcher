@@ -141,13 +141,12 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
     }
 
     async function installIfReady() {
-        const targetPath = props.item().metadata.target_path;
-        if (!targetPath) return;
+
         try {
             if (props.item().source === "Torrent") {
-                await installationApi.startInstallation(targetPath);
+                await installationApi.startInstallation(props.item());
             } else {
-                await installationApi.startExtractionDdl(targetPath, props.item());
+                await installationApi.startExtractionDdl(props.item());
             }
         } catch (err) {
             console.error("installIfReady failed:", err);

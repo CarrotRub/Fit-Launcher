@@ -6,24 +6,10 @@ use tracing::info;
 
 use crate::{auto_installation, errors::ExtractError, extract_archive};
 
-fn sanitize_filename(input: &str) -> String {
-    let invalid = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
-    input
-        .chars()
-        .filter(|c| !invalid.contains(c))
-        .collect::<String>()
-        .trim()
-        .to_string()
-}
-
 #[tauri::command]
 #[specta]
-pub async fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> {
-    let clean_title = sanitize_filename(&game.title);
-    let folder_name = format!("{} [Fitgirl Repack]", clean_title);
-    let target = dir.join(folder_name);
-
-    let list = target.read_dir()?;
+pub async fn extract_game(job_path: PathBuf) -> Result<(), ExtractError> {
+    let list = job_path.read_dir()?;
     let mut groups = HashMap::new();
     for rar in list.flatten() {
         if rar.metadata()?.is_dir() {
@@ -48,7 +34,7 @@ pub async fn extract_game(dir: PathBuf, game: Game) -> Result<(), ExtractError> 
         extract_archive(&rar_file)?;
     }
 
-    auto_installation(&target).await?;
+    auto_installation(&job_path).await?;
 
     Ok(())
 }

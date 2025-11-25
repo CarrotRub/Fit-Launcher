@@ -12,7 +12,7 @@ use fit_launcher_torrent::model::FileInfo;
 use fit_launcher_torrent::{FitLauncherConfigAria2, LibrqbitSession};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, State};
@@ -161,7 +161,7 @@ impl DownloadManager {
         let folder_name = format!("{} [Fitgirl Repack]", clean_title);
         let dir = target.join(folder_name);
 
-        let mut job = Job::new_ddl(files.clone(), target.clone(), game);
+        let mut job = Job::new_ddl(files.clone(), target.clone(), game, dir.clone());
 
         // prepare add_uri calls with cfg (do RPC calls outside of job locks plz)
         let cfg = self.aria_cfg.clone();
@@ -253,12 +253,18 @@ impl DownloadManager {
             .filter_map(|&i| files.get(i).cloned())
             .collect();
 
+        let job_path = meta
+            .output_folder
+            .file_name()
+            .expect("invalid output_folder: no last component");
+
         let mut job = Job::new_torrent(
             bytes.clone(),
             files_list.clone(),
             info_hash.clone(),
             magnet.clone(),
             target.clone(),
+            target.join(job_path),
             selected_files,
             game,
         );

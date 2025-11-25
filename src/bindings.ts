@@ -5,61 +5,28 @@
 
 
 export const commands = {
-async getDnsSettingsPath() : Promise<string> {
-    return await TAURI_INVOKE("get_dns_settings_path");
+async panicForce() : Promise<null> {
+    return await TAURI_INVOKE("panic_force");
 },
-async dmAddTorrentJob(magnet: string, filesList: number[], target: string, game: Game) : Promise<Result<string, string>> {
+async getGamesImages(gameLink: string) : Promise<Result<string[], CustomError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_add_torrent_job", { magnet, filesList, target, game }) };
+    return { status: "ok", data: await TAURI_INVOKE("get_games_images", { gameLink }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async importCookies(cookies: Cookies) : Promise<Result<null, string>> {
+async removeCollection(collectionName: string) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("import_cookies", { cookies }) };
+    return { status: "ok", data: await TAURI_INVOKE("remove_collection", { collectionName }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async getRecentlyUpdatedGamesPath() : Promise<string> {
-    return await TAURI_INVOKE("get_recently_updated_games_path");
-},
-async getSearchIndexPathCmd() : Promise<string> {
-    return await TAURI_INVOKE("get_search_index_path_cmd");
-},
-async clearAllCache() : Promise<Result<null, SettingsConfigurationError>> {
+async getDiscoveryGames() : Promise<Result<DiscoveryGame[], ScrapingError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("clear_all_cache") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async dmAddDdlJob(files: DirectLink[], target: string, game: Game) : Promise<Result<string, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_add_ddl_job", { files, target, game }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * Start an executable using tauri::command
- * 
- * Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
- */
-async startExecutable(path: string) : Promise<void> {
-    await TAURI_INVOKE("start_executable", { path });
-},
-async closeSplashscreen() : Promise<void> {
-    await TAURI_INVOKE("close_splashscreen");
-},
-async changeDownloadSettings(config: FitLauncherConfigV2) : Promise<Result<null, TorrentApiError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("change_download_settings", { config }) };
+    return { status: "ok", data: await TAURI_INVOKE("get_discovery_games") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -77,12 +44,79 @@ async aria2StartTorrent(torrent: number[], dir: string | null, selectedFiles: nu
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpause
- */
-async aria2Resume(gid: string) : Promise<Result<null, Aria2Error>> {
+async getDiscoveryMetaPath() : Promise<string> {
+    return await TAURI_INVOKE("get_discovery_meta_path");
+},
+async deleteGameFolderRecursively(folderPath: string) : Promise<Result<null, TorrentApiError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_resume", { gid }) };
+    return { status: "ok", data: await TAURI_INVOKE("delete_game_folder_recursively", { folderPath }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Start an executable using tauri::command
+ * 
+ * Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
+ */
+async startExecutable(path: string) : Promise<void> {
+    await TAURI_INVOKE("start_executable", { path });
+},
+async getPopularGames() : Promise<Result<Game[], ScrapingError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_popular_games") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aria2GetAllList() : Promise<Result<Status[], Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_get_all_list") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async magnetToFile(magnet: string) : Promise<Result<number[], TorrentApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("magnet_to_file", { magnet }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.getVersion
+ */
+async aria2GetVersion() : Promise<Result<Version, Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_get_version") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async dmLoadFromDisk() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("dm_load_from_disk") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async addDownloadedGame(game: DownloadedGame) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("add_downloaded_game", { game }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getDownloadSettings() : Promise<Result<FitLauncherConfigV2, TorrentApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_download_settings") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -99,248 +133,12 @@ async aria2TaskProgress(tasks: AriaTask[]) : Promise<Result<AriaTaskProgress, Ar
     else return { status: "error", error: e  as any };
 }
 },
-async getDownloadedGames() : Promise<DownloadedGame[]> {
-    return await TAURI_INVOKE("get_downloaded_games");
-},
-async listTorrentFiles(magnet: string) : Promise<Result<FileInfo[], TorrentApiError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("list_torrent_files", { magnet }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * TODO: this isn't workin at all btw
- * 
- */
-async getDatahosterLinks(gameLink: string, datahosterName: string) : Promise<string[] | null> {
-    return await TAURI_INVOKE("get_datahoster_links", { gameLink, datahosterName });
-},
-async getSingularGameLocal(url: string) : Promise<Result<Game, ScrapingError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_singular_game_local", { url }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async decryptTorrentFromPaste(pasteLink: string) : Promise<Result<number[], Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("decrypt_torrent_from_paste", { pasteLink }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getDiscoveryJsonPath() : Promise<string> {
-    return await TAURI_INVOKE("get_discovery_json_path");
-},
-async resetInstallationSettings() : Promise<Result<null, SettingsConfigurationError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("reset_installation_settings") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.remove
- */
-async aria2Remove(gid: string) : Promise<Result<null, Aria2Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_remove", { gid }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async getNewlyAddedGamesPath() : Promise<string> {
     return await TAURI_INVOKE("get_newly_added_games_path");
 },
-async changeInstallationSettings(settings: InstallationSettings) : Promise<Result<null, SettingsConfigurationError>> {
+async aria2GlobalStat() : Promise<Result<GlobalStat, Aria2Error>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("change_installation_settings", { settings }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async removeGameFromCollection(gameTitle: string, collectionName: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("remove_game_from_collection", { gameTitle, collectionName }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async dmResume(jobId: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_resume", { jobId }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async aria2GetListStopped() : Promise<Result<Status[], Aria2Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_get_list_stopped") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async magnetToFile(magnet: string) : Promise<Result<number[], TorrentApiError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("magnet_to_file", { magnet }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async extractFuckingfastDdl(fuckingfastLinks: string[]) : Promise<DirectLink[]> {
-    return await TAURI_INVOKE("extract_fuckingfast_ddl", { fuckingfastLinks });
-},
-async dmSaveNow() : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_save_now") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getDiscoveryMetaPath() : Promise<string> {
-    return await TAURI_INVOKE("get_discovery_meta_path");
-},
-async getDnsSettings() : Promise<FitLauncherDnsConfig> {
-    return await TAURI_INVOKE("get_dns_settings");
-},
-async getInstallationSettingsPath() : Promise<string> {
-    return await TAURI_INVOKE("get_installation_settings_path");
-},
-async rebuildSearchIndex() : Promise<Result<null, ScrapingError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("rebuild_search_index") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpauseAll
- */
-async aria2ResumeAll() : Promise<Result<null, Aria2Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_resume_all") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async transformLegacyDownload(legacyItems: LegacyDownloadedGame[]) : Promise<DownloadedGame[]> {
-    return await TAURI_INVOKE("transform_legacy_download", { legacyItems });
-},
-async panicForce() : Promise<null> {
-    return await TAURI_INVOKE("panic_force");
-},
-async removeDownloadedGame(gameTitle: string) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("remove_downloaded_game", { gameTitle }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async addGameToCollection(collectionName: string, game: Game) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("add_game_to_collection", { collectionName, game }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.pauseAll
- */
-async aria2PauseAll() : Promise<Result<null, Aria2Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_pause_all") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async deleteGameFolderRecursively(folderPath: string) : Promise<Result<null, TorrentApiError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("delete_game_folder_recursively", { folderPath }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getGamesImages(gameLink: string) : Promise<Result<string[], CustomError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_games_images", { gameLink }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getInstallationSettings() : Promise<InstallationSettings> {
-    return await TAURI_INVOKE("get_installation_settings");
-},
-async createCollection(collectionName: string, games: Game[] | null) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("create_collection", { collectionName, games }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async querySearchIndex(query: string) : Promise<Result<SearchIndexEntry[], ScrapingError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("query_search_index", { query }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getCollectionList() : Promise<GameCollection[]> {
-    return await TAURI_INVOKE("get_collection_list");
-},
-async updateDownloadedGameExecutableInfo(gameTitle: string, executableInfo: ExecutableInfo) : Promise<Result<null, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("update_downloaded_game_executable_info", { gameTitle, executableInfo }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.tellStatus
- */
-async aria2GetStatus(gid: string) : Promise<Result<Status, Aria2Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_get_status", { gid }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getDiscoveryGames() : Promise<Result<DiscoveryGame[], ScrapingError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("get_discovery_games") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getGamehubSettingsPath() : Promise<string> {
-    return await TAURI_INVOKE("get_gamehub_settings_path");
-},
-async aria2GetAllList() : Promise<Result<Status[], Aria2Error>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_get_all_list") };
+    return { status: "ok", data: await TAURI_INVOKE("aria2_global_stat") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -354,76 +152,89 @@ async changeGamehubSettings(settings: GamehubSettings) : Promise<Result<null, Se
     else return { status: "error", error: e  as any };
 }
 },
-async openLogsDirectory() : Promise<Result<null, string>> {
+async createCollection(collectionName: string, games: Game[] | null) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("open_logs_directory") };
+    return { status: "ok", data: await TAURI_INVOKE("create_collection", { collectionName, games }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async aria2GetListWaiting() : Promise<Result<Status[], Aria2Error>> {
+/**
+ * TODO: this isn't workin at all btw
+ * 
+ */
+async getDatahosterLinks(gameLink: string, datahosterName: string) : Promise<string[] | null> {
+    return await TAURI_INVOKE("get_datahoster_links", { gameLink, datahosterName });
+},
+async dmAddTorrentJob(magnet: string, filesList: number[], target: string, game: Game) : Promise<Result<string, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_get_list_waiting") };
+    return { status: "ok", data: await TAURI_INVOKE("dm_add_torrent_job", { magnet, filesList, target, game }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async dmPause(jobId: string) : Promise<Result<null, string>> {
+async dmSaveNow() : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_pause", { jobId }) };
+    return { status: "ok", data: await TAURI_INVOKE("dm_save_now") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async getDownloadSettings() : Promise<Result<FitLauncherConfigV2, TorrentApiError>> {
+async transformLegacyDownload(legacyItems: LegacyDownloadedGame[]) : Promise<DownloadedGame[]> {
+    return await TAURI_INVOKE("transform_legacy_download", { legacyItems });
+},
+async addGameToCollection(collectionName: string, game: Game) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_download_settings") };
+    return { status: "ok", data: await TAURI_INVOKE("add_game_to_collection", { collectionName, game }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async executableInfoDiscovery(pathToExe: string, pathToFolder: string) : Promise<ExecutableInfo | null> {
-    return await TAURI_INVOKE("executable_info_discovery", { pathToExe, pathToFolder });
-},
-async removeCollection(collectionName: string) : Promise<Result<null, string>> {
+async dmAddDdlJob(files: DirectLink[], target: string, game: Game) : Promise<Result<string, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("remove_collection", { collectionName }) };
+    return { status: "ok", data: await TAURI_INVOKE("dm_add_ddl_job", { files, target, game }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async dmLoadFromDisk() : Promise<Result<null, string>> {
+async getDiscoveryJsonPath() : Promise<string> {
+    return await TAURI_INVOKE("get_discovery_json_path");
+},
+async aria2GetListActive() : Promise<Result<Status[], Aria2Error>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_load_from_disk") };
+    return { status: "ok", data: await TAURI_INVOKE("aria2_get_list_active") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async dmAllJobs() : Promise<Result<Job[], string>> {
+async getDnsSettings() : Promise<FitLauncherDnsConfig> {
+    return await TAURI_INVOKE("get_dns_settings");
+},
+async changeInstallationSettings(settings: InstallationSettings) : Promise<Result<null, SettingsConfigurationError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_all_jobs") };
+    return { status: "ok", data: await TAURI_INVOKE("change_installation_settings", { settings }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async dmRemove(jobId: string) : Promise<Result<null, string>> {
+async decryptTorrentFromPaste(pasteLink: string) : Promise<Result<number[], Error>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("dm_remove", { jobId }) };
+    return { status: "ok", data: await TAURI_INVOKE("decrypt_torrent_from_paste", { pasteLink }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async addDownloadedGame(game: DownloadedGame) : Promise<Result<null, string>> {
+async getSingularGameInfo(gameLink: string) : Promise<Result<null, ScrapingError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("add_downloaded_game", { game }) };
+    return { status: "ok", data: await TAURI_INVOKE("get_singular_game_info", { gameLink }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -431,6 +242,22 @@ async addDownloadedGame(game: DownloadedGame) : Promise<Result<null, string>> {
 },
 async getPopularGamesPath() : Promise<string> {
     return await TAURI_INVOKE("get_popular_games_path");
+},
+async getSingularGameLocal(url: string) : Promise<Result<Game, ScrapingError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_singular_game_local", { url }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listTorrentFiles(magnet: string) : Promise<Result<FileInfo[], TorrentApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_torrent_files", { magnet }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 },
 async getRecentlyUpdatedGames() : Promise<Result<Game[], ScrapingError>> {
     try {
@@ -440,17 +267,20 @@ async getRecentlyUpdatedGames() : Promise<Result<Game[], ScrapingError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async extractGame(dir: string, game: Game) : Promise<Result<null, ExtractError>> {
+async getDnsSettingsPath() : Promise<string> {
+    return await TAURI_INVOKE("get_dns_settings_path");
+},
+async resetInstallationSettings() : Promise<Result<null, SettingsConfigurationError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("extract_game", { dir, game }) };
+    return { status: "ok", data: await TAURI_INVOKE("reset_installation_settings") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async getSingularGameInfo(gameLink: string) : Promise<Result<null, ScrapingError>> {
+async resetDnsSettings() : Promise<Result<null, SettingsConfigurationError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_singular_game_info", { gameLink }) };
+    return { status: "ok", data: await TAURI_INVOKE("reset_dns_settings") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -484,20 +314,83 @@ async aria2StartDownload(url: string[], dir: string | null, filename: string | n
     else return { status: "error", error: e  as any };
 }
 },
-async getTorrentHash(torrent: number[]) : Promise<Result<string, string>> {
+async aria2GetListWaiting() : Promise<Result<Status[], Aria2Error>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_torrent_hash", { torrent }) };
+    return { status: "ok", data: await TAURI_INVOKE("aria2_get_list_waiting") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getDownloadedGames() : Promise<DownloadedGame[]> {
+    return await TAURI_INVOKE("get_downloaded_games");
+},
+async querySearchIndex(query: string) : Promise<Result<SearchIndexEntry[], ScrapingError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("query_search_index", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async openLogsDirectory() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("open_logs_directory") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
 /**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.getVersion
+ * `setup.exe` should be placed inside `path`
  */
-async aria2GetVersion() : Promise<Result<Version, Aria2Error>> {
+async runAutomateSetupInstall(path: string) : Promise<Result<null, TorrentApiError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_get_version") };
+    return { status: "ok", data: await TAURI_INVOKE("run_automate_setup_install", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
+ */
+async aria2Pause(gid: string) : Promise<Result<null, Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_pause", { gid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getGamehubSettingsPath() : Promise<string> {
+    return await TAURI_INVOKE("get_gamehub_settings_path");
+},
+async getGamesToDownload() : Promise<Game[]> {
+    return await TAURI_INVOKE("get_games_to_download");
+},
+async resetGamehubSettings() : Promise<Result<null, SettingsConfigurationError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reset_gamehub_settings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async removeDownloadedGame(gameTitle: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("remove_downloaded_game", { gameTitle }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSearchIndexPathCmd() : Promise<string> {
+    return await TAURI_INVOKE("get_search_index_path_cmd");
+},
+async dmPause(jobId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("dm_pause", { jobId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -516,65 +409,35 @@ async aria2TaskSpawn(directLinks: DirectLink[], dir: string | null) : Promise<Re
     else return { status: "error", error: e  as any };
 }
 },
-async configChangeOnlyPath(downloadPath: string) : Promise<Result<null, TorrentApiError>> {
+async importCookies(cookies: Cookies) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("config_change_only_path", { downloadPath }) };
+    return { status: "ok", data: await TAURI_INVOKE("import_cookies", { cookies }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
- */
-async aria2Pause(gid: string) : Promise<Result<null, Aria2Error>> {
+async extractFuckingfastDdl(fuckingfastLinks: string[]) : Promise<DirectLink[]> {
+    return await TAURI_INVOKE("extract_fuckingfast_ddl", { fuckingfastLinks });
+},
+async closeSplashscreen() : Promise<void> {
+    await TAURI_INVOKE("close_splashscreen");
+},
+async clearAllCache() : Promise<Result<null, SettingsConfigurationError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_pause", { gid }) };
+    return { status: "ok", data: await TAURI_INVOKE("clear_all_cache") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async removeGameToDownload(gameTitle: string) : Promise<Result<null, string>> {
+async getNewlyAddedGames() : Promise<Result<Game[], ScrapingError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("remove_game_to_download", { gameTitle }) };
+    return { status: "ok", data: await TAURI_INVOKE("get_newly_added_games") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
-},
-async resetGamehubSettings() : Promise<Result<null, SettingsConfigurationError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("reset_gamehub_settings") };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async getGamesToDownload() : Promise<Game[]> {
-    return await TAURI_INVOKE("get_games_to_download");
-},
-async getGamehubSettings() : Promise<GamehubSettings> {
-    return await TAURI_INVOKE("get_gamehub_settings");
-},
-async runAutomateSetupInstall(path: string) : Promise<Result<null, TorrentApiError>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("run_automate_setup_install", { path }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async checkDominantColorVec(listImages: string[]) : Promise<Result<string[], string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("check_dominant_color_vec", { listImages }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-async openDevtools() : Promise<void> {
-    await TAURI_INVOKE("open_devtools");
 },
 /**
  * json_path: path to a json file, in the form like:
@@ -604,37 +467,180 @@ async importCookiesFile(jsonPath: string) : Promise<Result<null, string>> {
     else return { status: "error", error: e  as any };
 }
 },
-async aria2GlobalStat() : Promise<Result<GlobalStat, Aria2Error>> {
+async configChangeOnlyPath(downloadPath: string) : Promise<Result<null, TorrentApiError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_global_stat") };
+    return { status: "ok", data: await TAURI_INVOKE("config_change_only_path", { downloadPath }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async getNewlyAddedGames() : Promise<Result<Game[], ScrapingError>> {
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.pauseAll
+ */
+async aria2PauseAll() : Promise<Result<null, Aria2Error>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_newly_added_games") };
+    return { status: "ok", data: await TAURI_INVOKE("aria2_pause_all") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async getPopularGames() : Promise<Result<Game[], ScrapingError>> {
+async dmAllJobs() : Promise<Result<Job[], string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_popular_games") };
+    return { status: "ok", data: await TAURI_INVOKE("dm_all_jobs") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async aria2GetListActive() : Promise<Result<Status[], Aria2Error>> {
+async removeGameToDownload(gameTitle: string) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("aria2_get_list_active") };
+    return { status: "ok", data: await TAURI_INVOKE("remove_game_to_download", { gameTitle }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async updateDownloadedGameExecutableInfo(gameTitle: string, executableInfo: ExecutableInfo) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_downloaded_game_executable_info", { gameTitle, executableInfo }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async extractGame(jobPath: string) : Promise<Result<null, ExtractError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("extract_game", { jobPath }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.remove
+ */
+async aria2Remove(gid: string) : Promise<Result<null, Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_remove", { gid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpauseAll
+ */
+async aria2ResumeAll() : Promise<Result<null, Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_resume_all") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async openDevtools() : Promise<void> {
+    await TAURI_INVOKE("open_devtools");
+},
+async getInstallationSettingsPath() : Promise<string> {
+    return await TAURI_INVOKE("get_installation_settings_path");
+},
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.tellStatus
+ */
+async aria2GetStatus(gid: string) : Promise<Result<Status, Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_get_status", { gid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async rebuildSearchIndex() : Promise<Result<null, ScrapingError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("rebuild_search_index") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aria2GetListStopped() : Promise<Result<Status[], Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_get_list_stopped") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async dmRemove(jobId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("dm_remove", { jobId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async dmResume(jobId: string) : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("dm_resume", { jobId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async changeDownloadSettings(config: FitLauncherConfigV2) : Promise<Result<null, TorrentApiError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("change_download_settings", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async hashUrl(url: string) : Promise<string> {
+    return await TAURI_INVOKE("hash_url", { url });
+},
+async executableInfoDiscovery(pathToExe: string, pathToFolder: string) : Promise<ExecutableInfo | null> {
+    return await TAURI_INVOKE("executable_info_discovery", { pathToExe, pathToFolder });
+},
+async stopGetGamesImages() : Promise<void> {
+    await TAURI_INVOKE("stop_get_games_images");
+},
+async getGamehubSettings() : Promise<GamehubSettings> {
+    return await TAURI_INVOKE("get_gamehub_settings");
+},
+/**
+ * https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpause
+ */
+async aria2Resume(gid: string) : Promise<Result<null, Aria2Error>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("aria2_resume", { gid }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getTorrentHash(torrent: number[]) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_torrent_hash", { torrent }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getCollectionList() : Promise<GameCollection[]> {
+    return await TAURI_INVOKE("get_collection_list");
+},
+async checkDominantColorVec(listImages: string[]) : Promise<Result<string[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("check_dominant_color_vec", { listImages }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getInstallationSettings() : Promise<InstallationSettings> {
+    return await TAURI_INVOKE("get_installation_settings");
 },
 async changeDnsSettings(settings: FitLauncherDnsConfig) : Promise<Result<null, SettingsConfigurationError>> {
     try {
@@ -644,19 +650,16 @@ async changeDnsSettings(settings: FitLauncherDnsConfig) : Promise<Result<null, S
     else return { status: "error", error: e  as any };
 }
 },
-async resetDnsSettings() : Promise<Result<null, SettingsConfigurationError>> {
+async removeGameFromCollection(gameTitle: string, collectionName: string) : Promise<Result<null, string>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("reset_dns_settings") };
+    return { status: "ok", data: await TAURI_INVOKE("remove_game_from_collection", { gameTitle, collectionName }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
 },
-async stopGetGamesImages() : Promise<void> {
-    await TAURI_INVOKE("stop_get_games_images");
-},
-async hashUrl(url: string) : Promise<string> {
-    return await TAURI_INVOKE("hash_url", { url });
+async getRecentlyUpdatedGamesPath() : Promise<string> {
+    return await TAURI_INVOKE("get_recently_updated_games_path");
 }
 }
 
@@ -753,7 +756,7 @@ export type GlobalStat = { downloadSpeed: number; uploadSpeed: number; numActive
 export type InstallationError = { IOError: string } | "AdminModeError"
 export type InstallationInfo = { output_folder: string; download_folder: string; file_list: string[] }
 export type InstallationSettings = { auto_clean: boolean; auto_install: boolean; two_gb_limit: boolean; directx_install: boolean; microsoftcpp_install: boolean }
-export type Job = { id: string; metadata: JobMetadata; game: Game; source: DownloadSource; gids: string[]; ddl: DdlJob | null; torrent: TorrentJob | null; state: DownloadState; status: AggregatedStatus | null }
+export type Job = { id: string; metadata: JobMetadata; game: Game; job_path: string; source: DownloadSource; gids: string[]; ddl: DdlJob | null; torrent: TorrentJob | null; state: DownloadState; status: AggregatedStatus | null }
 export type JobMetadata = { game_title: string; target_path: string; created_at: string; updated_at: string }
 export type LegacyDownloadedGame = { torrentExternInfo: TorrentExternInfo; torrentIdx: string; torrentOutputFolder: string; torrentDownloadFolder: string; torrentFileList: string[]; checkboxesList: boolean; executableInfo: ExecutableInfo }
 export type ScrapingError = { type: "articleNotFound"; data: string } | { type: "reqwestError"; data: string } | { type: "selectorError"; data: string } | { type: "fileJSONError"; data: string } | { type: "creatingFileError"; data: CreatingFileErrorStruct } | { type: "globalError"; data: string } | { type: "httpStatusCodeError"; data: string } | { type: "timeoutError"; data: string } | { type: "ioerror"; data: string } | { type: "windowError"; data: string } | { type: "cookieError"; data: string } | { type: "urlParseError"; data: string }
