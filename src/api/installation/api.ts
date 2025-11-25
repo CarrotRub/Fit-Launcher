@@ -9,14 +9,12 @@ import {
 import { GlobalSettingsApi } from "../settings/api";
 
 export class InstallationApi {
-  async startInstallation(
-    path: string
-  ): Promise<Result<null, TorrentApiError>> {
+  async startInstallation(job: Job): Promise<Result<null, TorrentApiError>> {
     const installationSettings =
       await GlobalSettingsApi.getInstallationSettings();
 
     if (installationSettings.auto_install) {
-      const result = await commands.runAutomateSetupInstall(path);
+      const result = await commands.runAutomateSetupInstall(job.job_path);
 
       if (result.status === "error") {
         const err = result.error;
@@ -37,15 +35,12 @@ export class InstallationApi {
     return { status: "ok", data: null };
   }
 
-  async startExtractionDdl(
-    path: string,
-    job: Job
-  ): Promise<Result<null, ExtractError>> {
+  async startExtractionDdl(job: Job): Promise<Result<null, ExtractError>> {
     const installationSettings =
       await GlobalSettingsApi.getInstallationSettings();
 
     if (installationSettings.auto_install) {
-      const result = await commands.extractGame(path, job.game, installationSettings.auto_clean);
+      const result = await commands.extractGame(job.job_path);
 
       if (result.status === "error") {
         const err = result.error;

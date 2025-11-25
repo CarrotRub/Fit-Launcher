@@ -13,7 +13,13 @@ class InstallerService {
 
     listen("download::job_completed", async (event) => {
       const job = event.payload as Job;
-      if (!job.id || this.installedGames.has(job.id)) return;
+      if (
+        !job.id ||
+        this.installedGames.has(job.id) ||
+        job.status!.total_length <= 0 ||
+        job.status!.completed_length <= 0
+      )
+        return;
 
       console.log("Installing game:", job.game.title);
       this.installedGames.add(job.id);
@@ -26,12 +32,13 @@ class InstallerService {
     if (!settings.auto_install) return;
 
     const path = job.metadata.target_path;
+    console.log(job.torrent?.torrent_files);
     console.log("Starting installation for:", job.game.title);
     //todo: divide
     try {
       let result;
       if (job.source === "Torrent") {
-        result = await commands.runAutomateSetupInstall(path);
+        result = await commands.runAutomateSetupInstall(job.job_path);
         if (result.status === "error" && result.error === "AdminModeError") {
           await message(
             "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
@@ -39,7 +46,7 @@ class InstallerService {
           );
         }
       } else {
-        result = await commands.extractGame(path, job.game, settings.auto_clean);
+        result = await commands.extractGame(job.job_path);
         if (result.status === "error") {
           const err = result.error;
           if (typeof err === "object" && "InstallationError" in err) {

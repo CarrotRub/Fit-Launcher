@@ -112,6 +112,8 @@ pub struct Job {
     pub metadata: JobMetadata,
     pub game: Game,
 
+    pub job_path: PathBuf,
+
     pub source: DownloadSource,
     pub gids: Vec<Gid>,
 
@@ -123,14 +125,19 @@ pub struct Job {
 }
 
 impl Job {
-    pub fn new_ddl(ddl_files: Vec<DirectLink>, target_path: PathBuf, game: Game) -> Self {
+    pub fn new_ddl(
+        ddl_files: Vec<DirectLink>,
+        target_path: PathBuf,
+        game: Game,
+        job_path: PathBuf,
+    ) -> Self {
         let now = Utc::now();
 
         Job {
             id: Uuid::new_v4().to_string(),
             source: DownloadSource::Ddl,
             gids: vec![],
-
+            job_path,
             ddl: Some(DdlJob { files: ddl_files }),
             torrent: None,
 
@@ -153,6 +160,7 @@ impl Job {
         info_hash: String,
         magnet: String,
         target_path: PathBuf,
+        job_path: PathBuf,
         torrent_files: Vec<FileInfo>,
         game: Game,
     ) -> Self {
@@ -162,7 +170,7 @@ impl Job {
             id: Uuid::new_v4().to_string(),
             source: DownloadSource::Torrent,
             gids: vec![],
-
+            job_path,
             ddl: None,
             torrent: Some(TorrentJob {
                 torrent_bytes: bytes,

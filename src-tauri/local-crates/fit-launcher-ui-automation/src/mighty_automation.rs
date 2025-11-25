@@ -95,7 +95,7 @@ mod checklist_automation {
 #[cfg(target_os = "windows")]
 pub mod windows_ui_automation {
     use crate::InstallationError;
-    use crate::mighty::windows_controls_processes;
+    use crate::mighty::automation::*;
     use fit_launcher_config::commands::get_installation_settings;
     use std::path::PathBuf;
     use std::process::Command;
@@ -179,49 +179,50 @@ pub mod windows_ui_automation {
     #[cfg(target_os = "windows")]
     pub async fn automate_until_download(path_to_game: &str) {
         // Skip Select Setup Language.
-        windows_controls_processes::click_ok_button();
+        click_ok_button();
         // Skip Select Setup Language.
         let should_two_gb_limit = get_installation_settings().two_gb_limit;
         if should_two_gb_limit {
             // Skip until checkboxes.
             thread::sleep(time::Duration::from_millis(1000));
-            windows_controls_processes::click_8gb_limit();
+            click_8gb_limit();
             thread::sleep(time::Duration::from_millis(200));
-            windows_controls_processes::click_next_button();
-            windows_controls_processes::click_next_button();
+            click_next_button();
+            click_next_button();
             // Skip until checkboxes.
             // Change path input, important for both cases.
-            windows_controls_processes::change_path_input(path_to_game);
-            windows_controls_processes::click_next_button();
+            change_path_input(path_to_game);
+            click_next_button();
             // Change path input, important for both cases.
             // Start Installation.
-            windows_controls_processes::click_install_button();
+            click_install_button();
             // Start Installation.
-        } else if !should_two_gb_limit && !windows_controls_processes::check_8gb_limit() {
+        } else if !should_two_gb_limit && !check_8gb_limit() {
             thread::sleep(time::Duration::from_millis(1000));
-            windows_controls_processes::click_next_button();
-            windows_controls_processes::click_next_button();
+            click_next_button();
+            click_next_button();
             // Change path input, important for both cases.
-            windows_controls_processes::change_path_input(path_to_game);
-            windows_controls_processes::click_next_button();
+            info!("Path input will be: {}", path_to_game);
+            change_path_input(path_to_game);
+            click_next_button();
             // Change path input, important for both cases.
             // Start Installation.
-            windows_controls_processes::click_install_button();
+            click_install_button();
             // Start Installation.
-        } else if !should_two_gb_limit && windows_controls_processes::check_8gb_limit() {
+        } else if !should_two_gb_limit && check_8gb_limit() {
             // Skip until checkboxes.
             thread::sleep(time::Duration::from_millis(1000));
-            windows_controls_processes::click_8gb_limit();
+            click_8gb_limit();
             thread::sleep(time::Duration::from_millis(200));
-            windows_controls_processes::click_next_button();
-            windows_controls_processes::click_next_button();
+            click_next_button();
+            click_next_button();
             // Skip until checkboxes.
             // Change path input, important for both cases.
-            windows_controls_processes::change_path_input(path_to_game);
-            windows_controls_processes::click_next_button();
+            change_path_input(path_to_game);
+            click_next_button();
             // Change path input, important for both cases.
             // Start Installation.
-            windows_controls_processes::click_install_button();
+            click_install_button();
             // Start Installation.
         }
 
