@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 #[cfg(target_os = "windows")]
 use std::process::Command;
 
@@ -11,9 +12,13 @@ use tracing::{error, info};
 #[tauri::command]
 #[specta]
 pub fn start_executable(path: String) {
-    // Here, use this **ONLY** for windows OS
+    let path = PathBuf::from(path);
+    let current = PathBuf::from(".");
     #[cfg(target_os = "windows")]
-    match Command::new(&path).spawn() {
+    match Command::new(&path)
+        .current_dir(path.parent().unwrap_or_else(|| &current))
+        .spawn()
+    {
         Ok(child) => {
             info!("Executable started with PID: {}", child.id());
         }
@@ -27,6 +32,8 @@ pub fn start_executable(path: String) {
     }
 
     #[cfg(target_os = "linux")]
+    // TODO: WINEPREFIX + wine command configuration
+    // by allowing custom commands, `protonrun` e.g. should be supported automatically
     // Add usage of wine + check beforehand with Flatpak if steamos
-    todo!()
+    {}
 }

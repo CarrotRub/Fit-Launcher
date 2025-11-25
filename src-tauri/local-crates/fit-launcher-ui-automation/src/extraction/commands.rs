@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use fit_launcher_scraping::structs::Game;
 use specta::specta;
+use tokio::task::JoinSet;
 use tracing::info;
 
 use crate::{auto_installation, errors::ExtractError, extract_archive};
@@ -26,7 +27,10 @@ pub async fn extract_game(job_path: PathBuf) -> Result<(), ExtractError> {
             .split_once(".part")
             .map(|(group, _)| group)
             .unwrap_or(&*rar_name);
-        groups.entry(group_name.to_owned()).or_insert(rar.path());
+        groups
+            .entry(group_name.to_owned())
+            .or_default()
+            .push(rar.path());
     }
 
     for rar_file in groups.values() {
