@@ -12,30 +12,54 @@ use crate::{auto_installation, errors::ExtractError, extract_archive};
 pub async fn extract_game(job_path: PathBuf) -> Result<(), ExtractError> {
     let list = job_path.read_dir()?;
     let mut groups = HashMap::new();
-    for rar in list.flatten() {
-        if rar.metadata()?.is_dir() {
+    for entry in list.flatten() {
+        if entry.metadata()?.is_dir() {
             continue;
         }
 
-        let rar_name = rar.file_name();
-        let rar_name = rar_name.to_string_lossy();
-        if !rar_name.ends_with(".rar") {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+
+        if !name.ends_with(".rar") {
             continue;
         }
 
-        let group_name = rar_name
-            .split_once(".part")
-            .map(|(group, _)| group)
-            .unwrap_or(&*rar_name);
+        let (group, part_num) = {
+            // Case 1: pattern ".part1.N.rar"
+            if let Some((g, p)) = name.split_once(".part1.") {
+                let n = p
+                    .trim_end_matches(".rar")
+                    .parse::<u32>()
+                    .unwrap_or(u32::MAX);
+                (g.to_owned(), n)
+            }
+            // Case 2: pattern ".partN.rar"
+            else if let Some((g, p)) = name.rsplit_once(".part") {
+                let n = p
+                    .trim_end_matches(".rar")
+                    .parse::<u32>()
+                    .unwrap_or(u32::MAX);
+                (g.to_owned(), n)
+            }
+            // Case 3: single file
+            else {
+                (name.to_string(), 0)
+            }
+        };
+
         groups
-            .entry(group_name.to_owned())
-            .or_default()
-            .push(rar.path());
+            .entry(group)
+            .and_modify(|(existing_num, _existing_path)| {
+                if part_num < *existing_num {
+                    *existing_num = part_num;
+                }
+            })
+            .or_insert((part_num, entry.path()));
     }
 
-    for rar_file in groups.values() {
-        info!("Extracting {rar_file:?} in-place...");
-        extract_archive(rar_file)?;
+    for (_group, (_num, path)) in groups {
+        info!("Extracting {path:?} in-place...");
+        extract_archive(&path)?;
     }
 
     auto_installation(&job_path).await?;
