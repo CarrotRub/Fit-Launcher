@@ -1,9 +1,11 @@
-import { createSignal, onMount, createEffect, onCleanup, Show, For } from 'solid-js';
+import { createSignal, onMount, createEffect, onCleanup, Show, For, createMemo } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { GamesCacheApi } from '../../../../api/cache/api';
 import { commands, Game } from '../../../../bindings';
 import { ChevronLeft, ChevronRight, Star, HardDrive, Languages, Building2, ArrowRight } from 'lucide-solid';
 import LoadingPage from '../../../LoadingPage-01/LoadingPage';
+import { useGamehubFilters } from '../../GamehubContext';
+import { getAllGenres, getSizeRange, filterGames } from '../../../../helpers/gameFilters';
 
 const gameCacheInst = new GamesCacheApi();
 const popularGamesPath = await gameCacheInst.getPopularGamesPath();
@@ -22,15 +24,37 @@ async function parsePopularGames(): Promise<Game[]> {
 }
 
 export default function PopularGames() {
-  const [games, setGames] = createSignal<Game[]>([]);
+  const [allGames, setAllGames] = createSignal<Game[]>([]);
   const [selected, setSelected] = createSignal(0);
   const [loading, setLoading] = createSignal(true);
   const [isHovered, setIsHovered] = createSignal(false);
   const navigate = useNavigate();
+  
+  const { filters, setAvailableGenres, setRepackSizeRange, setOriginalSizeRange } = useGamehubFilters();
+
+  // Apply filters to games
+  const games = createMemo(() => filterGames(allGames(), filters()));
 
   onMount(async () => {
     const parsedGames = await parsePopularGames();
-    setGames(parsedGames);
+    setAllGames(parsedGames);
+    
+    // Merge genres and size ranges with existing context data
+    const genres = getAllGenres(parsedGames);
+    const repackRange = getSizeRange(parsedGames, 'repack');
+    const originalRange = getSizeRange(parsedGames, 'original');
+    
+    // Update context (will be merged with other components' data)
+    setAvailableGenres((prev: string[]) => [...new Set([...prev, ...genres])].sort());
+    setRepackSizeRange((prev) => ({
+      min: Math.min(prev.min, repackRange.min),
+      max: Math.max(prev.max, repackRange.max),
+    }));
+    setOriginalSizeRange((prev) => ({
+      min: Math.min(prev.min, originalRange.min),
+      max: Math.max(prev.max, originalRange.max),
+    }));
+    
     setLoading(false);
   });
 
