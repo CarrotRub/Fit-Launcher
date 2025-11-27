@@ -13,7 +13,7 @@ fn init_test_tracing() {
             .with_writer(std::io::stdout)
             .with_target(false)
             .with_ansi(false)
-            .with_filter(EnvFilter::new("info"));
+            .with_filter(EnvFilter::new("debug"));
 
         let stderr_layer = fmt::layer()
             .with_writer(std::io::stderr)

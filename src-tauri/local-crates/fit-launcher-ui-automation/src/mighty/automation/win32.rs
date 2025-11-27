@@ -1,12 +1,11 @@
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 use windows::Win32::Media::Audio::{
-    IAudioClient, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator,
-    ISimpleAudioVolume, MMDeviceEnumerator, eMultimedia, eRender,
+    IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume,
+    MMDeviceEnumerator, eMultimedia, eRender,
 };
 use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
 };
-use windows::Win32::System::Threading::GetProcessId;
 use windows::Win32::UI::WindowsAndMessaging::{GetWindowTextW, GetWindowThreadProcessId};
 use windows::Win32::{
     Foundation::{FALSE, HWND, LPARAM, TRUE, WPARAM},
@@ -15,9 +14,7 @@ use windows::Win32::{
 use windows::core::Interface;
 use windows_result::BOOL;
 
-use crate::mighty::windows::os_windows::{
-    find_app_with_classname_and_title, find_child_window_with_classname,
-};
+use crate::mighty::windows::os_windows::find_app_with_classname_and_title;
 use crate::mighty::{
     retry_until,
     windows::os_windows::{find_child_window_with_text, get_class_name, get_setup_process_title},
@@ -100,7 +97,7 @@ pub fn mute_setup() {
     }
 }
 
-pub fn poll_progress_bar_percentage() -> Option<u32> {
+pub fn poll_progress_bar_percentage() -> Option<f32> {
     if let Some(hwnd) = find_app_with_classname_and_title("TApplication", "%") {
         if hwnd.0.is_null() {
             return None;
@@ -119,7 +116,7 @@ pub fn poll_progress_bar_percentage() -> Option<u32> {
 
             match parse_percentage(&title) {
                 Some(p) => {
-                    info!("Progress: {}%", p);
+                    debug!("Progress: {}%", p);
                     Some(p)
                 }
                 None => {
@@ -133,7 +130,7 @@ pub fn poll_progress_bar_percentage() -> Option<u32> {
     }
 }
 
-fn parse_percentage(text: &str) -> Option<u32> {
+fn parse_percentage(text: &str) -> Option<f32> {
     let percent_pos = text.find('%')?;
 
     let before = text[..percent_pos].trim();
@@ -146,7 +143,21 @@ fn parse_percentage(text: &str) -> Option<u32> {
     let number_str = &before[number_start..];
 
     let float_val: f32 = number_str.parse().ok()?;
-    Some(float_val.floor() as u32)
+    Some(float_val)
+}
+
+pub async fn poll_loop_async() {
+    loop {
+        if let Some(progress) = poll_progress_bar_percentage() {
+            debug!("Progress: {}%", progress);
+
+            if progress >= 100.0 {
+                break;
+            }
+        }
+
+        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    }
 }
 
 pub fn click_ok_button_impl() {
