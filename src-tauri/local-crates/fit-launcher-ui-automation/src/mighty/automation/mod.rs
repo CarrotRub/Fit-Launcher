@@ -19,6 +19,9 @@ pub fn click_8gb_limit() {
 pub fn click_next_button() {
     click_next_button_impl();
 }
+pub fn mute_setup() {
+    mute_setup_impl();
+}
 pub fn click_install_button() {
     click_install_button_impl();
 }

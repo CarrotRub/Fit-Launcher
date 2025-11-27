@@ -3,6 +3,9 @@ name = "fit-launcher-ui-automation"
 version = "0.1.0"
 edition = "2024"
 
+[dev-dependencies]
+tracing-subscriber = { workspace = true }
+
 [dependencies]
 fit-launcher-scraping = { path = "../fit-launcher-scraping" }
 
@@ -18,7 +21,14 @@ tokio = { workspace = true }
 unrar = "0.5.8"
 [target.'cfg(windows)'.dependencies]
 uiautomation = { workspace = true }
-windows = { workspace = true }
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Media_Audio",
+    "Win32_System_ProcessStatus",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+] }
 windows-result = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]

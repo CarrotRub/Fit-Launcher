@@ -40,7 +40,7 @@ export class InstallationApi {
       await GlobalSettingsApi.getInstallationSettings();
 
     if (installationSettings.auto_install) {
-      const result = await commands.extractGame(job.job_path);
+      const result = await commands.extractGame(job.job_path, installationSettings.auto_clean);
 
       if (result.status === "error") {
         const err = result.error;
