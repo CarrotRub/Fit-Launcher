@@ -4,8 +4,9 @@ use ::windows::Win32::Foundation::HWND;
 
 pub mod automation;
 pub mod controls;
+#[cfg(test)]
+mod tests;
 pub mod windows;
-
 struct EnumChildWindowsData<'a> {
     search_text: &'a str,
     target_hwnd: *mut HWND,

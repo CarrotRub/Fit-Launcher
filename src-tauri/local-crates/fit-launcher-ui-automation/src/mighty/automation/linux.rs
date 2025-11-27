@@ -1,5 +1,8 @@
-#[cfg(target_os = "windows")]
 pub fn click_ok_button_impl() {
+    todo!()
+}
+
+pub fn mute_setup_impl() {
     todo!()
 }
 

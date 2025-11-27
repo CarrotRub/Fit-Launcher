@@ -181,8 +181,11 @@ pub mod windows_ui_automation {
         // Skip Select Setup Language.
         click_ok_button();
         // Skip Select Setup Language.
+        mute_setup();
         let should_two_gb_limit = get_installation_settings().two_gb_limit;
         if should_two_gb_limit {
+            // mute song by default
+            thread::sleep(time::Duration::from_millis(1000));
             // Skip until checkboxes.
             thread::sleep(time::Duration::from_millis(1000));
             click_8gb_limit();
