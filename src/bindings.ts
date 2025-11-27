@@ -594,9 +594,9 @@ async getDiscoveryGames() : Promise<Result<DiscoveryGame[], ScrapingError>> {
     else return { status: "error", error: e  as any };
 }
 },
-async extractGame(jobPath: string) : Promise<Result<null, ExtractError>> {
+async extractGame(jobPath: string, autoClean: boolean) : Promise<Result<null, ExtractError>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("extract_game", { jobPath }) };
+    return { status: "ok", data: await TAURI_INVOKE("extract_game", { jobPath, autoClean }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

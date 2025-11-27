@@ -77,6 +77,9 @@ fn build_aria2_args(
 ) -> Vec<String> {
     let mut a = Vec::<String>::new();
 
+    // Disable file renaming, i.e. always skip existing files
+    a.push("--auto-file-renaming=false".into());
+
     // RPC ------------------------------------------------------------------
     a.push("--enable-rpc".into());
     let rpc_port = rpc_port.clamp(1024, 65535);
