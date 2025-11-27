@@ -97,7 +97,7 @@ export default function FilterBar(props: FilterBarProps): JSX.Element {
     <div
       class={`
         relative bg-background-70/80 backdrop-blur-sm border border-secondary-20/50 
-        rounded-xl overflow-visible transition-all duration-300
+        rounded-xl overflow-visible transition-all duration-300 z-30
         ${props.class || ""}
       `}
     >

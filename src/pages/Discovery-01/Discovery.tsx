@@ -83,23 +83,24 @@ function DiscoveryPage(): JSX.Element {
 
   return (
     <Suspense fallback={<LoadingPage />}>
+      <div class="sticky top-0 z-50 px-4 pt-8 bg-background/95 backdrop-blur-sm pb-4 border-b border-secondary-20/20 shadow-lg">
+        <FilterBar
+          availableGenres={availableGenres()}
+          repackSizeRange={repackSizeRange()}
+          originalSizeRange={originalSizeRange()}
+          filters={filters()}
+          onFilterChange={handleFilterChange}
+        />
+
+        {/* Results count - moved inside sticky header */}
+        <div class="mt-2 px-1 text-sm text-muted">
+          Showing {visibleGames().length} of {filteredGames().length} games
+          {filters().genres.length > 0 && ` (filtered)`}
+        </div>
+      </div>
       <div class="relative flex flex-col bg-gradient-to-br from-background to-background-70 w-full grow overflow-y-auto no-scrollbar">
         {/* Filter Bar */}
-        <div class="sticky top-0 z-50 px-4 pt-8 bg-background/95 backdrop-blur-sm pb-4 border-b border-secondary-20/20 shadow-lg">
-          <FilterBar
-            availableGenres={availableGenres()}
-            repackSizeRange={repackSizeRange()}
-            originalSizeRange={originalSizeRange()}
-            filters={filters()}
-            onFilterChange={handleFilterChange}
-          />
-          
-          {/* Results count - moved inside sticky header */}
-          <div class="mt-2 px-1 text-sm text-muted">
-            Showing {visibleGames().length} of {filteredGames().length} games
-            {filters().genres.length > 0 && ` (filtered)`}
-          </div>
-        </div>
+
 
         <div class="flex flex-col gap-4 p-4">
           <For each={visibleGames()}>
