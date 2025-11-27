@@ -17,6 +17,7 @@ fit-launcher-config = { workspace = true }
 specta = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+tokio-util = "0.7.17"
 
 unrar = "0.5.8"
 [target.'cfg(windows)'.dependencies]
