@@ -1,7 +1,8 @@
 use crate::mighty::{
     automation::{
         change_path_input, check_8gb_limit, click_8gb_limit, click_install_button,
-        click_next_button, click_ok_button, win32::mute_setup,
+        click_next_button, click_ok_button,
+        win32::{mute_setup, poll_progress_bar_percentage},
     },
     tests::init_test_tracing,
 };
@@ -65,5 +66,13 @@ pub fn test_click_install_button() {
     init_test_tracing();
     println!("===== Test: Click Install Button =====");
     click_install_button();
+    println!("===== Done =====");
+}
+
+#[test]
+pub fn test_poll_progress_bar() {
+    init_test_tracing();
+    println!("===== Test: Poll Progress Bar Percentage Once =====");
+    poll_progress_bar_percentage();
     println!("===== Done =====");
 }

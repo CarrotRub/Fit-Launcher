@@ -1,4 +1,4 @@
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use windows::Win32::Media::Audio::{
     IAudioClient, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator,
     ISimpleAudioVolume, MMDeviceEnumerator, eMultimedia, eRender,
@@ -7,7 +7,7 @@ use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
 };
 use windows::Win32::System::Threading::GetProcessId;
-use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
+use windows::Win32::UI::WindowsAndMessaging::{GetWindowTextW, GetWindowThreadProcessId};
 use windows::Win32::{
     Foundation::{FALSE, HWND, LPARAM, TRUE, WPARAM},
     UI::WindowsAndMessaging::{BM_CLICK, EnumChildWindows, PostMessageW, SendMessageW, WM_SETTEXT},
@@ -15,6 +15,9 @@ use windows::Win32::{
 use windows::core::Interface;
 use windows_result::BOOL;
 
+use crate::mighty::windows::os_windows::{
+    find_app_with_classname_and_title, find_child_window_with_classname,
+};
 use crate::mighty::{
     retry_until,
     windows::os_windows::{find_child_window_with_text, get_class_name, get_setup_process_title},
@@ -95,6 +98,55 @@ pub fn mute_setup() {
             error!("Error initializing COM devices {:#?}", com.0)
         }
     }
+}
+
+pub fn poll_progress_bar_percentage() -> Option<u32> {
+    if let Some(hwnd) = find_app_with_classname_and_title("TApplication", "%") {
+        if hwnd.0.is_null() {
+            return None;
+        }
+
+        let mut buf = [0u16; 256];
+
+        unsafe {
+            let len = GetWindowTextW(hwnd, &mut buf);
+
+            if len <= 0 {
+                return None;
+            }
+
+            let title = String::from_utf16_lossy(&buf[..len as usize]);
+
+            match parse_percentage(&title) {
+                Some(p) => {
+                    info!("Progress: {}%", p);
+                    Some(p)
+                }
+                None => {
+                    warn!("Failed to parse percentage from title: {}", title);
+                    None
+                }
+            }
+        }
+    } else {
+        None
+    }
+}
+
+fn parse_percentage(text: &str) -> Option<u32> {
+    let percent_pos = text.find('%')?;
+
+    let before = text[..percent_pos].trim();
+
+    let number_start = before
+        .rfind(|c: char| !c.is_ascii_digit() && c != '.')
+        .map(|i| i + 1)
+        .unwrap_or(0);
+
+    let number_str = &before[number_start..];
+
+    let float_val: f32 = number_str.parse().ok()?;
+    Some(float_val.floor() as u32)
 }
 
 pub fn click_ok_button_impl() {
