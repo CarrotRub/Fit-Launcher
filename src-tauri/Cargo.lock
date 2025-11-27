@@ -1855,6 +1855,7 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "uiautomation",
  "unrar",
  "windows 0.62.2",
@@ -7486,9 +7487,9 @@ dependencies = [
 
 [[package]]
 name = "uiautomation"
-version = "0.24.1"
+version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b1be8b3d3d873155d2f87c63df18bd7b72cf7da4d6351ee30fb7504cfb4da08"
+checksum = "8286c782184e333a6a081d6d7230e0909dbabf30b560e2427923ec6dbff0b8c6"
 dependencies = [
  "chrono",
  "uiautomation_derive",
@@ -7498,9 +7499,9 @@ dependencies = [
 
 [[package]]
 name = "uiautomation_derive"
-version = "0.7.4"
+version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75f7c8b3ff34b1e9b4f706def9f90ef085c711b148a34c4d6f60d0c0376091c1"
+checksum = "6731ab1c1a0ce1c09491bcf2f7d8333c689e671096b1b79b64ed6aac10ce0d69"
 dependencies = [
  "proc-macro2",
  "quote",

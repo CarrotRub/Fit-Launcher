@@ -1,8 +1,18 @@
 use tracing::{error, info};
+use windows::Win32::Media::Audio::{
+    IAudioClient, IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator,
+    ISimpleAudioVolume, MMDeviceEnumerator, eMultimedia, eRender,
+};
+use windows::Win32::System::Com::{
+    CLSCTX_ALL, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
+};
+use windows::Win32::System::Threading::GetProcessId;
+use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 use windows::Win32::{
     Foundation::{FALSE, HWND, LPARAM, TRUE, WPARAM},
     UI::WindowsAndMessaging::{BM_CLICK, EnumChildWindows, PostMessageW, SendMessageW, WM_SETTEXT},
 };
+use windows::core::Interface;
 use windows_result::BOOL;
 
 use crate::mighty::{
@@ -25,9 +35,74 @@ fn click_button(label: &str, window: &str) -> bool {
     false
 }
 
-#[cfg(target_os = "windows")]
+pub fn mute_setup() {
+    let setup_hwnd = get_setup_process_title("Setup -");
+
+    let mut pid = 0u32;
+
+    unsafe {
+        GetWindowThreadProcessId(setup_hwnd, Some(&mut pid));
+    }
+
+    info!("Process ID is: {pid}");
+    unsafe {
+        // init COM
+        let com = CoInitializeEx(Some(std::ptr::null_mut()), COINIT_APARTMENTTHREADED);
+
+        if com.is_ok() {
+            let device_enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .expect("Error enumerating COM devices");
+
+            let device = device_enumerator
+                .GetDefaultAudioEndpoint(eRender, eMultimedia)
+                .expect("Error getting the default audio endpoint");
+
+            let session_manager = device
+                .Activate::<IAudioSessionManager2>(CLSCTX_ALL, None)
+                .expect("Error activing media COM interface");
+
+            let enumerator = session_manager
+                .GetSessionEnumerator()
+                .expect("Error enumerating audio sessions");
+
+            let count = enumerator
+                .GetCount()
+                .expect("Error getting count of number of audio sessions");
+
+            for i in 0..count {
+                let session = enumerator
+                    .GetSession(i)
+                    .unwrap_or_else(|_| panic!("Error getting session number {i}"));
+
+                let control: IAudioSessionControl2 = session
+                    .cast()
+                    .expect("Error casting the IAudioSessionControl into an IAudioSessionControl2");
+
+                if control.GetProcessId().expect("Error getting process ID") == pid {
+                    info!("Found correct process id: {pid}");
+                    let volume: ISimpleAudioVolume = session.cast().expect(
+                        "Error casting the IAudioSessionControl into an ISimpleAudioVolume",
+                    );
+                    volume
+                        .SetMute(true, std::ptr::null())
+                        .expect("Error muting volume of app");
+                    break;
+                }
+                error!("No process ID related to the Setup was found");
+            }
+        } else {
+            error!("Error initializing COM devices {:#?}", com.0)
+        }
+    }
+}
+
 pub fn click_ok_button_impl() {
     click_button("OK", "Select Setup Language");
+}
+
+pub fn mute_setup_impl() {
+    mute_setup();
 }
 
 pub fn click_8gb_limit_impl() {
