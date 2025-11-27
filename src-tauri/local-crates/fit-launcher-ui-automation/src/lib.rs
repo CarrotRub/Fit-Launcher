@@ -1,3 +1,4 @@
+pub mod emitter;
 pub mod extraction;
 pub mod mighty;
 pub mod mighty_automation;

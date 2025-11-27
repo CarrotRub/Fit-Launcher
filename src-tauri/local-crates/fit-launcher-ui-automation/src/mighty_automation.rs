@@ -179,6 +179,8 @@ pub mod windows_ui_automation {
     #[cfg(target_os = "windows")]
     pub async fn automate_until_download(path_to_game: &str) {
         // Skip Select Setup Language.
+
+        use crate::emitter::setup::progress_bar_setup_emit;
         click_ok_button();
         // Skip Select Setup Language.
         mute_setup();
@@ -229,6 +231,10 @@ pub mod windows_ui_automation {
             // Start Installation.
         }
 
+        thread::sleep(time::Duration::from_millis(1000));
+
+        progress_bar_setup_emit(todo!(), todo!()).await;
+
         // * No need for this anymore since we can contact the components directly through commandline.
         // My stupid self forgor that this was still usable :(
         // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
@@ -237,7 +243,6 @@ pub mod windows_ui_automation {
         // thread::sleep(time::Duration::from_millis(1000));
         // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.
     }
-    // Print and get and send progress bar value every 500ms
 }
 
 pub mod linux_ui_automation {
