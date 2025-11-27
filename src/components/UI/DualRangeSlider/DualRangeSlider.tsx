@@ -20,20 +20,26 @@ export default function DualRangeSlider(props: DualRangeSliderProps): JSX.Elemen
 
   const handleMinChange = (e: Event) => {
     const target = e.currentTarget as HTMLInputElement;
-    const newValue = parseFloat(target.value);
+    let newValue = parseFloat(target.value);
     // Ensure min doesn't exceed max
-    if (newValue <= props.maxValue) {
-      props.onMinChange(newValue);
+    if (newValue > props.maxValue) {
+        newValue = props.maxValue;
+        // Force update the input value if we clamped it
+        target.value = newValue.toString();
     }
+    props.onMinChange(newValue);
   };
 
   const handleMaxChange = (e: Event) => {
     const target = e.currentTarget as HTMLInputElement;
-    const newValue = parseFloat(target.value);
+    let newValue = parseFloat(target.value);
     // Ensure max doesn't go below min
-    if (newValue >= props.minValue) {
-      props.onMaxChange(newValue);
+    if (newValue < props.minValue) {
+        newValue = props.minValue;
+        // Force update the input value if we clamped it
+        target.value = newValue.toString();
     }
+    props.onMaxChange(newValue);
   };
 
   return (

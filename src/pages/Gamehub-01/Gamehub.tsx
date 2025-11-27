@@ -11,7 +11,7 @@ function GamehubContent() {
     return (
         <div class="relative flex flex-col gap-4 divide-y divide-accent/70 w-full h-full overflow-y-auto no-scrollbar">
             {/* Filter Bar */}
-            <div class="sticky top-0 z-50 px-4 pt-4 bg-background/95 backdrop-blur-sm pb-2">
+            <div class="px-4 pt-4 pb-2">
                 <FilterBar
                     availableGenres={availableGenres()}
                     repackSizeRange={repackSizeRange()}

@@ -127,7 +127,7 @@ export default function MultiSelectDropdown(props: MultiSelectDropdownProps): JS
           </div>
 
           {/* Options List */}
-          <ul class="max-h-52 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-thumb-accent/50 scrollbar-track-transparent">
+          <ul class="max-h-52 overflow-y-auto overscroll-contain custom-scrollbar">
             <Show
               when={filteredOptions().length > 0}
               fallback={
