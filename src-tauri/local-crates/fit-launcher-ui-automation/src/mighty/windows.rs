@@ -219,4 +219,51 @@ pub mod os_windows {
             None
         }
     }
+
+    pub fn find_app_with_classname_and_title(
+        classname: &str,
+        title_substring: &str,
+    ) -> Option<HWND> {
+        let mut result: HWND = HWND(std::ptr::null_mut());
+
+        struct SearchData<'a> {
+            hwnd_out: *mut HWND,
+            classname: &'a str,
+            title_substring: &'a str,
+        }
+
+        unsafe extern "system" fn callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+            let data = unsafe { &*(lparam.0 as *const SearchData) };
+
+            let class = get_class_name(hwnd);
+            if class != data.classname {
+                return TRUE;
+            }
+
+            if let Some(title) = get_window_title(hwnd)
+                && title.contains(data.title_substring)
+            {
+                unsafe { *data.hwnd_out = hwnd };
+                return FALSE;
+            }
+
+            TRUE
+        }
+
+        let search = SearchData {
+            hwnd_out: &mut result,
+            classname,
+            title_substring,
+        };
+
+        unsafe {
+            EnumWindows(Some(callback), LPARAM(&search as *const _ as isize));
+        }
+
+        if result.0.is_null() {
+            None
+        } else {
+            Some(result)
+        }
+    }
 }

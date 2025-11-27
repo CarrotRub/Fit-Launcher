@@ -1,7 +1,8 @@
 use crate::mighty::{
     automation::{
         change_path_input, check_8gb_limit, click_8gb_limit, click_install_button,
-        click_next_button, click_ok_button, win32::mute_setup,
+        click_next_button, click_ok_button,
+        win32::{mute_setup, poll_loop_async, poll_progress_bar_percentage},
     },
     tests::init_test_tracing,
 };
@@ -65,5 +66,30 @@ pub fn test_click_install_button() {
     init_test_tracing();
     println!("===== Test: Click Install Button =====");
     click_install_button();
+    println!("===== Done =====");
+}
+
+#[test]
+pub fn test_poll_progress_bar() {
+    init_test_tracing();
+    println!("===== Test: Poll Progress Bar Percentage Once =====");
+    poll_progress_bar_percentage();
+    println!("===== Done =====");
+}
+
+#[tokio::test]
+pub async fn test_poll_progress_bar_loop() {
+    use std::time::Duration;
+
+    init_test_tracing();
+    println!("===== Test: Poll Progress Bar for 5 seconds =====");
+
+    let result = tokio::time::timeout(Duration::from_secs(5), poll_loop_async()).await;
+
+    match result {
+        Ok(_) => println!("Poll loop finished normally"),
+        Err(_) => println!("Poll loop timed out after 5 seconds"),
+    }
+
     println!("===== Done =====");
 }
