@@ -83,3 +83,24 @@ export interface SliderProps {
   hrefs: string[];
   filePath?: string;
 }
+
+export interface DualRangeSliderProps {
+  min: number;
+  max: number;
+  minValue: number;
+  maxValue: number;
+  step?: number;
+  onMinChange: (value: number) => void;
+  onMaxChange: (value: number) => void;
+  formatValue?: (value: number) => string;
+  label?: string;
+  class?: string;
+}
+
+export interface MultiSelectDropdownProps {
+  options: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder?: string;
+  class?: string;
+}
