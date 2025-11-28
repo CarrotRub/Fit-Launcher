@@ -1645,6 +1645,7 @@ dependencies = [
  "fit-launcher-aria2",
  "fit-launcher-config",
  "fit-launcher-ddl",
+ "fit-launcher-debrid",
  "fit-launcher-download-manager",
  "fit-launcher-library",
  "fit-launcher-scraping",
@@ -1746,6 +1747,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "fit-launcher-debrid"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "fit-launcher-ddl",
+ "futures",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "specta",
+ "tauri",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fit-launcher-download-manager"
 version = "0.1.0"
 dependencies = [
@@ -1755,6 +1776,7 @@ dependencies = [
  "directories",
  "fit-launcher-aria2",
  "fit-launcher-ddl",
+ "fit-launcher-debrid",
  "fit-launcher-scraping",
  "fit-launcher-torrent",
  "serde",

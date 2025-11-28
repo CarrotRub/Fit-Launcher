@@ -17,7 +17,8 @@ import {
   Monitor,
   HardDriveDownload,
   Archive,
-  Info
+  Info,
+  Zap
 } from "lucide-solid";
 
 import type {
@@ -114,6 +115,7 @@ function SettingsSidebar(): JSX.Element {
             <SidebarLink id="settings-limits" label="Transfer Limits" icon={Gauge} onClick={() => handleActivateElem("settings-limits", "limits")} />
             <SidebarLink id="settings-network" label="Network" icon={Globe} onClick={() => handleActivateElem("settings-network", "network")} />
             <SidebarLink id="settings-bittorrent" label="Bittorrent" icon={Magnet} onClick={() => handleActivateElem("settings-bittorrent", "bittorrent")} />
+            <SidebarLink id="settings-debrid" label="Debrid Services" icon={Zap} onClick={() => handleActivateElem("settings-debrid", "debrid")} />
             <SidebarLink id="settings-rpc" label="Aria2 RPC" icon={Cpu} onClick={() => handleActivateElem("settings-rpc", "rpc")} />
           </ul>
         </div>

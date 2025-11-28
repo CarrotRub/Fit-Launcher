@@ -1,0 +1,38 @@
+[package]
+name = "fit-launcher-debrid"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Tauri and Specta
+tauri = { workspace = true }
+specta = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Encoding
+base64 = "0.22"
+
+# Time
+chrono = { workspace = true }
+
+# Local crates
+fit-launcher-ddl = { path = "../fit-launcher-ddl" }
+

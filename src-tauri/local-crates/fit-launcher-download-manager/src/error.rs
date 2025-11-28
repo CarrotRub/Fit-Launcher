@@ -27,4 +27,13 @@ pub enum DownloadManagerError {
 
     #[error("I/O error: {0}")]
     IoError(String),
+
+    #[error("Debrid conversion failed: {0}")]
+    DebridConversionFailed(String),
+
+    #[error("Debrid conversion timed out")]
+    DebridConversionTimeout,
+
+    #[error("Debrid provider not found: {0}")]
+    DebridProviderNotFound(String),
 }

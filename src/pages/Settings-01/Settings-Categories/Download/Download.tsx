@@ -16,6 +16,7 @@ import TransferLimitsPart from "./TransferLimits/TransferLimits";
 import NetworkPart from "./Network/NetworkPart";
 import BittorrentPart from "./Bittorrent/BittorrentPart";
 import AriaPart from "./AriaPart/AriaPart";
+import DebridPart from "./Debrid/DebridPart";
 
 
 
@@ -121,6 +122,9 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
+          ),
+          debrid: (
+            <DebridPart />
           )
         }[selectedPart()] ?? <p>Invalid or Unsupported Part</p>}
 

@@ -1,5 +1,6 @@
 use crate::{manager::DownloadManager, types::*};
 use fit_launcher_ddl::DirectLink;
+use fit_launcher_debrid::get_provider;
 use fit_launcher_scraping::structs::Game;
 use specta::specta;
 use std::sync::Arc;
@@ -68,4 +69,25 @@ pub async fn dm_save_now(dm: State<'_, Arc<DownloadManager>>) -> Result<(), Stri
 #[specta]
 pub async fn dm_load_from_disk(dm: State<'_, Arc<DownloadManager>>) -> Result<(), String> {
     dm.load_from_disk().await.map_err(|e| e.to_string())
+}
+
+/// Add a debrid download job
+#[tauri::command]
+#[specta]
+pub async fn dm_add_debrid_job(
+    dm: State<'_, Arc<DownloadManager>>,
+    magnet: String,
+    provider_id: String,
+    api_key: String,
+    file_indices: Vec<usize>,
+    target: String,
+    game: Game,
+) -> Result<JobId, String> {
+    // Get the provider from the registry
+    let provider = get_provider(&provider_id).map_err(|e| e.to_string())?;
+
+    let path = std::path::PathBuf::from(target);
+    dm.add_debrid_job(magnet, provider, api_key, file_indices, path, game)
+        .await
+        .map_err(|e| e.to_string())
 }

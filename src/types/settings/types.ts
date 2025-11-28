@@ -49,7 +49,8 @@ export type DownloadSettingsPart =
   | "limits"
   | "network"
   | "bittorrent"
-  | "rpc";
+  | "rpc"
+  | "debrid";
 
 export type SettingsPart = GlobalSettingsPart | DownloadSettingsPart;
 

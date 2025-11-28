@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { message } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X } from "lucide-solid";
+import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X, Zap, Magnet } from "lucide-solid";
 import { createSignal, For, onMount, Show, Component, Accessor } from "solid-js";
 import { render } from "solid-js/web";
 import { DirectLink, DownloadedGame, FileInfo } from "../../bindings";
@@ -15,6 +15,7 @@ import { DirectLinkWrapper } from "../../types/download";
 import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
 import { useToast } from "solid-notifications";
 import { DM } from "../../api/manager/api";
+import { DebridApi, ProviderInfo, StoredCredentials } from "../../api/debrid/api";
 
 
 
@@ -78,8 +79,25 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         const [ddlSelectedUrls, setDdlSelectedUrls] = createSignal(new Set<string>());
         const [showDdlAdvanced, setShowDdlAdvanced] = createSignal(false);
 
+        // Debrid state
+        type DownloadMethod = "bittorrent" | "debrid";
+        const [downloadMethod, setDownloadMethod] = createSignal<DownloadMethod>("bittorrent");
+        const [debridProviders, setDebridProviders] = createSignal<Array<ProviderInfo & { credentials: StoredCredentials }>>([]);
+        const [selectedDebridProvider, setSelectedDebridProvider] = createSignal<string | null>(null);
+        const [hasDebridProviders, setHasDebridProviders] = createSignal(false);
+
         onMount(async () => {
             try {
+                // Load debrid providers for bittorrent downloads
+                if (props.downloadType === "bittorrent") {
+                    const enabled = await DebridApi.getEnabledProviders();
+                    setDebridProviders(enabled);
+                    setHasDebridProviders(enabled.length > 0);
+                    if (enabled.length > 0) {
+                        setSelectedDebridProvider(enabled[0].id);
+                    }
+                }
+
                 if (props.downloadType === "bittorrent") {
                     await initTorrent();
                 } else {
@@ -158,8 +176,26 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 const game = props.downloadedGame;
 
                 if (props.downloadType === "bittorrent") {
-                    const selected = Array.from(selectedFileIndices());
-                    await DM.addTorrent(game.magnetlink, selected, path, game);
+                    if (downloadMethod() === "debrid") {
+                        // Debrid download - convert magnet to direct links
+                        const providerId = selectedDebridProvider();
+                        if (!providerId) {
+                            throw new Error("No debrid provider selected");
+                        }
+                        const apiKey = await DebridApi.getApiKey(providerId);
+                        if (!apiKey) {
+                            throw new Error("Failed to get API key for debrid provider");
+                        }
+                        // For debrid, we download all files (no selection)
+                        const result = await DM.addDebrid(game.magnetlink, providerId, apiKey, [], path, game);
+                        if (result.status === "error") {
+                            throw new Error(result.error);
+                        }
+                    } else {
+                        // Traditional bittorrent download
+                        const selected = Array.from(selectedFileIndices());
+                        await DM.addTorrent(game.magnetlink, selected, path, game);
+                    }
                 } else {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
@@ -261,6 +297,62 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         <p class="text-muted">Select the files you want from the torrent. You can proceed without selecting to download everything.</p>
                     </div>
 
+                    {/* Download Method Selector - only show if debrid providers are configured */}
+                    <Show when={hasDebridProviders()}>
+                        <div class="bg-background-30 rounded-xl border border-secondary-20 p-4">
+                            <h3 class="text-sm font-semibold text-text mb-3">Download Method</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setDownloadMethod("bittorrent")}
+                                    class={`flex items-center gap-3 p-3 rounded-lg border transition-all ${downloadMethod() === "bittorrent" ? "border-accent bg-accent/10" : "border-secondary-20 hover:border-secondary-10"}`}
+                                >
+                                    <Magnet class={`w-5 h-5 ${downloadMethod() === "bittorrent" ? "text-accent" : "text-muted"}`} />
+                                    <div class="text-left">
+                                        <div class={`text-sm font-medium ${downloadMethod() === "bittorrent" ? "text-text" : "text-muted"}`}>BitTorrent</div>
+                                        <div class="text-xs text-muted">Traditional P2P</div>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setDownloadMethod("debrid")}
+                                    class={`flex items-center gap-3 p-3 rounded-lg border transition-all ${downloadMethod() === "debrid" ? "border-accent bg-accent/10" : "border-secondary-20 hover:border-secondary-10"}`}
+                                >
+                                    <Zap class={`w-5 h-5 ${downloadMethod() === "debrid" ? "text-accent" : "text-muted"}`} />
+                                    <div class="text-left">
+                                        <div class={`text-sm font-medium ${downloadMethod() === "debrid" ? "text-text" : "text-muted"}`}>Debrid</div>
+                                        <div class="text-xs text-muted">Faster, No VPN</div>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Provider selector for debrid */}
+                            <Show when={downloadMethod() === "debrid" && debridProviders().length > 1}>
+                                <div class="mt-3">
+                                    <label class="text-xs text-muted mb-1 block">Select Provider</label>
+                                    <select
+                                        value={selectedDebridProvider() || ""}
+                                        onChange={(e) => setSelectedDebridProvider(e.currentTarget.value)}
+                                        class="w-full bg-background border border-secondary-20 rounded-lg px-3 py-2 text-text text-sm focus:border-accent focus:outline-none"
+                                    >
+                                        <For each={debridProviders()}>
+                                            {(provider) => (
+                                                <option value={provider.id}>{provider.name}</option>
+                                            )}
+                                        </For>
+                                    </select>
+                                </div>
+                            </Show>
+
+                            <Show when={downloadMethod() === "debrid"}>
+                                <div class="mt-3 text-xs text-muted bg-background/50 rounded-lg p-2 flex items-start gap-2">
+                                    <Info class="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                    <span>Debrid downloads all files automatically. File selection is not available with this method.</span>
+                                </div>
+                            </Show>
+                        </div>
+                    </Show>
+
+                    {/* File selection - hidden when debrid is selected */}
+                    <Show when={downloadMethod() !== "debrid"}>
                     <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
                         <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50">
                             <h3 class="text-sm font-semibold text-text flex items-center gap-2"><MemoryStick class="w-4 h-4 text-accent" /> Files in Torrent</h3>
@@ -310,6 +402,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                             </Show>
                         </div>
                     </div>
+                    </Show>
                 </>
             );
         };
