@@ -16,6 +16,7 @@ pub type Gid = String;
 pub enum DownloadSource {
     Ddl,
     Torrent,
+    Debrid { provider: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type)]
@@ -105,6 +106,19 @@ pub struct DdlJob {
     pub files: Vec<DirectLink>,
 }
 
+/// Job data for debrid downloads
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct DebridJob {
+    /// Provider ID (e.g., "real_debrid", "all_debrid")
+    pub provider: String,
+    /// Remote ID on the debrid service
+    pub remote_id: String,
+    /// Original magnet link
+    pub magnet: String,
+    /// Direct download links obtained from debrid service
+    pub download_links: Vec<DirectLink>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Job {
     pub id: JobId,
@@ -119,6 +133,9 @@ pub struct Job {
 
     pub ddl: Option<DdlJob>,
     pub torrent: Option<TorrentJob>,
+    /// Debrid job data (for downloads via debrid services)
+    #[serde(default)]
+    pub debrid: Option<DebridJob>,
 
     pub state: DownloadState,
     pub status: Option<AggregatedStatus>,
@@ -140,6 +157,7 @@ impl Job {
             job_path,
             ddl: Some(DdlJob { files: ddl_files }),
             torrent: None,
+            debrid: None,
 
             metadata: JobMetadata {
                 game_title: game.title.clone(),
@@ -178,6 +196,48 @@ impl Job {
                 info_hash,
                 torrent_files,
                 magnet,
+            }),
+            debrid: None,
+
+            metadata: JobMetadata {
+                game_title: game.title.clone(),
+                target_path,
+                created_at: now,
+                updated_at: now,
+            },
+            game,
+
+            state: DownloadState::Waiting,
+            status: None,
+        }
+    }
+
+    /// Create a new debrid job
+    pub fn new_debrid(
+        provider: String,
+        remote_id: String,
+        magnet: String,
+        download_links: Vec<DirectLink>,
+        target_path: PathBuf,
+        job_path: PathBuf,
+        game: Game,
+    ) -> Self {
+        let now = Utc::now();
+
+        Job {
+            id: Uuid::new_v4().to_string(),
+            source: DownloadSource::Debrid {
+                provider: provider.clone(),
+            },
+            gids: vec![],
+            job_path,
+            ddl: None,
+            torrent: None,
+            debrid: Some(DebridJob {
+                provider,
+                remote_id,
+                magnet,
+                download_links,
             }),
 
             metadata: JobMetadata {

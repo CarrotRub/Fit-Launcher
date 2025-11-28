@@ -7,17 +7,18 @@ use anyhow::{Context, Result};
 use aria2_ws::response::{File, Status};
 use chrono::Utc;
 use fit_launcher_ddl::DirectLink;
+use fit_launcher_debrid::{DebridConversionEvent, DebridProvider, TorrentStatusKind};
 use fit_launcher_scraping::structs::Game;
 use fit_launcher_torrent::model::FileInfo;
 use fit_launcher_torrent::{FitLauncherConfigAria2, LibrqbitSession};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 /// Debounce time for saving to disk
 const SAVE_DEBOUNCE_MS: u64 = 400;
@@ -298,6 +299,202 @@ impl DownloadManager {
         Ok(job.id)
     }
 
+    /// Add a new debrid download job
+    ///
+    /// This method handles the entire flow:
+    /// 1. Add magnet to debrid service
+    /// 2. Poll for conversion status with exponential backoff
+    /// 3. Get download links when ready
+    /// 4. Start aria2 downloads
+    pub async fn add_debrid_job(
+        self: &Arc<Self>,
+        magnet: String,
+        provider: Arc<dyn DebridProvider>,
+        api_key: String,
+        file_indices: Vec<usize>,
+        target: PathBuf,
+        game: Game,
+    ) -> Result<JobId> {
+        let provider_id = provider.id().to_string();
+        let provider_name = provider.name().to_string();
+        info!("Starting debrid download via {} for: {}", provider_name, game.title);
+
+        // Step 1: Add magnet to debrid service
+        let remote_id = provider
+            .add_magnet(&api_key, &magnet)
+            .await
+            .context("Failed to add magnet to debrid service")?;
+
+        info!("Debrid {} accepted magnet, remote_id: {}", provider_name, remote_id);
+
+        // Emit conversion started event
+        let _ = self.tauri_handle.emit(
+            "debrid::conversion_started",
+            DebridConversionEvent {
+                job_id: String::new(), // No job ID yet
+                provider: provider_id.clone(),
+                status: TorrentStatusKind::Queued,
+                progress: 0.0,
+                error: None,
+            },
+        );
+
+        // Step 2: Select files if indices provided
+        if !file_indices.is_empty() {
+            if let Err(e) = provider.select_files(&api_key, &remote_id, &file_indices).await {
+                warn!("Failed to select files (may not be supported): {:?}", e);
+            }
+        } else {
+            // Select all files
+            if let Err(e) = provider.select_files(&api_key, &remote_id, &[]).await {
+                warn!("Failed to select all files: {:?}", e);
+            }
+        }
+
+        // Step 3: Poll for conversion status with exponential backoff
+        let delays = [1, 2, 4, 8, 16, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30];
+        let max_attempts = 20; // ~10 minutes with the delay pattern above
+        let mut attempt = 0;
+
+        let download_links = loop {
+            if attempt >= max_attempts {
+                // Cleanup on timeout
+                let _ = provider.delete_torrent(&api_key, &remote_id).await;
+                return Err(DownloadManagerError::DebridConversionTimeout.into());
+            }
+
+            let status = provider
+                .get_torrent_status(&api_key, &remote_id)
+                .await
+                .context("Failed to get torrent status from debrid service")?;
+
+            // Emit progress event
+            let _ = self.tauri_handle.emit(
+                "debrid::conversion_progress",
+                DebridConversionEvent {
+                    job_id: String::new(),
+                    provider: provider_id.clone(),
+                    status: status.status.clone(),
+                    progress: status.progress,
+                    error: status.error_message.clone(),
+                },
+            );
+
+            match status.status {
+                TorrentStatusKind::Ready => {
+                    // Get download links
+                    let links = provider
+                        .get_download_links(&api_key, &remote_id)
+                        .await
+                        .context("Failed to get download links from debrid service")?;
+                    break links;
+                }
+                TorrentStatusKind::Error => {
+                    // Cleanup on error
+                    let _ = provider.delete_torrent(&api_key, &remote_id).await;
+                    let _ = self.tauri_handle.emit(
+                        "debrid::conversion_failed",
+                        DebridConversionEvent {
+                            job_id: String::new(),
+                            provider: provider_id.clone(),
+                            status: TorrentStatusKind::Error,
+                            progress: status.progress,
+                            error: status.error_message.clone(),
+                        },
+                    );
+                    return Err(DownloadManagerError::DebridConversionFailed(
+                        status.error_message.unwrap_or_else(|| "Unknown error".to_string()),
+                    )
+                    .into());
+                }
+                _ => {
+                    // Still processing, wait and retry
+                    let delay = delays.get(attempt).copied().unwrap_or(30);
+                    tokio::time::sleep(Duration::from_secs(delay)).await;
+                    attempt += 1;
+                }
+            }
+        };
+
+        info!(
+            "Debrid conversion complete, got {} download links",
+            download_links.len()
+        );
+
+        // Emit conversion complete
+        let _ = self.tauri_handle.emit(
+            "debrid::conversion_complete",
+            DebridConversionEvent {
+                job_id: String::new(),
+                provider: provider_id.clone(),
+                status: TorrentStatusKind::Ready,
+                progress: 100.0,
+                error: None,
+            },
+        );
+
+        // Step 4: Create job and start aria2 downloads
+        let clean_title = Self::sanitize_filename(&game.title);
+        let folder_name = format!("{} [Fitgirl Repack]", clean_title);
+        let dir = target.join(folder_name);
+
+        let mut job = Job::new_debrid(
+            provider_id.clone(),
+            remote_id.clone(),
+            magnet.clone(),
+            download_links.clone(),
+            target.clone(),
+            dir.clone(),
+            game,
+        );
+
+        // Start aria2 downloads for each link
+        let cfg = self.aria_cfg.clone();
+        let dir_str = Some(dir.to_string_lossy().to_string());
+
+        let mut gids: Vec<String> = Vec::with_capacity(download_links.len());
+        for f in download_links.iter() {
+            let filename = f.filename.clone();
+            let url = f.url.clone();
+            let aria_guard = self.aria.lock().await;
+            match aria_guard
+                .add_uri(vec![url], dir_str.clone(), Some(filename), cfg.clone())
+                .await
+            {
+                Ok(gid) => gids.push(gid),
+                Err(e) => error!("Failed to add aria2 URI: {:?}", e),
+            }
+        }
+
+        if gids.is_empty() {
+            return Err(DownloadManagerError::DebridConversionFailed(
+                "Failed to start any downloads".to_string(),
+            )
+            .into());
+        }
+
+        info!("Started {} aria2 downloads for debrid job", gids.len());
+
+        // Register job and indices
+        job.gids = gids.clone();
+        job.state = DownloadState::Active;
+        job.metadata.updated_at = Utc::now();
+
+        {
+            let mut jobs = self.jobs.write().await;
+            let mut gid_idx = self.gid_index.write().await;
+            for g in gids.iter() {
+                gid_idx.insert(g.clone(), job.id.clone());
+            }
+            jobs.insert(job.id.clone(), job.clone());
+        }
+
+        let _ = self.tauri_handle.emit("download::job_updated", job.clone());
+        self.request_save_debounced().await;
+
+        Ok(job.id)
+    }
+
     pub async fn pause(&self, job_id: &str) -> Result<()> {
         // clone gids while holding the job lock, then do RPC outside
         let gids: Option<Vec<Gid>> = {
@@ -370,6 +567,8 @@ impl DownloadManager {
         match job.source {
             DownloadSource::Ddl => self.resume_ddl(&job).await?,
             DownloadSource::Torrent => self.resume_torrent(&job).await?,
+            // Debrid downloads use the same mechanism as DDL (direct links via aria2)
+            DownloadSource::Debrid { .. } => self.resume_debrid(&job).await?,
         }
 
         Ok(())
@@ -394,6 +593,51 @@ impl DownloadManager {
                 {
                     Ok(gid) => new_gids.push(gid),
                     Err(e) => error!("Failed to respawn DDL gid for {}: {:?}", job.id, e),
+                }
+            }
+
+            if !new_gids.is_empty() {
+                let mut jobs = self.jobs.write().await;
+                if let Some(j) = jobs.get_mut(&job.id) {
+                    j.gids.extend(new_gids.iter().cloned());
+                    j.gids.sort();
+                    j.gids.dedup();
+
+                    let mut gid_idx = self.gid_index.write().await;
+                    for g in j.gids.iter() {
+                        gid_idx.insert(g.clone(), j.id.clone());
+                    }
+
+                    j.state = DownloadState::Active;
+                    j.metadata.updated_at = Utc::now();
+                    let _ = self.tauri_handle.emit("download::job_updated", j.clone());
+                }
+                self.request_save_debounced().await;
+            }
+        }
+        Ok(())
+    }
+
+    /// Resume a debrid download (uses same mechanism as DDL - direct links via aria2)
+    async fn resume_debrid(&self, job: &Job) -> Result<()> {
+        if let Some(debrid) = &job.debrid {
+            let cfg = self.aria_cfg.clone();
+            let dir = Some(job.metadata.target_path.to_string_lossy().to_string());
+            let mut new_gids = Vec::with_capacity(debrid.download_links.len());
+
+            for f in debrid.download_links.iter() {
+                let aria_guard = self.aria.lock().await;
+                match aria_guard
+                    .add_uri(
+                        vec![f.url.clone()],
+                        dir.clone(),
+                        Some(f.filename.clone()),
+                        cfg.clone(),
+                    )
+                    .await
+                {
+                    Ok(gid) => new_gids.push(gid),
+                    Err(e) => error!("Failed to respawn debrid gid for {}: {:?}", job.id, e),
                 }
             }
 

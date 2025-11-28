@@ -15,6 +15,17 @@ import {
 type JobCallback = (job: Job) => void;
 type RemovedCallback = (id: string) => void;
 
+/** Debrid conversion event from backend */
+export type DebridConversionEvent = {
+  job_id: string;
+  provider: string;
+  status: string;
+  progress: number;
+  error?: string;
+};
+
+type DebridConversionCallback = (event: DebridConversionEvent) => void;
+
 export class GlobalDownloadManager {
   private jobs = new Map<string, Job>();
 
@@ -22,9 +33,21 @@ export class GlobalDownloadManager {
   private completedCbs: Set<JobCallback> = new Set();
   private removedCbs: Set<RemovedCallback> = new Set();
 
+  // Debrid conversion callbacks
+  private debridStartedCbs: Set<DebridConversionCallback> = new Set();
+  private debridProgressCbs: Set<DebridConversionCallback> = new Set();
+  private debridCompleteCbs: Set<DebridConversionCallback> = new Set();
+  private debridFailedCbs: Set<DebridConversionCallback> = new Set();
+
   private unlistenUpdated: UnlistenFn | null = null;
   private unlistenRemoved: UnlistenFn | null = null;
   private unlistenCompleted: UnlistenFn | null = null;
+
+  // Debrid event listeners
+  private unlistenDebridStarted: UnlistenFn | null = null;
+  private unlistenDebridProgress: UnlistenFn | null = null;
+  private unlistenDebridComplete: UnlistenFn | null = null;
+  private unlistenDebridFailed: UnlistenFn | null = null;
 
   async setup() {
     if (!this.unlistenUpdated) {
@@ -51,6 +74,32 @@ export class GlobalDownloadManager {
         if (!job || !job.id) return;
         this.jobs.set(job.id, job);
         this.completedCbs.forEach((cb) => cb(job));
+      });
+    }
+
+    // Debrid conversion event listeners
+    if (!this.unlistenDebridStarted) {
+      this.unlistenDebridStarted = await listen("debrid::conversion_started", (e) => {
+        const event = e.payload as DebridConversionEvent;
+        this.debridStartedCbs.forEach((cb) => cb(event));
+      });
+    }
+    if (!this.unlistenDebridProgress) {
+      this.unlistenDebridProgress = await listen("debrid::conversion_progress", (e) => {
+        const event = e.payload as DebridConversionEvent;
+        this.debridProgressCbs.forEach((cb) => cb(event));
+      });
+    }
+    if (!this.unlistenDebridComplete) {
+      this.unlistenDebridComplete = await listen("debrid::conversion_complete", (e) => {
+        const event = e.payload as DebridConversionEvent;
+        this.debridCompleteCbs.forEach((cb) => cb(event));
+      });
+    }
+    if (!this.unlistenDebridFailed) {
+      this.unlistenDebridFailed = await listen("debrid::conversion_failed", (e) => {
+        const event = e.payload as DebridConversionEvent;
+        this.debridFailedCbs.forEach((cb) => cb(event));
       });
     }
 
@@ -102,6 +151,32 @@ export class GlobalDownloadManager {
   ): Promise<Result<string, string>> {
     try {
       return await commands.dmAddTorrentJob(magnet, filesList, target, game);
+    } catch (e) {
+      return {
+        status: "error",
+        error: e instanceof Error ? e.message : (e as any),
+      };
+    }
+  }
+
+  /** Add a debrid download job */
+  async addDebrid(
+    magnet: string,
+    providerId: string,
+    apiKey: string,
+    fileIndices: number[],
+    target: string,
+    game: Game
+  ): Promise<Result<string, string>> {
+    try {
+      return await commands.dmAddDebridJob(
+        magnet,
+        providerId,
+        apiKey,
+        fileIndices,
+        target,
+        game
+      );
     } catch (e) {
       return {
         status: "error",
@@ -219,6 +294,27 @@ export class GlobalDownloadManager {
     return () => this.completedCbs.delete(cb);
   }
 
+  // Debrid conversion subscriptions
+  onDebridConversionStarted(cb: DebridConversionCallback) {
+    this.debridStartedCbs.add(cb);
+    return () => this.debridStartedCbs.delete(cb);
+  }
+
+  onDebridConversionProgress(cb: DebridConversionCallback) {
+    this.debridProgressCbs.add(cb);
+    return () => this.debridProgressCbs.delete(cb);
+  }
+
+  onDebridConversionComplete(cb: DebridConversionCallback) {
+    this.debridCompleteCbs.add(cb);
+    return () => this.debridCompleteCbs.delete(cb);
+  }
+
+  onDebridConversionFailed(cb: DebridConversionCallback) {
+    this.debridFailedCbs.add(cb);
+    return () => this.debridFailedCbs.delete(cb);
+  }
+
   async teardown() {
     if (this.unlistenUpdated) {
       this.unlistenUpdated();
@@ -232,9 +328,30 @@ export class GlobalDownloadManager {
       this.unlistenCompleted();
       this.unlistenCompleted = null;
     }
+    // Cleanup debrid listeners
+    if (this.unlistenDebridStarted) {
+      this.unlistenDebridStarted();
+      this.unlistenDebridStarted = null;
+    }
+    if (this.unlistenDebridProgress) {
+      this.unlistenDebridProgress();
+      this.unlistenDebridProgress = null;
+    }
+    if (this.unlistenDebridComplete) {
+      this.unlistenDebridComplete();
+      this.unlistenDebridComplete = null;
+    }
+    if (this.unlistenDebridFailed) {
+      this.unlistenDebridFailed();
+      this.unlistenDebridFailed = null;
+    }
     this.updatedCbs.clear();
     this.removedCbs.clear();
     this.completedCbs.clear();
+    this.debridStartedCbs.clear();
+    this.debridProgressCbs.clear();
+    this.debridCompleteCbs.clear();
+    this.debridFailedCbs.clear();
     this.jobs.clear();
   }
 }
