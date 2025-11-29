@@ -80,30 +80,19 @@ impl InstallationManager {
         self.remove(id).await;
     }
 
-    /// Start a job in a separate task with automatic error handling
+    /// Start a job
     pub async fn start_job(&self, id: Uuid, app_handle: tauri::AppHandle) {
-        let job_opt = {
-            let jobs = self.jobs.read().await;
-            jobs.get(&id).cloned()
-        };
-
+        let job_opt = { self.jobs.read().await.get(&id).cloned() };
         let job = match job_opt {
-            Some(job) => job,
+            Some(j) => j,
             None => return,
         };
 
-        let manager = self.clone();
-        let token = job.cancel_emitter.clone();
-
-        tokio::spawn(async move {
-            let result = job.auto_installation(app_handle).await;
-
-            if let Err(e) = result {
-                // Cancel and remove the job on failure
-                token.cancel();
-                manager.fail_job(id, e).await;
-            }
-        });
+        let result = job.auto_installation(app_handle, id).await;
+        if let Err(e) = result {
+            job.cancel_emitter.cancel();
+            self.fail_job(id, e).await;
+        }
     }
 }
 

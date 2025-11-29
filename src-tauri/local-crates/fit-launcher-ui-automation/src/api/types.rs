@@ -16,6 +16,7 @@ impl InstallationJob {
     pub async fn auto_installation(
         &self,
         app_handle: tauri::AppHandle,
+        id: Uuid,
     ) -> Result<(), crate::InstallationError> {
         #[cfg(target_os = "windows")]
         {
@@ -45,11 +46,10 @@ impl InstallationJob {
             };
 
             automate_until_download(&game_output_folder).await;
-
-            progress_bar_setup_emit(app_handle, self.cancel_emitter.clone()).await;
-
-            info!("Torrent has completed!");
             info!("Game Installation has been started");
+
+            progress_bar_setup_emit(app_handle, self.cancel_emitter.clone(), id).await;
+            info!("Job has completed!");
 
             Ok(())
         }
