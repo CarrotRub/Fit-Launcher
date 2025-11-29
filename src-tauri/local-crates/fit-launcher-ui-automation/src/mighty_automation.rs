@@ -233,8 +233,6 @@ pub mod windows_ui_automation {
 
         thread::sleep(time::Duration::from_millis(1000));
 
-        progress_bar_setup_emit(todo!(), todo!()).await;
-
         // * No need for this anymore since we can contact the components directly through commandline.
         // My stupid self forgor that this was still usable :(
         // // Uncheck (Because they are all checked before hand) the checkboxes given by the user to uncheck.

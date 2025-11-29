@@ -2,13 +2,20 @@ use std::{collections::HashMap, path::PathBuf};
 
 use specta::specta;
 use tokio::task::JoinSet;
+use tokio_util::sync::CancellationToken;
 use tracing::info;
 
-use crate::{auto_installation, errors::ExtractError, extract_archive};
+use crate::{emitter::setup::progress_bar_setup_emit, errors::ExtractError, extract_archive};
 
 #[tauri::command]
 #[specta]
-pub async fn extract_game(job_path: PathBuf, auto_clean: bool) -> Result<(), ExtractError> {
+pub async fn extract_game(
+    app_handle: tauri::AppHandle,
+    job_path: PathBuf,
+    auto_clean: bool,
+) -> Result<(), ExtractError> {
+    let cancel_token = CancellationToken::new();
+
     let list = job_path.read_dir()?;
     let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
     for entry in list.flatten() {
@@ -39,7 +46,9 @@ pub async fn extract_game(job_path: PathBuf, auto_clean: bool) -> Result<(), Ext
         extract_archive(&first)?;
     }
 
-    auto_installation(&job_path).await?;
+    tokio::spawn(async move {
+        progress_bar_setup_emit(app_handle, cancel_token).await;
+    });
 
     if auto_clean {
         let mut set = JoinSet::new();

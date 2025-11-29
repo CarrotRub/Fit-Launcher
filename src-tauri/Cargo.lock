@@ -1757,6 +1757,7 @@ dependencies = [
  "fit-launcher-ddl",
  "fit-launcher-scraping",
  "fit-launcher-torrent",
+ "fit-launcher-ui-automation",
  "serde",
  "serde_json",
  "sha2",
@@ -1859,6 +1860,7 @@ dependencies = [
  "tracing-subscriber",
  "uiautomation",
  "unrar",
+ "uuid",
  "windows 0.62.2",
  "windows-result 0.4.1",
 ]

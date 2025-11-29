@@ -1,9 +1,12 @@
 use crate::{manager::DownloadManager, types::*};
 use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
+use fit_launcher_ui_automation::{InstallationError, api::InstallationManager};
 use specta::specta;
 use std::sync::Arc;
 use tauri::State;
+use tracing::error;
+use uuid::Uuid;
 
 #[tauri::command]
 #[specta]
@@ -68,4 +71,18 @@ pub async fn dm_save_now(dm: State<'_, Arc<DownloadManager>>) -> Result<(), Stri
 #[specta]
 pub async fn dm_load_from_disk(dm: State<'_, Arc<DownloadManager>>) -> Result<(), String> {
     dm.load_from_disk().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta]
+pub async fn run_automate_setup_install(
+    state: tauri::State<'_, InstallationManager>,
+    app_handle: tauri::AppHandle,
+    job: Job,
+) -> Result<Uuid, InstallationError> {
+    let id = state.create_job(job.game, job.job_path).await;
+
+    state.start_job(id, app_handle.clone()).await;
+
+    Ok(id)
 }
