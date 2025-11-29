@@ -6,12 +6,12 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
-use tracing::error;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::api::types::InstallationJob;
 
-pub type JobList = Arc<RwLock<HashMap<Uuid, InstallationJob>>>;
+pub type JobList = Arc<RwLock<HashMap<Uuid, Arc<InstallationJob>>>>;
 
 pub struct InstallationManager {
     jobs: JobList,
@@ -33,13 +33,18 @@ impl InstallationManager {
             path: download_path,
         };
 
-        self.jobs.write().await.insert(id, job);
+        self.jobs.write().await.insert(id, Arc::new(job));
 
         id
     }
 
+    pub async fn get_job(&self, id: Uuid) -> Option<Arc<InstallationJob>> {
+        let list = self.jobs.read().await;
+        list.get(&id).cloned()
+    }
+
     /// List all jobs
-    pub async fn list_jobs(&self) -> Vec<InstallationJob> {
+    pub async fn list_jobs(&self) -> Vec<Arc<InstallationJob>> {
         let jobs = self.jobs.read().await;
         jobs.values().cloned().collect()
     }
@@ -87,6 +92,7 @@ impl InstallationManager {
             Some(j) => j,
             None => return,
         };
+        info!("Starting auto installation: {}", &job.game.title);
 
         let result = job.auto_installation(app_handle, id).await;
         if let Err(e) = result {

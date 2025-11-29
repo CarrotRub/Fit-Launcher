@@ -1,9 +1,12 @@
+use tracing::{error, warn};
+
 use crate::mighty::{
     automation::{
         change_path_input, check_8gb_limit, click_8gb_limit, click_install_button,
         click_next_button, click_ok_button,
-        win32::{mute_setup, poll_loop_async, poll_progress_bar_percentage},
+        win32::{find_completed_setup, mute_setup, poll_loop_async, poll_progress_bar_percentage},
     },
+    retry_until_async,
     tests::init_test_tracing,
 };
 
@@ -92,4 +95,60 @@ pub async fn test_poll_progress_bar_loop() {
     }
 
     println!("===== Done =====");
+}
+
+#[test]
+pub fn test_find_completed_window() {
+    init_test_tracing();
+    println!("===== Test: Find Completed Setup =====");
+    find_completed_setup();
+    println!("===== Done =====");
+}
+
+#[tokio::test]
+pub async fn test_poll_and_find() {
+    let mut latest: f32 = 0.0;
+    let mut interval_ms = 150;
+    let mut consecutive_none = 0;
+    const MAX_NONE: u32 = 5;
+    const MAX_INTERVAL_MS: u64 = 500;
+
+    loop {
+        tokio::select! {
+
+            res = retry_until_async(400, interval_ms, || async {
+                poll_progress_bar_percentage()
+            }) => {
+                match res {
+                    Some(p) => {
+                        latest = p;
+                        consecutive_none = 0;
+                        interval_ms = (interval_ms * 2).min(MAX_INTERVAL_MS);
+                    }
+                    None => {
+                        consecutive_none += 1;
+                        eprintln!("poll_progress_bar_percentage returned None {} times in a row, keeping last value {}", consecutive_none, latest);
+                        if consecutive_none >= MAX_NONE {
+                            eprintln!("Too many consecutive None values, stopping progress loop, will try to find completed setup");
+
+                            let completed = find_completed_setup();
+                            if completed {
+                                println!("Completed !!!");
+                            } else {
+                                eprintln!("nAUUUUUUUR");
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                println!("Progress: {}%", latest);
+
+                if latest >= 100.0 {
+                    println!("100 reached");
+                    break;
+                }
+            }
+        }
+    }
 }

@@ -11,6 +11,7 @@ use fit_launcher_scraping::{
 };
 use fit_launcher_torrent::LibrqbitSession;
 use fit_launcher_torrent::functions::TorrentSession;
+use fit_launcher_ui_automation::api::InstallationManager;
 use lru::LruCache;
 use serde_json::Value;
 use std::{num::NonZeroUsize, path::PathBuf, sync::Arc, time::Instant};
@@ -184,6 +185,7 @@ pub async fn start_app() -> anyhow::Result<()> {
         .invoke_handler(tauri_helper::tauri_collect_commands!())
         .manage(image_cache)
         .manage(TorrentSession::new().await)
+        .manage(InstallationManager::new())
         .manage(LibrqbitSession::new().await);
 
     let app = app.build(tauri::generate_context!())?;

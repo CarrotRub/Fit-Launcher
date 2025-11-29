@@ -77,25 +77,30 @@ pub async fn dm_load_from_disk(dm: State<'_, Arc<DownloadManager>>) -> Result<()
 
 #[tauri::command]
 #[specta]
-pub async fn run_automate_setup_install(
+pub async fn dm_run_automate_setup_install(
     state: tauri::State<'_, InstallationManager>,
     app_handle: tauri::AppHandle,
     job: Job,
 ) -> Result<Uuid, InstallationError> {
+    info!(
+        "Starting installation process for: {}",
+        &job.metadata.game_title
+    );
     let id = state.create_job(job.game, job.job_path).await;
 
     state.start_job(id, app_handle.clone()).await;
 
     Ok(id)
 }
+
 #[tauri::command]
 #[specta]
-pub async fn extract_and_install(
-    state: tauri::State<'_, InstallationManager>,
+pub async fn dm_extract_and_install(
+    manager: tauri::State<'_, InstallationManager>,
     app_handle: tauri::AppHandle,
     job: Job,
     auto_clean: bool,
-) -> Result<Uuid, ExtractError> {
+) -> Result<(), ExtractError> {
     let list = job.job_path.read_dir()?;
     let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
 
@@ -131,9 +136,14 @@ pub async fn extract_and_install(
         }
         set.join_all().await;
     }
-    let id = state.create_job(job.game, job.job_path.clone()).await;
 
-    state.start_job(id, app_handle.clone()).await;
+    let id = manager.create_job(job.game, job.job_path.clone()).await;
 
-    Ok(id)
+    manager.start_job(id, app_handle.clone()).await;
+
+    if let Some(job) = manager.get_job(id).await {
+        job.clean_parts().await?;
+    }
+
+    Ok(())
 }

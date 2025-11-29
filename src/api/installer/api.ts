@@ -6,6 +6,8 @@ import { listen } from "@tauri-apps/api/event";
 class InstallerService {
   private started = false;
   private installedGames = new Set<string>();
+  private progressCallbacks: Map<string, (percentage: number) => void> =
+    new Map();
 
   start() {
     if (this.started) return;
@@ -25,6 +27,30 @@ class InstallerService {
       this.installedGames.add(job.id);
       await this.handle(job);
     });
+
+    listen("setup::progress::updated", (event) => {
+      const payload = event.payload as { id: string; percentage: number };
+      this.progressCallbacks.get(payload.id)?.(payload.percentage);
+    });
+
+    listen("setup::progress::finished", (event) => {
+      const payload = event.payload as { id: string; percentage: number };
+      console.log(`Installation finished for ${payload.id}`);
+
+      this.progressCallbacks.delete(payload.id);
+    });
+
+    listen("setup::progress::cancelled", (event) => {
+      const payload = event.payload as { id: string; percentage: number };
+      console.warn(
+        `Installation cancelled for ${payload.id} at ${payload.percentage}%`
+      );
+      this.progressCallbacks.delete(payload.id);
+    });
+  }
+
+  onProgress(jobId: string, callback: (percentage: number) => void) {
+    this.progressCallbacks.set(jobId, callback);
   }
 
   async handle(job: Job) {
@@ -33,12 +59,13 @@ class InstallerService {
 
     const path = job.metadata.target_path;
     console.log(job.torrent?.torrent_files);
-    console.log("Starting installation for:", job.game.title);
+
     //todo: divide
     try {
       let result;
       if (job.source === "Torrent") {
-        result = await commands.runAutomateSetupInstall(job.job_path);
+        result = await commands.dmRunAutomateSetupInstall(job);
+        console.log("Starting installation for:", job.game.title);
         if (result.status === "error" && result.error === "AdminModeError") {
           await message(
             "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
@@ -46,7 +73,7 @@ class InstallerService {
           );
         }
       } else {
-        result = await commands.extractGame(job.job_path, settings.auto_clean);
+        result = await commands.dmExtractAndInstall(job, settings.auto_clean);
         if (result.status === "error") {
           const err = result.error;
           if (typeof err === "object" && "InstallationError" in err) {
@@ -104,7 +131,9 @@ class InstallerService {
           }
         }
       }
-
+      this.onProgress(job.id, (percent) => {
+        console.log(`Job ${job.id} progress: ${percent.toFixed(2)}%`);
+      });
       if (result?.status === "ok") {
         console.log("Installation completed for:", job.game.title);
       }
