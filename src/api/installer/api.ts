@@ -2,6 +2,7 @@ import { message } from "@tauri-apps/plugin-dialog";
 import { GlobalSettingsApi } from "../settings/api";
 import { commands, Job } from "../../bindings";
 import { listen } from "@tauri-apps/api/event";
+import { LibraryApi } from "../library/api";
 
 class InstallerService {
   private started = false;
@@ -167,6 +168,11 @@ class InstallerService {
             await commands.dmRemove(job.id);
             await commands.dmCleanJob(job.id, setupId);
             this.jobSetupMap.delete(setupId);
+
+            let lib_api = new LibraryApi();
+            let dwlnd_game = lib_api.gameToDownloadedGame(job.game);
+
+            await lib_api.addDownloadedGame(dwlnd_game);
           }
         }
       }
