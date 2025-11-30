@@ -160,11 +160,14 @@ class InstallerService {
 
       if (result?.status === "ok") {
         console.log("Installation completed for:", job.game.title);
+        if (settings.auto_clean) {
+          const setupId = this.findSetupIdByJobId(job.id);
 
-        const setupId = this.findSetupIdByJobId(job.id);
-        if (setupId) {
-          await commands.dmCleanJob(job.id, setupId);
-          this.jobSetupMap.delete(setupId);
+          if (setupId) {
+            await commands.dmRemove(job.id);
+            await commands.dmCleanJob(job.id, setupId);
+            this.jobSetupMap.delete(setupId);
+          }
         }
       }
     } catch (err) {

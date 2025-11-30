@@ -35,7 +35,7 @@ export class InstallationApi {
     return { status: "ok", data: "" };
   }
 
-  async startExtractionDdl(job: Job): Promise<Result<null, ExtractError>> {
+  async startExtractionDdl(job: Job): Promise<Result<string, ExtractError>> {
     const installationSettings =
       await GlobalSettingsApi.getInstallationSettings();
 
@@ -110,6 +110,6 @@ export class InstallationApi {
       return result;
     }
 
-    return { status: "ok", data: null };
+    return { status: "ok", data: "" };
   }
 }
