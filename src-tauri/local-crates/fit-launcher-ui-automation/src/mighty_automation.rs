@@ -183,6 +183,7 @@ pub mod windows_ui_automation {
         use crate::emitter::setup::progress_bar_setup_emit;
         click_ok_button();
         // Skip Select Setup Language.
+        thread::sleep(time::Duration::from_millis(1000));
         mute_setup();
         let should_two_gb_limit = get_installation_settings().two_gb_limit;
         if should_two_gb_limit {
