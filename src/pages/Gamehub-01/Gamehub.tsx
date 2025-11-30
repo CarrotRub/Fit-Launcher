@@ -11,7 +11,10 @@ function GamehubContent() {
     return (
         <div class="relative flex flex-col gap-4 divide-y divide-accent/70 w-full h-full overflow-y-auto no-scrollbar">
             {/* Filter Bar */}
-            <div class="px-4 pt-4 pb-2">
+
+
+            <PopularGames />
+            <div class="px-4  pb-3">
                 <FilterBar
                     availableGenres={availableGenres()}
                     repackSizeRange={repackSizeRange()}
@@ -20,8 +23,6 @@ function GamehubContent() {
                     onFilterChange={setFilters}
                 />
             </div>
-
-            <PopularGames />
             <NewlyAddedGames />
             <RecentlyUpdatedGames />
         </div>

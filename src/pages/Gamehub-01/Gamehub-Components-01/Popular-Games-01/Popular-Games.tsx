@@ -29,21 +29,22 @@ export default function PopularGames() {
   const [loading, setLoading] = createSignal(true);
   const [isHovered, setIsHovered] = createSignal(false);
   const navigate = useNavigate();
-  
+
   const { filters, setAvailableGenres, setRepackSizeRange, setOriginalSizeRange } = useGamehubFilters();
 
   // Apply filters to games
-  const games = createMemo(() => filterGames(allGames(), filters()));
+  const games = createMemo(() => allGames());
+
 
   onMount(async () => {
     const parsedGames = await parsePopularGames();
     setAllGames(parsedGames);
-    
+
     // Merge genres and size ranges with existing context data
     const genres = getAllGenres(parsedGames);
     const repackRange = getSizeRange(parsedGames, 'repack');
     const originalRange = getSizeRange(parsedGames, 'original');
-    
+
     // Update context (will be merged with other components' data)
     setAvailableGenres((prev: string[]) => [...new Set([...prev, ...genres])].sort());
     setRepackSizeRange((prev) => ({
@@ -54,7 +55,7 @@ export default function PopularGames() {
       min: Math.min(prev.min, originalRange.min),
       max: Math.max(prev.max, originalRange.max),
     }));
-    
+
     setLoading(false);
   });
 
@@ -109,7 +110,7 @@ export default function PopularGames() {
 
       {/* Game Card */}
       <Show when={!loading() && games().length > 0}>
-        <div class="relative h-120 rounded-xl overflow-hidden border-b border-secondary-20 bg-background-70 shadow-lg flex w-full">
+        <div class="relative h-120  overflow-hidden border-b border-secondary-20 bg-background-70 shadow-lg flex w-full">
           {/* Background Image with Blur Fallback */}
           <div class="absolute inset-0 overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-b from-background/70 to-background/30 z-10"></div>
