@@ -15,6 +15,7 @@ tracing = { workspace = true }
 fit-launcher-aria2 = { workspace = true }
 fit-launcher-torrent = { workspace = true }
 fit-launcher-ddl = { path = "../fit-launcher-ddl" }
+fit-launcher-ui-automation = { path = "../fit-launcher-ui-automation" }
 sha2 = "0.10.9"
 tauri = { workspace = true }
 directories = { workspace = true }

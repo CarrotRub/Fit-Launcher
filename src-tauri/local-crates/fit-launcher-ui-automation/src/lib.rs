@@ -1,15 +1,25 @@
+pub mod emitter;
 pub mod extraction;
 pub mod mighty;
 pub mod mighty_automation;
 pub mod mighty_commands;
+use std::time::Duration;
+
 pub use extraction::*;
 pub use mighty_commands::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use thiserror::Error;
+use tokio_util::sync::CancellationToken;
 
-mod helper;
-pub use helper::auto_installation;
+pub mod api;
+
+pub async fn cancel_safe_sleep(ms: u64, cancel: &CancellationToken) {
+    tokio::select! {
+        _ = tokio::time::sleep(Duration::from_millis(ms)) => {}
+        _ = cancel.cancelled() => {}
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, Type, Error)]
 pub enum InstallationError {

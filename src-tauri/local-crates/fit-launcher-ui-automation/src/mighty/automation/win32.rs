@@ -1,4 +1,6 @@
+use tauri::Emitter;
 use tracing::{debug, error, info, warn};
+use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::Media::Audio::{
     IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume,
     MMDeviceEnumerator, eMultimedia, eRender,
@@ -6,6 +8,7 @@ use windows::Win32::Media::Audio::{
 use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
 };
+use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
 use windows::Win32::UI::WindowsAndMessaging::{GetWindowTextW, GetWindowThreadProcessId};
 use windows::Win32::{
     Foundation::{FALSE, HWND, LPARAM, TRUE, WPARAM},
@@ -157,6 +160,47 @@ pub async fn poll_loop_async() {
         }
 
         tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+    }
+}
+
+pub fn find_completed_setup() -> bool {
+    if let Some(hwnd) = retry_until(5000, 50, || {
+        find_child_window_with_text("Completing the", "Setup -")
+    }) {
+        info!("Found completed setup windows with HWND: {hwnd:?}");
+        true
+    } else {
+        false
+    }
+}
+
+pub fn kill_completed_setup() -> bool {
+    if let Some(hwnd) = retry_until(5000, 50, || {
+        find_child_window_with_text("Completing the", "Setup -")
+    }) {
+        info!("Found completed setup windows with HWND: {hwnd:?}");
+        let mut pid = 0u32;
+
+        unsafe {
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        }
+
+        if pid == 0 {
+            return false;
+        }
+
+        unsafe {
+            let handle = OpenProcess(PROCESS_TERMINATE, false, pid).expect("Error opening process");
+            if !handle.is_invalid() {
+                let result = TerminateProcess(handle, 1);
+                CloseHandle(handle).expect("Error closing the handle");
+                return result.is_ok();
+            }
+        }
+
+        false
+    } else {
+        false
     }
 }
 

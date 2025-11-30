@@ -1,9 +1,15 @@
 use crate::{manager::DownloadManager, types::*};
 use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
+use fit_launcher_torrent::functions::TorrentSession;
+use fit_launcher_ui_automation::{
+    InstallationError, api::InstallationManager, errors::ExtractError, extract_archive,
+};
 use specta::specta;
-use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tauri::State;
+use tracing::{error, info};
+use uuid::Uuid;
 
 #[tauri::command]
 #[specta]
@@ -68,4 +74,88 @@ pub async fn dm_save_now(dm: State<'_, Arc<DownloadManager>>) -> Result<(), Stri
 #[specta]
 pub async fn dm_load_from_disk(dm: State<'_, Arc<DownloadManager>>) -> Result<(), String> {
     dm.load_from_disk().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta]
+pub async fn dm_run_automate_setup_install(
+    state: tauri::State<'_, InstallationManager>,
+    app_handle: tauri::AppHandle,
+    job: Job,
+) -> Result<Uuid, InstallationError> {
+    info!(
+        "Starting installation process for: {}",
+        &job.metadata.game_title
+    );
+    let id = state.create_job(job.game, job.job_path).await;
+
+    state.start_job(id, app_handle.clone()).await;
+
+    Ok(id)
+}
+
+#[tauri::command]
+#[specta]
+pub async fn dm_clean_job(
+    state: tauri::State<'_, InstallationManager>,
+    dm: State<'_, Arc<DownloadManager>>,
+    job_id: String,
+    installation_id: Uuid,
+) -> Result<(), InstallationError> {
+    dm.remove(&job_id).await.map_err(|e| e.to_string()).unwrap();
+    //todo: bbetter error handling
+    state.clean_job(installation_id).await;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
+pub async fn dm_extract_and_install(
+    manager: tauri::State<'_, InstallationManager>,
+    app_handle: tauri::AppHandle,
+    job: Job,
+    auto_clean: bool,
+) -> Result<Uuid, ExtractError> {
+    let list = job.job_path.read_dir()?;
+    let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
+
+    for entry in list.flatten() {
+        if entry
+            .metadata()
+            .map_err(|e| InstallationError::IOError(e.to_string()))?
+            .is_dir()
+        {
+            continue;
+        }
+
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !name.ends_with(".rar") {
+            continue;
+        }
+
+        let group = name.split_once(".part").map(|(g, _)| g).unwrap_or(&name);
+        groups.entry(group.into()).or_default().push(entry.path());
+    }
+
+    for paths in groups.values() {
+        if let Some(first) = paths.first() {
+            info!("Extracting {first:?} in-place...");
+            extract_archive(first)?;
+        }
+    }
+
+    if auto_clean {
+        let mut set = tokio::task::JoinSet::new();
+        for rar in groups.into_values().flatten() {
+            set.spawn(tokio::fs::remove_file(rar));
+        }
+        set.join_all().await;
+    }
+
+    let id = manager.create_job(job.game, job.job_path.clone()).await;
+
+    manager.start_job(id, app_handle.clone()).await;
+
+    Ok(id)
 }
