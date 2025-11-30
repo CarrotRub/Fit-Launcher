@@ -1,6 +1,7 @@
 use crate::{manager::DownloadManager, types::*};
 use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
+use fit_launcher_torrent::functions::TorrentSession;
 use fit_launcher_ui_automation::{
     InstallationError, api::InstallationManager, errors::ExtractError, extract_archive,
 };
@@ -95,12 +96,27 @@ pub async fn dm_run_automate_setup_install(
 
 #[tauri::command]
 #[specta]
+pub async fn dm_clean_job(
+    state: tauri::State<'_, InstallationManager>,
+    dm: State<'_, Arc<DownloadManager>>,
+    job_id: String,
+    installation_id: Uuid,
+) -> Result<(), InstallationError> {
+    dm.remove(&job_id).await.map_err(|e| e.to_string()).unwrap();
+    //todo: bbetter error handling
+    state.clean_job(installation_id).await;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
 pub async fn dm_extract_and_install(
     manager: tauri::State<'_, InstallationManager>,
     app_handle: tauri::AppHandle,
     job: Job,
     auto_clean: bool,
-) -> Result<(), ExtractError> {
+) -> Result<Uuid, ExtractError> {
     let list = job.job_path.read_dir()?;
     let mut groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
 
@@ -141,9 +157,5 @@ pub async fn dm_extract_and_install(
 
     manager.start_job(id, app_handle.clone()).await;
 
-    if let Some(job) = manager.get_job(id).await {
-        job.clean_parts().await?;
-    }
-
-    Ok(())
+    Ok(id)
 }

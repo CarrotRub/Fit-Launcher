@@ -1,6 +1,8 @@
+use std::time::Duration;
+
 use serde::Serialize;
 use tauri::Emitter;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::mighty::{
@@ -29,42 +31,56 @@ pub async fn progress_bar_setup_emit(
     loop {
         tokio::select! {
             _ = cancel.cancelled() => {
-                debug!("Progress loop cancelled at {}%", latest);
-                let _ = app_handle.emit("setup::progress::cancelled", JobProgress { id, percentage: latest });
+                let _ = app_handle.emit(
+                    "setup::progress::cancelled",
+                    JobProgress { id, percentage: latest }
+                );
                 break;
             }
-            res = retry_until_async(400, interval_ms, || async {
-                poll_progress_bar_percentage()
-            }) => {
-                match res {
+
+            _ = tokio::time::sleep(Duration::from_millis(interval_ms)) => {
+                let mut attempts = 0;
+
+
+                let mut value = None;
+
+                while attempts < MAX_NONE {
+                    if let Some(p) = poll_progress_bar_percentage() {
+                        value = Some(p);
+                        break;
+                    }
+
+                    attempts += 1;
+                    tokio::time::sleep(Duration::from_millis(interval_ms)).await;
+                }
+
+                match value {
                     Some(p) => {
                         latest = p;
                         consecutive_none = 0;
-                        interval_ms = (interval_ms * 2).min(MAX_INTERVAL_MS);
                     }
                     None => {
                         consecutive_none += 1;
-                        warn!("poll_progress_bar_percentage returned None {} times in a row, keeping last value {}", consecutive_none, latest);
                         if consecutive_none >= MAX_NONE {
-                            warn!("Too many consecutive None values, stopping progress loop, will try to find completed setup");
-
-                            // Sometimes the progress stops at >80% so we have to add this just in case
+                            // completed setup fallback
                             let completed = find_completed_setup();
                             if completed {
-                                    let _ = app_handle.emit(
-                                                "setup::progress::finished",
-                                                JobProgress { id, percentage: 100.0 },
-                                            );
+                                let _ = app_handle.emit(
+                                    "setup::progress::finished",
+                                    JobProgress { id, percentage: 100.0 },
+                                );
                             } else {
-                                let _ = app_handle.emit("setup::progress::cancelled", JobProgress { id, percentage: latest });
+                                let _ = app_handle.emit(
+                                    "setup::progress::cancelled",
+                                    JobProgress { id, percentage: latest },
+                                );
                             }
                             break;
                         }
                     }
                 }
 
-                debug!("Progress: {}%", latest);
-
+                // emit always
                 let _ = app_handle.emit(
                     "setup::progress::updated",
                     JobProgress { id, percentage: latest },

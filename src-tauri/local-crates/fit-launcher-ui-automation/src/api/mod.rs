@@ -100,6 +100,22 @@ impl InstallationManager {
             self.fail_job(id, e).await;
         }
     }
+
+    pub async fn clean_job(&self, id: Uuid) {
+        let job_opt = { self.jobs.read().await.get(&id).cloned() };
+        let job = match job_opt {
+            Some(j) => j,
+            None => return,
+        };
+        info!(
+            "Starting cleaning process for: {} on path: {}",
+            &job.game.title,
+            &job.path.to_str().unwrap_or("error")
+        );
+        if let Err(e) = job.clean_parts().await {
+            error!("Error cleaning parts: {e:?}")
+        }
+    }
 }
 
 impl Clone for InstallationManager {

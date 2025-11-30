@@ -22,10 +22,11 @@ impl InstallationJob {
     ) -> Result<(), crate::InstallationError> {
         #[cfg(target_os = "windows")]
         {
+            use tauri::Emitter;
             use tracing::info;
 
             use crate::{
-                emitter::setup::progress_bar_setup_emit,
+                emitter::setup::{JobProgress, progress_bar_setup_emit},
                 mighty::automation::win32::kill_completed_setup,
                 mighty_automation::windows_ui_automation::{
                     automate_until_download, start_executable_components_args,
@@ -51,16 +52,16 @@ impl InstallationJob {
             automate_until_download(&game_output_folder).await;
             info!("Game Installation has been started");
 
-            progress_bar_setup_emit(app_handle, self.cancel_emitter.clone(), id).await;
+            progress_bar_setup_emit(app_handle.clone(), self.cancel_emitter.clone(), id).await;
             info!("Job has completed!");
-
+            let _ = app_handle.emit(
+                "setup::progress::finished",
+                JobProgress {
+                    id,
+                    percentage: 100.0,
+                },
+            );
             kill_completed_setup();
-
-            if let Err(e) = self.clean_parts().await {
-                use tracing::error;
-
-                error!("Error cleaning the left over parts: {e:?}");
-            }
 
             Ok(())
         }
@@ -80,24 +81,22 @@ impl InstallationJob {
             use tokio::fs;
             use tracing::info;
 
-            let s = self.path.to_string_lossy();
-            let lower = s.to_lowercase();
-            let tag = " [fitgirl repack]";
+            let mut attempts = 0;
+            let path = self.path.clone();
+            loop {
+                match fs::remove_dir_all(path.clone()).await {
+                    Ok(_) => return Ok(()),
+                    Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied && attempts < 20 => {
+                        // Folder still locked by Windows
 
-            if lower.contains(tag) {
-                info!("Cleaning source folder: {}", self.path.to_string_lossy());
-                fs::remove_dir_all(&self.path).await.map_err(|e| {
-                    crate::InstallationError::IOError(format!(
-                        "Failed to clean folder {}: {}",
-                        self.path.to_string_lossy(),
-                        e
-                    ))
-                })?;
-            } else {
-                info!("No [fitgirl repack] folder detected, skipping cleanup");
+                        use std::time::Duration;
+                        attempts += 1;
+                        tokio::time::sleep(Duration::from_millis(100)).await;
+                        continue;
+                    }
+                    Err(e) => return Err(InstallationError::IOError(e.to_string())),
+                }
             }
-
-            Ok(())
         }
 
         #[cfg(not(target_os = "windows"))]
