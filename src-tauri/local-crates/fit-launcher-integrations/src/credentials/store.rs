@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_stronghold::stronghold::Stronghold;
 use tracing::{debug, info};
+use zeroize::Zeroize;
 
 const VAULT_FILENAME: &str = "credentials.hold";
 const CLIENT_NAME: &[u8] = b"debrid_credentials";
@@ -29,7 +30,6 @@ impl CredentialStore {
         Ok(app_data.join(VAULT_FILENAME))
     }
 
-    /// Creates/loads vault, auto-recovers corrupted files. Password hashed to 32 bytes.
     pub fn create_stronghold(
         app: &AppHandle,
         password: &[u8],
@@ -37,11 +37,11 @@ impl CredentialStore {
         let vault_path = Self::vault_path(app)?;
 
         // Password is already a 32-byte key from Argon2
-        let key = password.to_vec();
+        let mut key = password.to_vec();
 
         debug!("Initializing stronghold at {:?}", vault_path);
 
-        match Stronghold::new(&vault_path, key.clone()) {
+        let result = match Stronghold::new(&vault_path, key.clone()) {
             Ok(stronghold) => Ok(stronghold),
             Err(e) => {
                 let error_str = e.to_string();
@@ -72,19 +72,22 @@ impl CredentialStore {
                     }
 
                     // Try again with a fresh vault
-                    Stronghold::new(&vault_path, key)
+                    Stronghold::new(&vault_path, key.clone())
                         .map_err(|e2| CredentialError::StrongholdError(e2.to_string()))
                 } else {
                     Err(CredentialError::StrongholdError(error_str))
                 }
             }
-        }
+        };
+
+        key.zeroize();
+        result
     }
 
     pub fn store_api_key(
         stronghold: &Stronghold,
         provider: DebridProvider,
-        api_key: &str,
+        api_key: &[u8],
     ) -> Result<(), CredentialError> {
         let client = stronghold
             .load_client(CLIENT_NAME)
@@ -95,7 +98,7 @@ impl CredentialStore {
         let store = client.store();
         let key = provider_key(provider);
         store
-            .insert(key, api_key.as_bytes().to_vec(), None)
+            .insert(key, api_key.to_vec(), None)
             .map_err(|e| CredentialError::StrongholdError(e.to_string()))?;
 
         stronghold

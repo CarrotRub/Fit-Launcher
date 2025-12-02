@@ -34,12 +34,16 @@ export type {
 // Credential store salt - MUST be consistent across all usages
 export const CREDENTIAL_STORE_SALT = "fit-launcher-debrid-v1";
 
+// Helper to convert string to byte array
+function stringToBytes(str: string): number[] {
+    return Array.from(new TextEncoder().encode(str));
+}
 
 // Credential Management
 export async function initCredentials(
     password: string
 ): Promise<Result<null, CredentialError>> {
-    return commands.credentialsInit(password);
+    return commands.credentialsInit(stringToBytes(password));
 }
 
 // Store API key for a debrid provider securely
@@ -47,7 +51,7 @@ export async function storeCredential(
     provider: DebridProvider,
     apiKey: string
 ): Promise<Result<null, CredentialError>> {
-    return commands.credentialsStore(provider, apiKey);
+    return commands.credentialsStore(provider, stringToBytes(apiKey));
 }
 
 // Get stored API key for a provider

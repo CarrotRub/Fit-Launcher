@@ -11,11 +11,12 @@ use argon2::{
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_stronghold::stronghold::Stronghold;
+use zeroize::Zeroize;
 
 pub struct ManagedStronghold(pub Mutex<Option<Stronghold>>);
 
-fn derive_machine_password(app: &AppHandle, user_salt: &str) -> Result<Vec<u8>, CredentialError> {
-    let mut input_material = user_salt.as_bytes().to_vec();
+fn derive_machine_password(app: &AppHandle, user_salt: &[u8]) -> Result<Vec<u8>, CredentialError> {
+    let mut input_material = user_salt.to_vec();
 
     if let Ok(app_data) = app.path().app_data_dir() {
         input_material.extend_from_slice(app_data.to_string_lossy().as_bytes());
@@ -34,6 +35,7 @@ fn derive_machine_password(app: &AppHandle, user_salt: &str) -> Result<Vec<u8>, 
     let password_hash = argon2
         .hash_password(&input_material, &salt)
         .map_err(|e| CredentialError::StrongholdError(e.to_string()))?;
+    input_material.zeroize();
 
     let hash_bytes = password_hash
         .hash
@@ -47,10 +49,14 @@ fn derive_machine_password(app: &AppHandle, user_salt: &str) -> Result<Vec<u8>, 
 pub fn credentials_init(
     app: AppHandle,
     state: State<'_, ManagedStronghold>,
-    password: String,
+    mut password: Vec<u8>,
 ) -> Result<(), CredentialError> {
-    let derived_password = derive_machine_password(&app, &password)?;
+    let mut derived_password = derive_machine_password(&app, &password)?;
     let stronghold = CredentialStore::create_stronghold(&app, &derived_password)?;
+
+    password.zeroize();
+    derived_password.zeroize();
+
     let mut guard = state
         .0
         .lock()
@@ -64,14 +70,17 @@ pub fn credentials_init(
 pub fn credentials_store(
     state: State<'_, ManagedStronghold>,
     provider: DebridProvider,
-    api_key: String,
+    mut api_key: Vec<u8>,
 ) -> Result<(), CredentialError> {
     let guard = state
         .0
         .lock()
         .map_err(|e| CredentialError::LockError(e.to_string()))?;
     let stronghold = guard.as_ref().ok_or(CredentialError::NotInitialized)?;
-    CredentialStore::store_api_key(stronghold, provider, &api_key)
+    let result = CredentialStore::store_api_key(stronghold, provider, &api_key);
+    api_key.zeroize();
+
+    result
 }
 
 #[tauri::command]

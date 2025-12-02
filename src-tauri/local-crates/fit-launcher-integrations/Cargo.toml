@@ -16,3 +16,4 @@ tauri = { workspace = true }
 tauri-plugin-stronghold = { workspace = true }
 directories = { workspace = true }
 argon2 = "0.5"
+zeroize = { version = "1.8", features = ["derive"] }
