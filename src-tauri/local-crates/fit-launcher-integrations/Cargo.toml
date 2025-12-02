@@ -15,4 +15,4 @@ specta = { workspace = true }
 tauri = { workspace = true }
 tauri-plugin-stronghold = { workspace = true }
 directories = { workspace = true }
-sha2 = "0.10"
+argon2 = "0.5"

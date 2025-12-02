@@ -4,27 +4,42 @@
 use super::store::CredentialStore;
 use super::types::{CredentialError, CredentialInfo, CredentialStatus};
 use crate::debrid::DebridProvider;
-use sha2::{Digest, Sha256};
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHasher, SaltString},
+};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_stronghold::stronghold::Stronghold;
 
 pub struct ManagedStronghold(pub Mutex<Option<Stronghold>>);
 
-fn derive_machine_password(app: &AppHandle, user_salt: &str) -> Vec<u8> {
-    let mut hasher = Sha256::new();
-    hasher.update(user_salt.as_bytes());
+fn derive_machine_password(app: &AppHandle, user_salt: &str) -> Result<Vec<u8>, CredentialError> {
+    let mut input_material = user_salt.as_bytes().to_vec();
 
     if let Ok(app_data) = app.path().app_data_dir() {
-        hasher.update(app_data.to_string_lossy().as_bytes());
+        input_material.extend_from_slice(app_data.to_string_lossy().as_bytes());
     }
     if let Ok(local_data) = app.path().app_local_data_dir() {
-        hasher.update(local_data.to_string_lossy().as_bytes());
+        input_material.extend_from_slice(local_data.to_string_lossy().as_bytes());
     }
     if let Ok(home) = app.path().home_dir() {
-        hasher.update(home.to_string_lossy().as_bytes());
+        input_material.extend_from_slice(home.to_string_lossy().as_bytes());
     }
-    hasher.finalize().to_vec()
+
+    let salt = SaltString::encode_b64(b"fit-launcher-secure-salt")
+        .map_err(|e| CredentialError::StrongholdError(e.to_string()))?;
+
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(&input_material, &salt)
+        .map_err(|e| CredentialError::StrongholdError(e.to_string()))?;
+
+    let hash_bytes = password_hash
+        .hash
+        .ok_or_else(|| CredentialError::StrongholdError("No hash output".to_string()))?;
+
+    Ok(hash_bytes.as_bytes().to_vec())
 }
 
 #[tauri::command]
@@ -34,7 +49,7 @@ pub fn credentials_init(
     state: State<'_, ManagedStronghold>,
     password: String,
 ) -> Result<(), CredentialError> {
-    let derived_password = derive_machine_password(&app, &password);
+    let derived_password = derive_machine_password(&app, &password)?;
     let stronghold = CredentialStore::create_stronghold(&app, &derived_password)?;
     let mut guard = state
         .0

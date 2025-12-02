@@ -2,7 +2,6 @@
 
 use super::types::{CredentialError, CredentialInfo, CredentialStatus};
 use crate::debrid::DebridProvider;
-use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_stronghold::stronghold::Stronghold;
@@ -37,10 +36,8 @@ impl CredentialStore {
     ) -> Result<Stronghold, CredentialError> {
         let vault_path = Self::vault_path(app)?;
 
-        // Hash the password to exactly 32 bytes (required by Stronghold)
-        let mut hasher = Sha256::new();
-        hasher.update(password);
-        let key: Vec<u8> = hasher.finalize().to_vec();
+        // Password is already a 32-byte key from Argon2
+        let key = password.to_vec();
 
         debug!("Initializing stronghold at {:?}", vault_path);
 
