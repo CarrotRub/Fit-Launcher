@@ -39,6 +39,7 @@ tauri-plugin-process = "2.2.1"
 tauri-plugin-store = "2.2.0"
 tauri-plugin-single-instance = "2.2.3"
 tauri-plugin-updater = { version = "2.9.0", features = ["rustls-tls"] }
+tauri-plugin-stronghold = "2.3.1"
 tauri-helper = { workspace = true }
 
 # Specta for bindings & TypeScript generation
@@ -100,6 +101,7 @@ fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 fit-launcher-download-manager = { path = "./local-crates/fit-launcher-download-manager" }
+fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
 
 # Workspace configuration
 [workspace]
@@ -109,6 +111,7 @@ members = [
     "local-crates/fit-launcher-aria2",
     "local-crates/fit-launcher-config",
     "local-crates/fit-launcher-ddl",
+    "local-crates/fit-launcher-integrations",
     "local-crates/fit-launcher-library",
     "local-crates/fit-launcher-scraping",
     "local-crates/fit-launcher-torrent",
@@ -187,6 +190,7 @@ fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation
 fit-launcher-torrent = { path = "./local-crates/fit-launcher-torrent" }
 fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
+fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
 
 hickory-resolver = { version = "0.25.2", features = ["https-ring"] }
 once_cell = "1.21.3"
@@ -204,6 +208,9 @@ fitgirl-decrypt = { git = "https://github.com/CarrotRub/fitgirl-decrypt", branch
     "specta",
     "reqwest",
 ] }
+
+# Stronghold for secure credential storage
+tauri-plugin-stronghold = "2.3.1"
 
 
 [features]

@@ -1,6 +1,7 @@
 import { createSignal, onMount, type JSX } from "solid-js";
 import DownloadConfigurationPage from "./Settings-Categories/Download/Download";
 import GlobalSettingsPage from "./Settings-Categories/Global/GlobalSettingsPage";
+import DebridSettingsPage from "./Settings-Categories/Debrid/DebridSettings";
 
 import {
   Settings,
@@ -17,7 +18,8 @@ import {
   Monitor,
   HardDriveDownload,
   Archive,
-  Info
+  Info,
+  Zap
 } from "lucide-solid";
 
 import type {
@@ -45,7 +47,12 @@ function SettingsContent(): JSX.Element {
   const { activeCategory, activeGroup } = useSettingsContext();
 
   const contentMap: Record<SettingsGroup, () => JSX.Element> = {
-    global: () => <GlobalSettingsPage settingsPart={activeCategory() as GlobalSettingsPart} />,
+    global: () => {
+      if (activeCategory() === "global-debrid") {
+        return <DebridSettingsPage />;
+      }
+      return <GlobalSettingsPage settingsPart={activeCategory() as GlobalSettingsPart} />;
+    },
     torrent: () => <DownloadConfigurationPage settingsPart={activeCategory() as DownloadSettingsPart} />
   };
 
@@ -113,6 +120,7 @@ function SettingsSidebar(): JSX.Element {
             <SidebarLink id="settings-general" label="General" icon={Settings} onClick={() => handleActivateElem("settings-general", "general")} />
             <SidebarLink id="settings-limits" label="Transfer Limits" icon={Gauge} onClick={() => handleActivateElem("settings-limits", "limits")} />
             <SidebarLink id="settings-network" label="Network" icon={Globe} onClick={() => handleActivateElem("settings-network", "network")} />
+            <SidebarLink id="settings-debrid" label="Debrid Services" icon={Zap} onClick={() => handleActivateElem("settings-debrid", "global-debrid")} />
             <SidebarLink id="settings-bittorrent" label="Bittorrent" icon={Magnet} onClick={() => handleActivateElem("settings-bittorrent", "bittorrent")} />
             <SidebarLink id="settings-rpc" label="Aria2 RPC" icon={Cpu} onClick={() => handleActivateElem("settings-rpc", "rpc")} />
           </ul>
