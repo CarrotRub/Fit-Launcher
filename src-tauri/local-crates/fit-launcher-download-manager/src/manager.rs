@@ -17,7 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 /// Debounce time for saving to disk
 const SAVE_DEBOUNCE_MS: u64 = 400;
@@ -634,7 +634,8 @@ impl DownloadManager {
 
             self.request_save_debounced().await;
         } else {
-            error!("Received update for unknown gid: {}", gid);
+            // This can happen for stale GIDs from completed/removed downloads
+            debug!("Received update for unknown gid: {}", gid);
         }
 
         Ok(())

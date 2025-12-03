@@ -22,21 +22,19 @@ impl InstallationJob {
     ) -> Result<(), crate::InstallationError> {
         #[cfg(target_os = "windows")]
         {
-            use tauri::Emitter;
             use tracing::info;
 
             use crate::{
-                emitter::setup::{JobProgress, progress_bar_setup_emit},
-                mighty::automation::win32::kill_completed_setup,
-                mighty_automation::windows_ui_automation::{
-                    automate_until_download, start_executable_components_args,
-                },
+                emitter::setup::progress_bar_setup_emit,
+                mighty::automation::win32::{kill_completed_setup, mute_process_audio},
+                mighty_automation::{automate_until_download, start_executable_components_args},
+                process_utils::find_child_pid_with_retry,
             };
 
             let setup_executable_path = self.path.join("setup.exe");
             info!("Setup path is: {}", setup_executable_path.to_string_lossy());
 
-            start_executable_components_args(setup_executable_path)?;
+            let root_pid = start_executable_components_args(setup_executable_path)?;
 
             let s = self.path.to_string_lossy();
             let lower = s.to_lowercase();
@@ -52,18 +50,36 @@ impl InstallationJob {
             automate_until_download(&game_output_folder).await;
             info!("Game Installation has been started");
 
-            progress_bar_setup_emit(app_handle.clone(), self.cancel_emitter.clone(), id).await;
-            info!("Job has completed!");
-            let _ = app_handle.emit(
-                "setup::progress::finished",
-                JobProgress {
-                    id,
-                    percentage: 100.0,
-                },
-            );
-            kill_completed_setup();
+            // Find the child process (setup.temp_setup) that owns the installer window
+            // We need to do this because the root setup.exe spawns a child that actually handles the UI
+            let installer_pid = find_child_pid_with_retry(root_pid, 10, 200);
+            if let Some(pid) = installer_pid {
+                info!("Found installer child process with PID: {}", pid);
+                mute_process_audio(pid);
+            } else {
+                info!("Could not find child process, monitoring all processes");
+            }
+            let success = progress_bar_setup_emit(
+                app_handle.clone(),
+                self.cancel_emitter.clone(),
+                id,
+                Some(game_output_folder.clone()),
+                installer_pid,
+                Some(root_pid),
+            )
+            .await;
 
-            Ok(())
+            if success {
+                info!("Job has completed!");
+                // Note: setup::progress::finished is already emitted by progress_bar_setup_emit
+                kill_completed_setup();
+                Ok(())
+            } else {
+                info!("Job was cancelled or timed out.");
+                Err(crate::InstallationError::IOError(
+                    "Installation cancelled or timed out".to_string(),
+                ))
+            }
         }
 
         #[cfg(not(target_os = "windows"))]
