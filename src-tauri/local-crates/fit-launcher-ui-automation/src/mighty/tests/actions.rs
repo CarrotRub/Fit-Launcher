@@ -4,11 +4,12 @@ use crate::mighty::{
     automation::{
         change_path_input, check_8gb_limit, click_8gb_limit, click_install_button,
         click_next_button, click_ok_button,
-        win32::{find_completed_setup, mute_setup, poll_loop_async, poll_progress_bar_percentage},
+        win32::{find_completed_setup, mute_setup},
     },
-    retry_until_async,
     tests::init_test_tracing,
 };
+
+use crate::winevents::win_events::{monitor_install_events, stop_monitor, InstallEvent, InstallPhase};
 
 #[test]
 pub fn test_click_ok_button() {
@@ -73,27 +74,24 @@ pub fn test_click_install_button() {
 }
 
 #[test]
-pub fn test_poll_progress_bar() {
-    init_test_tracing();
-    println!("===== Test: Poll Progress Bar Percentage Once =====");
-    poll_progress_bar_percentage();
-    println!("===== Done =====");
-}
-
-#[tokio::test]
-pub async fn test_poll_progress_bar_loop() {
+pub fn test_winevents_monitor() {
     use std::time::Duration;
-
+    
     init_test_tracing();
-    println!("===== Test: Poll Progress Bar for 5 seconds =====");
-
-    let result = tokio::time::timeout(Duration::from_secs(5), poll_loop_async()).await;
-
-    match result {
-        Ok(_) => println!("Poll loop finished normally"),
-        Err(_) => println!("Poll loop timed out after 5 seconds"),
+    println!("===== Test: WinEvents Monitor (5 seconds) =====");
+    
+    let rx = monitor_install_events(0).expect("Failed to start monitor");
+    
+    let start = std::time::Instant::now();
+    while start.elapsed() < Duration::from_secs(5) {
+        match rx.recv_timeout(Duration::from_millis(100)) {
+            Ok(event) => println!("Event: {:?}", event),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
     }
-
+    
+    stop_monitor();
     println!("===== Done =====");
 }
 
@@ -105,50 +103,62 @@ pub fn test_find_completed_window() {
     println!("===== Done =====");
 }
 
-#[tokio::test]
-pub async fn test_poll_and_find() {
-    let mut latest: f32 = 0.0;
-    let mut interval_ms = 150;
-    let mut consecutive_none = 0;
-    const MAX_NONE: u32 = 5;
-    const MAX_INTERVAL_MS: u64 = 500;
-
+#[test]
+pub fn test_winevents_until_complete() {
+    use std::time::Duration;
+    
+    init_test_tracing();
+    println!("===== Test: WinEvents Until Complete (60s timeout) =====");
+    
+    let rx = monitor_install_events(0).expect("Failed to start monitor");
+    let mut current_phase: Option<InstallPhase> = None;
+    let mut latest_progress: f32 = 0.0;
+    
+    let start = std::time::Instant::now();
     loop {
-        tokio::select! {
-
-            res = retry_until_async(400, interval_ms, || async {
-                poll_progress_bar_percentage()
-            }) => {
-                match res {
-                    Some(p) => {
-                        latest = p;
-                        consecutive_none = 0;
-                        interval_ms = (interval_ms * 2).min(MAX_INTERVAL_MS);
-                    }
-                    None => {
-                        consecutive_none += 1;
-                        eprintln!("poll_progress_bar_percentage returned None {} times in a row, keeping last value {}", consecutive_none, latest);
-                        if consecutive_none >= MAX_NONE {
-                            eprintln!("Too many consecutive None values, stopping progress loop, will try to find completed setup");
-
-                            let completed = find_completed_setup();
-                            if completed {
-                                println!("Completed !!!");
-                            } else {
-                                eprintln!("nAUUUUUUUR");
-                            }
+        if start.elapsed() > Duration::from_secs(60) {
+            println!("Timeout after 60 seconds");
+            break;
+        }
+        
+        match rx.recv_timeout(Duration::from_millis(500)) {
+            Ok(event) => match event {
+                InstallEvent::Phase { phase } => {
+                    if current_phase.as_ref() != Some(&phase) {
+                        println!("[PHASE] {:?}", phase);
+                        current_phase = Some(phase.clone());
+                        
+                        if matches!(phase, InstallPhase::Completed) {
+                            println!("Installation completed!");
                             break;
                         }
                     }
                 }
-
-                println!("Progress: {}%", latest);
-
-                if latest >= 100.0 {
-                    println!("100 reached");
+                InstallEvent::Progress { percent } => {
+                    latest_progress = percent;
+                    println!("[PROGRESS] {:.1}%", percent);
+                }
+                InstallEvent::File { path } => {
+                    println!("[FILE] {}", path);
+                }
+                InstallEvent::Closed => {
+                    println!("[CLOSED]");
+                    break;
+                }
+                _ => {}
+            },
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                // Check for completed setup window as fallback
+                if find_completed_setup() {
+                    println!("Found completed setup window");
                     break;
                 }
             }
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
         }
     }
+    
+    stop_monitor();
+    println!("Final progress: {:.1}%", latest_progress);
+    println!("===== Done =====");
 }

@@ -1,6 +1,8 @@
 import { Component, createMemo, createSignal, For, Show, onMount, onCleanup, Accessor, createEffect } from "solid-js";
-import { HardDrive, ArrowDown, ArrowUp, ChevronUp, ChevronDown, Folder, Pause, Play, Settings, Trash2 } from "lucide-solid";
+import { HardDrive, ArrowDown, ArrowUp, ChevronUp, ChevronDown, Folder, Pause, Play, Settings, Trash2, RefreshCw, AlertTriangle } from "lucide-solid";
 import { InstallationApi } from "../../api/installation/api";
+import { installerService } from "../../api/installer/api";
+import { listen } from "@tauri-apps/api/event";
 
 import { formatBytes, formatSpeed, toNumber } from "../../helpers/format";
 import Button from "../../components/UI/Button/Button";
@@ -16,11 +18,19 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
     const [filesExpanded, setFilesExpanded] = createSignal(false);
     const [jobStatus, setJobStatus] = createSignal<AggregatedStatus | null>(null);
     const [fileStore, setFileStore] = createStore<Record<string, File>>({});
+    const [installState, setInstallState] = createSignal<"idle" | "installing" | "failed" | "success">("idle");
     const { notify } = useToast();
 
     onMount(() => {
         const saved = localStorage.getItem(`job-${props.item().id}`);
         if (saved) setJobStatus(JSON.parse(saved));
+
+        // Check initial state from installer service
+        if (installerService.isInstallFailed(props.item().id)) {
+            setInstallState("failed");
+        } else if (installerService.isInstalling(props.item().id)) {
+            setInstallState("installing");
+        }
 
         const unsubUpdate = DM.onUpdated((job) => {
             if (job.id === props.item().id) {
@@ -44,10 +54,30 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
             }
         });
 
+        // Listen for installer state changes
+        let unsubInstaller: (() => void) | undefined;
+        listen<{ jobId: string; state: string }>("installer::state::changed", (event) => {
+            if (event.payload.jobId === props.item().id) {
+                const state = event.payload.state;
+                if (state === "installing") {
+                    setInstallState("installing");
+                } else if (state === "failed") {
+                    setInstallState("failed");
+                } else if (state === "success") {
+                    setInstallState("success");
+                } else if (state === "cleared") {
+                    setInstallState("idle");
+                }
+            }
+        }).then((unsub) => {
+            unsubInstaller = unsub;
+        });
+
         onCleanup(() => {
             unsubUpdate();
             unsubComplete();
             unsubRemove();
+            unsubInstaller?.();
         });
     });
 
@@ -60,10 +90,20 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
         error: { label: "RESUME", icon: <Play class="w-5 h-5" /> },
         removed: { label: "RESUME", icon: <Play class="w-5 h-5" /> },
         installing: { label: "INSTALLING", icon: <Settings class="w-5 h-5 animate-spin" /> },
+        install_failed: { label: "RETRY", icon: <RefreshCw class="w-5 h-5" /> },
     };
     const currentAction = createMemo(() => {
         const state = props.item().state;
         const status = jobStatus();
+        const instState = installState();
+
+        // Check installer state first
+        if (instState === "installing") {
+            return actionMap.installing;
+        }
+        if (instState === "failed") {
+            return actionMap.install_failed;
+        }
 
         if (state === "active" && status?.upload_speed && status.upload_speed > 0 && status.completed_length == status.total_length) {
             return { label: "WAITING FOR PAUSE", icon: <Pause class="w-5 h-5 animate-pulse" /> };
@@ -80,8 +120,24 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
         const state = props.item().state;
         const id = props.item().id;
         const status = jobStatus();
+        const instState = installState();
 
         try {
+            // Handle installer states first
+            if (instState === "installing") {
+                notify(
+                    "Installation is in progress. Please wait.",
+                    { type: "info", role: "alert", duration: 3000 }
+                );
+                return;
+            }
+            
+            if (instState === "failed") {
+                // Retry installation
+                await installerService.retryInstall(props.item());
+                return;
+            }
+
             switch (state) {
                 case "active":
                     await DM.pause(id);
@@ -235,17 +291,32 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
                         <div class="flex-1 min-w-0 w-full">
                             <div class="flex justify-between text-xs text-muted/80 mb-1.5">
                                 <span class="capitalize">
-                                    {props.item().state === "complete"
-                                        ? "Completed"
-                                        : props.item()
-                                            ? "Downloading..."
-                                            : "Waiting..."}
+                                    {installState() === "failed" ? (
+                                        <span class="flex items-center gap-1 text-red-400 font-medium">
+                                            <AlertTriangle class="w-3 h-3" />
+                                            Failed To Install
+                                        </span>
+                                    ) : installState() === "installing" ? (
+                                        <span class="text-accent">Installing...</span>
+                                    ) : props.item().state === "complete" ? (
+                                        "Completed"
+                                    ) : props.item() ? (
+                                        "Downloading..."
+                                    ) : (
+                                        "Waiting..."
+                                    )}
                                 </span>
                                 <span class="font-medium text-text">{props.item().source === "Ddl" ? progressPercentage() : jobStatus()?.progress_percentage.toFixed(1)}%</span>
                             </div>
                             <div class="w-full h-2 bg-secondary-20/30 rounded-full overflow-hidden">
                                 <div
-                                    class="h-full bg-gradient-to-r from-accent to-primary/80 transition-all duration-500 ease-out"
+                                    class={`h-full transition-all duration-500 ease-out ${
+                                        installState() === "failed" 
+                                            ? "bg-gradient-to-r from-red-500 to-red-400" 
+                                            : installState() === "installing"
+                                            ? "bg-gradient-to-r from-accent to-primary/80 animate-pulse"
+                                            : "bg-gradient-to-r from-accent to-primary/80"
+                                    }`}
                                     style={{ width: `${props.item().source === "Ddl" ? progressPercentage() : jobStatus()?.progress_percentage.toFixed(1)}%` }}
                                 />
                             </div>
@@ -253,7 +324,13 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
 
                         {/* Buttons */}
                         <div class="flex items-center gap-2 ml-auto">
-                            <Button variant="bordered" onClick={toggleAction} label={currentAction().label} icon={currentAction().icon} />
+                            <Button 
+                                variant="bordered" 
+                                onClick={toggleAction} 
+                                label={currentAction().label} 
+                                icon={currentAction().icon}
+                                class={installState() === "failed" ? "!border-red-400/50 !text-red-400 hover:!bg-red-500/10" : ""}
+                            />
 
 
                             <Button
