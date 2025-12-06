@@ -89,7 +89,13 @@ pub async fn dm_run_automate_setup_install(
     );
     let id = state.create_job(job.game, job.job_path).await;
 
-    state.start_job(id, app_handle.clone()).await;
+    // Spawn the installation as a background task
+    // events.rs will emit setup::hook::started and setup::hook::stopped directly
+    let state_clone = state.inner().clone();
+    let app_handle_clone = app_handle.clone();
+    tokio::spawn(async move {
+        state_clone.start_job(id, app_handle_clone).await;
+    });
 
     Ok(id)
 }

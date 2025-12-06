@@ -1,5 +1,4 @@
-use tauri::Emitter;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use windows::Win32::Foundation::CloseHandle;
 use windows::Win32::Media::Audio::{
     IAudioSessionControl2, IAudioSessionManager2, IMMDeviceEnumerator, ISimpleAudioVolume,
@@ -9,7 +8,7 @@ use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
 };
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
-use windows::Win32::UI::WindowsAndMessaging::{GetWindowTextW, GetWindowThreadProcessId};
+use windows::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId;
 use windows::Win32::{
     Foundation::{FALSE, HWND, LPARAM, TRUE, WPARAM},
     UI::WindowsAndMessaging::{BM_CLICK, EnumChildWindows, PostMessageW, SendMessageW, WM_SETTEXT},
@@ -17,7 +16,6 @@ use windows::Win32::{
 use windows::core::Interface;
 use windows_result::BOOL;
 
-use crate::mighty::windows::os_windows::find_app_with_classname_and_title;
 use crate::mighty::{
     retry_until,
     windows::os_windows::{find_child_window_with_text, get_class_name, get_setup_process_title},
@@ -38,18 +36,14 @@ fn click_button(label: &str, window: &str) -> bool {
     false
 }
 
-pub fn mute_setup() {
-    let setup_hwnd = get_setup_process_title("Setup -");
-
-    let mut pid = 0u32;
-
-    unsafe {
-        GetWindowThreadProcessId(setup_hwnd, Some(&mut pid));
+/// Mutes audio for a specific process ID
+pub fn mute_process_audio(pid: u32) -> bool {
+    if pid == 0 {
+        debug!("Cannot mute audio: PID is 0");
+        return false;
     }
 
-    info!("Process ID is: {pid}");
     unsafe {
-        // init COM
         let com = CoInitializeEx(Some(std::ptr::null_mut()), COINIT_APARTMENTTHREADED);
 
         if com.is_ok() {
@@ -83,91 +77,44 @@ pub fn mute_setup() {
                     .expect("Error casting the IAudioSessionControl into an IAudioSessionControl2");
 
                 if control.GetProcessId().expect("Error getting process ID") == pid {
-                    info!("Found correct process id: {pid}");
+                    info!("Found audio session for PID {pid}, muting");
                     let volume: ISimpleAudioVolume = session.cast().expect(
                         "Error casting the IAudioSessionControl into an ISimpleAudioVolume",
                     );
                     volume
                         .SetMute(true, std::ptr::null())
                         .expect("Error muting volume of app");
-                    break;
+                    return true;
                 }
-                error!("No process ID related to the Setup was found");
             }
+
+            debug!("No audio session found for PID {pid} (process may not be playing audio yet)");
         } else {
             error!("Error initializing COM devices {:#?}", com.0)
         }
     }
+    false
 }
 
-pub fn poll_progress_bar_percentage() -> Option<f32> {
-    if let Some(hwnd) = find_app_with_classname_and_title("TApplication", "%") {
-        if hwnd.0.is_null() {
-            return None;
-        }
-
-        let mut buf = [0u16; 256];
-
-        unsafe {
-            let len = GetWindowTextW(hwnd, &mut buf);
-
-            if len <= 0 {
-                return None;
-            }
-
-            let title = String::from_utf16_lossy(&buf[..len as usize]);
-
-            match parse_percentage(&title) {
-                Some(p) => {
-                    debug!("Progress: {}%", p);
-                    Some(p)
-                }
-                None => {
-                    warn!("Failed to parse percentage from title: {}", title);
-                    None
-                }
-            }
-        }
-    } else {
-        None
+/// Legacy function - tries to find setup window and mute it
+/// Prefer using mute_process_audio with PID from winevents when available
+pub fn mute_setup() {
+    let setup_hwnd = get_setup_process_title("Setup -");
+    let mut pid = 0u32;
+    unsafe {
+        GetWindowThreadProcessId(setup_hwnd, Some(&mut pid));
     }
+    mute_process_audio(pid);
 }
 
-fn parse_percentage(text: &str) -> Option<f32> {
-    let percent_pos = text.find('%')?;
-
-    let before = text[..percent_pos].trim();
-
-    let number_start = before
-        .rfind(|c: char| !c.is_ascii_digit() && c != '.')
-        .map(|i| i + 1)
-        .unwrap_or(0);
-
-    let number_str = &before[number_start..];
-
-    let float_val: f32 = number_str.parse().ok()?;
-    Some(float_val)
-}
-
-pub async fn poll_loop_async() {
-    loop {
-        if let Some(progress) = poll_progress_bar_percentage() {
-            debug!("Progress: {}%", progress);
-
-            if progress >= 100.0 {
-                break;
-            }
-        }
-
-        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-    }
-}
-
+/// Checks if the setup window shows successful completion status.
+/// Looks for "Setup has finished installing" text which indicates success.
+/// Used as a fallback when no events are received for an extended period.
 pub fn find_completed_setup() -> bool {
     if let Some(hwnd) = retry_until(5000, 50, || {
-        find_child_window_with_text("Completing the", "Setup -")
+        find_child_window_with_text("Setup has finished installing", "Setup -")
     }) {
-        info!("Found completed setup windows with HWND: {hwnd:?}");
+        info!("Found completed setup window with HWND: {hwnd:?}");
         true
     } else {
         false
@@ -176,9 +123,9 @@ pub fn find_completed_setup() -> bool {
 
 pub fn kill_completed_setup() -> bool {
     if let Some(hwnd) = retry_until(5000, 50, || {
-        find_child_window_with_text("Completing the", "Setup -")
+        find_child_window_with_text("Setup has finished installing", "Setup -")
     }) {
-        info!("Found completed setup windows with HWND: {hwnd:?}");
+        info!("Found completed setup window with HWND: {hwnd:?}");
         let mut pid = 0u32;
 
         unsafe {
@@ -189,19 +136,40 @@ pub fn kill_completed_setup() -> bool {
             return false;
         }
 
-        unsafe {
-            let handle = OpenProcess(PROCESS_TERMINATE, false, pid).expect("Error opening process");
-            if !handle.is_invalid() {
-                let result = TerminateProcess(handle, 1);
-                CloseHandle(handle).expect("Error closing the handle");
-                return result.is_ok();
-            }
-        }
-
-        false
+        kill_process_by_pid(pid)
     } else {
         false
     }
+}
+
+/// Kills a process by its PID using TerminateProcess
+pub fn kill_process_by_pid(pid: u32) -> bool {
+    if pid == 0 {
+        debug!("Cannot kill process: PID is 0");
+        return false;
+    }
+
+    unsafe {
+        match OpenProcess(PROCESS_TERMINATE, false, pid) {
+            Ok(handle) => {
+                if !handle.is_invalid() {
+                    let result = TerminateProcess(handle, 1);
+                    let _ = CloseHandle(handle);
+                    if result.is_ok() {
+                        info!("Successfully terminated process with PID: {}", pid);
+                        return true;
+                    } else {
+                        error!("Failed to terminate process with PID: {}", pid);
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Failed to open process with PID {}: {:?}", pid, e);
+            }
+        }
+    }
+
+    false
 }
 
 pub fn click_ok_button_impl() {

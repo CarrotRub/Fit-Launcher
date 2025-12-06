@@ -6,7 +6,7 @@ use std::{
 use directories::BaseDirs;
 use fit_launcher_scraping::structs::Game;
 use specta::specta;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::{
     core_commands::{
@@ -15,6 +15,35 @@ use crate::{
     legacy::{LegacyDownloadedGame, convert_legacy_downloads},
     structs::{DownloadedGame, ExecutableInfo, GameCollection},
 };
+
+/// Common executable names to exclude (installers, uninstallers, tools, etc.)
+const EXCLUDED_EXE_NAMES: &[&str] = &[
+    "unins",
+    "uninst",
+    "setup",
+    "install",
+    "update",
+    "patch",
+    "config",
+    "launcher",
+    "crash",
+    "report",
+    "vc_redist",
+    "dxsetup",
+    "dotnet",
+    "redis",
+    "7z",
+    "winrar",
+    "rar",
+    "zip",
+    "directx",
+    "physx",
+    "vcredist",
+    "oalinst",
+    "dxwebsetup",
+    "unitycrash",
+    "ue4prereq",
+];
 
 #[tauri::command]
 #[specta]
@@ -90,7 +119,7 @@ pub async fn get_collection_list() -> Vec<GameCollection> {
                     Err(err) => {
                         error!("Failed to parse {}: {:?}", file_name, err);
                         _ = std::fs::write(&path, "[]");
-                    },
+                    }
                 },
                 Err(err) => {
                     error!("Failed to read file {}: {:?}", file_name, err);
@@ -146,9 +175,11 @@ pub async fn remove_game_to_download(game_title: String) -> Result<(), String> {
     let path = get_games_to_download_path();
 
     let file_content = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let mut games: Vec<Game> = serde_json::from_str(&file_content).inspect_err(|_| {
-        _ = std::fs::write(&path, "[]");
-    }).unwrap_or_default();
+    let mut games: Vec<Game> = serde_json::from_str(&file_content)
+        .inspect_err(|_| {
+            _ = std::fs::write(&path, "[]");
+        })
+        .unwrap_or_default();
     let original_len = games.len();
     games.retain(|game| game.title != game_title);
 
@@ -297,4 +328,77 @@ pub async fn create_collection(
         .map_err(|e| format!("Failed to write collection file: {e}"))?;
 
     Ok(())
+}
+
+/// Finds the most likely game executable in a folder.
+/// Excludes common non-game executables like installers, uninstallers, and tools.
+/// Returns the path to the best candidate executable, or None if not found.
+#[tauri::command]
+#[specta]
+pub fn find_game_executable(folder_path: String) -> Option<String> {
+    let folder = PathBuf::from(&folder_path);
+    if !folder.exists() || !folder.is_dir() {
+        return None;
+    }
+
+    let mut candidates: Vec<(PathBuf, u64)> = Vec::new();
+
+    // Recursively find all .exe files (max depth 2)
+    fn collect_exes(dir: &PathBuf, candidates: &mut Vec<(PathBuf, u64)>, depth: u32) {
+        if depth > 2 {
+            return;
+        }
+
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                collect_exes(&path, candidates, depth + 1);
+            } else if path.extension().map(|e| e == "exe").unwrap_or(false) {
+                if let Ok(meta) = fs::metadata(&path) {
+                    candidates.push((path, meta.len()));
+                }
+            }
+        }
+    }
+
+    collect_exes(&folder, &mut candidates, 0);
+
+    // Filter out excluded executables
+    candidates.retain(|(path, _)| {
+        let name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        !EXCLUDED_EXE_NAMES
+            .iter()
+            .any(|excluded| name.contains(excluded))
+    });
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // Sort by size (larger files are more likely to be the main game exe)
+    candidates.sort_by(|a, b| b.1.cmp(&a.1));
+
+    // Return the largest exe that's not suspiciously small (< 1MB might be a launcher stub)
+    for (path, size) in &candidates {
+        if *size > 1_000_000 {
+            // > 1MB
+            info!("Found game executable: {:?} ({} bytes)", path, size);
+            return path.to_str().map(|s| s.to_string());
+        }
+    }
+
+    // If all are small, just return the largest one
+    candidates
+        .first()
+        .and_then(|(path, _)| path.to_str().map(|s| s.to_string()))
 }
