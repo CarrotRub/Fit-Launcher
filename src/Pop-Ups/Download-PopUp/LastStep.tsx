@@ -1,49 +1,138 @@
-import { useNavigate } from "@solidjs/router";
 import { message } from "@tauri-apps/plugin-dialog";
-import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X } from "lucide-solid";
-import { createSignal, For, onMount, Show, Component, Accessor } from "solid-js";
+import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X, Zap, CheckCircle, XCircle, Loader2 } from "lucide-solid";
+import { createSignal, For, onMount, Show, Component } from "solid-js";
 import { render } from "solid-js/web";
-import { DirectLink, DownloadedGame, FileInfo } from "../../bindings";
+import { FileInfo, DebridProvider, DebridFile, DebridProviderInfo } from "../../bindings";
 import { Modal } from "../Modal/Modal";
 import { DownloadPopupProps } from "../../types/popup";
 import { DownloadSettingsApi } from "../../api/settings/api";
-
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
 import { formatBytes, toTitleCaseExceptions } from "../../helpers/format";
 import LoadingPage from "../../pages/LoadingPage-01/LoadingPage";
 import { DirectLinkWrapper } from "../../types/download";
-import { classifyDdlFiles, classifyTorrentFiles } from "../../helpers/classify";
-import { useToast } from "solid-notifications";
+import { classifyDdlFiles, classifyTorrentFiles, classifyDebridFiles, type LabeledDebridFile } from "../../helpers/classify";
 import { DM } from "../../api/manager/api";
+import * as Debrid from "../../api/debrid/api";
 
-
-
-
-
-const TorrentFileItem: Component<{ originalName: string; displayName: string; index: number; selected: Set<number>; onToggle: (i: number) => void; files: FileInfo[] }> = (props) => {
-    const file = props.files.find((f) => f.file_name === props.originalName);
-    const size = file ? formatBytes(file.length) : "-";
-    return (
-        <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.originalName}>
-            <span class="text-sm text-text truncate max-w-[55%]" title={props.originalName}>{props.displayName}</span>
-            <div class="flex items-center gap-3">
-                <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">{size}</div>
-                <Checkbox checked={props.selected.has(props.index)} action={() => props.onToggle(props.index)} />
-            </div>
-        </label>
-    );
+// Unified file item - works for torrent, DDL, and debrid files
+type FileItemProps = {
+    name: string;
+    displayName: string;
+    size: number;
+    id: string | number;
+    selected: boolean;
+    onToggle: () => void;
 };
 
-const DDLFileItem: Component<{ file: DirectLinkWrapper; selected: Set<string>; onToggle: (url: string) => void }> = (props) => {
-    const size = formatBytes(props.file.size);
-    return (
-        <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.file.filename || ""}>
-            <span class="text-sm text-text truncate max-w-[55%]" title={props.file.filename || ""}>{props.file.displayName || props.file.filename}</span>
-            <div class="flex items-center gap-3">
-                <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">{size}</div>
-                <Checkbox checked={props.selected.has(props.file.url)} action={() => props.onToggle(props.file.url)} />
+const FileItem: Component<FileItemProps> = (props) => (
+    <label class="flex items-center justify-between gap-3 cursor-pointer w-full py-3 px-4 transition-all hover:bg-secondary-20/30 active:bg-secondary-20/50" title={props.name}>
+        <span class="text-sm text-text truncate max-w-[55%]" title={props.name}>{props.displayName}</span>
+        <div class="flex items-center gap-3">
+            <div class="min-w-[70px] h-full text-xs text-muted bg-background-20 border border-secondary-20 rounded px-2 py-1 flex items-center justify-center">
+                {formatBytes(props.size)}
             </div>
-        </label>
+            <Checkbox checked={props.selected} action={props.onToggle} />
+        </div>
+    </label>
+);
+
+// Caching progress UI for debrid providers
+type CachingProgressProps = {
+    name: string;
+    progress: number;
+    speed: number | null;
+    seeders: number | null;
+    onRefresh: () => void;
+    onCancel: () => void;
+};
+
+const CachingProgress: Component<CachingProgressProps> = (props) => (
+    <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm p-6">
+        <div class="flex flex-col items-center gap-4">
+            <Loader2 class="w-10 h-10 text-blue-500 animate-spin" />
+            <div class="text-center">
+                <h3 class="text-lg font-semibold text-text">Caching on Real-Debrid</h3>
+                <p class="text-sm text-muted mt-1">This torrent is being cached. You can wait or cancel.</p>
+            </div>
+            <div class="w-full max-w-md">
+                <div class="flex justify-between text-xs text-muted mb-1">
+                    <span>{props.name}</span>
+                    <span>{props.progress.toFixed(1)}%</span>
+                </div>
+                <div class="w-full bg-background-20 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${props.progress}%` }} />
+                </div>
+                <div class="flex justify-between text-xs text-muted mt-2">
+                    <span>{props.speed ? `${formatBytes(props.speed)}/s` : "Waiting..."}</span>
+                    <span>{props.seeders !== null ? `${props.seeders} seeders` : ""}</span>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-2">
+                <button onClick={props.onRefresh} class="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">Refresh Status</button>
+                <button onClick={props.onCancel} class="px-4 py-2 text-sm bg-background-20 text-text rounded-lg hover:bg-background-10 transition-colors border border-secondary-20">Cancel</button>
+            </div>
+            <p class="text-xs text-muted text-center mt-2">💡 Caching helps other users download faster in the future</p>
+        </div>
+    </div>
+);
+
+// Provider color utility
+const getProviderColorClasses = (color: string) => {
+    const map: Record<string, { border: string; hover: string; text: string; bg: string }> = {
+        emerald: { border: "border-emerald-500/50", hover: "hover:border-emerald-500", text: "text-emerald-500", bg: "group-hover:bg-emerald-500/5" },
+        blue: { border: "border-blue-500/50", hover: "hover:border-blue-500", text: "text-blue-500", bg: "group-hover:bg-blue-500/5" },
+        purple: { border: "border-purple-500/50", hover: "hover:border-purple-500", text: "text-purple-500", bg: "group-hover:bg-purple-500/5" },
+        green: { border: "border-green-500/50", hover: "hover:border-green-500", text: "text-green-500", bg: "group-hover:bg-green-500/5" },
+    };
+    return map[color] || map.green;
+};
+
+// Provider selection card
+type ProviderCardProps = {
+    name: string;
+    subtitle: string;
+    icon: string | Component;
+    color?: string;
+    disabled?: boolean;
+    loading?: boolean;
+    cached?: boolean | null;
+    onClick: () => void;
+};
+
+const ProviderCard: Component<ProviderCardProps> = (props) => {
+    const colors = () => props.color ? getProviderColorClasses(props.color) : null;
+    const isCached = () => props.cached === true;
+    const isLoading = () => props.cached === null && props.loading;
+    const isDisabled = () => props.disabled || (props.cached === false);
+
+    return (
+        <button
+            onClick={props.onClick}
+            disabled={isDisabled() || isLoading()}
+            class={`group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border transition-all duration-200 ${isCached() && colors() ? `${colors()!.border} ${colors()!.hover}` :
+                isLoading() ? "border-secondary-20 cursor-wait" :
+                    "border-secondary-20" + (isDisabled() ? " opacity-50 cursor-not-allowed" : "")
+                }`}
+        >
+            <div class={`relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border transition-colors ${isCached() && colors() ? colors()!.border : "border-secondary-20"
+                } ${isDisabled() ? "opacity-50" : ""}`}>
+                <Show when={isLoading()} fallback={
+                    typeof props.icon === "string"
+                        ? <img src={props.icon} alt={props.name} class="size-12 object-contain rounded-md" />
+                        : <Zap class={`size-12 ${isCached() && colors() ? colors()!.text : "text-muted"}`} />
+                }>
+                    <Loader2 class="size-12 text-accent animate-spin" />
+                </Show>
+            </div>
+            <span class={`font-medium transition-colors ${isCached() ? "text-text" : "text-muted"}`}>{props.name}</span>
+            <span class={`text-xs mt-1 ${isCached() && colors() ? colors()!.text : "text-muted"}`}>
+                <Show when={isLoading()}><span class="inline-flex items-center gap-1"><Loader2 class="w-3 h-3 animate-spin" /> Checking cache...</span></Show>
+                <Show when={isCached()}><span class="inline-flex items-center gap-1"><CheckCircle class="w-3 h-3" /> Instant Download</span></Show>
+                <Show when={props.cached === false}><span class="inline-flex items-center gap-1"><XCircle class="w-3 h-3" /> Not Cached</span></Show>
+                <Show when={props.cached === undefined}>{props.subtitle}</Show>
+            </span>
+            {isCached() && colors() && <div class={`absolute inset-0 rounded-xl bg-transparent transition-colors duration-300 ${colors()!.bg}`} />}
+        </button>
     );
 };
 
@@ -78,12 +167,32 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         const [ddlSelectedUrls, setDdlSelectedUrls] = createSignal(new Set<string>());
         const [showDdlAdvanced, setShowDdlAdvanced] = createSignal(false);
 
+        // Debrid state
+        const [debridProvidersLoading, setDebridProvidersLoading] = createSignal(true); // loading state for debrid providers
+        const [availableDebridProviders, setAvailableDebridProviders] = createSignal<DebridProviderInfo[]>([]); // providers with credentials (includes color, name, etc.)
+        const [debridCacheStatus, setDebridCacheStatus] = createSignal<Map<DebridProvider, boolean | null>>(new Map()); // provider -> isCached (null = still checking)
+        const [selectedDebridProvider, setSelectedDebridProvider] = createSignal<DebridProvider | null>(null);
+        const [debridTorrentId, setDebridTorrentId] = createSignal<string | null>(null);
+        const [debridFiles, setDebridFiles] = createSignal<DebridFile[]>([]);
+        const [selectedDebridFiles, setSelectedDebridFiles] = createSignal<Set<string>>(new Set()); // file.id set
+        const [showDebridAdvanced, setShowDebridAdvanced] = createSignal(false);
+        // Caching state for Real-Debrid (when torrent is not instantly available)
+        const [debridCachingStatus, setDebridCachingStatus] = createSignal<{
+            isCaching: boolean;
+            progress: number;
+            speed: number | null;
+            seeders: number | null;
+            name: string;
+        } | null>(null);
+
         onMount(async () => {
             try {
                 if (props.downloadType === "bittorrent") {
                     await initTorrent();
                 } else {
                     await initDDL();
+                    // Also check if any debrid providers have this cached
+                    await checkDebridProviders();
                 }
             } catch (e) {
                 console.error("init error", e);
@@ -145,6 +254,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         }
 
         async function handleStartDownload() {
+            // If debrid provider is selected, use the debrid download handler
+            if (selectedDebridProvider()) {
+                return handleDebridDownload();
+            }
+
             setLoading(true);
             setError(null);
 
@@ -220,7 +334,295 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             }
         }
 
+        // Check which debrid providers have credentials and cache status
+        async function checkDebridProviders() {
+            setDebridProvidersLoading(true);
+
+            const magnet = props.downloadedGame.magnetlink;
+            const hash = magnet ? Debrid.extractHashFromMagnet(magnet) : null;
+
+            // Get list of available providers from backend
+            const providerInfoList = await Debrid.listProviders();
+
+            // First pass: find providers with credentials and show them immediately (with loading state)
+            const providersWithCreds: DebridProviderInfo[] = [];
+            const initialCacheMap = new Map<DebridProvider, boolean | null>();
+
+            for (const providerInfo of providerInfoList) {
+                try {
+                    const hasCredResult = await Debrid.hasCredential(providerInfo.id);
+                    if (hasCredResult.status === "ok" && hasCredResult.data) {
+                        providersWithCreds.push(providerInfo);
+                        // If provider doesn't support cache check, mark as false immediately (no spinner)
+                        // Otherwise mark as null (still checking)
+                        initialCacheMap.set(providerInfo.id, providerInfo.supports_cache_check ? null : false);
+                    }
+                } catch (e) {
+                    console.error(`Failed to check credentials for ${providerInfo.id}:`, e);
+                }
+            }
+
+            // Show providers immediately with loading state
+            setAvailableDebridProviders(providersWithCreds);
+            setDebridCacheStatus(new Map(initialCacheMap));
+            setDebridProvidersLoading(false);
+
+            // Second pass: check cache status for providers that support it (if we have a hash)
+            if (hash) {
+                for (const providerInfo of providersWithCreds) {
+                    // Skip providers that don't support cache checking
+                    if (!providerInfo.supports_cache_check) continue;
+
+                    try {
+                        const cacheResult = await Debrid.checkCache(providerInfo.id, hash);
+                        if (cacheResult.status === "ok") {
+                            setDebridCacheStatus(prev => {
+                                const next = new Map(prev);
+                                next.set(providerInfo.id, cacheResult.data.is_cached);
+                                return next;
+                            });
+                        } else {
+                            // Failed to check - mark as not cached
+                            setDebridCacheStatus(prev => {
+                                const next = new Map(prev);
+                                next.set(providerInfo.id, false);
+                                return next;
+                            });
+                        }
+                    } catch (e) {
+                        console.error(`Failed to check cache for ${providerInfo.id}:`, e);
+                        setDebridCacheStatus(prev => {
+                            const next = new Map(prev);
+                            next.set(providerInfo.id, false);
+                            return next;
+                        });
+                    }
+                }
+            } else {
+                // No magnet/hash - mark all as not cached (for those that support cache check)
+                for (const providerInfo of providersWithCreds) {
+                    if (!providerInfo.supports_cache_check) continue;
+                    setDebridCacheStatus(prev => {
+                        const next = new Map(prev);
+                        next.set(providerInfo.id, false);
+                        return next;
+                    });
+                }
+            }
+        }
+
+        // Load files from a debrid provider
+        // For providers without cache check (like Real-Debrid), we add the torrent first
+        // then poll to see if it becomes ready within 3 seconds
+        async function loadDebridProvider(provider: DebridProvider) {
+            setLoading(true);
+            setError(null);
+            setSelectedDebridProvider(provider);
+            setSelectedHoster(null); // Clear DDL hoster selection
+            setShowDebridAdvanced(false);
+            setDebridCachingStatus(null);
+
+            try {
+                const magnet = props.downloadedGame.magnetlink;
+
+                // Add torrent to provider (returns torrent ID)
+                const addResult = await Debrid.addTorrent(provider, magnet);
+                if (addResult.status !== "ok") {
+                    throw new Error(`Failed to add torrent: ${addResult.error}`);
+                }
+
+                const torrentId = addResult.data;
+                setDebridTorrentId(torrentId);
+
+                // For providers that don't support cache check, we poll for ready status
+                const providerInfo = availableDebridProviders().find(p => p.id === provider);
+                if (providerInfo && !providerInfo.supports_cache_check) {
+                    // Poll for up to 3 seconds to see if torrent becomes ready
+                    const readyResult = await Debrid.waitForTorrentReady(provider, torrentId, 3000, 500);
+
+                    if (!readyResult.ready && readyResult.status) {
+                        // Torrent is still caching - show caching UI
+                        setDebridCachingStatus({
+                            isCaching: true,
+                            progress: readyResult.status.progress,
+                            speed: readyResult.status.speed ?? null,
+                            seeders: readyResult.status.seeders ?? null,
+                            name: readyResult.status.name,
+                        });
+                        setLoading(false);
+                        return; // Don't load files yet, show caching status
+                    }
+
+                    if (!readyResult.ready) {
+                        throw new Error("Torrent is not cached and failed to get status");
+                    }
+                }
+
+                // Get torrent info with file list
+                const infoResult = await Debrid.getTorrentInfo(provider, torrentId);
+                if (infoResult.status !== "ok") {
+                    throw new Error(`Failed to get torrent info: ${infoResult.error}`);
+                }
+
+                const files = infoResult.data.files;
+                setDebridFiles(files);
+
+                // Auto-select all files
+                setSelectedDebridFiles(new Set(files.map(f => f.id)));
+
+            } catch (e: any) {
+                console.error("loadDebridProvider error", e);
+                setError(e.message ?? `Failed to load from ${provider}`);
+                setSelectedDebridProvider(null);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Poll caching progress for Real-Debrid (and other providers without cache check)
+        async function pollCachingProgress() {
+            const provider = selectedDebridProvider();
+            const torrentId = debridTorrentId();
+            if (!provider || torrentId === null) return;
+
+            const result = await Debrid.getTorrentStatus(provider, torrentId);
+            if (result.status !== "ok") {
+                setError("Failed to get caching status");
+                return;
+            }
+
+            const status = result.data;
+            if (status.is_ready) {
+                // Torrent is now ready! Load the files
+                setDebridCachingStatus(null);
+                setLoading(true);
+
+                try {
+                    const infoResult = await Debrid.getTorrentInfo(provider, torrentId);
+                    if (infoResult.status !== "ok") {
+                        throw new Error(`Failed to get torrent info: ${infoResult.error}`);
+                    }
+
+                    const files = infoResult.data.files;
+                    setDebridFiles(files);
+                    setSelectedDebridFiles(new Set(files.map(f => f.id)));
+                } catch (e: any) {
+                    setError(e.message ?? "Failed to load files");
+                } finally {
+                    setLoading(false);
+                }
+            } else {
+                // Still caching - update progress
+                setDebridCachingStatus({
+                    isCaching: true,
+                    progress: status.progress,
+                    speed: status.speed ?? null,
+                    seeders: status.seeders ?? null,
+                    name: status.name,
+                });
+            }
+        }
+
+        // Cancel caching and delete torrent from provider
+        async function cancelCaching() {
+            const provider = selectedDebridProvider();
+            const torrentId = debridTorrentId();
+            if (!provider || torrentId === null) return;
+
+            try {
+                await Debrid.deleteTorrent(provider, torrentId);
+            } catch (e) {
+                console.error("Failed to delete torrent", e);
+            }
+
+            setDebridCachingStatus(null);
+            setSelectedDebridProvider(null);
+            setDebridTorrentId(null);
+        }
+
+        function toggleDebridFileSelection(fileId: string) {
+            setSelectedDebridFiles(prev => {
+                const next = new Set(prev);
+                next.has(fileId) ? next.delete(fileId) : next.add(fileId);
+                return next;
+            });
+        }
+
+        // Check if we're using Real-Debrid and some files are deselected
+        // RD doesn't support selective file downloads - it downloads everything
+        const isRealDebridWithDeselectedFiles = () => {
+            const provider = selectedDebridProvider();
+            if (provider !== "realdebrid") return false;
+            const allFiles = debridFiles();
+            const selected = selectedDebridFiles();
+            return allFiles.length > 0 && selected.size < allFiles.length;
+        };
+
+        // Start download from debrid provider
+        async function handleDebridDownload() {
+            const provider = selectedDebridProvider();
+            const torrentId = debridTorrentId();
+            if (!provider || torrentId === null) return;
+
+            setLoading(true);
+            setError(null);
+
+            try {
+                const settings = await DownloadSettingsApi.getDownloadSettings();
+                if (settings.status !== "ok") {
+                    throw new Error(String(settings.error));
+                }
+
+                const path = settings.data.general.download_dir;
+
+                // Filter selected files
+                const selectedIds = selectedDebridFiles();
+                const filesToDownload = debridFiles().filter(f => selectedIds.has(f.id));
+
+                if (filesToDownload.length === 0) {
+                    throw new Error("No files selected");
+                }
+
+                // Get download links for selected files
+                const linksResult = await Debrid.getDownloadLinks(provider, torrentId, filesToDownload);
+                if (linksResult.status !== "ok") {
+                    throw new Error(`Failed to get download links: ${linksResult.error}`);
+                }
+
+                // Convert to DirectLinkWrapper for aria2
+                const wrappedLinks: DirectLinkWrapper[] = Debrid.toDirectLinks(linksResult.data);
+
+                // Use existing DDL mechanism
+                await DM.addDdl(wrappedLinks, path, props.downloadedGame);
+
+                props.onFinish?.();
+                destroy();
+
+            } catch (err: any) {
+                await message(`Failed: ${err.message ?? err}`, {
+                    title: "Error",
+                    kind: "error",
+                });
+                setError(err.message ?? "Failed");
+            } finally {
+                setLoading(false);
+            }
+        }
+
         const findFileIndex = (name: string) => listFiles().findIndex((f) => f.file_name === name);
+
+        function deselectDebridOptionalFiles() {
+            const debridCategorized = classifyDebridFiles(debridFiles());
+            const ids = new Set([
+                ...debridCategorized.Languages.map((f) => f.id),
+                ...debridCategorized.Others.map((f) => f.id),
+            ]);
+            setSelectedDebridFiles((prev) => {
+                const next = new Set(prev);
+                for (const id of ids) next.delete(id);
+                return next;
+            });
+        }
 
         function deselectOptionalFiles() {
             if (props.downloadType === "bittorrent") {
@@ -279,15 +681,19 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                         </Show>
 
                                         <For each={Object.entries(categorized.Languages)}>
-                                            {([originalName, displayName]) => (
-                                                <TorrentFileItem originalName={originalName} displayName={toTitleCaseExceptions(displayName)} index={findFileIndex(originalName)} selected={selectedFileIndices()} onToggle={toggleFileSelection} files={listFiles()} />
-                                            )}
+                                            {([originalName, displayName]) => {
+                                                const file = listFiles().find(f => f.file_name === originalName);
+                                                const idx = findFileIndex(originalName);
+                                                return <FileItem name={originalName} displayName={toTitleCaseExceptions(displayName)} size={file?.length ?? 0} id={idx} selected={selectedFileIndices().has(idx)} onToggle={() => toggleFileSelection(idx)} />;
+                                            }}
                                         </For>
 
                                         <For each={Object.entries(categorized.Others)}>
-                                            {([originalName, displayName]) => (
-                                                <TorrentFileItem originalName={originalName} displayName={toTitleCaseExceptions(displayName)} index={findFileIndex(originalName)} selected={selectedFileIndices()} onToggle={toggleFileSelection} files={listFiles()} />
-                                            )}
+                                            {([originalName, displayName]) => {
+                                                const file = listFiles().find(f => f.file_name === originalName);
+                                                const idx = findFileIndex(originalName);
+                                                return <FileItem name={originalName} displayName={toTitleCaseExceptions(displayName)} size={file?.length ?? 0} id={idx} selected={selectedFileIndices().has(idx)} onToggle={() => toggleFileSelection(idx)} />;
+                                            }}
                                         </For>
 
                                         <div class="px-4 py-2">
@@ -300,9 +706,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                                         <Show when={showTorrentAdvanced()}>
                                             <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing</div>
-                                            <For each={uncategorizedFiles()}>{(fileName) => (
-                                                <TorrentFileItem originalName={fileName} displayName={fileName} index={findFileIndex(fileName)} selected={selectedFileIndices()} onToggle={toggleFileSelection} files={listFiles()} />
-                                            )}</For>
+                                            <For each={uncategorizedFiles()}>{(fileName) => {
+                                                const file = listFiles().find(f => f.file_name === fileName);
+                                                const idx = findFileIndex(fileName);
+                                                return <FileItem name={fileName} displayName={fileName} size={file?.length ?? 0} id={idx} selected={selectedFileIndices().has(idx)} onToggle={() => toggleFileSelection(idx)} />;
+                                            }}</For>
                                         </Show>
 
                                     </div>
@@ -316,6 +724,8 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
         const renderDDLUI = () => {
             const categorized = classifyDdlFiles(directLinks());
+            const hasProviderSelected = () => selectedHoster() !== null || selectedDebridProvider() !== null;
+
             return (
                 <>
                     <div class="text-center">
@@ -324,38 +734,32 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         <p class="text-muted">Choose your download source and select files to download</p>
                     </div>
 
-                    {!selectedHoster() && (
+                    {/* Provider Selection - shown when no provider is selected */}
+                    <Show when={!hasProviderSelected()}>
                         <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm backdrop-blur-sm bg-opacity-80">
                             <div class="p-6">
                                 <h3 class="text-lg font-semibold text-text mb-6 text-center">Select Download Provider<div class="text-xs font-normal text-muted mt-1">Choose your preferred download source</div></h3>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <button onClick={() => loadHosterLinks("fuckingfast")} class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 transition-all duration-200">
-                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 transition-colors group-hover:border-accent/50"><img src="https://fuckingfast.co/static/favicon.ico" alt="FuckingFast" class="size-12 object-contain rounded-md" /></div>
-                                        <span class="font-medium text-text transition-colors group-hover:text-primary">FuckingFast</span>
-                                        <span class="text-xs text-muted mt-1 transition-colors group-hover:text-accent/80">Ultra-fast downloads</span>
-                                        <div class="absolute inset-0 rounded-xl bg-accent/0 transition-colors duration-300 group-hover:bg-accent/5" />
-                                    </button>
+                                    {/* Debrid Providers - sorted: cached first */}
+                                    <For each={[...availableDebridProviders()].sort((a, b) => {
+                                        const aS = debridCacheStatus().get(a.id), bS = debridCacheStatus().get(b.id);
+                                        return (aS === true ? 0 : aS === null ? 1 : 2) - (bS === true ? 0 : bS === null ? 1 : 2);
+                                    })}>
+                                        {(p) => <ProviderCard name={p.name} subtitle={p.description} icon={Zap} color={p.color} cached={debridCacheStatus().get(p.id)} loading={debridCacheStatus().get(p.id) === null} onClick={() => loadDebridProvider(p.id)} />}
+                                    </For>
 
-                                    <button
-                                        disabled
-                                        onClick={() => loadHosterLinks("datanodes")}
-                                        class="group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border border-secondary-20 opacity-50 cursor-not-allowed pointer-events-none transition-all duration-200"
-                                    >
-                                        <div class="relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border border-secondary-20 opacity-50">
-                                            <img src="https://datanodes.to/favicon.ico" alt="DataNodes" class="size-12 object-contain" />
-                                        </div>
-                                        <span class="font-medium text-muted">DataNodes</span>
-                                        <span class="text-xs text-muted mt-1">Not working at the moment</span>
-                                    </button>
-
+                                    {/* Standard DDL Providers */}
+                                    <ProviderCard name="FuckingFast" subtitle="Ultra-fast downloads" icon="https://fuckingfast.co/static/favicon.ico" onClick={() => loadHosterLinks("fuckingfast")} />
+                                    <ProviderCard name="DataNodes" subtitle="Not working at the moment" icon="https://datanodes.to/favicon.ico" disabled onClick={() => loadHosterLinks("datanodes")} />
                                 </div>
 
                                 <div class="text-xs text-center text-muted mt-6"><span class="inline-flex items-center gap-1"><Info class="w-3 h-3" />Selection affects download speed and availability</span></div>
                             </div>
                         </div>
-                    )}
+                    </Show>
 
+                    {/* DDL Hoster File List */}
                     <Show when={selectedHoster()}>
                         <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
                             <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50"><h3 class="text-sm font-semibold text-text flex items-center gap-2"><Box class="w-4 h-4 text-accent" /> Files from {toTitleCaseExceptions(selectedHoster()!)}</h3></div>
@@ -367,15 +771,15 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                                 <div class="w-full flex justify-end px-4 py-2"><button onClick={deselectOptionalFiles} class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors"><X class="w-3 h-3" /><span>Deselect All Languages & Extras</span></button></div>
                                             </Show>
 
-                                            <For each={categorized.Main}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For>
+                                            <For each={categorized.Main}>{(file) => <FileItem name={file.filename || ""} displayName={file.displayName || file.filename || ""} size={file.size || 0} id={file.url} selected={ddlSelectedUrls().has(file.url)} onToggle={() => toggleDdlSelection(file.url)} />}</For>
 
-                                            <Show when={categorized.Languages.length > 0}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><Languages class="w-4 h-4 inline mr-1 text-accent" /> Language Files - Select languages you need</div><For each={categorized.Languages}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For></Show>
+                                            <Show when={categorized.Languages.length > 0}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><Languages class="w-4 h-4 inline mr-1 text-accent" /> Language Files - Select languages you need</div><For each={categorized.Languages}>{(file) => <FileItem name={file.filename || ""} displayName={file.displayName || file.filename || ""} size={file.size || 0} id={file.url} selected={ddlSelectedUrls().has(file.url)} onToggle={() => toggleDdlSelection(file.url)} />}</For></Show>
 
-                                            <Show when={categorized.Others.length > 0}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Optional Content - Only download if needed</div><For each={categorized.Others}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For></Show>
+                                            <Show when={categorized.Others.length > 0}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Optional Content - Only download if needed</div><For each={categorized.Others}>{(file) => <FileItem name={file.filename || ""} displayName={file.displayName || file.filename || ""} size={file.size || 0} id={file.url} selected={ddlSelectedUrls().has(file.url)} onToggle={() => toggleDdlSelection(file.url)} />}</For></Show>
 
                                             <Show when={categorized.Parts.length > 0}>
                                                 <div class="px-4 py-2"><button onClick={() => setShowDdlAdvanced(!showDdlAdvanced())} class="text-xs text-accent hover:underline flex items-center gap-1"><Show when={showDdlAdvanced()} fallback={<><ChevronRight class="w-3 h-3" /> Show file parts</>}><><ChevronDown class="w-3 h-3" /> Hide file parts</></Show></button></div>
-                                                <Show when={showDdlAdvanced()}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing</div><For each={categorized.Parts}>{(file) => <DDLFileItem file={file} selected={ddlSelectedUrls()} onToggle={toggleDdlSelection} />}</For></Show>
+                                                <Show when={showDdlAdvanced()}><div class="px-4 py-2 bg-background-20/50 text-xs text-text/80"><AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing</div><For each={categorized.Parts}>{(file) => <FileItem name={file.filename || ""} displayName={file.displayName || file.filename || ""} size={file.size || 0} id={file.url} selected={ddlSelectedUrls().has(file.url)} onToggle={() => toggleDdlSelection(file.url)} />}</For></Show>
                                             </Show>
 
                                         </div>
@@ -383,6 +787,88 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                 </Show>
                             </div>
                         </div>
+                    </Show>
+
+                    {/* Debrid Provider File List */}
+                    <Show when={selectedDebridProvider()}>
+                        {(() => {
+                            const cachingStatus = debridCachingStatus();
+                            if (cachingStatus && cachingStatus.isCaching) {
+                                return <CachingProgress name={cachingStatus.name} progress={cachingStatus.progress} speed={cachingStatus.speed} seeders={cachingStatus.seeders} onRefresh={pollCachingProgress} onCancel={cancelCaching} />;
+                            }
+
+                            const debridCategorized = classifyDebridFiles(debridFiles());
+                            return (
+                                <>
+                                    {/* Real-Debrid warning when files are deselected */}
+                                    <Show when={isRealDebridWithDeselectedFiles()}>
+                                        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-4">
+                                            <div class="flex items-start gap-3">
+                                                <Info class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                                <div class="flex-1">
+                                                    <h4 class="text-sm font-semibold text-amber-500 mb-1">Real-Debrid downloads all files</h4>
+                                                    <p class="text-xs text-muted">
+                                                        Real-Debrid doesn't support selective downloads. All files will be downloaded regardless of your selection. You can manually delete unwanted files after the download completes.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Show>
+
+                                    <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm max-h-[300px] overflow-auto no-scrollbar">
+                                        <div class="sticky top-0 z-20 backdrop-blur-md bg-background-30/80 py-3 px-4 border-b border-secondary-20/50">
+                                            <h3 class="text-sm font-semibold text-text flex items-center gap-2">
+                                                <Zap class="w-4 h-4 text-green-500" /> Files from {selectedDebridProvider()}
+                                            </h3>
+                                        </div>
+                                        <div class="px-2">
+                                            <Show when={!loading()} fallback={<LoadingPage />}>
+                                                <Show when={debridFiles().length > 0} fallback={<div class="text-sm text-muted p-4 border border-dashed border-secondary-20 rounded-md bg-background-20 my-2 mx-2">No downloadable files found</div>}>
+                                                    <div class="divide-y divide-secondary-20 -mx-2">
+                                                        <Show when={debridCategorized.Languages.length > 0 || debridCategorized.Others.length > 0}>
+                                                            <div class="w-full flex justify-end px-4 py-2">
+                                                                <button onClick={deselectDebridOptionalFiles} class="text-xs flex items-center gap-1 px-2.5 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/15 transition-colors">
+                                                                    <X class="w-3 h-3" />
+                                                                    <span>Deselect All Languages & Extras</span>
+                                                                </button>
+                                                            </div>
+                                                        </Show>
+
+                                                        <For each={debridCategorized.Languages}>
+                                                            {(file) => <FileItem name={file.name} displayName={file.displayName || file.short_name || file.name} size={file.size} id={file.id} selected={selectedDebridFiles().has(file.id)} onToggle={() => toggleDebridFileSelection(file.id)} />}
+                                                        </For>
+
+                                                        <For each={debridCategorized.Others}>
+                                                            {(file) => <FileItem name={file.name} displayName={file.displayName || file.short_name || file.name} size={file.size} id={file.id} selected={selectedDebridFiles().has(file.id)} onToggle={() => toggleDebridFileSelection(file.id)} />}
+                                                        </For>
+
+                                                        <div class="px-4 py-2">
+                                                            <button onClick={() => setShowDebridAdvanced(!showDebridAdvanced())} class="text-xs text-accent hover:underline flex items-center gap-1">
+                                                                <Show when={showDebridAdvanced()} fallback={<><ChevronRight class="w-3 h-3" /> Show advanced options</>}>
+                                                                    <><ChevronDown class="w-3 h-3" /> Hide advanced options</>
+                                                                </Show>
+                                                            </button>
+                                                        </div>
+
+                                                        <Show when={showDebridAdvanced()}>
+                                                            <div class="px-4 py-2 bg-background-20/50 text-xs text-text/80">
+                                                                <AlertTriangle class="w-4 h-4 inline mr-1 text-yellow-500" /> Warning: Only modify these if you know what you're doing
+                                                            </div>
+                                                            <For each={debridCategorized.Main}>
+                                                                {(file) => <FileItem name={file.name} displayName={file.displayName || file.short_name || file.name} size={file.size} id={file.id} selected={selectedDebridFiles().has(file.id)} onToggle={() => toggleDebridFileSelection(file.id)} />}
+                                                            </For>
+                                                            <For each={debridCategorized.Parts}>
+                                                                {(file) => <FileItem name={file.name} displayName={file.displayName || file.short_name || file.name} size={file.size} id={file.id} selected={selectedDebridFiles().has(file.id)} onToggle={() => toggleDebridFileSelection(file.id)} />}
+                                                            </For>
+                                                        </Show>
+                                                    </div>
+                                                </Show>
+                                            </Show>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </Show>
                 </>
             );

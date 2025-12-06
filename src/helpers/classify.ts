@@ -1,4 +1,4 @@
-import { FileInfo } from "../bindings";
+import { DebridFile, FileInfo } from "../bindings";
 import { DirectLinkWrapper } from "../types/download";
 import { toTitleCaseExceptions } from "./format";
 
@@ -150,6 +150,77 @@ export function classifyDdlFiles(files: DirectLinkWrapper[]) {
     result.Main.push({
       ...file,
       displayName: file.filename.replace(/\.[^/.]+$/, ""),
+    });
+  }
+
+  return result;
+}
+
+export type LabeledDebridFile = DebridFile & { displayName: string };
+
+export function classifyDebridFiles(files: DebridFile[]) {
+  const result = {
+    Languages: [] as LabeledDebridFile[],
+    Others: [] as LabeledDebridFile[],
+    Main: [] as LabeledDebridFile[],
+    Parts: [] as LabeledDebridFile[],
+  };
+
+  for (const file of files) {
+    const baseName = file.short_name || file.name;
+    const lower = baseName.toLowerCase();
+    const matchedLanguage = Object.keys(languageMap).find((l) =>
+      lower.includes(l)
+    );
+
+    if (matchedLanguage) {
+      let displayName = `${languageMap[matchedLanguage]} Language`;
+      if (lower.includes("vo")) displayName += " VO";
+      result.Languages.push({ ...file, displayName });
+      continue;
+    }
+
+    if (
+      lower.includes("optional") ||
+      lower.includes("selective") ||
+      /fg-optional-/i.test(lower)
+    ) {
+      const label = baseName
+        .replace(/fg-optional-|optional-|selective-/gi, "")
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[-_.]/g, " ")
+        .trim();
+      result.Others.push({
+        ...file,
+        displayName: toTitleCaseExceptions(label || "Optional Content"),
+      });
+      continue;
+    }
+
+    if (
+      lower.includes("part") ||
+      baseName.match(/\.0+1$|\.rar$|\.zip$/i) ||
+      lower.includes("fitgirl-repacks") ||
+      lower.includes("--_")
+    ) {
+      const partMatch = baseName.match(/part(\d+)/i);
+      result.Parts.push({
+        ...file,
+        displayName: partMatch
+          ? `Part ${partMatch[1]}`
+          : baseName.replace(/\.[^/.]+$/, ""),
+      });
+      continue;
+    }
+
+    if (lower.includes("setup") || lower.includes("install")) {
+      result.Main.push({ ...file, displayName: "Game Installer" });
+      continue;
+    }
+
+    result.Main.push({
+      ...file,
+      displayName: baseName.replace(/\.[^/.]+$/, ""),
     });
   }
 
