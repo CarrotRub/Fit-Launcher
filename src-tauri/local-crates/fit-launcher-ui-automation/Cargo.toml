@@ -17,9 +17,12 @@ fit-launcher-config = { workspace = true }
 specta = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
+anyhow = { workspace = true }
 tokio-util = "0.7.17"
 uuid = "1.18.1"
 unrar = "0.5.8"
+inno = { git = "https://github.com/mokurin000/inno/", branch = "runentry-zlibrs" }
+
 [target.'cfg(windows)'.dependencies]
 uiautomation = { workspace = true }
 windows = { workspace = true, features = [
