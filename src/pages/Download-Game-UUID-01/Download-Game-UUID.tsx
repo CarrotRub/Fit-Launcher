@@ -4,7 +4,7 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { commands, DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags } from "lucide-solid";
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags, Zap } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
@@ -12,6 +12,7 @@ import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { GameDetails, GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
+import * as Debrid from "../../api/debrid/api";
 
 
 const library = new LibraryApi();
@@ -27,6 +28,7 @@ const DownloadGameUUIDPage = () => {
   const [touchStartX, setTouchStartX] = createSignal(0);
   const [touchEndX, setTouchEndX] = createSignal(0);
   const [swipeDirection, setSwipeDirection] = createSignal<"left" | "right" | null>(null);
+  const [hasDebridCached, setHasDebridCached] = createSignal(false);
   const [gameDetails, setGameDetails] = createSignal<GameDetails>({
     tags: "N/A",
     companies: "N/A",
@@ -66,6 +68,7 @@ const DownloadGameUUIDPage = () => {
   async function fetchGame(gameHref: string) {
     try {
       setLoading(true);
+      setHasDebridCached(false); // Reset on new game load
       await cache.getSingularGameInfo(gameHref);
       const res = await cache.getSingularGameLocal(gameHref);
       if (res.status === "ok") {
@@ -74,6 +77,10 @@ const DownloadGameUUIDPage = () => {
         setGameInfo(game);
         extractDetails(game.desc);
         checkIfInDownloadLater(game.title);
+        // Check debrid cache in background (don't await)
+        if (game.magnetlink) {
+          checkDebridCache(game.magnetlink);
+        }
       }
     } catch (err) {
       console.error("Failed to load game info", err);
@@ -102,6 +109,35 @@ const DownloadGameUUIDPage = () => {
     } catch (err) {
       console.error("Error checking download later list", err);
       setToDownloadLater(false);
+    }
+  }
+
+  async function checkDebridCache(magnet: string) {
+    try {
+      const hash = Debrid.extractHashFromMagnet(magnet);
+      if (!hash) return;
+
+      const providers = await Debrid.listProviders();
+
+      // Check each provider for credentials and cache
+      for (const providerInfo of providers) {
+        try {
+          if (!providerInfo.supports_cache_check) continue;
+
+          const hasCredResult = await Debrid.hasCredential(providerInfo.id);
+          if (hasCredResult.status !== "ok" || !hasCredResult.data) continue;
+
+          const cacheResult = await Debrid.checkCache(providerInfo.id, hash);
+          if (cacheResult.status === "ok" && cacheResult.data.is_cached) {
+            setHasDebridCached(true);
+            return; // Found a cached provider, no need to check more
+          }
+        } catch (e) {
+          console.error(`Failed to check debrid cache for ${providerInfo.id}:`, e);
+        }
+      }
+    } catch (err) {
+      console.error("Error checking debrid cache", err);
     }
   }
 
@@ -331,13 +367,21 @@ const DownloadGameUUIDPage = () => {
                   </div>
                   <div class="relative px-2 text-xs text-muted">OR</div>
                 </div>
-                <Button
-                  icon={<Globe class="size-5" />}
-                  label="Direct Download"
-                  onClick={() => handleDownloadPopup("direct_download")}
-                  class="flex-1 py-3 hover:bg-accent/90 transition-colors"
-                  variant="bordered"
-                />
+                <div class="relative flex-1">
+                  <Show when={hasDebridCached()}>
+                    <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
+                      <Zap class="w-3 h-3" />
+                      Fast
+                    </div>
+                  </Show>
+                  <Button
+                    icon={<Globe class="size-5" />}
+                    label="Direct Download"
+                    onClick={() => handleDownloadPopup("direct_download")}
+                    class="w-full py-3 hover:bg-accent/90 transition-colors"
+                    variant="bordered"
+                  />
+                </div>
               </div>
               <p class="text-xs text-muted text-center">
                 Choose your preferred download method
