@@ -18,6 +18,7 @@ import { CREDENTIAL_STORE_SALT } from './api/debrid/api';
 import createChangelogPopup from './Pop-Ups/Changelog-PopUp/Changelog-PopUp';
 import { fetchLatestGithubRelease } from './api/changelog/api';
 import { getVersion } from '@tauri-apps/api/app';
+import { lt, SemVer } from 'semver';
 
 const themeManager = new ThemeManagerApi();
 
@@ -78,10 +79,12 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
     let latestVer = localStorage.getItem("version");
     let updatedVer = await getVersion();
 
-
     if (!latestVer) {
-      localStorage.setItem("version", updatedVer)
-    } else if (latestVer < updatedVer) {
+      createChangelogPopup({
+        fetchChangelog: () => fetchLatestGithubRelease('CarrotRub', 'Fit-Launcher'),
+        onClose: () => localStorage.setItem("version", updatedVer),
+      });
+    } else if (lt(latestVer, updatedVer)) {
       createChangelogPopup({
         fetchChangelog: () => fetchLatestGithubRelease('CarrotRub', 'Fit-Launcher'),
         onClose: () => localStorage.setItem("version", updatedVer),
