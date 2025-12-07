@@ -2267,7 +2267,6 @@ checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
 dependencies = [
  "crc32fast",
  "libz-rs-sys",
- "libz-sys",
  "miniz_oxide",
 ]
 
@@ -3409,7 +3408,7 @@ dependencies = [
 [[package]]
 name = "inno"
 version = "0.3.1"
-source = "git+https://github.com/mokurin000/inno/?branch=feat%2Fvistor-for-RunEntry#21b7a965236afce07a9d912aeeebaad896cffe0d"
+source = "git+https://github.com/mokurin000/inno/?branch=runentry-zlibrs#0101a11a5f5655d7eb9cad4848e06d6467e0acc3"
 dependencies = [
  "bitflags 2.10.0",
  "codepage",
@@ -4101,17 +4100,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b484ba8d4f775eeca644c452a56650e544bf7e617f1d170fe7298122ead5222"
 dependencies = [
  "zlib-rs",
-]
-
-[[package]]
-name = "libz-sys"
-version = "1.1.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15d118bbf3771060e7311cc7bb0545b01d08a8b4a7de949198dec1fa0ca1c0f7"
-dependencies = [
- "cc",
- "pkg-config",
- "vcpkg",
 ]
 
 [[package]]
