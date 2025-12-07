@@ -3,7 +3,7 @@ pub mod types;
 use fit_launcher_scraping::structs::Game;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info};

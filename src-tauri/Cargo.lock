@@ -900,6 +900,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "codepage"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48f68d061bc2828ae826206326e61251aca94c1e4a5305cf52d9138639c918b4"
+dependencies = [
+ "encoding_rs",
+]
+
+[[package]]
 name = "color-thief"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2159,9 +2168,11 @@ dependencies = [
 name = "fit-launcher-ui-automation"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "fit-launcher-config",
  "fit-launcher-scraping",
  "fix-path-env",
+ "inno",
  "serde",
  "specta",
  "sysinfo",
@@ -3354,6 +3365,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "inno"
+version = "0.3.1"
+source = "git+https://github.com/mokurin000/inno/?branch=runentry-zlibrs#0101a11a5f5655d7eb9cad4848e06d6467e0acc3"
+dependencies = [
+ "bitflags 2.10.0",
+ "codepage",
+ "crc32fast",
+ "encoding_rs",
+ "flate2",
+ "itertools 0.14.0",
+ "liblzma",
+ "nt-time",
+ "thiserror 2.0.17",
+ "zerocopy",
+]
+
+[[package]]
 name = "inout"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3767,6 +3795,26 @@ checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
 dependencies = [
  "cfg-if",
  "windows-link 0.2.1",
+]
+
+[[package]]
+name = "liblzma"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73c36d08cad03a3fbe2c4e7bb3a9e84c57e4ee4135ed0b065cade3d98480c648"
+dependencies = [
+ "liblzma-sys",
+]
+
+[[package]]
+name = "liblzma-sys"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01b9596486f6d60c3bbe644c0e1be1aa6ccc472ad630fe8927b456973d7cb736"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]
@@ -4451,6 +4499,15 @@ name = "noop_proc_macro"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0676bb32a98c1a483ce53e500a81ad9c3d5b3f7c920c28c24e9cb0980d0b5bc8"
+
+[[package]]
+name = "nt-time"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ad6fee094ffe35b67a67b9057d93492f8a2318edd22e1a731c545b8dbecb64e"
+dependencies = [
+ "time",
+]
 
 [[package]]
 name = "ntapi"
