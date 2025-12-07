@@ -40,7 +40,7 @@ export default function Dropdown<T extends string | number>(props: DropdownProps
             <Show when={isOpen()}>
                 <div
                     class={`
-            absolute z-50 mt-1.5 w-full max-h-64 overflow-auto
+            absolute z-50 mt-1.5 w-full
             bg-popup-background border border-secondary-30 rounded-lg
             shadow-lg shadow-background/50 backdrop-blur-sm
             transition-opacity duration-200 no-scrollbar
