@@ -1,7 +1,8 @@
 import { createSignal, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
-import { message } from "@tauri-apps/plugin-dialog";
+import { confirm, message } from "@tauri-apps/plugin-dialog";
+import { relaunch } from "@tauri-apps/plugin-process";
 import CacheSettings from "./CacheSettings/CacheSettings";
 import InstallSettingsPart from "./InstallSettings/InstallSettings";
 import DNSPart from "./DNSSettings/DNSSettings";
@@ -70,6 +71,17 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
         title: "FitLauncher",
         kind: "info",
       });
+
+      // DNS changes require a restart to take effect
+      if (selectedPart() === "dns") {
+        const shouldRestart = await confirm(
+          "DNS settings require a restart to take effect.\nWould you like to restart FitLauncher now?",
+          { title: "FitLauncher", kind: "info" }
+        );
+        if (shouldRestart) {
+          await relaunch();
+        }
+      }
     } catch (error: unknown) {
       await message("Error saving settings: " + String(error), {
         title: "FitLauncher",
