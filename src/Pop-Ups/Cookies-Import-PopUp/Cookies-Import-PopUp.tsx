@@ -6,6 +6,7 @@ import { PopupProps } from "../../types/popup";
 import { Modal } from "../Modal/Modal";
 import { useDropZone } from "../../components/DropZone-01/DropZone";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 
 export default function createCookiesImportPopup(props: PopupProps<[File]>) {
     const container = document.createElement("div");
@@ -28,10 +29,7 @@ export default function createCookiesImportPopup(props: PopupProps<[File]>) {
                     setDroppedFileName(file.name);
                     setDroppedFilePath(file.webkitRelativePath);
                 } else {
-                    await message("Wrong file type", {
-                        title: "File Type Error",
-                        kind: "error",
-                    });
+                    await showError("Wrong file type", "File Type Error");
                 }
             }
         };
@@ -49,10 +47,7 @@ export default function createCookiesImportPopup(props: PopupProps<[File]>) {
                     props.action?.(new File([], fileName));
                 } else {
                     console.log("Invalid file type");
-                    await message("This isn't a JSON file.", {
-                        title: "Wrong Type",
-                        kind: "error",
-                    });
+                    await showError("This isn't a JSON file.", "Wrong Type");
                 }
             }
         });

@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { mkdir, writeTextFile, readDir, readTextFile } from "@tauri-apps/plugin-fs";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 
 import AddLocalGamePopUp from "../../Pop-Ups/Add-Local-Game-PopUp/Add-Local-Game-PopUp";
 import CollectionList from './CollectionList/CollectionList';
@@ -55,7 +56,7 @@ function Library() {
       setCollectionList(normalizedCollections);
       setDownloadedGamesList(downloadedGames);
     } catch (err) {
-      await message(`${err}`, { title: "FitLauncher", kind: "error" });
+      await showError(err);
     }
   });
 
@@ -77,16 +78,10 @@ function Library() {
           throw res.error;
         }
       } catch (err) {
-        await message(`Error creating collection: ${err}`, {
-          title: "Collection Creation",
-          kind: "error",
-        });
+        await showError(err, "Error creating collection");
       }
     } else {
-      await message("Name too long or too short", {
-        title: "Collection Creation",
-        kind: "error",
-      });
+      await showError("Name too long or too short", "Collection Creation");
     }
   }
 

@@ -1,5 +1,6 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 import Button from "../../components/UI/Button/Button";
 import { AddToCollectionProps } from "../../types/popup";
 import { Modal } from "../Modal/Modal";
@@ -44,7 +45,7 @@ const createAddToCollectionPopup = (props: AddToCollectionProps) => {
         addedTo.push(collectionName);
         await message(`Added to ${collectionName}`, { title: "Success", kind: "info" });
       } else {
-        await message(result.error ?? "Unknown error", { title: "Error", kind: "error" });
+        await showError(result.error ?? "Unknown error", "Error");
       }
     }
 

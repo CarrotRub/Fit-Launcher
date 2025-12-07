@@ -3,6 +3,7 @@ import { GlobalSettingsApi } from "../settings/api";
 import { commands, Job } from "../../bindings";
 import { listen, emit } from "@tauri-apps/api/event";
 import { LibraryApi } from "../library/api";
+import { handleInstallerError } from "../../helpers/installer-error";
 
 /**
  * Event-driven installer service using WinEvents hooks.
@@ -118,12 +119,7 @@ class InstallerService {
 
         if (result.status === "error") {
           this.pendingJobs.delete(job.id);
-          if (result.error === "AdminModeError") {
-            await message(
-              "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
-              { title: "Administrator Rights Required", kind: "error" }
-            );
-          }
+          await handleInstallerError(result.error);
           return;
         }
       } else {
@@ -131,7 +127,7 @@ class InstallerService {
 
         if (result.status === "error") {
           this.pendingJobs.delete(job.id);
-          await this.handleExtractError(result.error);
+          await handleInstallerError(result.error);
           return;
         }
       }
@@ -140,55 +136,7 @@ class InstallerService {
     }
   }
 
-  private async handleExtractError(err: unknown) {
-    if (typeof err === "object" && err !== null) {
-      if ("InstallationError" in err) {
-        const installErr = (err as { InstallationError: unknown }).InstallationError;
-        if (installErr === "AdminModeError") {
-          await message(
-            "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
-            { title: "Administrator Rights Required", kind: "error" }
-          );
-        } else if (typeof installErr === "object" && installErr !== null && "IOError" in installErr) {
-          await message(
-            `Installation failed due to an IO error:\n${(installErr as { IOError: string }).IOError}`,
-            { title: "IO Error", kind: "error" }
-          );
-        } else {
-          await message("An unknown installation error occurred.", {
-            title: "Installation Error",
-            kind: "error",
-          });
-        }
-      } else if ("Io" in err) {
-        await message(`A general IO error occurred:\n${(err as { Io: string }).Io}`, {
-          title: "IO Error",
-          kind: "error",
-        });
-      } else if ("Unrar" in err) {
-        await message(`Failed to extract archive:\n${(err as { Unrar: string }).Unrar}`, {
-          title: "Extraction Error",
-          kind: "error",
-        });
-      }
-    } else if (err === "NoParentDirectory") {
-      await message(
-        "Extraction failed because the parent directory doesn't exist.",
-        { title: "Missing Directory", kind: "error" }
-      );
-    } else if (err === "NoRarFileFound") {
-      await message("No RAR file found in the download directory.", {
-        title: "Missing Archive File",
-        kind: "error"
-      }
-      );
-    } else {
-      await message("An unknown error occurred during extraction.", {
-        title: "Unknown Error",
-        kind: "error",
-      });
-    }
-  }
+
 
   isInstallFailed(jobId: string): boolean {
     return this.failedInstalls.has(jobId);

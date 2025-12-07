@@ -1,5 +1,6 @@
 import { createSignal, onMount, Show, Component, For } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 import { render } from "solid-js/web";
 import {
   HardDrive,
@@ -60,10 +61,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
       const result = await GlobalSettingsApi.setInstallationSettings(newSettings);
       if (result.status === "error") {
         console.error("Failed to update installation settings:", result.error);
-        await message("Could not save installation settings", {
-          title: "FitLauncher",
-          kind: "error",
-        });
+        await showError(result.error, "Could not save installation settings");
       }
     };
 
@@ -86,7 +84,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
       } catch (error) {
         console.error("Error initializing settings:", error);
-        await message("Failed to load download settings", { title: "Error", kind: "error" });
+        await showError(error, "Failed to load download settings");
       } finally {
         setIsInitialized(true);
       }
@@ -138,10 +136,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                         await DownloadSettingsApi.changeDownloadSettings(updatedSettings);
                       } catch (err) {
                         console.error("Failed to update path setting:", err);
-                        await message("Failed to save download path", {
-                          title: "Error",
-                          kind: "error",
-                        });
+                        await showError("Failed to save download path", "Error");
                       }
                     }
                   }}

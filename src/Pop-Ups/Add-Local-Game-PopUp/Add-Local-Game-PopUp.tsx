@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 import { mkdir, readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
@@ -49,7 +50,7 @@ export default function createAddLocalGamePopup(props: AddLocalGamePopupProps) {
 
         if (props.action) await props.action(newGame);
       } else {
-        await message(`Failed to add game: ${gameResult.error.data}`, { title: "Error", kind: "error" });
+        await showError(gameResult.error.data, "Error");
       }
 
       await message("Game added to Library successfully", {
@@ -58,7 +59,7 @@ export default function createAddLocalGamePopup(props: AddLocalGamePopupProps) {
       });
 
     } catch (err) {
-      await message(`Failed to add game: ${err}`, { title: "Error", kind: "error" });
+      await showError(err, "Error");
     } finally {
       destroy();
     }

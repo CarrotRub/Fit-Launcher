@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
 import CacheSettings from "./CacheSettings/CacheSettings";
+import { showError } from "../../../../helpers/error";
 import InstallSettingsPart from "./InstallSettings/InstallSettings";
 import DNSPart from "./DNSSettings/DNSSettings";
 import DisplayPart from "./DisplayPart/DisplayPart";
@@ -39,10 +40,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
       setGlobalSettings({ dns, installation_settings, display });
     } catch (error: unknown) {
-      await message("Error getting settings: " + String(error), {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(error, "Error getting settings");
     }
   }
 
@@ -83,10 +81,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
         }
       }
     } catch (error: unknown) {
-      await message("Error saving settings: " + String(error), {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(error, "Error saving settings");
     }
   }
 
@@ -142,10 +137,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
       window.location.reload();
     } catch (error: unknown) {
-      await message("Error resetting settings: " + String(error), {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(error, "Error resetting settings");
     }
   }
 

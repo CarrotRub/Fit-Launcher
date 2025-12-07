@@ -1,5 +1,6 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../../helpers/error";
 import { Play, Settings, Star, Info, Trash2, Pin, BookmarkPlus } from "lucide-solid";
 import { DownloadedGame, Game, ExecutableInfo, commands, GameCollection } from "../../../bindings";
 import { LibraryApi } from "../../../api/library/api";
@@ -47,7 +48,7 @@ export default function GameDownloadedItem(props: {
       const info = await api.getExecutableInfo(path, folder);
       return info;
     } catch (err) {
-      await message(String(err), { title: "Error", kind: "error" });
+      await showError(err, "Error");
       return null;
     }
   };
@@ -82,7 +83,7 @@ export default function GameDownloadedItem(props: {
         try {
           await api.runExecutable(path);
         } catch (err) {
-          await message(String(err), { title: "Error", kind: "error" });
+          await showError(err, "Error");
         }
       },
     });
@@ -98,7 +99,7 @@ export default function GameDownloadedItem(props: {
       await message("The game has been deleted correctly!", { title: "FitLauncher", kind: "info" });
       props.onGameDelete?.(gameTitle);
     } else {
-      await message(`Error deleting the game: ${result.error}`, { title: "FitLauncher", kind: "error" });
+      await showError(result.error, "Error deleting the game");
     }
   }
 

@@ -1,6 +1,7 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
+import { resolveError, showError } from "../../../../helpers/error";
 import {
     Zap,
     Key,
@@ -60,9 +61,7 @@ function DebridSettingsPage(): JSX.Element {
                 setInitialized(true);
                 return true;
             } else {
-                const errorMsg = typeof result.error === "string"
-                    ? result.error
-                    : JSON.stringify(result.error);
+                const errorMsg = resolveError(result.error);
                 console.error("[Debrid] Failed to initialize credentials:", errorMsg);
                 setInitError(`Failed to initialize secure storage: ${errorMsg}`);
                 return false;
@@ -149,10 +148,7 @@ function DebridSettingsPage(): JSX.Element {
 
         // Make sure we're initialized before trying to save
         if (!initialized()) {
-            await message("Credential store not initialized. Please wait or retry.", {
-                title: "Error",
-                kind: "error"
-            });
+            await showError("Credential store not initialized. Please wait or retry.", "Error");
             return;
         }
 
@@ -179,16 +175,10 @@ function DebridSettingsPage(): JSX.Element {
                     updateProviderState(providerId, { status: statusResult.data });
                 }
             } else {
-                await message(`Failed to save API key: ${result.error}`, {
-                    title: "Error",
-                    kind: "error"
-                });
+                await showError(result.error, "Failed to save API key");
             }
         } catch (e) {
-            await message(`Error saving API key: ${e}`, {
-                title: "Error",
-                kind: "error"
-            });
+            await showError(e, "Error saving API key");
         } finally {
             updateProviderState(providerId, { loading: false });
         }
@@ -210,16 +200,10 @@ function DebridSettingsPage(): JSX.Element {
                     apiKeyInput: ""
                 });
             } else {
-                await message(`Failed to remove API key: ${result.error}`, {
-                    title: "Error",
-                    kind: "error"
-                });
+                await showError(result.error, "Failed to remove API key");
             }
         } catch (e) {
-            await message(`Error removing API key: ${e}`, {
-                title: "Error",
-                kind: "error"
-            });
+            await showError(e, "Error removing API key");
         } finally {
             updateProviderState(providerId, { loading: false });
         }

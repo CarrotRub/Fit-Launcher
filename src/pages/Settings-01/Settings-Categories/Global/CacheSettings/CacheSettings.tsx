@@ -2,11 +2,10 @@ import { createSignal } from "solid-js";
 import type { JSX } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
 import { confirm, message } from "@tauri-apps/plugin-dialog";
-import { getVersion } from "@tauri-apps/api/app";
 import PageGroup from "../../Components/PageGroup";
 import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
-import { makePersisted } from "@solid-primitives/storage";
 import { check } from "@tauri-apps/plugin-updater";
+import { showError } from "../../../../../helpers/error";
 
 export default function CacheSettings(): JSX.Element {
 
@@ -35,10 +34,7 @@ function CacheContent() {
           kind: "info",
         });
       } catch (error: unknown) {
-        await message(String(error), {
-          title: "FitLauncher",
-          kind: "error",
-        });
+        await showError(error);
       }
     }
   }
@@ -47,10 +43,7 @@ function CacheContent() {
     try {
       await invoke("open_logs_directory");
     } catch (error: unknown) {
-      await message(String(error), {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(error);
     }
   }
 
