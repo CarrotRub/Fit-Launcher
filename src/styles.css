@@ -128,6 +128,42 @@
     --color-resume-accent: rgba(0, 204, 204, 1);
     --color-warning-orange: rgba(255, 127, 80, 1);
   }
+
+  :root[data-theme="gnome-dark"] {
+    --color-accent: rgba(53, 132, 228, 1);
+    --color-primary: rgba(98, 160, 234, 1);
+    --color-secondary: rgba(30, 80, 160, 1);
+    --color-secondary-30: rgba(30, 80, 160, 0.6);
+    --color-secondary-20: rgba(255, 255, 255, 0.2);
+    --color-text: rgba(246, 245, 244, 1);
+    --color-muted: rgba(246, 245, 244, 0.6);
+    --color-background: rgba(34, 34, 38, 1);
+    --color-background-70: rgba(34, 34, 38, 0.7);
+    --color-background-30: rgba(34, 34, 38, 0.3);
+    --color-popup-background: rgba(46, 46, 50, 1);
+    --color-resume-accent: rgba(98, 160, 234, 1);
+    --color-warning-orange: rgba(255, 120, 0, 1);
+    --color-success: rgba(87, 227, 137, 1);
+    --color-error: rgba(224, 27, 36, 1);
+  }
+
+  :root[data-theme="gnome-light"] {
+    --color-accent: rgba(53, 132, 228, 1);
+    --color-primary: rgba(98, 160, 234, 1);
+    --color-secondary: rgba(30, 80, 160, 1);
+    --color-secondary-30: rgba(30, 80, 160, 0.8);
+    --color-secondary-20: rgba(0, 0, 0, 0.2);
+    --color-text: rgba(24, 24, 27, 1);
+    --color-muted: rgba(24, 24, 27, 0.8);
+    --color-background: rgba(240, 244, 249, 1);
+    --color-background-70: rgba(240, 244, 249, 0.7);
+    --color-background-30: rgba(240, 244, 249, 0.3);
+    --color-popup-background: rgba(255, 255, 255, 1);
+    --color-resume-accent: rgba(98, 160, 234, 1);
+    --color-warning-orange: rgba(255, 120, 0, 1);
+    --color-success: rgba(46, 194, 126, 1);
+    --color-error: rgba(224, 27, 36, 1);
+  }
 }
 
 @layer utilities {
@@ -156,7 +192,8 @@
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
     border-radius: 10px;
-    display: block; /* Override display: none from html/body if needed */
+    display: block;
+    /* Override display: none from html/body if needed */
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {

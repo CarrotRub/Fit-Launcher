@@ -5,6 +5,8 @@ export const defaultThemes = [
   "Ocean Dark Blue",
   "Dark Orange Mead",
   "Desert Light Beige",
+  "Gnome Dark",
+  "Gnome Light",
 ] as const;
 
 export type DefaultTheme = (typeof defaultThemes)[number];
