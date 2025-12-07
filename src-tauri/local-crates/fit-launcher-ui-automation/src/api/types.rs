@@ -31,7 +31,13 @@ impl InstallationJob {
                 process_utils::find_child_pid_with_retry,
             };
 
-            let setup_executable_path = self.path.join("setup.exe");
+            let mut setup_executable_path = self.path.join("setup.exe");
+            for fixed in ["setup-fixed-ost.exe", "setup-FIXED.exe"] {
+                let fixed_setup = self.path.join(fixed);
+                if fixed_setup.exists() {
+                    setup_executable_path = fixed_setup;
+                }
+            }
             info!("Setup path is: {}", setup_executable_path.to_string_lossy());
 
             let root_pid = start_executable_components_args(setup_executable_path)?;
