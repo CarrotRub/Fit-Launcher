@@ -39,7 +39,7 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
 
     return (
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div class="relative bg-popup-background rounded-xl shadow-2xl border border-secondary-20 max-h-[96vh] no-scrollbar overflow-y-auto max-w-md w-full mx-4 transition-all duration-300 transform">
+            <div class={`relative bg-popup-background rounded-xl shadow-2xl border border-secondary-20 max-h-[96vh] no-scrollbar overflow-y-auto max-w-${props.maxWidth ? props.maxWidth : "md"} w-full mx-4 transition-all duration-300 transform`}>
                 {/* Close Button */}
                 <div class="w-full flex justify-end p-2">
                     <button

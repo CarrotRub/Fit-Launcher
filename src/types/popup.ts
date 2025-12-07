@@ -20,6 +20,7 @@ export type PopupProps<T extends unknown[] = []> = {
 export type ModalPopupProps<T extends unknown[] = []> = PopupProps<T> & {
   children: JSX.Element;
   variant?: PopupTypeVariant;
+  maxWidth?: "2xl" | "xl" | "lg" | "md" | "xs";
   onClose?: (...args: T) => void | Promise<void>;
 };
 
