@@ -35,7 +35,7 @@ function SettingsFull(): JSX.Element {
     <SettingsProvider>
       <div class="grid grid-cols-[20rem_1fr] h-screen w-screen bg-background">
         <SettingsSidebar />
-        <div class="col-start-2 overflow-y-auto  bg-background-70">
+        <div class="col-start-2 overflow-y-auto  bg-background-70  no-scrollbar">
           <SettingsContent />
         </div>
       </div>
