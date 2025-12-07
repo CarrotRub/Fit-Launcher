@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use fit_launcher_scraping::structs::Game;
+use tauri::async_runtime::spawn_blocking;
 use tokio_util::sync::CancellationToken;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::InstallationError;
@@ -15,6 +17,60 @@ pub struct InstallationJob {
 }
 
 impl InstallationJob {
+    /// returns relative path from game installation directory,
+    /// to the game main executable or the launcher.
+    pub async fn find_main_executable(&self) -> Option<String> {
+        let setup = self.setup_executable_path();
+
+        let result: Result<anyhow::Result<_>, _> = spawn_blocking(move || {
+            let file = std::fs::OpenOptions::new()
+                .read(true)
+                .create(false)
+                .open(&setup)?;
+            let inno = inno::Inno::new(file).inspect_err(|e| {
+                error!("failed to parse {setup:?}: {e}");
+            })?;
+
+            let icon = inno
+                .icons()
+                .iter()
+                .filter(|icon| {
+                    icon.name()
+                        .is_some_and(|name| name.starts_with("{commondesktop}"))
+                })
+                .filter_map(|icon| icon.file())
+                .next();
+            let run = inno
+                .run_entries()
+                .iter()
+                .filter(|entry| {
+                    entry
+                        .description()
+                        .is_some_and(|desc| desc.starts_with("{cm:LaunchProgram,"))
+                })
+                .filter_map(|entry| entry.name())
+                .next();
+
+            Ok(icon.or(run).map(|s| s.replace("{app}\\", "")))
+        })
+        .await;
+
+        result.ok().and_then(|res| res.ok()).and_then(|path| path)
+    }
+
+    pub fn setup_executable_path(&self) -> PathBuf {
+        let mut setup_executable_path = self.path.join("setup.exe");
+
+        for fixed in ["setup-fixed-ost.exe", "setup-FIXED.exe"] {
+            let fixed_setup = self.path.join(fixed);
+            if fixed_setup.exists() {
+                setup_executable_path = fixed_setup;
+            }
+        }
+
+        setup_executable_path
+    }
+
     pub async fn auto_installation(
         &self,
         app_handle: tauri::AppHandle,
@@ -31,13 +87,7 @@ impl InstallationJob {
                 process_utils::find_child_pid_with_retry,
             };
 
-            let mut setup_executable_path = self.path.join("setup.exe");
-            for fixed in ["setup-fixed-ost.exe", "setup-FIXED.exe"] {
-                let fixed_setup = self.path.join(fixed);
-                if fixed_setup.exists() {
-                    setup_executable_path = fixed_setup;
-                }
-            }
+            let setup_executable_path = self.setup_executable_path();
             info!("Setup path is: {}", setup_executable_path.to_string_lossy());
 
             let root_pid = start_executable_components_args(setup_executable_path)?;
@@ -101,7 +151,6 @@ impl InstallationJob {
         #[cfg(target_os = "windows")]
         {
             use tokio::fs;
-            use tracing::info;
 
             let mut attempts = 0;
             let path = self.path.clone();
