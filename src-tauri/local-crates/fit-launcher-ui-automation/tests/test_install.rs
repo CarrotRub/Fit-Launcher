@@ -4,6 +4,10 @@
 use std::path::Path;
 use std::time::Duration;
 
+#[cfg(not(windows))]
+fn main() {}
+
+#[cfg(windows)]
 fn main() {
     // Initialize tracing for console output
     tracing_subscriber::fmt::init();
