@@ -219,7 +219,7 @@ pub async fn aria2_client_from_config(
                 port
             ));
         }
-        let child = {
+        let mut child = {
             #[cfg(windows)]
             {
                 use std::ffi::OsString;
@@ -239,6 +239,8 @@ pub async fn aria2_client_from_config(
 
             #[cfg(not(windows))]
             {
+                use std::process::Stdio;
+
                 tokio::process::Command::new(&exec)
                     .args(build_aria2_args(
                         config,

@@ -1,6 +1,8 @@
 pub mod emitter;
 pub mod extraction;
+#[cfg(windows)]
 pub mod mighty;
+#[cfg(windows)]
 pub mod mighty_automation;
 pub mod mighty_commands;
 pub mod process_utils;

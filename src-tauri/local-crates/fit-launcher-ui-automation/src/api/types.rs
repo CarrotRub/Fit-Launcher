@@ -71,6 +71,7 @@ impl InstallationJob {
         setup_executable_path
     }
 
+    #[cfg_attr(not(windows), allow(unused))]
     pub async fn auto_installation(
         &self,
         app_handle: tauri::AppHandle,
@@ -140,8 +141,10 @@ impl InstallationJob {
 
         #[cfg(not(target_os = "windows"))]
         {
+            use tracing::info;
+
             info!("Automated setup installation is not supported on this platform");
-            return Err(TorrentApiError::IOError(
+            return Err(InstallationError::IOError(
                 "Automated setup installation is not supported on this platform".to_string(),
             ));
         }
