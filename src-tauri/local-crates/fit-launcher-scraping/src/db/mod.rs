@@ -14,10 +14,13 @@ use tracing::info;
 use crate::errors::ScrapingError;
 
 pub use games::{
-    cleanup_expired_games, get_game_by_hash, get_games_by_category, is_game_cache_valid,
-    set_category_games, upsert_game,
+    cleanup_expired_games, clear_game_cache, get_game_by_hash, get_games_by_category,
+    is_game_cache_valid, set_category_games, upsert_game,
 };
-pub use search::{SearchIndexEntry, initialize_fts, insert_fts_entries, query_fts};
+pub use search::{
+    SearchIndexEntry, batch_insert_sitemap_urls, clear_sitemap_urls, get_all_sitemap_urls,
+    get_sitemap_url_count, initialize_fts, insert_fts_entries, query_fts, upsert_sitemap_url,
+};
 
 pub fn get_db_path(app: &AppHandle) -> PathBuf {
     app.path()
@@ -124,6 +127,14 @@ fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
         CREATE TABLE IF NOT EXISTS metadata (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS sitemap_urls (
+            href TEXT PRIMARY KEY,
+            slug TEXT NOT NULL,
+            title TEXT NOT NULL,
+            source_file TEXT,
+            created_at INTEGER NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_game_categories_category 

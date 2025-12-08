@@ -110,6 +110,18 @@ pub fn cleanup_expired_games(conn: &Connection, expiry_secs: i64) -> Result<usiz
     Ok(deleted)
 }
 
+/// Clears all game cache data from the database.
+/// Deletes all games, categories, sitemap URLs, and relevant metadata.
+pub fn clear_game_cache(conn: &Connection) -> Result<(), ScrapingError> {
+    conn.execute_batch(
+        "DELETE FROM game_categories;
+         DELETE FROM games;
+         DELETE FROM sitemap_urls;
+         DELETE FROM metadata WHERE key LIKE 'category_%_updated';",
+    )?;
+    Ok(())
+}
+
 pub fn get_games_by_category(
     conn: &Connection,
     category: &str,

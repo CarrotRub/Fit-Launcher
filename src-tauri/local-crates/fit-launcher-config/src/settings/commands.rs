@@ -281,29 +281,33 @@ pub fn reset_dns_settings() -> Result<(), SettingsConfigurationError> {
 #[tauri::command]
 #[specta]
 pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
-    let persistence_session_path = directories::BaseDirs::new()
-        .expect("Could not determine base directories")
-        .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
-        .join("com.fitlauncher.carrotrub")
-        .join("torrentConfig")
-        .join("session")
-        .join("data");
-    let persistnce_dht_path = directories::BaseDirs::new()
-        .expect("Could not determine base directories")
-        .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
-        .join("com.fitlauncher.carrotrub")
-        .join("torrentConfig")
-        .join("dht")
-        .join("cache");
+    let base_dirs = directories::BaseDirs::new().ok_or_else(|| SettingsConfigurationError {
+        message: "Could not determine base directories".to_string(),
+    })?;
 
-    let image_cache_path = directories::BaseDirs::new()
-        .expect("Could not determine base directories")
-        .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
-        .join("com.fitlauncher.carrotrub");
+    let local_config = base_dirs
+        .config_local_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("torrentConfig");
 
-    tokio::fs::remove_dir_all(persistence_session_path).await?;
-    tokio::fs::remove_dir_all(persistnce_dht_path).await?;
-    tokio::fs::remove_file(image_cache_path).await?;
+    let persistence_session_path = local_config.join("session").join("data");
+    let persistence_dht_path = local_config.join("dht").join("cache");
+
+    // Remove torrent session data if it exists
+    if persistence_session_path.exists() {
+        tokio::fs::remove_dir_all(&persistence_session_path).await?;
+        info!("Cleared torrent session data");
+    }
+
+    // Remove DHT cache if it exists
+    if persistence_dht_path.exists() {
+        tokio::fs::remove_dir_all(&persistence_dht_path).await?;
+        info!("Cleared DHT cache");
+    }
+
+    // Note: Game cache is now stored in SQLite database.
+    // Use the clear_game_cache command from fit_launcher_scraping to clear it.
+
     Ok(())
 }
 

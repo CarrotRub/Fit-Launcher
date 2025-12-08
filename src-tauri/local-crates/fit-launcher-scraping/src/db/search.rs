@@ -93,6 +93,100 @@ fn escape_fts5_query(query: &str) -> String {
         .join(" ")
 }
 
+// ============================================================================
+// Sitemap URL Storage
+// ============================================================================
+
+fn now_timestamp() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+}
+
+/// Insert or update a sitemap URL entry.
+pub fn upsert_sitemap_url(
+    conn: &Connection,
+    href: &str,
+    slug: &str,
+    title: &str,
+    source_file: Option<&str>,
+) -> Result<(), ScrapingError> {
+    let now = now_timestamp();
+    conn.execute(
+        "INSERT INTO sitemap_urls (href, slug, title, source_file, created_at) 
+         VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(href) DO UPDATE SET
+             slug = excluded.slug,
+             title = excluded.title,
+             source_file = excluded.source_file",
+        params![href, slug, title, source_file, now],
+    )?;
+    Ok(())
+}
+
+/// Batch insert sitemap URLs (faster than individual inserts).
+pub fn batch_insert_sitemap_urls(
+    conn: &Connection,
+    entries: &[SearchIndexEntry],
+    source_file: Option<&str>,
+) -> Result<usize, ScrapingError> {
+    let tx = conn.unchecked_transaction()?;
+    let now = now_timestamp();
+    let mut count = 0;
+
+    {
+        let mut stmt = tx.prepare(
+            "INSERT OR IGNORE INTO sitemap_urls (href, slug, title, source_file, created_at) 
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+        )?;
+
+        for entry in entries {
+            stmt.execute(params![
+                &entry.href,
+                &entry.slug,
+                &entry.title,
+                source_file,
+                now
+            ])?;
+            count += 1;
+        }
+    }
+
+    tx.commit()?;
+    Ok(count)
+}
+
+/// Get all sitemap URLs as search index entries.
+pub fn get_all_sitemap_urls(conn: &Connection) -> Result<Vec<SearchIndexEntry>, ScrapingError> {
+    let mut stmt = conn.prepare("SELECT slug, title, href FROM sitemap_urls ORDER BY title")?;
+
+    let entries = stmt
+        .query_map([], |row| {
+            Ok(SearchIndexEntry {
+                slug: row.get(0)?,
+                title: row.get(1)?,
+                href: row.get(2)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(entries)
+}
+
+/// Get count of sitemap URLs.
+pub fn get_sitemap_url_count(conn: &Connection) -> Result<usize, ScrapingError> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM sitemap_urls", [], |row| row.get(0))?;
+    Ok(count as usize)
+}
+
+/// Clear all sitemap URLs.
+pub fn clear_sitemap_urls(conn: &Connection) -> Result<(), ScrapingError> {
+    conn.execute("DELETE FROM sitemap_urls", [])?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

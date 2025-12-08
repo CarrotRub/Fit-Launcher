@@ -25,6 +25,15 @@ pub fn get_newly_added_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError>
 
 #[tauri::command]
 #[specta]
+pub fn clear_game_cache(app: AppHandle) -> Result<(), ScrapingError> {
+    let conn = db::open_connection(&app)?;
+    db::clear_game_cache(&conn)?;
+    info!("Game cache cleared");
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
 pub fn get_popular_games(app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
     let conn = db::open_connection(&app)?;
     db::get_games_by_category(&conn, "popular")

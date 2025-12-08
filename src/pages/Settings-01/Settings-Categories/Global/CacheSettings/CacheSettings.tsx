@@ -22,13 +22,16 @@ function CacheContent() {
 
   async function handleClearCache() {
     const confirmation = await confirm(
-      "This will delete every cache file. This action cannot be reverted. Are you sure?",
+      "This will delete all cached game data and torrent session data. This action cannot be reverted. Are you sure?",
       { title: "FitLauncher", kind: "warning" }
     );
 
     if (confirmation) {
       try {
+        // Clear torrent session and DHT data
         await invoke("clear_all_cache");
+        // Clear game cache from database
+        await invoke("clear_game_cache");
         await message("Cache cleared successfully!", {
           title: "FitLauncher",
           kind: "info",
