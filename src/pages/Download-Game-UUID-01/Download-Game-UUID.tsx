@@ -4,7 +4,26 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { commands, DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Package, Tags, Zap } from "lucide-solid";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import {
+  ArrowLeft,
+  Bookmark,
+  BookmarkCheck,
+  Calendar,
+  Clock,
+  ExternalLink,
+  Factory,
+  Gamepad2,
+  Globe,
+  HardDrive,
+  Info,
+  Languages,
+  Magnet,
+  Package,
+  Play,
+  Tags,
+  Zap,
+} from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
@@ -13,7 +32,12 @@ import { GameDetails, GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
 import * as Debrid from "../../api/debrid/api";
+import { open } from "@tauri-apps/plugin-shell";
 
+import { InfoRow, InfoDivider } from "../../components/UI/Download-Game-Page/InfoRow/InfoRow";
+import { CollapsibleSection } from "../../components/UI/Download-Game-Page/CollapsibleSection/CollapsibleSection";
+import { ScreenshotGallery } from "../../components/UI/Download-Game-Page/ScreenshotGallery/ScreenshotGallery";
+import { StatCard } from "../../components/UI/Download-Game-Page/StatCard/StatCard";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -21,13 +45,8 @@ const cache = new GamesCacheApi();
 const DownloadGameUUIDPage = () => {
   const [gameInfo, setGameInfo] = createSignal<DownloadedGame>();
   const [additionalImages, setAdditionalImages] = createSignal<string[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = createSignal(0);
   const [loading, setLoading] = createSignal(true);
   const [isToDownloadLater, setToDownloadLater] = createSignal(false);
-  const [featuresExpanded, setFeaturesExpanded] = createSignal(false);
-  const [touchStartX, setTouchStartX] = createSignal(0);
-  const [touchEndX, setTouchEndX] = createSignal(0);
-  const [swipeDirection, setSwipeDirection] = createSignal<"left" | "right" | null>(null);
   const [hasDebridCached, setHasDebridCached] = createSignal(false);
   const [gameDetails, setGameDetails] = createSignal<GameDetails>({
     tags: "N/A",
@@ -39,45 +58,23 @@ const DownloadGameUUIDPage = () => {
 
   const { notify } = useToast();
   const navigate = useNavigate();
-  const params = useParams();
-
-  let backgroundCycleIntervalID: number;
-  let heroSectionRef: HTMLDivElement;
-
   const location = useLocation<GamePageState>();
 
-  function goToNextImage() {
-    clearInterval(backgroundCycleIntervalID);
-    setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
-    startBackgroundCycle();
-  }
-
-  function goToPrevImage() {
-    clearInterval(backgroundCycleIntervalID);
-    setCurrentImageIndex((i) => (i - 1 + additionalImages().length) % additionalImages().length);
-    startBackgroundCycle();
-  }
-
-  function goToImage(index: number) {
-    clearInterval(backgroundCycleIntervalID);
-    setCurrentImageIndex(index);
-    startBackgroundCycle();
-  }
-
+  // Track current game href for event filtering
+  const [currentGameHref, setCurrentGameHref] = createSignal<string>("");
+  let imageEventUnlisten: UnlistenFn | null = null;
 
   async function fetchGame(gameHref: string) {
     try {
       setLoading(true);
-      setHasDebridCached(false); // Reset on new game load
+      setHasDebridCached(false);
       await cache.getSingularGameInfo(gameHref);
       const res = await cache.getSingularGameLocal(gameHref);
       if (res.status === "ok") {
         const game = library.gameToDownloadedGame(res.data);
-        console.log(game)
         setGameInfo(game);
         extractDetails(game.details);
         checkIfInDownloadLater(game.title);
-        // Check debrid cache in background (don't await)
         if (game.magnetlink) {
           checkDebridCache(game.magnetlink);
         }
@@ -89,25 +86,51 @@ const DownloadGameUUIDPage = () => {
     }
   }
 
-  async function fetchImages(gameHref: string) {
+  async function fetchImages(gameHref: string): Promise<void> {
+    // First check if already cached - will return immediately if so
     try {
       const images = await cache.getGameImages(gameHref);
-      if (images.status === "ok") {
+      if (images.status === "ok" && images.data.length > 0) {
         setAdditionalImages(images.data);
-        startBackgroundCycle();
       }
-    } catch {
-      console.warn("No additional images available");
+      // If not cached, backend will emit events as images are processed
+      // The listener set up in setupImageEventListener handles those
+    } catch (err) {
+      console.warn("Error fetching images:", err);
     }
+  }
+
+  async function setupImageEventListener() {
+    // Clean up previous listener
+    if (imageEventUnlisten) {
+      imageEventUnlisten();
+      imageEventUnlisten = null;
+    }
+
+    imageEventUnlisten = await listen<{
+      game_link: string;
+      image_url: string;
+      index: number;
+      total: number;
+    }>("game_images::image_ready", (event) => {
+      // Only handle events for the current game
+      if (event.payload.game_link === currentGameHref()) {
+        setAdditionalImages((prev) => {
+          // Avoid duplicates
+          if (prev.includes(event.payload.image_url)) {
+            return prev;
+          }
+          return [...prev, event.payload.image_url];
+        });
+      }
+    });
   }
 
   async function checkIfInDownloadLater(title: string) {
     try {
       const list = await library.getGamesToDownload();
-      const exists = list.some((g) => g.title === title);
-      setToDownloadLater(exists);
-    } catch (err) {
-      console.error("Error checking download later list", err);
+      setToDownloadLater(list.some((g) => g.title === title));
+    } catch {
       setToDownloadLater(false);
     }
   }
@@ -118,22 +141,14 @@ const DownloadGameUUIDPage = () => {
       if (!hash) return;
 
       const providers = await Debrid.listProviders();
-
-      // Check each provider for credentials and cache
       for (const providerInfo of providers) {
-        try {
-          if (!providerInfo.supports_cache_check) continue;
-
-          const hasCredResult = await Debrid.hasCredential(providerInfo.id);
-          if (hasCredResult.status !== "ok" || !hasCredResult.data) continue;
-
-          const cacheResult = await Debrid.checkCache(providerInfo.id, hash);
-          if (cacheResult.status === "ok" && cacheResult.data.is_cached) {
-            setHasDebridCached(true);
-            return; // Found a cached provider, no need to check more
-          }
-        } catch (e) {
-          console.error(`Failed to check debrid cache for ${providerInfo.id}:`, e);
+        if (!providerInfo.supports_cache_check) continue;
+        const hasCredResult = await Debrid.hasCredential(providerInfo.id);
+        if (hasCredResult.status !== "ok" || !hasCredResult.data) continue;
+        const cacheResult = await Debrid.checkCache(providerInfo.id, hash);
+        if (cacheResult.status === "ok" && cacheResult.data.is_cached) {
+          setHasDebridCached(true);
+          return;
         }
       }
     } catch (err) {
@@ -145,89 +160,46 @@ const DownloadGameUUIDPage = () => {
     const match = (label: string) =>
       description?.match(new RegExp(`${label}:\\s*([^\\n]+)`));
 
-    const details: GameDetails = {
+    setGameDetails({
       tags: match("Genres/Tags")?.[1]?.trim() ?? "N/A",
-      companies: match("Company")?.[1]?.trim()
-        ?? match("Companies")?.[1]?.trim()
-        ?? "N/A",
+      companies: match("Company")?.[1]?.trim() ?? match("Companies")?.[1]?.trim() ?? "N/A",
       language: match("Languages")?.[1]?.trim() ?? "N/A",
       originalSize: match("Original Size")?.[1]?.trim() ?? "N/A",
       repackSize: match("Repack Size")?.[1]?.trim() ?? "N/A"
-    };
-
-    setGameDetails(details);
-  }
-
-  function startBackgroundCycle() {
-    clearInterval(backgroundCycleIntervalID)
-    backgroundCycleIntervalID = setInterval(() => {
-      setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
-    }, 5000);
-  }
-
-  function handleTouchStart(e: TouchEvent) {
-    setTouchStartX(e.touches[0].clientX);
-    setTouchEndX(e.touches[0].clientX);
-    clearInterval(backgroundCycleIntervalID);
-  }
-
-  function handleTouchMove(e: TouchEvent) {
-    setTouchEndX(e.touches[0].clientX);
-    const diff = touchStartX() - touchEndX();
-    console.log("Swipe is: ", diff > 0 ? "left" : "right")
-    if (Math.abs(diff) > 30) {
-      setSwipeDirection(diff > 0 ? "left" : "right");
-    } else {
-      setSwipeDirection(null);
-    }
-  }
-
-  function handleTouchEnd() {
-    if (!swipeDirection()) {
-      startBackgroundCycle();
-      return;
-    }
-
-    if (swipeDirection() === "left") {
-      // Swipe left - go to next image
-      setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
-    } else {
-      // Swipe right - go to previous image
-      setCurrentImageIndex((i) => (i - 1 + additionalImages().length) % additionalImages().length);
-    }
-
-    setSwipeDirection(null);
-    startBackgroundCycle();
+    });
   }
 
   async function toggleDownloadLater() {
     const game = gameInfo();
-    // * just keeping that here cuz i sometimes need forced panics to try out unexpectedly expected stuff :3
-    // await commands.panicForce();
     if (!game) return;
 
     try {
       if (isToDownloadLater()) {
         await library.removeGameToDownload(game.title);
         setToDownloadLater(false);
-        notify(`${game.title} has been removed from favorites`, {
-          type: "success",
-        })
+        notify(`${game.title} removed from favorites`, { type: "success" });
       } else {
         await library.addGameToCollection("games_to_download", library.downloadedGameToGame(game));
         setToDownloadLater(true);
-        notify(`${game.title} has been added to favorites`, {
-          type: "success",
-        });
+        notify(`${game.title} added to favorites`, { type: "success" });
       }
-    } catch (err) {
-      console.error("Error toggling download later", err);
-      notify("Error adding to favorites", { type: "error" });
+    } catch {
+      notify("Error updating favorites", { type: "error" });
     }
   }
 
-
   const handleReturn = () => navigate(localStorage.getItem("latestGlobalHref") || "/");
+
+  function handleDownloadPopup(downloadType: DownloadType) {
+    createDownloadPopup({
+      infoTitle: "Download Game",
+      infoMessage: `Do you want to download ${gameInfo()!.title}`,
+      downloadedGame: gameInfo()!,
+      gameDetails: gameDetails(),
+      downloadType,
+      onFinish: () => navigate("/downloads-page")
+    });
+  }
 
   createEffect(() => {
     const state = location.state;
@@ -235,278 +207,191 @@ const DownloadGameUUIDPage = () => {
       setLoading(true);
       setGameInfo(undefined);
       setAdditionalImages([]);
-      console.log(state.gameHref)
+      setCurrentGameHref(state.gameHref);
+      setupImageEventListener();
       fetchGame(state.gameHref);
       fetchImages(state.gameHref);
     }
   });
 
+  // Cleanup event listener on unmount
   onCleanup(() => {
-    clearInterval(backgroundCycleIntervalID);
+    if (imageEventUnlisten) {
+      imageEventUnlisten();
+    }
   });
 
-  function handleDownloadPopup(downloadType: DownloadType) {
-    let onFinish = () => navigate("/downloads-page");
-    createDownloadPopup({
-      infoTitle: "Download Game",
-      infoMessage: `Do you want to download ${gameInfo()!.title}`,
-      downloadedGame: gameInfo()!,
-      gameDetails: gameDetails(),
-      downloadType,
-      onFinish
-    })
-  }
-
   return (
-    <div class="min-h-full min-w-screen bg-background text-text flex items-center justify-center">
+    <div class="min-h-full w-full bg-background text-text">
       {loading() ? (
         <LoadingPage />
       ) : gameInfo() ? (
-        <div class=" mx-auto w-screen   pb-8">
-          {/* Hero Section */}
-          <div
-            ref={heroSectionRef!}
-            class="relative h-128 w-full bg-cover bg-center mb-6 overflow-hidden transition-all duration-1000 ease-in-out"
-            style={{
-              'background-image': `url(${additionalImages()[currentImageIndex()]})`,
-              'transform': swipeDirection() ?
-                `translateX(${swipeDirection() === 'left' ? '-10' : '10'}px)` : 'translateX(0)',
-              'transition': swipeDirection() ? 'transform 0.1s ease-out' : 'transform 0.5s ease-in-out'
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
-
-            {/* Navigation */}
-            <Show when={additionalImages().length > 1}>
-              <div class="flex w-full justify-between items-center h-full px-4">
-                <Button
-                  icon={<ChevronLeft class="w-5 h-5 text-primary" />}
-                  onClick={goToPrevImage}
-                  size="sm"
-                  class="!rounded-full z-10"
-                  variant="glass"
-                />
-
-                <Button
-                  icon={<ChevronRight class="w-5 h-5 text-primary" />}
-                  onClick={goToNextImage}
-
-                  class="!rounded-full z-10"
-                  variant="glass"
-                />
-              </div>
-            </Show>
-
-            {/* Top Navigation */}
-            <div class="absolute top-3 left-3 z-10 flex gap-2">
-
-              <Button
-                icon={<ArrowLeft class="w-5 h-5 text-primary" />}
-                onClick={handleReturn}
-                size="sm"
-                variant="glass"
-              />
-
-              <Button
-                icon={isToDownloadLater() ?
-                  <BookmarkCheck class="w-5 h-5 text-primary" /> :
-                  <Bookmark class="w-5 h-5 text-primary" />}
-                onClick={toggleDownloadLater}
-                size="sm"
-                variant="glass"
-                aria-label={isToDownloadLater() ? "Remove from download later" : "Add to download later"}
-              />
-            </div>
-
-            {/* Image Indicators */}
-            <Show when={additionalImages().length > 1}>
-              <div class="absolute bottom-16 left-0 right-0 flex justify-center gap-2 z-10">
-                {additionalImages().map((_, index) => (
-                  <button
-                    onClick={() => goToImage(index)}
-                    class={`w-2 h-2 rounded-full transition-all ${index === currentImageIndex() ? 'bg-accent w-4' : 'bg-muted/50 hover:bg-muted'}`}
-                  />
-                ))}
-              </div>
-            </Show>
-
-            {/* Game Title */}
-            <div class="absolute bottom-4 left-4 right-4 z-10">
-              <h1 class="text-2xl font-bold truncate">
-                {extractMainTitle(gameInfo()!.title)}
-              </h1>
-              <p class="text-sm text-muted truncate">
-                {gameInfo()!.title}
-              </p>
-            </div>
+        <div class="flex flex-col h-full">
+          {/* Top Bar */}
+          <div class="flex items-center justify-between px-4 py-3 border-b border-secondary-20 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+            <Button
+              icon={<ArrowLeft class="w-5 h-5" />}
+              onClick={handleReturn}
+              size="sm"
+              variant="glass"
+              label="Back"
+            />
+            <Button
+              icon={isToDownloadLater() ? <BookmarkCheck class="w-5 h-5 text-accent" /> : <Bookmark class="w-5 h-5" />}
+              onClick={toggleDownloadLater}
+              size="sm"
+              variant="glass"
+              label={isToDownloadLater() ? "Saved" : "Save"}
+            />
           </div>
 
-          <div class="flex w-full flex-col items-center justify-center px-4 gap-6">
-            {/* Download Button */}
-            <div class="w-full max-w-4xl flex flex-col gap-3">
-              <div class="flex flex-col sm:flex-row gap-3 w-full">
-                <Button
-                  icon={<Magnet class="size-5" />}
-                  label="Torrent Download"
-                  onClick={() => handleDownloadPopup("bittorrent")}
-                  class="flex-1 py-3 hover:bg-accent/90 transition-colors"
-                  variant="bordered"
-                />
-                <div class="relative flex items-center justify-center">
-                  <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-secondary-20"></div>
-                  </div>
-                  <div class="relative px-2 text-xs text-muted">OR</div>
-                </div>
-                <div class="relative flex-1">
-                  <Show when={hasDebridCached()}>
-                    <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
-                      <Zap class="w-3 h-3" />
-                      Fast
-                    </div>
-                  </Show>
-                  <Button
-                    icon={<Globe class="size-5" />}
-                    label="Direct Download"
-                    onClick={() => handleDownloadPopup("direct_download")}
-                    class="w-full py-3 hover:bg-accent/90 transition-colors"
-                    variant="bordered"
+          {/* Main Content */}
+          <div class="flex-1 overflow-y-auto custom-scrollbar">
+            <div class="max-w-7xl mx-auto p-4 md:p-6">
+              {/* Gallery + Sidebar */}
+              <div class="flex flex-col lg:flex-row gap-6 mb-6">
+                {/* Screenshot Gallery */}
+                <div class="flex-1 lg:w-[60%]">
+                  <ScreenshotGallery
+                    images={additionalImages}
+                    autoPlayInterval={5000}
                   />
                 </div>
-              </div>
-              <p class="text-xs text-muted text-center">
-                Choose your preferred download method
-              </p>
-            </div>
 
-            {/* Game Info Grid */}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-              {/* Game Description */}
-              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20">
-                <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Info class="w-5 h-5 text-accent" />
-                  Description
-                </h2>
-                <div class="max-h-64 overflow-y-auto thin-scrollbar pr-2">
+                {/* Sidebar */}
+                <div class="lg:w-[40%] flex flex-col gap-4">
+                  {/* Title */}
+                  <div>
+                    <h1 class="text-2xl md:text-3xl font-bold leading-tight mb-1">
+                      {extractMainTitle(gameInfo()!.title)}
+                    </h1>
+                    <p class="text-sm text-muted line-clamp-2">{gameInfo()!.title}</p>
+                  </div>
+
+                  {/* Download Buttons */}
+                  <div class="flex flex-col gap-2">
+                    <Button
+                      icon={<Magnet class="w-5 h-5" />}
+                      label="Torrent Download"
+                      onClick={() => handleDownloadPopup("bittorrent")}
+                      class="w-full py-3 justify-center"
+                      variant="bordered"
+                    />
+                    <div class="relative">
+                      <Show when={hasDebridCached()}>
+                        <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                          <Zap class="w-3 h-3" />
+                          Fast
+                        </div>
+                      </Show>
+                      <Button
+                        icon={<Globe class="w-5 h-5" />}
+                        label="Direct Download"
+                        onClick={() => handleDownloadPopup("direct_download")}
+                        class="w-full py-3 justify-center"
+                        variant="bordered"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Info Card */}
+                  <div class="bg-popup-background rounded-xl p-4 border border-secondary-20 space-y-3">
+                    <InfoRow
+                      icon={<HardDrive class="w-4 h-4 text-accent" />}
+                      iconBgClass="bg-accent/10"
+                      label="Download Size"
+                      value={gameDetails().repackSize}
+                    />
+                    <InfoRow
+                      icon={<Package class="w-4 h-4 text-primary" />}
+                      iconBgClass="bg-primary/10"
+                      label="Original Size"
+                      value={gameDetails().originalSize}
+                    />
+                    <InfoDivider />
+                    <InfoRow
+                      icon={<Factory class="w-4 h-4 text-muted" />}
+                      label="Publisher"
+                      value={gameDetails().companies}
+                    />
+                    <InfoRow
+                      icon={<Languages class="w-4 h-4 text-muted" />}
+                      label="Languages"
+                      value={gameDetails().language}
+                    />
+                    <InfoRow
+                      icon={<Tags class="w-4 h-4 text-muted" />}
+                      label="Genres/Tags"
+                      value={gameDetails().tags}
+                      multiline
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div class="mb-4">
+                <CollapsibleSection
+                  icon={<Info class="w-5 h-5 text-accent" />}
+                  title="About This Game"
+                >
                   <p class="text-sm text-muted leading-relaxed whitespace-pre-wrap">
                     {gameInfo()?.description || "Description not available"}
                   </p>
-                </div>
+                </CollapsibleSection>
               </div>
 
-              {/* Game Details */}
-              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20 flex flex-col">
-                <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Gamepad2 class="w-5 h-5 text-accent" />
-                  Details
-                </h2>
-                <div class="space-y-3 flex-1">
-                  <div class="flex items-start gap-2">
-                    <Tags class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Genres/Tags</p>
-                      <p class="text-sm font-medium">{gameDetails().tags}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <Factory class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Company</p>
-                      <p class="text-sm font-medium">{gameDetails().companies}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <Languages class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Languages</p>
-                      <p class="text-sm font-medium">{gameDetails().language}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Repack Size</p>
-                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Original Size</p>
-                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
-                    </div>
+              {/* Repack Features */}
+              <Show when={gameInfo()?.features}>
+                <div class="mb-4">
+                  <CollapsibleSection
+                    icon={<Package class="w-5 h-5 text-accent" />}
+                    title="Repack Features"
+                  >
+                    <p class="text-sm text-muted leading-relaxed whitespace-pre-wrap">
+                      {gameInfo()?.features}
+                    </p>
+                  </CollapsibleSection>
+                </div>
+              </Show>
+
+              {/* Play Stats */}
+              <Show when={gameInfo()?.executable_info?.executable_path}>
+                <div class="bg-popup-background rounded-xl p-4 border border-secondary-20">
+                  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Gamepad2 class="w-5 h-5 text-accent" />
+                    Your Play Stats
+                  </h2>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <StatCard
+                      icon={<Clock class="w-5 h-5 text-accent" />}
+                      iconBgClass="bg-accent/10"
+                      label="Play Time"
+                      value={formatPlayTime(gameInfo()!.executable_info.executable_play_time)}
+                    />
+                    <StatCard
+                      icon={<Play class="w-5 h-5 text-primary" />}
+                      iconBgClass="bg-primary/10"
+                      label="Last Played"
+                      value={formatDate(gameInfo()!.executable_info.executable_last_opened_date)}
+                    />
+                    <StatCard
+                      icon={<Calendar class="w-5 h-5 text-muted" />}
+                      label="Installed"
+                      value={formatDate(gameInfo()!.executable_info.executable_installed_date)}
+                    />
                   </div>
                 </div>
-
-                {/* Repack Features - Collapsible (opens upward) */}
-                <Show when={gameInfo()?.features}>
-                  <div class="mt-3 pt-3 border-t border-secondary-20/50 relative">
-                    <button
-                      onClick={() => setFeaturesExpanded(!featuresExpanded())}
-                      class="w-full flex items-center justify-between text-sm text-muted hover:text-text transition-colors"
-                    >
-                      <span class="flex items-center gap-2">
-                        <Package class="w-4 h-4" />
-                        Repack Features
-                      </span>
-                      {featuresExpanded() ? (
-                        <ChevronDown class="w-4 h-4" />
-                      ) : (
-                        <ChevronUp class="w-4 h-4" />
-                      )}
-                    </button>
-                    <Show when={featuresExpanded()}>
-                      <div class="absolute bottom-full left-0 right-0 mb-2 z-20 bg-popup-background border border-secondary-20 rounded-lg p-3 shadow-lg max-h-48 overflow-y-auto thin-scrollbar">
-                        <p class="text-xs text-muted leading-relaxed whitespace-pre-wrap">{gameInfo()?.features}</p>
-                      </div>
-                    </Show>
-                  </div>
-                </Show>
-              </div>
+              </Show>
             </div>
-
           </div>
-          {/* Play Statistics */}
-          <Show when={gameInfo()?.executable_info?.executable_path}>
-            <div class="mt-4 bg-popup-background rounded-lg p-4 border border-secondary-20">
-              <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Clock class="w-5 h-5 text-accent" />
-                Play Stats
-              </h2>
-              <div class="grid grid-cols-3 gap-3">
-                <div class="text-center">
-                  <p class="text-xs text-muted">Play Time</p>
-                  <p class="text-sm font-medium">
-                    {formatPlayTime(gameInfo()!.executable_info.executable_play_time)}
-                  </p>
-                </div>
-                <div class="text-center">
-                  <p class="text-xs text-muted">Last Played</p>
-                  <p class="text-sm font-medium">
-                    {formatDate(gameInfo()!.executable_info.executable_last_opened_date)}
-                  </p>
-                </div>
-                <div class="text-center">
-                  <p class="text-xs text-muted">Installed</p>
-                  <p class="text-sm font-medium">
-                    {formatDate(gameInfo()!.executable_info.executable_installed_date)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Show>
         </div>
       ) : (
-        <div class="flex flex-col items-center justify-center h-screen px-4">
+        <div class="flex flex-col items-center justify-center h-full px-4">
           <div class="text-center p-6 bg-popup-background rounded-lg border border-secondary-20 w-full max-w-sm">
             <Info class="w-10 h-10 text-accent mx-auto mb-3" />
             <h2 class="text-xl font-bold mb-2">Game Not Found</h2>
-            <p class="text-sm text-muted mb-4">
-              We couldn't find the game you're looking for
-            </p>
+            <p class="text-sm text-muted mb-4">We couldn't find the game you're looking for</p>
             <button
               onClick={handleReturn}
               class="w-full px-4 py-2 bg-accent hover:bg-accent/90 text-background rounded-lg transition-colors text-sm"

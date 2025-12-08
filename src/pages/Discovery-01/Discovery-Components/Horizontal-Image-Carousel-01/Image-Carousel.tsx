@@ -8,6 +8,7 @@ import { CircleArrowLeft, CircleArrowRight, Star, Info, Languages, HardDrive, Ta
 import Button from '../../../../components/UI/Button/Button';
 import { LibraryApi } from '../../../../api/library/api';
 import { useToast } from 'solid-notifications';
+import LazyImage from '../../../../components/LazyImage/LazyImage';
 
 const defaultPath: string = await commands.getSearchIndexPathCmd();
 const library = new LibraryApi();
@@ -148,11 +149,8 @@ function HorizontalImagesCarousel({
                                         : 'opacity-0 pointer-events-none z-10'
                                 }`}
                         >
-                            <img
-                                src={image}
-                                alt={`Slide ${index}`}
-                                loading="lazy"
-                                class="w-full h-[80%] rounded-xl object-cover shadow-lg cursor-pointer transition-transform duration-300 hover:scale-102 hover:shadow-secondary-30"
+                            <div
+                                class="w-full h-[80%] rounded-xl overflow-hidden shadow-lg cursor-pointer transition-transform duration-300 hover:scale-102 hover:shadow-secondary-30"
                                 onClick={async () =>
                                     await handleGoToGamePage(
                                         gameItemObject.title,
@@ -160,7 +158,13 @@ function HorizontalImagesCarousel({
                                         gameItemObject.href
                                     )
                                 }
-                            />
+                            >
+                                <LazyImage
+                                    src={image}
+                                    alt={`Slide ${index}`}
+                                    class="w-full h-full"
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>

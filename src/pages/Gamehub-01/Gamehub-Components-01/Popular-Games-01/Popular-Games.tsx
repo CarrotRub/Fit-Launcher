@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Star, HardDrive, Languages, Building2, Arrow
 import LoadingPage from '../../../LoadingPage-01/LoadingPage';
 import { useGamehubFilters } from '../../GamehubContext';
 import { getAllGenres, getSizeRange, filterGames } from '../../../../helpers/gameFilters';
+import LazyImage from '../../../../components/LazyImage/LazyImage';
 
 const gameCacheInst = new GamesCacheApi();
 const popularGamesPath = "";
@@ -115,14 +116,10 @@ export default function PopularGames() {
           <div class="absolute inset-0 overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-b from-background/70 to-background/30 z-10"></div>
             <div class="absolute inset-0 bg-secondary-20/50 backdrop-blur-sm"></div>
-            <img
+            <LazyImage
               src={current().img}
-              class="absolute inset-0 w-full h-full object-cover opacity-80 transition-opacity duration-500"
+              class="absolute inset-0 w-full h-full opacity-80"
               style={{ 'filter': 'blur(8px)' }}
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.opacity = '0.3';
-                (e.currentTarget as HTMLImageElement).style.filter = 'blur(8px)';
-              }}
             />
           </div>
 

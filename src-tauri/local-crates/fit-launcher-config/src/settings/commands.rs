@@ -299,8 +299,7 @@ pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
     let image_cache_path = directories::BaseDirs::new()
         .expect("Could not determine base directories")
         .config_local_dir() // Points to AppData\Local (or equivalent on other platforms)
-        .join("com.fitlauncher.carrotrub")
-        .join("image_cache.json");
+        .join("com.fitlauncher.carrotrub");
 
     tokio::fs::remove_dir_all(persistence_session_path).await?;
     tokio::fs::remove_dir_all(persistnce_dht_path).await?;

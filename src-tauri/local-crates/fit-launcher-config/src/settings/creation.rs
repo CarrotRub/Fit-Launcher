@@ -176,10 +176,7 @@ pub fn create_gamehub_settings_file() -> Result<(), std::io::Error> {
 
 pub fn create_image_cache_file() -> Result<(), std::io::Error> {
     let base_dirs = BaseDirs::new().expect("Failed to determine base directories");
-    let image_cache_file_path = base_dirs
-        .config_dir()
-        .join("com.fitlauncher.carrotrub")
-        .join("image_cache.json");
+    let image_cache_file_path = base_dirs.config_dir().join("com.fitlauncher.carrotrub");
 
     if !image_cache_file_path.exists() {
         fs::File::create(&image_cache_file_path).map_err(|err| {
