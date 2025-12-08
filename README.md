@@ -1,4 +1,4 @@
-# 🎮 Fit Launcher
+# Fit Launcher
 
 Fit Launcher is a 🚀 **blazingly fast** 🚀 (sorry it's made in rust, I have to write that) game launcher designed specifically for cracked games from FitGirl Repack. Built with Rust, Tauri, and SolidJS, this launcher delivers the best performance and a sleek, modern design. 
 
@@ -132,7 +132,7 @@ Here are a few of the default themes !
 You can then create as much as you want.
 Good luck !!
 
-## Join Our Community 🎉
+## Join Our Community 
 
 Got questions or want to hang out with our users? Join us on Discord! Big thanks to **Kürst** for moderating our Discord server, to **mokurin** for helping me tremendously with the many and most issues in the backend and to **SimplyStoned** for maintaining the old launcher while I was developing this one.
 
@@ -154,7 +154,7 @@ Enjoy your games with Fit Launcher!
 
 Fit Launcher includes a fast, backend-driven search system. The search index is automatically built from sitemap files during app startup. For detailed information about how search works, troubleshooting, and developer workflows, see [Search Index Documentation](doc/search_index.md).
 
-## TODO List 📝
+## TODO List 
 
 - **Better Cross-Platform Compatibility**: Improve compatibility across different operating systems.
 - **Filtering by Genres and Sizes**: Implement filters to sort games by genres and file sizes.
