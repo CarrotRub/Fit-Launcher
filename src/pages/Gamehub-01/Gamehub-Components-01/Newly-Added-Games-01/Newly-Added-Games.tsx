@@ -6,7 +6,7 @@ import { useGamehubFilters } from '../../GamehubContext';
 import { filterGames, getAllGenres, getSizeRange } from '../../../../helpers/gameFilters';
 
 const gameCacheInst = new GamesCacheApi();
-const gamePath = await gameCacheInst.getNewlyAddedGamesPath();
+const gamePath = "";
 
 async function parseNewGameData(): Promise<Game[]> {
   try {
@@ -44,7 +44,7 @@ export default function NewlyAddedGames() {
       const genres = getAllGenres(newlyAddedGamesData);
       const repackRange = getSizeRange(newlyAddedGamesData, 'repack');
       const originalRange = getSizeRange(newlyAddedGamesData, 'original');
-      
+
       // Update context (will be merged with other components' data)
       setAvailableGenres((prev: string[]) => [...new Set([...prev, ...genres])].sort());
       setRepackSizeRange((prev) => ({

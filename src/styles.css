@@ -209,6 +209,31 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: var(--color-secondary);
   }
+
+  /* Thin scrollbar for compact areas */
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    display: block;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-secondary-20);
+    border-radius: 4px;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-secondary-30);
+  }
+
+  /* Firefox support for thin scrollbar */
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-secondary-20) transparent;
+  }
 }
 
 body {

@@ -7,8 +7,8 @@ use fit_launcher_download_manager::aria2::Aria2WsClient;
 use fit_launcher_download_manager::manager::DownloadManager;
 use fit_launcher_integrations::ManagedStronghold;
 use fit_launcher_scraping::{
-    discovery::get_100_games_unordered, get_sitemaps_website, global::functions::run_all_scrapers,
-    rebuild_search_index,
+    discovery::refresh_discovery_games, rebuild_search_index, scraping::run_all_scrapers,
+    sitemap::download_all_sitemaps,
 };
 use fit_launcher_torrent::LibrqbitSession;
 use fit_launcher_torrent::functions::TorrentSession;
@@ -126,14 +126,14 @@ pub async fn start_app() -> anyhow::Result<()> {
                     let start = Instant::now();
                     let (scrapers_res, sitemap_res) = tokio::join!(
                         async { run_all_scrapers(app_for_scrapers.clone()).await },
-                        async { get_sitemaps_website(app_for_scrapers.clone()).await }
+                        async { download_all_sitemaps(&app_for_scrapers).await }
                     );
 
                     if scrapers_res.is_err() {
                         error!("run_all_scrapers failed");
                     }
                     if sitemap_res.is_err() {
-                        error!("get_sitemaps_website failed");
+                        error!("download_all_sitemaps failed");
                     }
 
                     if let Err(e) = rebuild_search_index(app_for_scrapers.clone()).await {
@@ -160,8 +160,8 @@ pub async fn start_app() -> anyhow::Result<()> {
             spawn({
                 let app_clone = app_handle.clone();
                 async move {
-                    if let Err(err) = get_100_games_unordered(app_clone.clone()).await {
-                        error!("get_100_games_unordered failed: {:#?}", err);
+                    if let Err(err) = refresh_discovery_games(app_clone.clone()).await {
+                        error!("refresh_discovery_games failed: {:#?}", err);
                     }
                 }
             });

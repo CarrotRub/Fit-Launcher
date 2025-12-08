@@ -1,6 +1,4 @@
 import { createSignal, createEffect, Show, onMount, For, onCleanup } from "solid-js";
-import { appDataDir, join } from "@tauri-apps/api/path";
-import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useNavigate } from "@solidjs/router";
 import { Search, X, Sparkles, Loader2 } from "lucide-solid";
 import { commands } from "../../../../bindings";
@@ -26,8 +24,7 @@ export default function Searchbar(props: SearchbarProps) {
   const [clicked, setClicked] = createSignal(false);
   const [searchTerm, setSearchTerm] = createSignal("");
   const [searchResults, setSearchResults] = createSignal<SearchIndexEntry[]>([]);
-  const [searchIndex, setSearchIndex] = createSignal<SearchIndexEntry[]>([]);
-  const [indexLoading, setIndexLoading] = createSignal(true);
+  const [indexLoading, setIndexLoading] = createSignal(false);
   const [indexError, setIndexError] = createSignal<string | null>(null);
   const [showDragonBallSVG, setShowDragonBallSVG] = createSignal(false);
   const [isFocused, setIsFocused] = createSignal(false);
@@ -35,38 +32,19 @@ export default function Searchbar(props: SearchbarProps) {
   let debounceTimer: number | undefined;
 
 
-  async function loadSearchIndex() {
-    try {
-      setIndexLoading(true);
-      setIndexError(null);
-      const dirPath = await appDataDir();
-      const indexPath = await join(dirPath, "sitemaps", "search-index.json");
-      
-      const content = await readTextFile(indexPath);
-      const index: SearchIndexEntry[] = JSON.parse(content);
-      setSearchIndex(index);
-      setIndexLoading(false);
-      
-      // If there was a URL parameter, search for it now
-      const urlParameter = getUrlParameter("url");
-      if (urlParameter !== "") {
-        filterResults(urlParameter);
-      }
-    } catch (err) {
-      console.error("Failed to load search index:", err);
-      setIndexError(err instanceof Error ? err.message : "Failed to load search index");
-      setIndexLoading(false);
-    }
-  }
-
   onMount(async () => {
-    await loadSearchIndex();
-    
-    // Listen for index rebuild events
-    const readyUnlisten = await listen("search-index-ready", async () => {
-      await loadSearchIndex();
+    // Check if URL has a search parameter
+    const urlParameter = getUrlParameter("url");
+    if (urlParameter !== "") {
+      setSearchTerm(urlParameter);
+      filterResults(urlParameter);
+    }
+
+    // Listen for index rebuild events to clear any cached errors
+    const readyUnlisten = await listen("search-index-ready", () => {
+      setIndexError(null);
     });
-    
+
     const errorUnlisten = await listen("search-index-error", (event: any) => {
       setIndexError(event.payload || "Search index error");
     });
@@ -99,44 +77,49 @@ export default function Searchbar(props: SearchbarProps) {
     setShowDragonBallSVG(searchTerm().toLowerCase().includes("dragon ball"));
   });
 
-  function filterResults(query: string) {
+  async function filterResults(query: string) {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
 
-    const index = searchIndex();
-    if (index.length === 0) {
+    setIndexLoading(true);
+    try {
+      const result = await commands.querySearchIndex(query);
+      if (result.status === "ok") {
+        setSearchResults(result.data);
+        setIndexError(null);
+      } else {
+        console.error("Search query failed:", result.error);
+        setSearchResults([]);
+        // Only show error if it's not a "database not found" (index still building)
+        if (!String(result.error).includes("not found")) {
+          setIndexError("Search failed");
+        }
+      }
+    } catch (err) {
+      console.error("Search error:", err);
       setSearchResults([]);
-      return;
+    } finally {
+      setIndexLoading(false);
     }
-
-    const queryLower = query.toLowerCase().trim();
-    const filtered = index.filter((entry) => {
-      return (
-        entry.title.toLowerCase().includes(queryLower) ||
-        entry.slug.toLowerCase().includes(queryLower)
-      );
-    });
-
-    setSearchResults(filtered.slice(0, 25));
   }
 
   function handleInputChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const value = target.value;
     setSearchTerm(value);
-    
+
     // Clear previous debounce timer
     if (debounceTimer !== undefined) {
       clearTimeout(debounceTimer);
     }
-    
+
     if (!value.trim()) {
       clearSearch();
       return;
     }
-    
+
     // Debounce the search
     debounceTimer = window.setTimeout(() => {
       filterResults(value);

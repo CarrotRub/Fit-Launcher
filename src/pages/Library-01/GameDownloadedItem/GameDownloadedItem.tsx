@@ -129,9 +129,10 @@ export default function GameDownloadedItem(props: {
       infoMessage: `Here you can choose in which collection to add your game !`,
       gameObjectInfo: api.downloadedGameToGame(game),
       action: async (addedTo: string[]) => {
+        const gameAsGame = api.downloadedGameToGame(game);
         for (const collectionKey of addedTo) {
           console.log(game)
-          props.onGameAddToCollection?.(collectionKey, game);
+          props.onGameAddToCollection?.(collectionKey, gameAsGame);
         }
       },
       createCollection: props.createCollection

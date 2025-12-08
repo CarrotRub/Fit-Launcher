@@ -3,7 +3,6 @@ import { resolveError, showError } from "../../helpers/error";
 import {
   commands,
   CustomError,
-  DiscoveryGame,
   Game,
   Result,
   ScrapingError,
@@ -28,7 +27,7 @@ export class GamesCacheApi {
     );
   }
 
-  async getDiscoveryGames(): Promise<Result<DiscoveryGame[], ScrapingError>> {
+  async getDiscoveryGames(): Promise<Result<Game[], ScrapingError>> {
     return await this.getCached("discovery", commands.getDiscoveryGames);
   }
 
@@ -57,9 +56,7 @@ export class GamesCacheApi {
     return await commands.getGamesImages(gameLink);
   }
 
-  async removeNSFW<T extends { tag?: string; game_tags?: string }>(
-    gameList: T[]
-  ): Promise<T[]> {
+  async removeNSFW<T extends { tag: string }>(gameList: T[]): Promise<T[]> {
     const nsfw =
       (await GlobalSettingsApi.getGamehubSettings()).nsfw_censorship ?? false;
 
@@ -68,30 +65,7 @@ export class GamesCacheApi {
     const isNSFW = (text: unknown) =>
       typeof text === "string" && text.toLowerCase().includes("adult");
 
-    return gameList.filter(
-      (game) => !isNSFW(game.tag) && !isNSFW(game.game_tags)
-    );
-  }
-
-  async getNewlyAddedGamesPath(): Promise<string> {
-    return await this.getCached(
-      "newlyAddedPath",
-      commands.getNewlyAddedGamesPath
-    );
-  }
-
-  async getPopularGamesPath(): Promise<string> {
-    return await this.getCached(
-      "popularGamesPath",
-      commands.getPopularGamesPath
-    );
-  }
-
-  async getRecentlyUpdatedGamesPath(): Promise<string> {
-    return await this.getCached(
-      "recentlyUpdatedPath",
-      commands.getRecentlyUpdatedGamesPath
-    );
+    return gameList.filter((game) => !isNSFW(game.tag));
   }
 
   /** Retrieve, cache and return the result of the fetcher function */

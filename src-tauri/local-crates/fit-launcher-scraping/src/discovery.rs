@@ -1,29 +1,30 @@
-use std::path::PathBuf;
+//! Discovery games rotation logic.
+//!
+//! Maintains a rotating pool of ~100 discovery games, refreshing periodically.
 
-use crate::{
-    errors::ScrapingError, global::functions::helper::fetch_game_info, structs::DiscoveryGame,
-};
-use directories::BaseDirs;
+use std::collections::HashSet;
+
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream};
-use once_cell::sync::Lazy;
 use rand::{prelude::*, rng};
-// TODO: Add check cuz everytime is too much
-
 use scraper::{Html, Selector};
 use serde_with::chrono::{self, DateTime, Utc};
 use tauri::AppHandle;
-use tokio::fs;
-use tracing::error;
+use tracing::info;
 
-const TARGET: usize = 100; // keep exactly this many
-const BATCH: usize = 10; // add/drop this many per cycle
-const REFRESH_DAYS: i64 = 1; // age threshold
+use crate::db::{self, hash_url};
+use crate::errors::ScrapingError;
+use crate::parser::{extract_secondary_images, parse_game_from_article};
+use crate::scraping::fetch_page;
+use crate::structs::Game;
 
-// selectors cached once
+const TARGET: usize = 100;
+const BATCH: usize = 10;
+const REFRESH_DAYS: i64 = 1;
+
 macro_rules! sel {
     ($s:literal) => {
-        &*Lazy::new(|| Selector::parse($s).unwrap())
+        &*std::sync::LazyLock::new(|| Selector::parse($s).unwrap())
     };
 }
 
@@ -53,143 +54,73 @@ async fn fix_img(src: &str) -> String {
     src.into()
 }
 
-fn parse_article(article: scraper::element_ref::ElementRef) -> Option<DiscoveryGame> {
-    let game = fetch_game_info(article);
+fn parse_discovery_article(article: scraper::element_ref::ElementRef) -> Option<Game> {
+    let mut game = parse_game_from_article(article);
+
+    // Only include games with imageban images
     if !game.img.contains("imageban") {
         return None;
     }
 
-    let mut secondary = Vec::new();
-    for p in 3..=5 {
-        let sel =
-            Selector::parse(&format!(".entry-content > p:nth-of-type({p}) img[src]")).unwrap();
-        for img_el in article.select(&sel) {
-            if let Some(s) = img_el.value().attr("src") {
-                secondary.push(s.to_string());
-                if secondary.len() == 5 {
-                    break;
-                }
-            }
-        }
-    }
-
-    Some(DiscoveryGame {
-        game_title: game.title,
-        game_main_image: game.img,
-        game_description: game.desc,
-        game_magnetlink: game.magnetlink,
-        game_torrent_paste_link: game.pastebin,
-        game_secondary_images: secondary,
-        game_href: game.href,
-        game_tags: game.tag,
-    })
+    game.secondary_images = extract_secondary_images(article);
+    Some(game)
 }
 
-async fn fetch_page(n: u32, app: &AppHandle) -> Result<Vec<DiscoveryGame>, ScrapingError> {
+async fn fetch_discovery_page(n: u32, app: &AppHandle) -> Result<Vec<Game>, ScrapingError> {
     let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{n}");
-    let body = crate::global::functions::fetch_page(&url, app).await?;
+    let body = fetch_page(&url, app).await?;
 
     let doc = Html::parse_document(&body);
     let mut games = Vec::new();
     for art in doc.select(sel!("article")) {
-        if let Some(pg) = parse_article(art) {
-            games.push(pg);
+        if let Some(g) = parse_discovery_article(art) {
+            games.push(g);
         }
     }
     Ok(games)
 }
 
-fn ensure_path(path: &PathBuf, is_file: bool) {
-    if is_file {
-        if let Some(parent) = path.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                error!("Failed to create parent directories: {e}");
-            }
-        }
-        if !path.exists()
-            && let Err(e) = std::fs::File::create(path)
-        {
-            error!("Failed to create file {}: {e}", path.display());
-        }
-    } else if let Err(e) = std::fs::create_dir_all(path) {
-        error!("Failed to create directory: {e}");
-    }
-}
-
-fn discovery_dir() -> PathBuf {
-    let path = BaseDirs::new()
-        .unwrap()
-        .config_dir()
-        .join("com.fitlauncher.carrotrub")
-        .join("tempGames")
-        .join("discovery");
-
-    ensure_path(&path, false);
-    path
-}
-
-fn json_path() -> PathBuf {
-    let path = discovery_dir().join("games_list.json");
-    ensure_path(&path, true);
-    path
-}
-
-fn meta_path() -> PathBuf {
-    let path = discovery_dir().join("games_meta.json");
-    ensure_path(&path, true);
-    path
-}
-
-async fn read_meta_ts() -> Option<DateTime<Utc>> {
-    let bytes = fs::read(meta_path()).await.ok()?;
-    serde_json::from_slice::<String>(&bytes)
+fn read_meta_ts(conn: &rusqlite::Connection) -> Option<DateTime<Utc>> {
+    db::get_metadata(conn, "discovery_last_refresh")
         .ok()
+        .flatten()
         .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
         .map(|dt| dt.with_timezone(&Utc))
 }
 
-async fn write_meta_ts() {
-    let _ = fs::write(
-        meta_path(),
-        serde_json::to_vec(&Utc::now().to_rfc3339()).unwrap(),
-    )
-    .await;
+fn write_meta_ts(conn: &rusqlite::Connection) {
+    let _ = db::set_metadata(conn, "discovery_last_refresh", &Utc::now().to_rfc3339());
 }
 
-pub async fn get_100_games_unordered(app: AppHandle) -> Result<(), Box<ScrapingError>> {
-    fs::create_dir_all(discovery_dir()).await.ok();
+/// Refresh discovery games pool, maintaining ~100 games with periodic rotation
+pub async fn refresh_discovery_games(app: AppHandle) -> Result<(), ScrapingError> {
+    let conn = db::open_connection(&app)?;
 
-    let mut queue: Vec<DiscoveryGame> = if let Ok(bytes) = fs::read(json_path()).await {
-        serde_json::from_slice(&bytes).unwrap_or_default()
-    } else {
-        Vec::new()
-    };
+    // Load existing discovery games
+    let mut queue: Vec<Game> = db::get_games_by_category(&conn, "discovery").unwrap_or_default();
 
-    let too_old = match read_meta_ts().await {
+    let too_old = match read_meta_ts(&conn) {
         Some(ts) => Utc::now() - ts > chrono::Duration::days(REFRESH_DAYS),
         None => true,
     };
 
     if queue.len() >= TARGET && !too_old {
         queue.shuffle(&mut rng());
-        fs::write(json_path(), serde_json::to_vec_pretty(&queue).unwrap())
-            .await
-            .unwrap();
-        println!("cache fresh (<{REFRESH_DAYS} days) - shuffled only");
+        db::set_category_games(&conn, "discovery", &queue, hash_url)?;
+        info!("cache fresh (<{REFRESH_DAYS} days) - shuffled only");
         return Ok(());
     }
 
-    use std::collections::HashSet;
-    let mut have: HashSet<String> = queue.iter().map(|g| g.game_title.clone()).collect();
+    let mut have: HashSet<String> = queue.iter().map(|g| g.title.clone()).collect();
 
     let mut page = 1;
     while queue.len() < TARGET && page <= 10 {
-        let mut fresh = Vec::<DiscoveryGame>::new();
+        let mut fresh = Vec::<Game>::new();
 
         while fresh.len() < BATCH && page <= 10 {
-            let mut page_games = fetch_page(page, &app).await?;
+            let mut page_games = fetch_discovery_page(page, &app).await?;
             for g in page_games.drain(..) {
-                if have.insert(g.game_title.clone()) {
+                if have.insert(g.title.clone()) {
                     fresh.push(g);
                     if fresh.len() == BATCH {
                         break;
@@ -203,8 +134,9 @@ pub async fn get_100_games_unordered(app: AppHandle) -> Result<(), Box<ScrapingE
             break;
         }
 
+        // Upgrade secondary image quality
         for g in &mut fresh {
-            g.game_secondary_images = stream::iter(g.game_secondary_images.clone())
+            g.secondary_images = stream::iter(g.secondary_images.clone())
                 .map(|s| async move { fix_img(&s).await })
                 .buffer_unordered(5)
                 .collect::<Vec<_>>()
@@ -217,13 +149,11 @@ pub async fn get_100_games_unordered(app: AppHandle) -> Result<(), Box<ScrapingE
         }
         queue.shuffle(&mut rng());
 
-        fs::write(json_path(), serde_json::to_vec_pretty(&queue).unwrap())
-            .await
-            .unwrap();
-        println!("wrote batch, queue size now {}", queue.len());
+        db::set_category_games(&conn, "discovery", &queue, hash_url)?;
+        info!("wrote batch, queue size now {}", queue.len());
     }
 
-    write_meta_ts().await;
-    println!("queue ready with {} games", queue.len());
+    write_meta_ts(&conn);
+    info!("queue ready with {} games", queue.len());
     Ok(())
 }

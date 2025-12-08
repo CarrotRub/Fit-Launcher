@@ -4,7 +4,7 @@ import { useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { commands, DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags, Zap } from "lucide-solid";
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Package, Tags, Zap } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
@@ -19,12 +19,12 @@ const library = new LibraryApi();
 const cache = new GamesCacheApi();
 
 const DownloadGameUUIDPage = () => {
-  const [expanded, setExpanded] = createSignal(false);
   const [gameInfo, setGameInfo] = createSignal<DownloadedGame>();
   const [additionalImages, setAdditionalImages] = createSignal<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = createSignal(0);
   const [loading, setLoading] = createSignal(true);
   const [isToDownloadLater, setToDownloadLater] = createSignal(false);
+  const [featuresExpanded, setFeaturesExpanded] = createSignal(false);
   const [touchStartX, setTouchStartX] = createSignal(0);
   const [touchEndX, setTouchEndX] = createSignal(0);
   const [swipeDirection, setSwipeDirection] = createSignal<"left" | "right" | null>(null);
@@ -75,7 +75,7 @@ const DownloadGameUUIDPage = () => {
         const game = library.gameToDownloadedGame(res.data);
         console.log(game)
         setGameInfo(game);
-        extractDetails(game.desc);
+        extractDetails(game.details);
         checkIfInDownloadLater(game.title);
         // Check debrid cache in background (don't await)
         if (game.magnetlink) {
@@ -156,12 +156,6 @@ const DownloadGameUUIDPage = () => {
     };
 
     setGameDetails(details);
-  }
-
-  function cutDescription(desc?: string): string {
-    if (!desc) return "Description not available";
-    const index = desc.indexOf("\nGame Description\n");
-    return index !== -1 ? desc.substring(index + 19).trim() : desc.trim();
   }
 
   function startBackgroundCycle() {
@@ -391,54 +385,25 @@ const DownloadGameUUIDPage = () => {
             {/* Game Info Grid */}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
               {/* Game Description */}
-              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20/50 hover:border-accent/30 transition-colors">
+              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20">
                 <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
                   <Info class="w-5 h-5 text-accent" />
                   Description
                 </h2>
-                <div class="relative overflow-hidden">
-                  <p
-                    class="text-sm text-muted leading-relaxed transition-all duration-300 ease-in-out"
-                    classList={{
-                      "max-h-24": !expanded(),
-                      "max-h-[1000px]": expanded()
-                    }}
-                  >
-                    {cutDescription(gameInfo()?.desc)}
+                <div class="max-h-64 overflow-y-auto thin-scrollbar pr-2">
+                  <p class="text-sm text-muted leading-relaxed whitespace-pre-wrap">
+                    {gameInfo()?.description || "Description not available"}
                   </p>
-                  <div
-                    class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-popup to-transparent pointer-events-none transition-opacity duration-300"
-                    classList={{
-                      "opacity-100": !expanded(),
-                      "opacity-0": expanded()
-                    }}
-                  />
                 </div>
-                <button
-                  onClick={() => setExpanded(!expanded())}
-                  class="mt-2 text-xs flex items-center gap-1 text-accent hover:text-primary transition-colors"
-                >
-                  {expanded() ? (
-                    <>
-                      <ChevronUp class="w-4 h-4" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown class="w-4 h-4" />
-                      Read More
-                    </>
-                  )}
-                </button>
               </div>
 
               {/* Game Details */}
-              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20">
+              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20 flex flex-col">
                 <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
                   <Gamepad2 class="w-5 h-5 text-accent" />
                   Details
                 </h2>
-                <div class="space-y-3">
+                <div class="space-y-3 flex-1">
                   <div class="flex items-start gap-2">
                     <Tags class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
                     <div>
@@ -475,6 +440,31 @@ const DownloadGameUUIDPage = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Repack Features - Collapsible (opens upward) */}
+                <Show when={gameInfo()?.features}>
+                  <div class="mt-3 pt-3 border-t border-secondary-20/50 relative">
+                    <button
+                      onClick={() => setFeaturesExpanded(!featuresExpanded())}
+                      class="w-full flex items-center justify-between text-sm text-muted hover:text-text transition-colors"
+                    >
+                      <span class="flex items-center gap-2">
+                        <Package class="w-4 h-4" />
+                        Repack Features
+                      </span>
+                      {featuresExpanded() ? (
+                        <ChevronDown class="w-4 h-4" />
+                      ) : (
+                        <ChevronUp class="w-4 h-4" />
+                      )}
+                    </button>
+                    <Show when={featuresExpanded()}>
+                      <div class="absolute bottom-full left-0 right-0 mb-2 z-20 bg-popup-background border border-secondary-20 rounded-lg p-3 shadow-lg max-h-48 overflow-y-auto thin-scrollbar">
+                        <p class="text-xs text-muted leading-relaxed whitespace-pre-wrap">{gameInfo()?.features}</p>
+                      </div>
+                    </Show>
+                  </div>
+                </Show>
               </div>
             </div>
 

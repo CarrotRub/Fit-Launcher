@@ -8,12 +8,13 @@ use specta::Type;
 pub struct DownloadedGame {
     pub title: String,
     pub img: String,
-    pub desc: String,
+    /// Game details: genres/tags, companies, languages, original size, repack size
+    pub details: String,
+    /// Repack features section
+    pub features: String,
+    /// Game description (the actual game info)
+    pub description: String,
     pub magnetlink: String,
-    /// can be empty if converted from legacy,
-    ///
-    /// or the torrent was hosted on sendfile.su
-    pub pastebin: String,
     pub href: String,
     pub tag: String,
 

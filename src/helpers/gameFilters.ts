@@ -1,4 +1,4 @@
-import { Game, DiscoveryGame } from "../bindings";
+import { Game } from "../bindings";
 import { FilterState, SizeRange } from "../types/filters";
 
 /**
@@ -43,17 +43,17 @@ export function formatBytesToSize(bytes: number): string {
 }
 
 /**
- * Extract size from game description
+ * Extract size from game details
  */
 export function parseGameSize(
-  description: string,
+  details: string,
   type: "repack" | "original"
 ): number {
-  if (!description) return 0;
+  if (!details) return 0;
 
   const label = type === "repack" ? "Repack Size" : "Original Size";
   const regex = new RegExp(`${label}:\\s*([^\\n]+)`, "i");
-  const match = description.match(regex);
+  const match = details.match(regex);
 
   if (!match) return 0;
 
@@ -75,12 +75,11 @@ export function extractGenres(tags: string): string[] {
 /**
  * Get all unique genres from a list of games
  */
-export function getAllGenres(games: (Game | DiscoveryGame)[]): string[] {
+export function getAllGenres(games: Game[]): string[] {
   const genresSet = new Set<string>();
 
   games.forEach((game) => {
-    const tags = "tag" in game ? game.tag : game.game_tags;
-    const genres = extractGenres(tags);
+    const genres = extractGenres(game.tag);
     genres.forEach((genre) => genresSet.add(genre));
   });
 
@@ -91,15 +90,14 @@ export function getAllGenres(games: (Game | DiscoveryGame)[]): string[] {
  * Get size range (min/max) from a list of games
  */
 export function getSizeRange(
-  games: (Game | DiscoveryGame)[],
+  games: Game[],
   type: "repack" | "original"
 ): SizeRange {
   let min = Infinity;
   let max = 0;
 
   games.forEach((game) => {
-    const desc = "desc" in game ? game.desc : game.game_description;
-    const size = parseGameSize(desc, type);
+    const size = parseGameSize(game.details, type);
 
     if (size > 0) {
       min = Math.min(min, size);
@@ -117,14 +115,10 @@ export function getSizeRange(
 /**
  * Check if a game matches the genre filter
  */
-function matchesGenreFilter(
-  game: Game | DiscoveryGame,
-  selectedGenres: string[]
-): boolean {
+function matchesGenreFilter(game: Game, selectedGenres: string[]): boolean {
   if (selectedGenres.length === 0) return true;
 
-  const tags = "tag" in game ? game.tag : game.game_tags;
-  const gameGenres = extractGenres(tags);
+  const gameGenres = extractGenres(game.tag);
 
   // Game matches if it has at least one of the selected genres
   return selectedGenres.some((genre) => gameGenres.includes(genre));
@@ -134,14 +128,13 @@ function matchesGenreFilter(
  * Check if a game matches the size filter
  */
 function matchesSizeFilter(
-  game: Game | DiscoveryGame,
+  game: Game,
   range: SizeRange | null,
   type: "repack" | "original"
 ): boolean {
   if (!range) return true;
 
-  const desc = "desc" in game ? game.desc : game.game_description;
-  const size = parseGameSize(desc, type);
+  const size = parseGameSize(game.details, type);
 
   // If size couldn't be parsed, include the game (don't filter it out)
   if (size === 0) return true;
@@ -152,10 +145,7 @@ function matchesSizeFilter(
 /**
  * Filter games based on filter state
  */
-export function filterGames<T extends Game | DiscoveryGame>(
-  games: T[],
-  filters: FilterState
-): T[] {
+export function filterGames(games: Game[], filters: FilterState): Game[] {
   return games.filter((game) => {
     const matchesGenre = matchesGenreFilter(game, filters.genres);
     const matchesRepackSize = matchesSizeFilter(
@@ -183,4 +173,3 @@ export function hasActiveFilters(filters: FilterState): boolean {
     filters.originalSizeRange !== null
   );
 }
-

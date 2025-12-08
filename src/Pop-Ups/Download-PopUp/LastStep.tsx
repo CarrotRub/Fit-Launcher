@@ -270,7 +270,8 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 }
 
                 const path = settings.data.general.download_dir;
-                const game = props.downloadedGame;
+                // Convert DownloadedGame to Game for DM API
+                const game = { ...props.downloadedGame, secondary_images: [] as string[] };
 
                 if (props.downloadType === "bittorrent") {
                     const selected = Array.from(selectedFileIndices());
@@ -590,8 +591,9 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 // Convert to DirectLinkWrapper for aria2
                 const wrappedLinks: DirectLinkWrapper[] = Debrid.toDirectLinks(linksResult.data);
 
-                // Use existing DDL mechanism
-                await DM.addDdl(wrappedLinks, path, props.downloadedGame);
+                // Use existing DDL mechanism - convert DownloadedGame to Game
+                const gameForDm = { ...props.downloadedGame, secondary_images: [] as string[] };
+                await DM.addDdl(wrappedLinks, path, gameForDm);
 
                 props.onFinish?.();
                 destroy();

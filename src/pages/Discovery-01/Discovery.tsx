@@ -1,7 +1,7 @@
 import { createSignal, For, JSX, Suspense, createResource, lazy, createMemo } from 'solid-js';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { readTextFile } from '@tauri-apps/plugin-fs';
-import { commands, DiscoveryGame } from '../../bindings';
+import { commands, Game } from '../../bindings';
 import LoadingPage from '../LoadingPage-01/LoadingPage';
 import Button from '../../components/UI/Button/Button';
 import { GamesCacheApi } from '../../api/cache/api';
@@ -14,7 +14,7 @@ const LazyGameObject = lazy(() => import("./Discovery-Components/GameObject"));
 const gameCacheInst = new GamesCacheApi();
 const libraryInst = new LibraryApi();
 
-async function fetchDiscoveryGames(): Promise<{ games: DiscoveryGame[]; toDownloadLater: Set<string> }> {
+async function fetchDiscoveryGames(): Promise<{ games: Game[]; toDownloadLater: Set<string> }> {
   try {
     const resultGame = await gameCacheInst.getDiscoveryGames();
     const downloadLaterList = await libraryInst.getGamesToDownload();
@@ -107,7 +107,7 @@ function DiscoveryPage(): JSX.Element {
             {(game) => (
               <LazyGameObject
                 gameItemObject={game}
-                isToDownloadLater={gamesResource()?.toDownloadLater.has(game.game_title) ?? false}
+                isToDownloadLater={gamesResource()?.toDownloadLater.has(game.title) ?? false}
               />
             )}
           </For>

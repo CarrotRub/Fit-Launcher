@@ -8,7 +8,7 @@ import { useGamehubFilters } from '../../GamehubContext';
 import { getAllGenres, getSizeRange, filterGames } from '../../../../helpers/gameFilters';
 
 const gameCacheInst = new GamesCacheApi();
-const popularGamesPath = await gameCacheInst.getPopularGamesPath();
+const popularGamesPath = "";
 
 async function parsePopularGames(): Promise<Game[]> {
   try {
@@ -100,7 +100,7 @@ export default function PopularGames() {
   }
 
   const current = () => games()[selected()] ?? {};
-  const details = () => extractDetails(current().desc);
+  const details = () => extractDetails(current().details);
 
   return (
     <div class="relative w-full" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>

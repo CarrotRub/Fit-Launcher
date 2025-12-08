@@ -1,3 +1,5 @@
+//! DDOS-Guard captcha bypass handling.
+
 use fit_launcher_config::client::{
     cookies::{Cookie, Cookies},
     dns::{CUSTOM_DNS_CLIENT, build_dns_client},
@@ -12,11 +14,10 @@ use crate::errors::ScrapingError;
 
 async fn update_client_cookies(new_cookies: Vec<Cookie>) {
     Cookies(new_cookies).save().unwrap();
-
     *CUSTOM_DNS_CLIENT.write().await = build_dns_client();
 }
 
-pub(crate) async fn handle_ddos_guard_captcha(
+pub async fn handle_ddos_guard_captcha(
     app: &tauri::AppHandle,
     url: &str,
 ) -> Result<(), ScrapingError> {
@@ -61,7 +62,7 @@ pub(crate) async fn handle_ddos_guard_captcha(
 
     rx.recv().unwrap();
 
-    // to get cookies after destroyed
+    // Get cookies after window destroyed
     let win = tauri::WebviewWindowBuilder::new(
         app,
         "cookies_exporter",

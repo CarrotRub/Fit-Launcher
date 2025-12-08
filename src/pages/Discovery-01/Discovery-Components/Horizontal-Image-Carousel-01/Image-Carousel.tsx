@@ -2,14 +2,14 @@ import { createSignal, onMount, Show, JSX, For } from 'solid-js';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { useNavigate } from '@solidjs/router';
-import type { DiscoveryGame } from '../../../../bindings';
+import type { Game } from '../../../../bindings';
 import { commands } from '../../../../bindings';
 import { CircleArrowLeft, CircleArrowRight, Star, Info, Languages, HardDrive, Tags, Factory, ChevronLeft, ChevronRight } from 'lucide-solid';
 import Button from '../../../../components/UI/Button/Button';
 import { LibraryApi } from '../../../../api/library/api';
 import { useToast } from 'solid-notifications';
 
-const defaultPath: string = await commands.getNewlyAddedGamesPath();
+const defaultPath: string = await commands.getSearchIndexPathCmd();
 const library = new LibraryApi();
 
 //todo: fix tags
@@ -18,7 +18,7 @@ function HorizontalImagesCarousel({
     gameItemObject,
     preloadedDownloadLater
 }: {
-    gameItemObject: DiscoveryGame;
+    gameItemObject: Game;
     preloadedDownloadLater: boolean;
 }): JSX.Element {
     const navigate = useNavigate();
@@ -44,9 +44,9 @@ function HorizontalImagesCarousel({
     }
 
     onMount(async () => {
-        checkIfInDownloadLater(gameItemObject.game_title)
-        setImagesList(gameItemObject.game_secondary_images);
-        extractDetails(gameItemObject.game_description);
+        checkIfInDownloadLater(gameItemObject.title)
+        setImagesList(gameItemObject.secondary_images);
+        extractDetails(gameItemObject.details);
 
     });
 
@@ -99,16 +99,16 @@ function HorizontalImagesCarousel({
 
 
 
-    async function handleAddToDownloadLater(gameData: DiscoveryGame, checked: boolean) {
+    async function handleAddToDownloadLater(gameData: Game, checked: boolean) {
         if (!gameData) return;
         if (checked) {
-            await library.addGameToCollection("games_to_download", library.discoveryGameToGame(gameData));
-            notify(`${gameData.game_title} has been addded to favorites`, {
+            await library.addGameToCollection("games_to_download", gameData);
+            notify(`${gameData.title} has been addded to favorites`, {
                 type: "success",
             })
         } else {
-            await library.removeGameToDownload(gameData.game_title);
-            notify(`${gameData.game_title} has been removed from favorites`, {
+            await library.removeGameToDownload(gameData.title);
+            notify(`${gameData.title} has been removed from favorites`, {
                 type: "success",
             })
         }
@@ -155,9 +155,9 @@ function HorizontalImagesCarousel({
                                 class="w-full h-[80%] rounded-xl object-cover shadow-lg cursor-pointer transition-transform duration-300 hover:scale-102 hover:shadow-secondary-30"
                                 onClick={async () =>
                                     await handleGoToGamePage(
-                                        gameItemObject.game_title,
+                                        gameItemObject.title,
                                         defaultPath,
-                                        gameItemObject.game_href
+                                        gameItemObject.href
                                     )
                                 }
                             />
@@ -206,16 +206,16 @@ function HorizontalImagesCarousel({
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-secondary-20">
                     <div>
                         <h2 class="text-2xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent mb-1">
-                            {extractMainTitle(gameItemObject.game_title)}
+                            {extractMainTitle(gameItemObject.title)}
                         </h2>
                         <p class="text-muted italic text-sm mb-4">
-                            {gameItemObject.game_title}
+                            {gameItemObject.title}
                         </p>
 
                         <div class="flex items-center gap-2 text-sm text-muted mb-2">
                             <Tags class="w-4 h-4" />
                             <span class="font-medium">Tags:</span>
-                            <span>{gameItemObject.game_tags || 'N/A'}</span>
+                            <span>{gameItemObject.tag || 'N/A'}</span>
                         </div>
                     </div>
 
