@@ -194,6 +194,18 @@ async fn scrape_recent_update(link: &str, app: AppHandle) -> Result<Game, Scrapi
 /// Scrape recently updated games
 pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError> {
     let start = Instant::now();
+
+    // Check if we already have cached data (early exit for fast startup)
+    let conn = db::open_connection(&app)?;
+    let existing = db::get_games_by_category(&conn, "recently_updated").unwrap_or_default();
+    if !existing.is_empty() {
+        info!(
+            "Recently updated games cached ({} games), skipping slow scrape",
+            existing.len()
+        );
+        return Ok(());
+    }
+
     let body = fetch_page(
         "https://fitgirl-repacks.site/category/updates-digest/",
         &app,

@@ -10,7 +10,7 @@ export default function GameObject({
     isToDownloadLater: boolean;
 }): JSX.Element {
     return (
-        <Show when={gameItemObject.secondary_images.length > 0} >
+        <Show when={gameItemObject.secondary_images?.length > 0} >
             <div class="w-full flex flex-col items-center justify-center">
                 <HorizontalImagesCarousel gameItemObject={gameItemObject} preloadedDownloadLater={isToDownloadLater}
                 />

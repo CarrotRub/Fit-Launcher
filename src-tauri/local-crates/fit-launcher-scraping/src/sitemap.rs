@@ -25,7 +25,7 @@ pub async fn download_all_sitemaps(app: &AppHandle) -> Result<(), ScrapingError>
         .map(|m| m.as_str().to_string())
         .collect();
 
-    urls.sort();
+    urls.sort_by(|a, b| b.cmp(a)); // Reverse order: newest sitemaps first
     urls.dedup();
 
     if urls.is_empty() {

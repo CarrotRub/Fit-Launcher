@@ -280,7 +280,9 @@ pub fn reset_dns_settings() -> Result<(), SettingsConfigurationError> {
 
 #[tauri::command]
 #[specta]
-pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
+pub async fn clear_all_cache(app: tauri::AppHandle) -> Result<(), SettingsConfigurationError> {
+    use tauri::Manager;
+
     let base_dirs = directories::BaseDirs::new().ok_or_else(|| SettingsConfigurationError {
         message: "Could not determine base directories".to_string(),
     })?;
@@ -303,6 +305,23 @@ pub async fn clear_all_cache() -> Result<(), SettingsConfigurationError> {
     if persistence_dht_path.exists() {
         tokio::fs::remove_dir_all(&persistence_dht_path).await?;
         info!("Cleared DHT cache");
+    }
+
+    // Clear image cache (stored in app cache directory)
+    if let Ok(cache_dir) = app.path().app_cache_dir() {
+        if cache_dir.exists() {
+            if let Ok(mut entries) = tokio::fs::read_dir(&cache_dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let path = entry.path();
+                    if path.is_file() {
+                        let _ = tokio::fs::remove_file(&path).await;
+                    } else if path.is_dir() {
+                        let _ = tokio::fs::remove_dir_all(&path).await;
+                    }
+                }
+            }
+            info!("Cleared image cache");
+        }
     }
 
     // Note: Game cache is now stored in SQLite database.
