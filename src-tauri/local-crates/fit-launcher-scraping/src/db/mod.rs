@@ -7,19 +7,18 @@ mod search;
 
 use rusqlite::{Connection, OptionalExtension, params};
 use std::path::PathBuf;
-use std::sync::OnceLock;
 use tauri::{AppHandle, Manager};
 use tracing::info;
 
 use crate::errors::ScrapingError;
 
 pub use games::{
-    cleanup_expired_games, clear_game_cache, get_game_by_hash, get_games_by_category,
+    batch_insert_sitemap_stubs, cleanup_expired_games, clear_all_game_data, clear_game_cache,
+    extract_slug, get_game_by_hash, get_game_count, get_games_by_category, insert_sitemap_stub,
     is_game_cache_valid, set_category_games, upsert_game,
 };
 pub use search::{
-    SearchIndexEntry, batch_insert_sitemap_urls, clear_sitemap_urls, get_all_sitemap_urls,
-    get_sitemap_url_count, initialize_fts, insert_fts_entries, query_fts, upsert_sitemap_url,
+    SearchIndexEntry, get_all_games_for_search, initialize_fts, insert_fts_entries, query_fts,
 };
 
 pub fn get_db_path(app: &AppHandle) -> PathBuf {
@@ -70,33 +69,104 @@ pub fn set_metadata(conn: &Connection, key: &str, value: &str) -> Result<(), Scr
 }
 
 fn initialize_tables(conn: &Connection) -> Result<(), ScrapingError> {
-    static SCHEMA_CHECKED: OnceLock<()> = OnceLock::new();
+    use std::sync::OnceLock;
 
-    create_tables(conn)?;
+    // Global lock ensures schema check + migration happens exactly once per process
+    static INIT_DONE: OnceLock<Result<(), String>> = OnceLock::new();
 
-    // Recreate if schema mismatch (e.g. after app update with new columns)
-    SCHEMA_CHECKED.get_or_init(|| {
-        let schema_ok = conn
-            .query_row(
-                "SELECT url_hash, href, title, img, details, features, description, \
-                 magnetlink, tag, secondary_images, created_at, updated_at \
-                 FROM games LIMIT 0",
-                [],
-                |_| Ok(()),
-            )
-            .is_ok();
+    // Get or perform initialization
+    let result = INIT_DONE.get_or_init(|| {
+        // Check if games table exists and has the required columns
+        let needs_migration = check_needs_migration(conn);
 
-        if !schema_ok {
-            info!("Database schema mismatch, recreating tables...");
-            let _ = conn.execute_batch(
+        if needs_migration {
+            info!("Database schema needs migration, recreating tables...");
+            // Drop old tables
+            if let Err(e) = conn.execute_batch(
                 "DROP TABLE IF EXISTS game_categories;
-                 DROP TABLE IF EXISTS games;",
-            );
-            let _ = create_tables(conn);
+                 DROP TABLE IF EXISTS games;
+                 DROP TABLE IF EXISTS sitemap_urls;
+                 DROP TABLE IF EXISTS games_fts;",
+            ) {
+                return Err(format!("Failed to drop tables: {e}"));
+            }
         }
+
+        // Create tables (IF NOT EXISTS is safe)
+        if let Err(e) = create_tables(conn) {
+            return Err(format!("Failed to create tables: {e}"));
+        }
+
+        Ok(())
     });
 
+    // If the first initialization failed, propagate the error
+    if let Err(e) = result {
+        return Err(ScrapingError::GeneralError(e.clone()));
+    }
+
+    // For subsequent connections, just ensure tables exist (no migration check)
+    create_tables(conn)?;
+
     Ok(())
+}
+
+/// Check if we need to migrate the database schema.
+/// Returns true if migration is needed (old schema or no tables).
+fn check_needs_migration(conn: &Connection) -> bool {
+    // Check if games table exists
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='games'",
+            [],
+            |_| Ok(true),
+        )
+        .unwrap_or(false);
+
+    if !table_exists {
+        // Fresh database, no migration needed - just create
+        return false;
+    }
+
+    // Table exists - check if it has all required columns
+    let required_columns = [
+        "url_hash",
+        "href",
+        "slug",
+        "title",
+        "img",
+        "details",
+        "features",
+        "description",
+        "magnetlink",
+        "tag",
+        "secondary_images",
+        "is_scraped",
+        "source_sitemap",
+        "created_at",
+        "updated_at",
+    ];
+
+    let mut stmt = match conn.prepare("PRAGMA table_info(games)") {
+        Ok(s) => s,
+        Err(_) => return true, // Can't check, assume migration needed
+    };
+
+    let existing_columns: Vec<String> = stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .ok()
+        .map(|rows| rows.filter_map(|r| r.ok()).collect())
+        .unwrap_or_default();
+
+    // If any required column is missing, we need migration
+    for col in required_columns {
+        if !existing_columns.iter().any(|c| c == col) {
+            info!("Missing column '{}' in games table", col);
+            return true;
+        }
+    }
+
+    false
 }
 
 fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
@@ -105,6 +175,7 @@ fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
         CREATE TABLE IF NOT EXISTS games (
             url_hash TEXT PRIMARY KEY,
             href TEXT NOT NULL UNIQUE,
+            slug TEXT NOT NULL,
             title TEXT NOT NULL,
             img TEXT,
             details TEXT,
@@ -113,6 +184,8 @@ fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
             magnetlink TEXT,
             tag TEXT,
             secondary_images TEXT,
+            is_scraped INTEGER NOT NULL DEFAULT 0,
+            source_sitemap TEXT,
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL
         );
@@ -129,16 +202,11 @@ fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
             value TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS sitemap_urls (
-            href TEXT PRIMARY KEY,
-            slug TEXT NOT NULL,
-            title TEXT NOT NULL,
-            source_file TEXT,
-            created_at INTEGER NOT NULL
-        );
-
         CREATE INDEX IF NOT EXISTS idx_game_categories_category 
         ON game_categories(category, position);
+
+        CREATE INDEX IF NOT EXISTS idx_games_is_scraped
+        ON games(is_scraped);
         "#,
     )?;
 

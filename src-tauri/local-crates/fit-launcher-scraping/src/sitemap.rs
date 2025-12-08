@@ -1,6 +1,6 @@
 //! Sitemap downloading and parsing.
 //!
-//! Downloads sitemaps from FitGirl Repacks and stores game URLs in the database.
+//! Downloads sitemaps from FitGirl Repacks and stores game URLs directly in the games table.
 
 use regex::Regex;
 use reqwest::Client;
@@ -14,7 +14,7 @@ use crate::errors::ScrapingError;
 const BASE_URL: &str = "https://fitgirl-repacks.site/sitemap_index.xml";
 const MAX_CONCURRENT: usize = 4;
 
-/// Download all sitemaps and store URLs in the database.
+/// Download all sitemaps and store game URLs in the games table.
 pub async fn download_all_sitemaps(app: &AppHandle) -> Result<(), ScrapingError> {
     let client = Client::new();
     let sitemap_index = client.get(BASE_URL).send().await?.text().await?;
@@ -38,9 +38,9 @@ pub async fn download_all_sitemaps(app: &AppHandle) -> Result<(), ScrapingError>
     // Open database connection
     let conn = db::open_connection(app)?;
 
-    // Check how many URLs we already have
-    let existing_count = db::get_sitemap_url_count(&conn)?;
-    info!("Database has {} existing sitemap URLs", existing_count);
+    // Check how many games we already have
+    let existing_count = db::get_game_count(&conn)?;
+    info!("Database has {} existing games", existing_count);
 
     // Process sitemaps concurrently
     let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT));
@@ -58,14 +58,31 @@ pub async fn download_all_sitemaps(app: &AppHandle) -> Result<(), ScrapingError>
                     let source = extract_filename(&sitemap_url);
                     let count = entries.len();
 
-                    // Store in database
+                    // Convert to tuples for batch insert
+                    let stubs: Vec<_> = entries
+                        .iter()
+                        .map(|e| {
+                            let url_hash = db::hash_url(&e.href);
+                            (url_hash, e.href.clone(), e.slug.clone(), e.title.clone())
+                        })
+                        .collect();
+
+                    // Store in games table with is_scraped = 0
                     if let Ok(conn) = db::open_connection(&app_clone) {
-                        if let Err(e) =
-                            db::batch_insert_sitemap_urls(&conn, &entries, Some(&source))
-                        {
-                            warn!("Failed to insert URLs from {}: {}", source, e);
-                        } else {
-                            info!("Stored {} URLs from {}", count, source);
+                        match db::batch_insert_sitemap_stubs(&conn, &stubs, Some(&source)) {
+                            Ok(new_count) => {
+                                if new_count > 0 {
+                                    info!(
+                                        "Added {} new games from {} ({} total)",
+                                        new_count, source, count
+                                    );
+                                } else {
+                                    info!("No new games from {} ({} already exist)", source, count);
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to insert games from {}: {}", source, e);
+                            }
                         }
                     }
                 }
@@ -79,9 +96,9 @@ pub async fn download_all_sitemaps(app: &AppHandle) -> Result<(), ScrapingError>
     futures::future::join_all(tasks).await;
 
     // Log final count
-    let final_count = db::get_sitemap_url_count(&conn)?;
+    let final_count = db::get_game_count(&conn)?;
     info!(
-        "Sitemap download complete. Total URLs in database: {}",
+        "Sitemap download complete. Total games in database: {}",
         final_count
     );
 
@@ -161,7 +178,7 @@ pub fn extract_slug_and_title(url: &str) -> Option<(String, String)> {
     None
 }
 
-/// Build search index from sitemap URLs stored in the database.
+/// Build search index (FTS) from the games table.
 pub async fn build_search_index(app: &AppHandle) -> Result<(), ScrapingError> {
     let start = std::time::Instant::now();
     let app_clone = app.clone();
@@ -169,16 +186,16 @@ pub async fn build_search_index(app: &AppHandle) -> Result<(), ScrapingError> {
     tokio::task::spawn_blocking(move || -> Result<(), ScrapingError> {
         let conn = db::open_connection(&app_clone)?;
 
-        // Get all sitemap URLs from database
-        let entries = db::get_all_sitemap_urls(&conn)?;
+        // Get all games from database
+        let entries = db::get_all_games_for_search(&conn)?;
 
         if entries.is_empty() {
             return Err(ScrapingError::GeneralError(
-                "No sitemap URLs in database. Run sitemap download first.".into(),
+                "No games in database. Run sitemap download first.".into(),
             ));
         }
 
-        info!("Building search index from {} URLs", entries.len());
+        info!("Building search index from {} games", entries.len());
 
         // Initialize FTS and insert entries
         db::initialize_fts(&conn)?;

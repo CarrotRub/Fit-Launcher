@@ -26,15 +26,71 @@ fn serialize_secondary_images(images: &[String]) -> Option<String> {
     }
 }
 
+pub fn extract_slug(url: &str) -> String {
+    url.split('/')
+        .filter(|s| !s.is_empty())
+        .nth(2)
+        .unwrap_or("")
+        .to_string()
+}
+
+/// Insert a minimal game entry from sitemap (is_scraped = 0).
+pub fn insert_sitemap_stub(
+    conn: &Connection,
+    url_hash: &str,
+    href: &str,
+    slug: &str,
+    title: &str,
+    source_sitemap: Option<&str>,
+) -> Result<(), ScrapingError> {
+    let now = now_timestamp();
+    conn.execute(
+        r#"
+        INSERT INTO games (url_hash, href, slug, title, is_scraped, source_sitemap, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?6)
+        ON CONFLICT(url_hash) DO NOTHING
+        "#,
+        params![url_hash, href, slug, title, source_sitemap, now],
+    )?;
+    Ok(())
+}
+
+pub fn batch_insert_sitemap_stubs(
+    conn: &Connection,
+    entries: &[(String, String, String, String)],
+    source_sitemap: Option<&str>,
+) -> Result<usize, ScrapingError> {
+    let tx = conn.unchecked_transaction()?;
+    let now = now_timestamp();
+    let mut inserted_count = 0;
+
+    {
+        let mut stmt = tx.prepare(
+            "INSERT OR IGNORE INTO games (url_hash, href, slug, title, is_scraped, source_sitemap, created_at, updated_at) 
+             VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?6)",
+        )?;
+
+        for (url_hash, href, slug, title) in entries {
+            stmt.execute(params![url_hash, href, slug, title, source_sitemap, now])?;
+            // changes() returns 1 if row was inserted, 0 if ignored (duplicate)
+            inserted_count += tx.changes() as usize;
+        }
+    }
+
+    tx.commit()?;
+    Ok(inserted_count)
+}
+
 pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(), ScrapingError> {
     let now = now_timestamp();
     let secondary_json = serialize_secondary_images(&game.secondary_images);
+    let slug = extract_slug(&game.href);
 
     conn.execute(
         r#"
-        INSERT INTO games (url_hash, href, title, img, details, features, description, 
-                          magnetlink, tag, secondary_images, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)
+        INSERT INTO games (url_hash, href, slug, title, img, details, features, description, 
+                          magnetlink, tag, secondary_images, is_scraped, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12)
         ON CONFLICT(url_hash) DO UPDATE SET
             title = excluded.title,
             img = excluded.img,
@@ -44,11 +100,13 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
             magnetlink = excluded.magnetlink,
             tag = excluded.tag,
             secondary_images = excluded.secondary_images,
+            is_scraped = 1,
             updated_at = excluded.updated_at
         "#,
         params![
             url_hash,
             &game.href,
+            &slug,
             &game.title,
             &game.img,
             &game.details,
@@ -67,7 +125,7 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
 pub fn get_game_by_hash(conn: &Connection, url_hash: &str) -> Result<Option<Game>, ScrapingError> {
     let mut stmt = conn.prepare(
         "SELECT href, title, img, details, features, description, magnetlink, tag, secondary_images 
-         FROM games WHERE url_hash = ?1",
+         FROM games WHERE url_hash = ?1 AND is_scraped = 1",
     )?;
 
     let result = stmt
@@ -95,31 +153,60 @@ pub fn is_game_cache_valid(
     expiry_secs: i64,
 ) -> Result<bool, ScrapingError> {
     let cutoff = now_timestamp() - expiry_secs;
-    let mut stmt = conn.prepare("SELECT 1 FROM games WHERE url_hash = ?1 AND updated_at > ?2")?;
+    let mut stmt = conn.prepare(
+        "SELECT 1 FROM games WHERE url_hash = ?1 AND is_scraped = 1 AND updated_at > ?2",
+    )?;
     Ok(stmt.exists(params![url_hash, cutoff])?)
 }
 
-/// Deletes orphan cache entries older than expiry_secs.
-/// Games in categories are preserved since they're actively displayed.
 pub fn cleanup_expired_games(conn: &Connection, expiry_secs: i64) -> Result<usize, ScrapingError> {
     let cutoff = now_timestamp() - expiry_secs;
     let deleted = conn.execute(
-        "DELETE FROM games WHERE updated_at < ?1 AND url_hash NOT IN (SELECT url_hash FROM game_categories)",
+        "DELETE FROM games WHERE is_scraped = 1 AND updated_at < ?1 
+         AND url_hash NOT IN (SELECT url_hash FROM game_categories)",
         params![cutoff],
     )?;
     Ok(deleted)
 }
 
-/// Clears all game cache data from the database.
-/// Deletes all games, categories, sitemap URLs, and relevant metadata.
+/// Clears scraped game data but preserves sitemap stubs.
+/// Resets is_scraped to 0 and clears detail fields, keeping slug/title/href for search.
 pub fn clear_game_cache(conn: &Connection) -> Result<(), ScrapingError> {
     conn.execute_batch(
-        "DELETE FROM game_categories;
-         DELETE FROM games;
-         DELETE FROM sitemap_urls;
+        "-- Clear category associations
+         DELETE FROM game_categories;
+         
+         -- Reset scraped data but keep stubs for search
+         UPDATE games SET
+             img = NULL,
+             details = NULL,
+             features = NULL,
+             description = NULL,
+             magnetlink = NULL,
+             tag = NULL,
+             secondary_images = NULL,
+             is_scraped = 0
+         WHERE is_scraped = 1;
+         
+         -- Clear category metadata
          DELETE FROM metadata WHERE key LIKE 'category_%_updated';",
     )?;
     Ok(())
+}
+
+/// Use this for a full reset (will require re-downloading sitemaps).
+pub fn clear_all_game_data(conn: &Connection) -> Result<(), ScrapingError> {
+    conn.execute_batch(
+        "DELETE FROM game_categories;
+         DELETE FROM games;
+         DELETE FROM metadata WHERE key LIKE 'category_%_updated';",
+    )?;
+    Ok(())
+}
+
+pub fn get_game_count(conn: &Connection) -> Result<usize, ScrapingError> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM games", [], |row| row.get(0))?;
+    Ok(count as usize)
 }
 
 pub fn get_games_by_category(
@@ -173,12 +260,13 @@ pub fn set_category_games(
         let url_hash = hash_fn(&game.href);
         let now = now_timestamp();
         let secondary_json = serialize_secondary_images(&game.secondary_images);
+        let slug = extract_slug(&game.href);
 
         tx.execute(
             r#"
-            INSERT INTO games (url_hash, href, title, img, details, features, description, 
-                              magnetlink, tag, secondary_images, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)
+            INSERT INTO games (url_hash, href, slug, title, img, details, features, description, 
+                              magnetlink, tag, secondary_images, is_scraped, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 1, ?12, ?12)
             ON CONFLICT(url_hash) DO UPDATE SET
                 title = excluded.title,
                 img = excluded.img,
@@ -188,11 +276,13 @@ pub fn set_category_games(
                 magnetlink = excluded.magnetlink,
                 tag = excluded.tag,
                 secondary_images = excluded.secondary_images,
+                is_scraped = 1,
                 updated_at = excluded.updated_at
             "#,
             params![
                 &url_hash,
                 &game.href,
+                &slug,
                 &game.title,
                 &game.img,
                 &game.details,

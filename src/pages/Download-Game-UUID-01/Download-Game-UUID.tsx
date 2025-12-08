@@ -204,13 +204,20 @@ const DownloadGameUUIDPage = () => {
   createEffect(() => {
     const state = location.state;
     if (state?.gameHref) {
+      const gameHref = state.gameHref; // Capture for closure
       setLoading(true);
       setGameInfo(undefined);
       setAdditionalImages([]);
-      setCurrentGameHref(state.gameHref);
-      setupImageEventListener();
-      fetchGame(state.gameHref);
-      fetchImages(state.gameHref);
+      setCurrentGameHref(gameHref);
+
+      // Use IIFE to properly await async operations in correct order
+      (async () => {
+        // MUST set up listener BEFORE fetching to catch all emitted events
+        await setupImageEventListener();
+        // Now safe to fetch - listener is ready
+        fetchGame(gameHref);
+        fetchImages(gameHref);
+      })();
     }
   });
 
