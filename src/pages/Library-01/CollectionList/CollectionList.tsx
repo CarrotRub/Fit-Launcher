@@ -3,9 +3,9 @@ import { useNavigate } from "@solidjs/router";
 import { render } from "solid-js/web";
 import BasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../../helpers/error";
 import { commands, Game } from "../../../bindings";
 import { CollectionListProps } from "../../../types/library/type";
-import { setDownloadGamePageInfo } from "../../../components/functions/dataStoreGlobal";
 import { LibraryApi } from "../../../api/library/api";
 import { ChevronDown, ChevronUp, Trash2, X, ChevronRight } from "lucide-solid";
 import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
@@ -61,7 +61,7 @@ export default function CollectionList(props: CollectionListProps) {
             setGamesList(prev => prev.filter(g => g.title !== game.title));
             await message("Game has been removed from collection", { title: "FitLauncher", kind: "info" });
         } else {
-            await message(result.error, { title: "FitLauncher", kind: "error" });
+            await showError(result.error);
         }
     }
 
@@ -84,10 +84,7 @@ export default function CollectionList(props: CollectionListProps) {
                     kind: "info"
                 });
             } else {
-                await message(result.error, {
-                    title: "FitLauncher",
-                    kind: "error"
-                });
+                await showError(result.error);
             }
         }
 

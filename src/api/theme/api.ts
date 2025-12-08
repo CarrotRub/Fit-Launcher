@@ -1,6 +1,7 @@
 import { appDataDir, join, basename, dirname } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 import {
   copyFile,
   mkdir,
@@ -106,30 +107,20 @@ export class ThemeManagerApi {
       const match = content.match(this.blockRegex);
 
       if (!match) {
-        return await message("Invalid theme block format", {
-          title: "FitLauncher",
-          kind: "error",
-        });
+        return await showError("Invalid theme block format");
       }
 
       const [_, themeName, variables] = match;
 
       if (!this.themeRegex.test(themeName)) {
-        return await message(
-          "Theme name must be lowercase, alphanumeric or hyphen, max 40 chars",
-          {
-            title: "FitLauncher",
-            kind: "error",
-          }
+        return await showError(
+          "Theme name must be lowercase, alphanumeric or hyphen, max 40 chars"
         );
       }
 
       const valid = this.requiredVars.every((v) => variables.includes(v));
       if (!valid) {
-        return await message("Missing required variables in theme", {
-          title: "FitLauncher",
-          kind: "error",
-        });
+        return await showError("Missing required variables in theme");
       }
 
       const saveDir = await join(await appDataDir(), "themes");
@@ -143,10 +134,7 @@ export class ThemeManagerApi {
       });
     } catch (e) {
       console.error("Error adding theme:", e);
-      await message("Could not add theme.", {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(e, "Could not add theme");
     }
   }
 
@@ -182,10 +170,7 @@ export class ThemeManagerApi {
       });
     } catch (err) {
       console.error("Failed to remove theme:", err);
-      await message("Could not remove theme file.", {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(err, "Could not remove theme file");
     }
   }
 

@@ -1,4 +1,5 @@
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../helpers/error";
 import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X, Zap, CheckCircle, XCircle, Loader2 } from "lucide-solid";
 import { createSignal, For, onMount, Show, Component } from "solid-js";
 import { render } from "solid-js/web";
@@ -285,10 +286,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 destroy();
 
             } catch (err: any) {
-                await message(`Failed: ${err.message ?? err}`, {
-                    title: "Error",
-                    kind: "error",
-                });
+                await showError(err, "Error");
                 setError(err.message ?? "Failed");
             } finally {
                 setLoading(false);
@@ -599,10 +597,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 destroy();
 
             } catch (err: any) {
-                await message(`Failed: ${err.message ?? err}`, {
-                    title: "Error",
-                    kind: "error",
-                });
+                await showError(err, "Error");
                 setError(err.message ?? "Failed");
             } finally {
                 setLoading(false);

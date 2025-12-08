@@ -1,4 +1,5 @@
 import { message } from "@tauri-apps/plugin-dialog";
+import { resolveError, showError } from "../../helpers/error";
 import {
   commands,
   CustomError,
@@ -124,18 +125,12 @@ export class GamesCacheApi {
         this.cache.set(key, resultTyped);
       } else {
         if (resultTyped.error.type !== "articleNotFound") {
-          await message(
-            resultTyped.error.data.toString() ?? "An unknown error occurred.",
-            {
-              title: "Fetch Error",
-              kind: "error",
-            }
+          await showError(
+            resultTyped.error.data,
+            "Fetch Error"
           );
         } else {
-          await message("Article Not Found.", {
-            title: "Fetch Error",
-            kind: "error",
-          });
+          await showError("Article Not Found.", "Fetch Error");
         }
       }
       return resultTyped;

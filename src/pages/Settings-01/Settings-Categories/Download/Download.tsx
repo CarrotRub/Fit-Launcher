@@ -7,6 +7,7 @@ import {
 
 import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
+import { showError } from "../../../../helpers/error";
 import { SettingsSectionProps, DownloadSettings, DownloadSettingsPart } from "../../../../types/settings/types";
 import GeneralSettingsPart from "./General/GeneralPart";
 import Button from "../../../../components/UI/Button/Button";
@@ -30,10 +31,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
     if (settings.status === "ok") {
       setGlobalTorrentConfig(settings.data);
     } else {
-      await message(`Error getting the download settings: ${settings.error}`, {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(settings.error, "Error getting the download settings");
     }
   });
 
@@ -78,10 +76,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
       });
     } else {
       console.error(result.error)
-      await message("Error saving settings: " + JSON.stringify(result.error), {
-        title: "FitLauncher",
-        kind: "error",
-      });
+      await showError(result.error, "Error saving settings");
     }
   };
 
