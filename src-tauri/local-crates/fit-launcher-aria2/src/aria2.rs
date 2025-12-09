@@ -22,10 +22,18 @@ pub async fn aria2_add_uri(
     };
 
     #[cfg(windows)]
-    if aria2_cfg.file_allocation.is_auto() {
-        options.extra_options =
-            file_allocation_method(dir.as_deref().unwrap_or("."), aria2_cfg.start_daemon).await;
-    };
+    {
+        if aria2_cfg.file_allocation.is_auto() {
+            file_allocation_method(
+                &mut options.extra_options,
+                dir.as_deref().unwrap_or("."),
+                aria2_cfg.start_daemon,
+            )
+            .await;
+        };
+    }
+
+    set_proxy_from_sys(&mut options.extra_options);
 
     Ok(aria2_client.add_uri(url, Some(options), None, None).await?)
 }
@@ -80,9 +88,10 @@ pub async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Ar
 
 #[cfg(windows)]
 async fn file_allocation_method(
+    extra_options: &mut Map<String, Value>,
     dir: impl AsRef<str>,
     aria2_priviledged: bool,
-) -> Map<String, Value> {
+) {
     let dir = dir.as_ref();
 
     let file_allocation = {
@@ -159,7 +168,76 @@ async fn file_allocation_method(
         result
     };
 
-    let mut extra_options = Map::new();
     extra_options.insert("file-allocation".into(), file_allocation.into());
-    extra_options
+}
+
+/// This function is thread safe (see https://stackoverflow.com/a/706348)
+///
+/// On Windows, this reads system proxy from HKCU,
+/// and currently ignoring group policy based proxy settings.
+///
+/// Which requires checking policy `Make proxy settings per-machine (rather than per-user)`
+///
+/// On Linux, this will only read KDE and GNOME proxy settings.
+/// In the oppsite, reqwest only takes care for HTTP_PROXY, HTTPS_PROXY,
+/// ALL_PROXY (and lowercase variants), but not desktop settings.
+fn set_proxy_from_sys(extra_options: &mut Map<String, Value>) {
+    #[cfg(windows)]
+    {
+        const REGISTRY_PATH: &str =
+            r#"Software\Microsoft\Windows\CurrentVersion\Internet Settings"#;
+        use tracing::{info, warn};
+        use winreg::RegKey;
+        use winreg::enums::{HKEY_CURRENT_USER, KEY_READ};
+
+        let registry = RegKey::predef(HKEY_CURRENT_USER);
+        let Ok(ie_settings) = registry.open_subkey_with_flags(REGISTRY_PATH, KEY_READ) else {
+            warn!("failed to read system proxy: open registry failed");
+            return;
+        };
+
+        let enabled = ie_settings
+            .get_value::<u32, _>("ProxyEnable")
+            .is_ok_and(|enable| enable == 1);
+        // ignore disabled proxy
+        if !enabled {
+            info!("skip to read system proxy: proxy disabled");
+            return;
+        }
+
+        if let Ok(proxy_server) = ie_settings.get_value::<String, _>("ProxyServer") {
+            // schema is not needed here, will be inferred as http proxy
+            // https://aria2.github.io/manual/en/html/aria2c.html#cmdoption-http-proxy
+            extra_options.insert("http-proxy".into(), proxy_server.clone().into());
+            extra_options.insert("https-proxy".into(), proxy_server.into());
+        }
+
+        if let Ok(proxy_override) = ie_settings.get_value::<String, _>("ProxyOverride") {
+            let no_proxy = proxy_override
+                .split(";")
+                .filter_map(|host| {
+                    // https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-ie-clientnetworkprotocolimplementation-hklmproxyoverride#values
+                    if host == "<local>" {
+                        return None;
+                    }
+
+                    if host.contains("*.") || host.contains(".*") {
+                        // TODO: support `*.` and `.*` wildcard IP range
+                        return None;
+                    }
+
+                    // assume it's a valid hostname, that can be one of:
+                    // - CIDR range (IPv4/IPv6)
+                    // - full domain
+                    // - subdomain match (.example.com)
+                    Some(host)
+                })
+                .collect::<Vec<_>>()
+                .join(",");
+
+            extra_options.insert("no-proxy".into(), no_proxy.into());
+        }
+    }
+    #[cfg(not(windows))]
+    {}
 }

@@ -2051,6 +2051,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "winreg 0.55.0",
 ]
 
 [[package]]
