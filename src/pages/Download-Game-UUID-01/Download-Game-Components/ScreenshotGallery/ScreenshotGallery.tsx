@@ -1,6 +1,6 @@
 import { Show, For, Accessor, createSignal, createEffect, onCleanup, createMemo } from "solid-js";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-solid";
-import LazyImage from "../../../LazyImage/LazyImage";
+import LazyImage from "../../../../components/LazyImage/LazyImage";
 
 interface ScreenshotGalleryProps {
     images: Accessor<string[]>;

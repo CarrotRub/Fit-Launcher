@@ -25,7 +25,7 @@ import { GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
 import * as Debrid from "../../api/debrid/api";
-import { ScreenshotGallery } from "../../components/UI/Download-Game-Page/ScreenshotGallery/ScreenshotGallery";
+import { ScreenshotGallery } from "./Download-Game-Components/ScreenshotGallery/ScreenshotGallery";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
