@@ -30,3 +30,4 @@ listdisk-rs = { version = "0.3.0", default-features = false, features = [
 ] }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
+sysproxy = { git = "https://github.com/zzzgydi/sysproxy-rs", rev = "355d9c98" }
