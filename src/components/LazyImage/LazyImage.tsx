@@ -10,6 +10,7 @@ interface LazyImageProps {
     maxRetries?: number;
     retryDelay?: number;
     objectFit?: 'cover' | 'contain' | 'fill';
+    loadTimeout?: number;
 }
 
 export default function LazyImage(props: LazyImageProps) {
@@ -19,22 +20,39 @@ export default function LazyImage(props: LazyImageProps) {
 
     const maxRetries = props.maxRetries ?? 3;
     const baseDelay = props.retryDelay ?? 1000;
+    const loadTimeout = props.loadTimeout ?? 15000;
 
     let retryTimeout: number | undefined;
+    let loadTimeoutId: number | undefined;
 
-    // Reset on src change
+    const startLoadTimeout = () => {
+        clearTimeout(loadTimeoutId);
+        loadTimeoutId = setTimeout(() => {
+            if (!loaded()) {
+                setLoaded(true);
+                console.warn(`LazyImage: Timeout loading ${props.src}`);
+            }
+        }, loadTimeout);
+    };
+
     createEffect(() => {
         if (props.src !== currentSrc()) {
             clearTimeout(retryTimeout);
+            clearTimeout(loadTimeoutId);
             setLoaded(false);
             setRetryCount(0);
             setCurrentSrc(props.src);
         }
+        startLoadTimeout();
     });
 
-    onCleanup(() => clearTimeout(retryTimeout));
+    onCleanup(() => {
+        clearTimeout(retryTimeout);
+        clearTimeout(loadTimeoutId);
+    });
 
     const handleLoad = () => {
+        clearTimeout(loadTimeoutId);
         setLoaded(true);
         setRetryCount(0);
         props.onLoad?.();
@@ -48,8 +66,10 @@ export default function LazyImage(props: LazyImageProps) {
                 setRetryCount(attempts + 1);
                 const sep = props.src.includes('?') ? '&' : '?';
                 setCurrentSrc(`${props.src}${sep}_r=${attempts + 1}`);
+                startLoadTimeout();
             }, delay);
         } else {
+            clearTimeout(loadTimeoutId);
             setLoaded(true);
             props.onError?.(e);
         }
