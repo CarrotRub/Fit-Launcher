@@ -165,6 +165,21 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         .map(str::to_string)
         .unwrap_or_default();
 
+    let pastebin_link = article
+        .select(&scraper::Selector::parse("a").unwrap())
+        .find(|e| {
+            let text = e.text().collect::<String>();
+            if !text.to_lowercase().contains(".torrent") {
+                return false;
+            }
+            let href = e.value().attr("href").unwrap_or("");
+            href.starts_with("https://paste.fitgirl-repacks.site/")
+                || href.starts_with("https://pastefg.hermietkreeft.site/")
+        })
+        .and_then(|e| e.value().attr("href"))
+        .map(str::to_string)
+        .unwrap_or_default();
+
     let href = article
         .select(&scraper::Selector::parse("span.entry-date > a").unwrap())
         .next()
@@ -208,6 +223,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         href,
         tag,
         secondary_images: Vec::new(),
+        pastebin_link,
     }
 }
 

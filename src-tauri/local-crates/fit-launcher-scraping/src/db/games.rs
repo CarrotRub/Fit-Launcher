@@ -89,8 +89,8 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
     conn.execute(
         r#"
         INSERT INTO games (url_hash, href, slug, title, img, details, features, description, gameplay_features, included_dlcs,
-                          magnetlink, tag, secondary_images, is_scraped, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 1, ?14, ?14)
+                          pastebin_link, magnetlink, tag, secondary_images, is_scraped, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 1, ?15, ?15)
         ON CONFLICT(url_hash) DO UPDATE SET
             title = excluded.title,
             img = excluded.img,
@@ -99,6 +99,7 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
             description = excluded.description,
             gameplay_features = excluded.gameplay_features,
             included_dlcs = excluded.included_dlcs,
+            pastebin_link = excluded.pastebin_link,
             magnetlink = excluded.magnetlink,
             tag = excluded.tag,
             secondary_images = excluded.secondary_images,
@@ -116,6 +117,7 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
             &game.description,
             &game.gameplay_features,
             &game.included_dlcs,
+            &game.pastebin_link,
             &game.magnetlink,
             &game.tag,
             &secondary_json,
@@ -128,7 +130,7 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
 
 pub fn get_game_by_hash(conn: &Connection, url_hash: &str) -> Result<Option<Game>, ScrapingError> {
     let mut stmt = conn.prepare(
-        "SELECT href, title, img, details, features, description, gameplay_features, included_dlcs, magnetlink, tag, secondary_images 
+        "SELECT href, title, img, details, features, description, gameplay_features, included_dlcs, pastebin_link, magnetlink, tag, secondary_images 
          FROM games WHERE url_hash = ?1 AND is_scraped = 1",
     )?;
 
@@ -143,9 +145,10 @@ pub fn get_game_by_hash(conn: &Connection, url_hash: &str) -> Result<Option<Game
                 description: row.get(5)?,
                 gameplay_features: row.get(6)?,
                 included_dlcs: row.get(7)?,
-                magnetlink: row.get(8)?,
-                tag: row.get(9)?,
-                secondary_images: parse_secondary_images(row.get(10)?),
+                pastebin_link: row.get(8)?,
+                magnetlink: row.get(9)?,
+                tag: row.get(10)?,
+                secondary_images: parse_secondary_images(row.get(11)?),
             })
         })
         .optional()?;
@@ -188,6 +191,7 @@ pub fn clear_game_cache(conn: &Connection) -> Result<(), ScrapingError> {
              details = NULL,
              features = NULL,
              description = NULL,
+             pastebin_link = NULL,
              magnetlink = NULL,
              tag = NULL,
              secondary_images = NULL,
@@ -222,7 +226,7 @@ pub fn get_games_by_category(
     let mut stmt = conn.prepare(
         r#"
         SELECT g.href, g.title, g.img, g.details, g.features, g.description, g.gameplay_features, g.included_dlcs,
-               g.magnetlink, g.tag, g.secondary_images
+               g.pastebin_link, g.magnetlink, g.tag, g.secondary_images
         FROM games g
         INNER JOIN game_categories gc ON g.url_hash = gc.url_hash
         WHERE gc.category = ?1
@@ -241,9 +245,10 @@ pub fn get_games_by_category(
                 description: row.get(5)?,
                 gameplay_features: row.get(6)?,
                 included_dlcs: row.get(7)?,
-                magnetlink: row.get(8)?,
-                tag: row.get(9)?,
-                secondary_images: parse_secondary_images(row.get(10)?),
+                pastebin_link: row.get(8)?,
+                magnetlink: row.get(9)?,
+                tag: row.get(10)?,
+                secondary_images: parse_secondary_images(row.get(11)?),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -273,8 +278,8 @@ pub fn set_category_games(
         tx.execute(
             r#"
             INSERT INTO games (url_hash, href, slug, title, img, details, features, description, gameplay_features, included_dlcs,
-                              magnetlink, tag, secondary_images, is_scraped, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 1, ?14, ?14)
+                              pastebin_link, magnetlink, tag, secondary_images, is_scraped, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 1, ?15, ?15)
             ON CONFLICT(url_hash) DO UPDATE SET
                 title = excluded.title,
                 img = excluded.img,
@@ -283,6 +288,7 @@ pub fn set_category_games(
                 description = excluded.description,
                 gameplay_features = excluded.gameplay_features,
                 included_dlcs = excluded.included_dlcs,
+                pastebin_link = excluded.pastebin_link,
                 magnetlink = excluded.magnetlink,
                 tag = excluded.tag,
                 secondary_images = excluded.secondary_images,
@@ -300,6 +306,7 @@ pub fn set_category_games(
                 &game.description,
                 &game.gameplay_features,
                 &game.included_dlcs,
+                &game.pastebin_link,
                 &game.magnetlink,
                 &game.tag,
                 &secondary_json,

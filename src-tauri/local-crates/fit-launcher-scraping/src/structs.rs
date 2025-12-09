@@ -29,4 +29,6 @@ pub struct Game {
     /// Secondary images for discovery view (empty for non-discovery games)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub secondary_images: Vec<String>,
+    #[serde(default)]
+    pub pastebin_link: String,
 }
