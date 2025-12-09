@@ -37,7 +37,7 @@ pub fn extract_slug(url: &str) -> String {
 /// Insert a minimal game entry from sitemap (is_scraped = 0).
 pub fn insert_sitemap_stub(
     conn: &Connection,
-    url_hash: &str,
+    url_hash: u64,
     href: &str,
     slug: &str,
     title: &str,
@@ -57,7 +57,7 @@ pub fn insert_sitemap_stub(
 
 pub fn batch_insert_sitemap_stubs(
     conn: &Connection,
-    entries: &[(String, String, String, String)],
+    entries: &[(u64, String, String, String)],
     source_sitemap: Option<&str>,
 ) -> Result<usize, ScrapingError> {
     let tx = conn.unchecked_transaction()?;
@@ -81,7 +81,7 @@ pub fn batch_insert_sitemap_stubs(
     Ok(inserted_count)
 }
 
-pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(), ScrapingError> {
+pub fn upsert_game(conn: &Connection, url_hash: u64, game: &Game) -> Result<(), ScrapingError> {
     let now = now_timestamp();
     let secondary_json = serialize_secondary_images(&game.secondary_images);
     let slug = extract_slug(&game.href);
@@ -128,7 +128,7 @@ pub fn upsert_game(conn: &Connection, url_hash: &str, game: &Game) -> Result<(),
     Ok(())
 }
 
-pub fn get_game_by_hash(conn: &Connection, url_hash: &str) -> Result<Option<Game>, ScrapingError> {
+pub fn get_game_by_hash(conn: &Connection, url_hash: u64) -> Result<Option<Game>, ScrapingError> {
     let mut stmt = conn.prepare(
         "SELECT href, title, img, details, features, description, gameplay_features, included_dlcs, pastebin_link, magnetlink, tag, secondary_images 
          FROM games WHERE url_hash = ?1 AND is_scraped = 1",
@@ -158,7 +158,7 @@ pub fn get_game_by_hash(conn: &Connection, url_hash: &str) -> Result<Option<Game
 
 pub fn is_game_cache_valid(
     conn: &Connection,
-    url_hash: &str,
+    url_hash: u64,
     expiry_secs: i64,
 ) -> Result<bool, ScrapingError> {
     let cutoff = now_timestamp() - expiry_secs;
@@ -260,7 +260,7 @@ pub fn set_category_games(
     conn: &Connection,
     category: &str,
     games: &[Game],
-    hash_fn: impl Fn(&str) -> String,
+    hash_fn: impl Fn(&str) -> u64,
 ) -> Result<(), ScrapingError> {
     let tx = conn.unchecked_transaction()?;
 

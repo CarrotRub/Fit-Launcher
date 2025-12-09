@@ -47,10 +47,9 @@ pub fn open_connection_at(db_path: &PathBuf) -> Result<Connection, ScrapingError
 }
 
 /// Deterministic URL hash for primary key. Fixed seeds ensure same URL = same hash.
-pub fn hash_url(url: &str) -> String {
+pub fn hash_url(url: &str) -> u64 {
     let hasher = ahash::RandomState::with_seeds(0x1A, 0x6B, 0x4D, 0xF6);
-    let hash = hasher.hash_one(url);
-    format!("{hash:016x}")
+    hasher.hash_one(url)
 }
 
 pub fn get_metadata(conn: &Connection, key: &str) -> Result<Option<String>, ScrapingError> {
@@ -176,7 +175,7 @@ fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS games (
-            url_hash TEXT PRIMARY KEY,
+            url_hash INTEGER PRIMARY KEY,
             href TEXT NOT NULL UNIQUE,
             slug TEXT NOT NULL,
             title TEXT NOT NULL,
@@ -197,7 +196,7 @@ fn create_tables(conn: &Connection) -> Result<(), ScrapingError> {
         );
 
         CREATE TABLE IF NOT EXISTS game_categories (
-            url_hash TEXT NOT NULL REFERENCES games(url_hash) ON DELETE CASCADE,
+            url_hash INTEGER NOT NULL REFERENCES games(url_hash) ON DELETE CASCADE,
             category TEXT NOT NULL,
             position INTEGER NOT NULL,
             PRIMARY KEY (url_hash, category)
@@ -229,6 +228,5 @@ mod tests {
         let hash1 = hash_url(url);
         let hash2 = hash_url(url);
         assert_eq!(hash1, hash2);
-        assert_eq!(hash1.len(), 16);
     }
 }
