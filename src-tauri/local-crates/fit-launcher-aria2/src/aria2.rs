@@ -221,8 +221,8 @@ fn set_proxy_from_sys(extra_options: &mut Map<String, Value>) {
                         return None;
                     }
 
-                    if host.contains("*.") || host.contains(".*") {
-                        // TODO: support `*.` and `.*` wildcard IP range
+                    if host.contains("*") {
+                        // TODO: support wildcard IP range and wildcard domain suffix match.
                         return None;
                     }
 
