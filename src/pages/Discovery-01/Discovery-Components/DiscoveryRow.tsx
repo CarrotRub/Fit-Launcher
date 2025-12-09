@@ -1,116 +1,98 @@
-import { createSignal, createMemo, Show, JSX, For } from 'solid-js';
+import { createSignal, createMemo, Show, For } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import type { Game } from '../../../bindings';
 import { commands } from '../../../bindings';
-import { Star, HardDrive, Factory, Languages, Tags } from 'lucide-solid';
+import { Star, HardDrive, Factory, Languages } from 'lucide-solid';
 import Button from '../../../components/UI/Button/Button';
 import { LibraryApi } from '../../../api/library/api';
 import { useToast } from 'solid-notifications';
 import LazyImage from '../../../components/LazyImage/LazyImage';
 import { extractCompany, extractLanguage, parseGameSize, formatBytesToSize } from '../../../helpers/gameFilters';
 
-const defaultPath: string = await commands.getSearchIndexPathCmd();
 const library = new LibraryApi();
 
-export default function DiscoveryRow({
-    gameItemObject,
-    preloadedDownloadLater
-}: {
-    gameItemObject: Game;
-    preloadedDownloadLater: boolean;
-}): JSX.Element {
-    const navigate = useNavigate();
-    const [isToDownloadLater, setToDownloadLater] = createSignal(preloadedDownloadLater);
-    const { notify } = useToast();
+interface DiscoveryRowProps {
+    game: Game;
+    isFavorite: boolean;
+}
 
-    // Optimize: Compute details once, synchronously, without signals
+export default function DiscoveryRow(props: DiscoveryRowProps) {
+    const navigate = useNavigate();
+    const { notify } = useToast();
+    const [isFavorite, setIsFavorite] = createSignal(props.isFavorite);
+
+    // Derived: game details from description
     const details = createMemo(() => {
-        const desc = gameItemObject.details;
+        const desc = props.game.details;
         if (!desc) return { companies: 'N/A', language: 'N/A', original: 'N/A', repack: 'N/A' };
 
-        const companies = extractCompany(desc);
-        const language = extractLanguage(desc);
         const originalBytes = parseGameSize(desc, 'original');
         const repackBytes = parseGameSize(desc, 'repack');
-
         return {
-            companies,
-            language,
+            companies: extractCompany(desc),
+            language: extractLanguage(desc),
             original: originalBytes > 0 ? formatBytesToSize(originalBytes) : 'N/A',
             repack: repackBytes > 0 ? formatBytesToSize(repackBytes) : 'N/A'
         };
     });
 
-    // Optimize: Extract title once
-    const displayTitle = createMemo(() => {
-        const title = gameItemObject.title;
-        return title
+    // Derived: clean display title
+    const displayTitle = createMemo(() =>
+        props.game.title
             ?.replace(/\s*[:\-]\s*$/, '')
-            ?.replace(/\(.*?\)/g, '')
-            ?.replace(/\s*[:\–]\s*$/, '')
-            ?.replace(/[\–].*$/, '') ?? title;
-    });
+            .replace(/\(.*?\)/g, '')
+            .replace(/\s*[:\–]\s*$/, '')
+            .replace(/[\–].*$/, '') || props.game.title
+    );
 
-    async function handleAddToDownloadLater() {
-        const newState = !isToDownloadLater();
-        setToDownloadLater(newState);
+    // Derived: thumbnails and tags
+    const thumbnails = () => props.game.secondary_images?.slice(0, 3) || [];
+    const tags = () => props.game.tag?.split(',').map(t => t.trim()).slice(0, 4) || [];
 
-        if (newState) {
-            await library.addGameToCollection("games_to_download", gameItemObject);
-            notify(`${gameItemObject.title} added to favorites`, { type: "success" });
-        } else {
-            await library.removeGameToDownload(gameItemObject.title);
-            notify(`${gameItemObject.title} removed from favorites`, { type: "success" });
-        }
-    }
-
-    async function handleGoToGamePage() {
-        const uuid = await commands.hashUrl(gameItemObject.href);
+    const handleGoToGame = async () => {
+        const uuid = await commands.hashUrl(props.game.href);
         navigate(`/game/${uuid}`, {
-            state: {
-                gameHref: gameItemObject.href,
-                gameTitle: gameItemObject.title,
-                filePath: defaultPath
-            }
+            state: { gameHref: props.game.href, gameTitle: props.game.title }
         });
-    }
+    };
 
-    // Image logic
-    const primaryImage = () => gameItemObject.img;
-    const thumbnails = () => gameItemObject.secondary_images?.slice(0, 3) || [];
-    const tags = () => gameItemObject.tag?.split(',').map(t => t.trim()).slice(0, 4) || [];
+    const toggleFavorite = async (e: MouseEvent) => {
+        e.stopPropagation();
+        const newState = !isFavorite();
+        setIsFavorite(newState);
+
+        try {
+            if (newState) {
+                await library.addGameToCollection("games_to_download", props.game);
+                notify(`${props.game.title} added to favorites`, { type: "success" });
+            } else {
+                await library.removeGameToDownload(props.game.title);
+                notify(`${props.game.title} removed from favorites`, { type: "success" });
+            }
+        } catch {
+            setIsFavorite(!newState); // Revert on error
+            notify("Error updating favorites", { type: "error" });
+        }
+    };
 
     return (
         <div class="group relative flex flex-col md:flex-row bg-popup-background rounded-xl border border-secondary-20 overflow-hidden">
-
-            {/* Left: Image Collage (Clickable) */}
-            <div
-                class="w-full md:w-[45%] lg:w-[40%] xl:w-[35%] h-56 md:h-48 lg:h-52 shrink-0 flex gap-1 p-1 cursor-pointer"
-                onClick={handleGoToGamePage}
-            >
-                {/* Main Image - Takes 75% width */}
+            {/* Image Section */}
+            <div class="w-full md:w-[45%] lg:w-[40%] xl:w-[35%] h-56 md:h-48 lg:h-52 shrink-0 flex gap-1 p-1 cursor-pointer" onClick={handleGoToGame}>
+                {/* Main Image */}
                 <div class="relative w-[75%] h-full rounded-lg overflow-hidden shadow-md">
-                    <LazyImage
-                        src={primaryImage()}
-                        alt={gameItemObject.title}
-                        class="w-full h-full object-cover"
-                    />
+                    <LazyImage src={props.game.img} alt={props.game.title} class="w-full h-full object-cover" />
                 </div>
 
-                {/* Thumbnails Strip - Takes 25% width */}
+                {/* Thumbnails */}
                 <div class="flex flex-col gap-1 w-[25%] h-full">
                     <For each={thumbnails()}>
                         {(thumb, i) => (
                             <div class="relative w-full h-full rounded-md overflow-hidden bg-black/20">
-                                <LazyImage
-                                    src={thumb}
-                                    alt={`Thumb ${i()}`}
-                                    class="w-full h-full object-cover opacity-80"
-                                />
+                                <LazyImage src={thumb} alt={`Thumb ${i() + 1}`} class="w-full h-full object-cover opacity-80" />
                             </div>
                         )}
                     </For>
-                    {/* Fallback pattern if no thumbnails */}
                     <Show when={thumbnails().length === 0}>
                         <div class="w-full h-full bg-secondary-20/30 rounded-md flex items-center justify-center">
                             <span class="text-xs text-muted/50">No preview</span>
@@ -119,21 +101,14 @@ export default function DiscoveryRow({
                 </div>
             </div>
 
-            {/* Right: Info & Actions */}
-            <div class="flex flex-col grow p-4 md:py-3 md:px-5 justify-between relative">
-
-                {/* Header Section */}
+            {/* Info Section */}
+            <div class="flex flex-col grow p-4 md:py-3 md:px-5 justify-between">
+                {/* Header */}
                 <div>
                     <div class="flex justify-between items-start gap-2">
-                        <h3
-                            class="text-lg md:text-xl font-bold text-text transition-colors cursor-pointer line-clamp-1"
-                            onClick={handleGoToGamePage}
-                            title={gameItemObject.title}
-                        >
+                        <h3 class="text-lg md:text-xl font-bold text-text cursor-pointer line-clamp-1" onClick={handleGoToGame} title={props.game.title}>
                             {displayTitle()}
                         </h3>
-
-                        {/* Repack Size Badge */}
                         <div class="shrink-0 px-2 py-1 bg-secondary-100 rounded text-xs font-mono text-accent border border-accent/20">
                             {details().repack}
                         </div>
@@ -142,8 +117,8 @@ export default function DiscoveryRow({
                     {/* Tags */}
                     <div class="flex flex-wrap gap-1.5 mt-2">
                         <For each={tags()}>
-                            {tag => (
-                                <span class="px-2 py-0.5 bg-secondary-20/50 text-muted rounded-full text-[10px] uppercase font-bold tracking-wider cursor-default">
+                            {(tag) => (
+                                <span class="px-2 py-0.5 bg-secondary-20/50 text-muted rounded-full text-[10px] uppercase font-bold tracking-wider">
                                     {tag}
                                 </span>
                             )}
@@ -151,46 +126,31 @@ export default function DiscoveryRow({
                     </div>
                 </div>
 
-                {/* Metadata Grid */}
+                {/* Metadata */}
                 <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-muted mt-3 mb-3">
-                    <div class="flex items-center gap-2">
-                        <HardDrive class="w-3.5 h-3.5" />
-                        <span>Original Size: <span class="text-text/80">{details().original}</span></span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Factory class="w-3.5 h-3.5" />
-                        <span class="truncate" title={details().companies}>Publisher: <span class="text-text/80">{details().companies}</span></span>
-                    </div>
-                    <div class="flex items-center gap-2 col-span-2">
-                        <Languages class="w-3.5 h-3.5" />
-                        <span class="truncate" title={details().language}>Language: <span class="text-text/80">{details().language}</span></span>
+                    <MetaItem icon={<HardDrive class="w-3.5 h-3.5" />} label="Original Size" value={details().original} />
+                    <MetaItem icon={<Factory class="w-3.5 h-3.5" />} label="Publisher" value={details().companies} />
+                    <div class="col-span-2">
+                        <MetaItem icon={<Languages class="w-3.5 h-3.5" />} label="Language" value={details().language} />
                     </div>
                 </div>
 
-                {/* Actions Footer */}
+                {/* Actions */}
                 <div class="flex items-center justify-between pt-3 border-t border-secondary-20/50 mt-auto">
-                    <div class="flex items-center gap-2">
-                        <Button
-                            label="View Details"
-                            size="sm"
-                            variant="bordered"
-                            onClick={handleGoToGamePage}
-                            class="opacity-90 hover:opacity-100"
-                        />
-                    </div>
-
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleAddToDownloadLater(); }}
-                        class="p-2 rounded-lg hover:bg-secondary-20 transition-colors group/star"
-                        title={isToDownloadLater() ? "Remove from favorites" : "Add to favorites"}
-                    >
-                        <Star
-                            class={`w-5 h-5 transition-all ${isToDownloadLater() ? 'fill-accent text-accent' : 'text-muted group-hover/star:text-text'}`}
-                        />
+                    <Button label="View Details" size="sm" variant="bordered" onClick={handleGoToGame} class="opacity-90 hover:opacity-100" />
+                    <button onClick={toggleFavorite} class="p-2 rounded-lg hover:bg-secondary-20 transition-colors group/star" title={isFavorite() ? "Remove from favorites" : "Add to favorites"}>
+                        <Star class={`w-5 h-5 transition-all ${isFavorite() ? 'fill-accent text-accent' : 'text-muted group-hover/star:text-text'}`} />
                     </button>
                 </div>
-
             </div>
         </div>
     );
 }
+
+// Small helper component
+const MetaItem = (props: { icon: any; label: string; value: string }) => (
+    <div class="flex items-center gap-2">
+        {props.icon}
+        <span class="truncate" title={props.value}>{props.label}: <span class="text-text/80">{props.value}</span></span>
+    </div>
+);
