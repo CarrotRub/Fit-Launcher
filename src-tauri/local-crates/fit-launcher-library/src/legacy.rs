@@ -39,6 +39,8 @@ pub(crate) fn convert_legacy_downloads(
             details: legacy.torrentExternInfo.desc,
             features: String::new(),
             description: String::new(),
+            gameplay_features: String::new(),
+            included_dlcs: String::new(),
             magnetlink: legacy.torrentExternInfo.magnetlink,
             href: legacy.torrentExternInfo.href,
             tag: legacy.torrentExternInfo.tag,

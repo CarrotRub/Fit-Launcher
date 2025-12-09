@@ -164,6 +164,24 @@ export function filterGames(games: Game[], filters: FilterState): Game[] {
 }
 
 /**
+ * Extract company/publisher from game details
+ */
+export function extractCompany(details: string): string {
+  if (!details) return "N/A";
+  const match = details.match(/(?:Companies|Company):\s*([^\n]+)/i);
+  return match?.[1]?.trim() ?? "N/A";
+}
+
+/**
+ * Extract language from game details
+ */
+export function extractLanguage(details: string): string {
+  if (!details) return "N/A";
+  const match = details.match(/(?:Languages|Language):\s*([^\n]+)/i);
+  return match?.[1]?.trim() ?? "N/A";
+}
+
+/**
  * Check if any filters are active
  */
 export function hasActiveFilters(filters: FilterState): boolean {

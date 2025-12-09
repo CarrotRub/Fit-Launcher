@@ -1,15 +1,15 @@
-import { createSignal, For, JSX, Suspense, createResource, lazy, createMemo } from 'solid-js';
+import { createSignal, For, JSX, Suspense, createResource, lazy, createMemo, createEffect, Show } from 'solid-js';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { commands, Game } from '../../bindings';
 import LoadingPage from '../LoadingPage-01/LoadingPage';
-import Button from '../../components/UI/Button/Button';
+// Button no longer needed for pagination
 import { GamesCacheApi } from '../../api/cache/api';
 import { LibraryApi } from '../../api/library/api';
 import FilterBar from '../../components/FilterBar/FilterBar';
 import { FilterState, DEFAULT_FILTER_STATE, SizeRange } from '../../types/filters';
 import { getAllGenres, getSizeRange, filterGames } from '../../helpers/gameFilters';
-const LazyGameObject = lazy(() => import("./Discovery-Components/GameObject"));
+const LazyDiscoveryRow = lazy(() => import("./Discovery-Components/DiscoveryRow"));
 
 const gameCacheInst = new GamesCacheApi();
 const libraryInst = new LibraryApi();
@@ -34,10 +34,12 @@ async function fetchDiscoveryGames(): Promise<{ games: Game[]; toDownloadLater: 
 }
 
 
+const ITEMS_PER_PAGE = 10;
+
 function DiscoveryPage(): JSX.Element {
-  const [currentPage, setCurrentPage] = createSignal(0);
   const [filters, setFilters] = createSignal<FilterState>(DEFAULT_FILTER_STATE);
   const [gamesResource] = createResource(fetchDiscoveryGames);
+  const [currentPage, setCurrentPage] = createSignal(1);
 
   // Extract available genres from all games
   const availableGenres = createMemo(() => {
@@ -66,23 +68,29 @@ function DiscoveryPage(): JSX.Element {
     return filterGames(data.games, filters());
   });
 
-  // Paginate filtered games
-  const visibleGames = createMemo(() => {
-    const games = filteredGames();
-    const start = currentPage() * 25;
-    return games.slice(start, start + 25);
+  // Calculate pagination
+  const totalPages = createMemo(() => Math.ceil(filteredGames().length / ITEMS_PER_PAGE));
+
+  const paginatedGames = createMemo(() => {
+    const start = (currentPage() - 1) * ITEMS_PER_PAGE;
+    return filteredGames().slice(start, start + ITEMS_PER_PAGE);
   });
 
-  // Reset to first page when filters change
+  // Reset pagination when filters change
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
-    setCurrentPage(0);
+    setCurrentPage(1);
+    window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
-  const totalPages = createMemo(() => Math.ceil(filteredGames().length / 25));
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <Suspense fallback={<LoadingPage />}>
+      {/* Sticky Header */}
       <div class="sticky top-0 z-50 px-4 pt-8 bg-background/95 backdrop-blur-sm pb-4 border-b border-secondary-20/20 shadow-lg">
         <FilterBar
           availableGenres={availableGenres()}
@@ -90,37 +98,38 @@ function DiscoveryPage(): JSX.Element {
           originalSizeRange={originalSizeRange()}
           filters={filters()}
           onFilterChange={handleFilterChange}
+          currentPage={currentPage()}
+          totalPages={totalPages()}
+          onPageChange={handlePageChange}
         />
 
-        {/* Results count - moved inside sticky header */}
+        {/* Results count */}
         <div class="mt-2 px-1 text-sm text-muted">
-          Showing {visibleGames().length} of {filteredGames().length} games
+          Showing {paginatedGames().length} of {filteredGames().length} games
           {filters().genres.length > 0 && ` (filtered)`}
         </div>
       </div>
+
+      {/* Grid Container - No Virtualization */}
       <div class="relative flex flex-col bg-gradient-to-br from-background to-background-70 w-full grow overflow-y-auto no-scrollbar">
-        {/* Filter Bar */}
-
-
-        <div class="flex flex-col gap-4 p-4">
-          <For each={visibleGames()}>
+        <div class="flex flex-col gap-4 p-4 md:p-6 lg:p-8 max-w-[1920px] mx-auto w-full">
+          <For each={paginatedGames()}>
             {(game) => (
-              <LazyGameObject
-                gameItemObject={game}
-                isToDownloadLater={gamesResource()?.toDownloadLater.has(game.title) ?? false}
-              />
+              <div class="w-full">
+                <LazyDiscoveryRow
+                  gameItemObject={game}
+                  preloadedDownloadLater={gamesResource()?.toDownloadLater.has(game.title) ?? false}
+                />
+              </div>
             )}
           </For>
+
+          <Show when={paginatedGames().length === 0}>
+            <div class="flex flex-col items-center justify-center py-20 text-muted">
+              <p>No games found matching your criteria</p>
+            </div>
+          </Show>
         </div>
-      </div>
-      <div class="flex justify-center items-center gap-4 my-8">
-        <Button label="Previous" disabled={currentPage() === 0} onClick={() => setCurrentPage(p => Math.max(p - 1, 0))} />
-
-        <span class="text-text">Page {currentPage() + 1} of {totalPages()}</span>
-
-        <Button label="Next" disabled={currentPage() + 1 >= totalPages()} onClick={() => {
-          setCurrentPage(p => Math.min(p + 1, totalPages() - 1));
-        }} />
       </div>
     </Suspense>
   );

@@ -10,6 +10,7 @@ import {
   Bookmark,
   BookmarkCheck,
   Calendar,
+  ChevronDown,
   Clock,
   ExternalLink,
   Factory,
@@ -25,6 +26,7 @@ import {
   Zap,
 } from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
+import { extractCompany, extractLanguage, parseGameSize, formatBytesToSize } from "../../helpers/gameFilters";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
 import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
@@ -34,10 +36,7 @@ import { useToast } from "solid-notifications";
 import * as Debrid from "../../api/debrid/api";
 import { open } from "@tauri-apps/plugin-shell";
 
-import { InfoRow, InfoDivider } from "../../components/UI/Download-Game-Page/InfoRow/InfoRow";
-import { CollapsibleSection } from "../../components/UI/Download-Game-Page/CollapsibleSection/CollapsibleSection";
 import { ScreenshotGallery } from "../../components/UI/Download-Game-Page/ScreenshotGallery/ScreenshotGallery";
-import { StatCard } from "../../components/UI/Download-Game-Page/StatCard/StatCard";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
@@ -55,6 +54,7 @@ const DownloadGameUUIDPage = () => {
     originalSize: "N/A",
     repackSize: "N/A"
   });
+  const [repackFeaturesExpanded, setRepackFeaturesExpanded] = createSignal(false);
 
   const { notify } = useToast();
   const navigate = useNavigate();
@@ -157,15 +157,21 @@ const DownloadGameUUIDPage = () => {
   }
 
   function extractDetails(description?: string) {
-    const match = (label: string) =>
-      description?.match(new RegExp(`${label}:\\s*([^\\n]+)`));
+    if (!description) return;
+
+    // Use centralized helpers
+    const originalBytes = parseGameSize(description, 'original');
+    const repackBytes = parseGameSize(description, 'repack');
+
+    // Note: Tags extraction kept inline as currently expecting string, helper returns array
+    const tagsMatch = description.match(/Genres\/Tags:\s*([^\n]+)/i);
 
     setGameDetails({
-      tags: match("Genres/Tags")?.[1]?.trim() ?? "N/A",
-      companies: match("Company")?.[1]?.trim() ?? match("Companies")?.[1]?.trim() ?? "N/A",
-      language: match("Languages")?.[1]?.trim() ?? "N/A",
-      originalSize: match("Original Size")?.[1]?.trim() ?? "N/A",
-      repackSize: match("Repack Size")?.[1]?.trim() ?? "N/A"
+      tags: tagsMatch?.[1]?.trim() ?? "N/A",
+      companies: extractCompany(description),
+      language: extractLanguage(description),
+      originalSize: originalBytes > 0 ? formatBytesToSize(originalBytes) : "N/A",
+      repackSize: repackBytes > 0 ? formatBytesToSize(repackBytes) : "N/A"
     });
   }
 
@@ -253,143 +259,199 @@ const DownloadGameUUIDPage = () => {
           </div>
 
           {/* Main Content */}
-          <div class="flex-1 overflow-y-auto custom-scrollbar">
-            <div class="max-w-7xl mx-auto p-4 md:p-6">
-              {/* Gallery + Sidebar */}
-              <div class="flex flex-col lg:flex-row gap-6 mb-6">
-                {/* Screenshot Gallery */}
-                <div class="flex-1 lg:w-[60%]">
+          <div class="flex-1 overflow-y-auto custom-scrollbar bg-background">
+            <div class="max-w-[1200px] mx-auto p-4 md:p-6">
+              {/* Breadcrumb / Top Spacing (Optional) */}
+              <div class="h-4" />
+
+              {/* Top Section: Gallery + Sidebar Info */}
+              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-6 lg:gap-8 mb-8">
+
+                {/* Left Col: Gallery */}
+                <div class="min-w-0">
                   <ScreenshotGallery
                     images={additionalImages}
                     autoPlayInterval={5000}
                   />
                 </div>
 
-                {/* Sidebar */}
-                <div class="lg:w-[40%] flex flex-col gap-4">
-                  {/* Title */}
+                {/* Right Col: Title, Actions, Stats */}
+                <div class="flex flex-col gap-6">
+                  {/* Title Block */}
                   <div>
-                    <h1 class="text-2xl md:text-3xl font-bold leading-tight mb-1">
+                    <h1 class="text-3xl font-bold leading-tight mb-2 text-white">
                       {extractMainTitle(gameInfo()!.title)}
                     </h1>
-                    <p class="text-sm text-muted line-clamp-2">{gameInfo()!.title}</p>
+                    <p class="text-sm text-muted line-clamp-3 leading-relaxed">
+                      {/* Using description as short blurb, if too long it clamps */}
+                      {gameInfo()?.description?.slice(0, 150) || gameInfo()!.title}...
+                    </p>
                   </div>
 
-                  {/* Download Buttons */}
-                  <div class="flex flex-col gap-2">
+                  {/* Actions / Downloads */}
+                  <div class="flex flex-col gap-3">
                     <Button
-                      icon={<Magnet class="w-5 h-5" />}
+                      icon={<Magnet class="w-4 h-4" />}
                       label="Torrent Download"
                       onClick={() => handleDownloadPopup("bittorrent")}
-                      class="w-full py-3 justify-center"
+                      class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-white transition-all"
                       variant="bordered"
                     />
-                    <div class="relative">
+                    <div class="relative w-full">
                       <Show when={hasDebridCached()}>
-                        <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                        <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-sm shadow-md tracking-wider">
                           <Zap class="w-3 h-3" />
                           Fast
                         </div>
                       </Show>
                       <Button
-                        icon={<Globe class="w-5 h-5" />}
+                        icon={<Globe class="w-4 h-4" />}
                         label="Direct Download"
                         onClick={() => handleDownloadPopup("direct_download")}
-                        class="w-full py-3 justify-center"
+                        class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-white transition-all"
                         variant="bordered"
                       />
                     </div>
                   </div>
 
-                  {/* Quick Info Card */}
-                  <div class="bg-popup-background rounded-xl p-4 border border-secondary-20 space-y-3">
-                    <InfoRow
-                      icon={<HardDrive class="w-4 h-4 text-accent" />}
-                      iconBgClass="bg-accent/10"
-                      label="Download Size"
-                      value={gameDetails().repackSize}
-                    />
-                    <InfoRow
-                      icon={<Package class="w-4 h-4 text-primary" />}
-                      iconBgClass="bg-primary/10"
-                      label="Original Size"
-                      value={gameDetails().originalSize}
-                    />
-                    <InfoDivider />
-                    <InfoRow
-                      icon={<Factory class="w-4 h-4 text-muted" />}
-                      label="Publisher"
-                      value={gameDetails().companies}
-                    />
-                    <InfoRow
-                      icon={<Languages class="w-4 h-4 text-muted" />}
-                      label="Languages"
-                      value={gameDetails().language}
-                    />
-                    <InfoRow
-                      icon={<Tags class="w-4 h-4 text-muted" />}
-                      label="Genres/Tags"
-                      value={gameDetails().tags}
-                      multiline
-                    />
+                  {/* Metadata Cards (Steam Style) */}
+                  <div class="flex flex-col gap-1 text-sm bg-popup-background/50 p-4 rounded-lg border border-secondary-20/50">
+                    <div class="flex justify-between items-baseline py-1 border-b border-secondary-20/30">
+                      <span class="text-muted/70 text-xs font-bold uppercase tracking-wider">Download Size</span>
+                      <span class="text-accent font-mono">{gameDetails().repackSize}</span>
+                    </div>
+                    <div class="flex justify-between items-baseline py-1 border-b border-secondary-20/30">
+                      <span class="text-muted/70 text-xs font-bold uppercase tracking-wider">Orig Size</span>
+                      <span class="text-primary font-mono">{gameDetails().originalSize}</span>
+                    </div>
+                    <div class="flex justify-between items-baseline py-1 border-b border-secondary-20/30">
+                      <span class="text-muted/70 text-xs font-bold uppercase tracking-wider">Publisher</span>
+                      <span class="text-secondary-foreground truncate max-w-[150px]" title={gameDetails().companies}>{gameDetails().companies}</span>
+                    </div>
+                    <div class="flex justify-between items-start py-1 pt-2">
+                      <span class="text-muted/70 text-xs font-bold uppercase tracking-wider shrink-0 mt-0.5">Languages</span>
+                      <span class="text-secondary-foreground text-xs text-right max-w-[200px] leading-tight">{gameDetails().language}</span>
+                    </div>
                   </div>
+
+                  {/* Tags */}
+                  <div class="flex flex-wrap gap-1.5">
+                    {gameDetails().tags.split(',').map(tag => (
+                      <span class="px-2 py-1 bg-secondary-20/30 text-secondary-foreground text-xs rounded hover:bg-secondary-20/50 cursor-default transition-colors">
+                        {tag.trim()}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Included DLCs */}
+
+
                 </div>
               </div>
 
-              {/* Description */}
-              <div class="mb-4">
-                <CollapsibleSection
-                  icon={<Info class="w-5 h-5 text-accent" />}
-                  title="About This Game"
-                >
-                  <p class="text-sm text-muted leading-relaxed whitespace-pre-wrap">
-                    {gameInfo()?.description || "Description not available"}
-                  </p>
-                </CollapsibleSection>
+              {/* Lower Section: About + Requirements + Stats */}
+              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-8">
+                {/* Left: About */}
+                <div class="space-y-6">
+                  <Show when={gameInfo()?.description}>
+                    <div>
+                      <div class="flex items-center gap-2 mb-2 pb-1 border-b border-secondary-20">
+                        <h2 class="text-lg font-semibold uppercase tracking-wide text-white">About This Game</h2>
+                      </div>
+                      <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify whitespace-pre-wrap">
+                        {gameInfo()?.description}
+                      </div>
+                    </div>
+                  </Show>
+
+                  <Show when={gameInfo()?.gameplay_features}>
+                    <div>
+                      <div class="flex items-center gap-2 mb-2 pb-1 border-b border-secondary-20">
+                        <h2 class="text-lg font-semibold uppercase tracking-wide text-white">Game Features</h2>
+                      </div>
+                      <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify">
+                        {gameInfo()?.gameplay_features.split('\n').map((feature) => (
+                          feature.trim() && (
+                            <div class="pl-2 border-l-2 border-accent/20">
+                              <p>{feature}</p>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  </Show>
+
+                  <Show when={gameInfo()?.features}>
+                    <div>
+                      <button
+                        onClick={() => setRepackFeaturesExpanded(!repackFeaturesExpanded())}
+                        class="flex items-center justify-between w-full gap-2 mb-2 pb-1 border-b border-secondary-20 cursor-pointer hover:opacity-80 transition-opacity"
+                      >
+                        <h2 class="text-lg font-semibold uppercase tracking-wide text-white">Repack Features</h2>
+                        <ChevronDown
+                          class={`w-5 h-5 text-muted transition-transform duration-200 ${repackFeaturesExpanded() ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                      <div
+                        class={`overflow-hidden transition-all duration-200 ${repackFeaturesExpanded() ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}
+                      >
+                        <div class="text-sm text-muted leading-6 whitespace-pre-wrap font-mono bg-secondary-20/20 p-4 rounded border border-secondary-20/30">
+                          {gameInfo()?.features}
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
+                </div>
+
+                {/* Right: User Stats (Your Stuff) */}
+                <div class="flex flex-col gap-6">
+                  {/* Included DLCs (Moved here) */}
+                  <Show when={gameInfo()?.included_dlcs}>
+                    <div class="bg-gradient-to-br from-secondary-20/30 to-background border border-secondary-20 rounded-lg p-4">
+                      <div class="flex items-center gap-2 mb-3 pb-1 border-b border-secondary-20/50">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-white">Included DLCs</h3>
+                      </div>
+                      <div class="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-1">
+                        {gameInfo()?.included_dlcs.split('\n').map((dlc) => (
+                          dlc.trim().length > 0 && dlc.trim() !== ":" && (
+                            <div class="text-xs text-muted/80 hover:text-white transition-colors py-1 border-b border-secondary-20/10 last:border-0">
+                              {dlc.trim()}
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  </Show>
+
+                  <Show when={gameInfo()?.executable_info?.executable_path}>
+                    <div class="bg-gradient-to-br from-secondary-20/30 to-background border border-secondary-20 rounded-lg p-4">
+                      <h3 class="text-sm font-bold uppercase tracking-wider text-muted mb-4 border-b border-secondary-20/50 pb-2">Your Activity</h3>
+
+                      <div class="grid grid-cols-1 gap-4">
+                        <div class="flex items-center gap-3">
+                          <div class="p-2 bg-accent/20 text-accent rounded">
+                            <Clock class="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div class="text-xs text-muted uppercase font-bold">Time Played</div>
+                            <div class="text-lg font-mono text-white">{formatPlayTime(gameInfo()!.executable_info.executable_play_time)}</div>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          <div class="p-2 bg-primary/20 text-primary rounded">
+                            <Play class="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div class="text-xs text-muted uppercase font-bold">Last Session</div>
+                            <div class="text-sm text-white">{formatDate(gameInfo()!.executable_info.executable_last_opened_date)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
+                </div>
               </div>
 
-              {/* Repack Features */}
-              <Show when={gameInfo()?.features}>
-                <div class="mb-4">
-                  <CollapsibleSection
-                    icon={<Package class="w-5 h-5 text-accent" />}
-                    title="Repack Features"
-                  >
-                    <p class="text-sm text-muted leading-relaxed whitespace-pre-wrap">
-                      {gameInfo()?.features}
-                    </p>
-                  </CollapsibleSection>
-                </div>
-              </Show>
-
-              {/* Play Stats */}
-              <Show when={gameInfo()?.executable_info?.executable_path}>
-                <div class="bg-popup-background rounded-xl p-4 border border-secondary-20">
-                  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Gamepad2 class="w-5 h-5 text-accent" />
-                    Your Play Stats
-                  </h2>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <StatCard
-                      icon={<Clock class="w-5 h-5 text-accent" />}
-                      iconBgClass="bg-accent/10"
-                      label="Play Time"
-                      value={formatPlayTime(gameInfo()!.executable_info.executable_play_time)}
-                    />
-                    <StatCard
-                      icon={<Play class="w-5 h-5 text-primary" />}
-                      iconBgClass="bg-primary/10"
-                      label="Last Played"
-                      value={formatDate(gameInfo()!.executable_info.executable_last_opened_date)}
-                    />
-                    <StatCard
-                      icon={<Calendar class="w-5 h-5 text-muted" />}
-                      label="Installed"
-                      value={formatDate(gameInfo()!.executable_info.executable_installed_date)}
-                    />
-                  </div>
-                </div>
-              </Show>
             </div>
           </div>
         </div>
@@ -407,8 +469,9 @@ const DownloadGameUUIDPage = () => {
             </button>
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 };
 

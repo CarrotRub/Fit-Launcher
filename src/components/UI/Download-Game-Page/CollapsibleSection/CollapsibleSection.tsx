@@ -15,7 +15,7 @@ export function CollapsibleSection(props: CollapsibleSectionProps) {
         <div class="bg-popup-background rounded-xl border border-secondary-20">
             <button
                 onClick={() => setExpanded(!expanded())}
-                class="w-full flex items-center justify-between p-4 hover:bg-secondary-20/30 transition-colors rounded-xl"
+                class="w-full flex items-center justify-between p-5 hover:bg-secondary-20/30 transition-colors rounded-xl"
             >
                 <div class="flex items-center gap-3">
                     {props.icon}
@@ -28,7 +28,7 @@ export function CollapsibleSection(props: CollapsibleSectionProps) {
                 )}
             </button>
             <Show when={expanded()}>
-                <div class="px-4 pb-4">
+                <div class="px-5 pb-5">
                     <div class="h-px bg-secondary-20 mb-4" />
                     {props.children}
                 </div>

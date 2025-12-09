@@ -1,5 +1,4 @@
 use crate::bootstrap::hooks::shutdown_hook;
-use crate::bootstrap::json_cleanup;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
@@ -64,10 +63,6 @@ pub async fn start_app() -> anyhow::Result<()> {
             let app_handle = app.handle().clone();
 
             shutdown_hook(app_handle.clone());
-
-            if let Err(err) = json_cleanup::delete_invalid_json_files(&app_handle) {
-                error!("Error deleting JSON: {:#?}", err);
-            }
 
             for create_fn in [
                 fit_launcher_config::settings::creation::create_installation_settings_file,

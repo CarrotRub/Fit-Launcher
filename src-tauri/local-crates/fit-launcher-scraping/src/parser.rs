@@ -58,8 +58,8 @@ fn extract_features(article: ElementRef<'_>) -> String {
     features_lines.join("\n")
 }
 
-/// Extract game description from the su-spoiler element
-fn extract_description(article: ElementRef<'_>) -> String {
+/// Extract game description, gameplay features, and included DLCs
+fn extract_description_and_dlcs(article: ElementRef<'_>) -> (String, String, String) {
     let spoiler_selector = scraper::Selector::parse(".su-spoiler").unwrap();
 
     for spoiler in article.select(&spoiler_selector) {
@@ -69,13 +69,81 @@ fn extract_description(article: ElementRef<'_>) -> String {
             if title_text.trim().contains("Game Description") {
                 let content_selector = scraper::Selector::parse(".su-spoiler-content").unwrap();
                 if let Some(content) = spoiler.select(&content_selector).next() {
-                    return content.text().collect::<String>().trim().to_string();
+                    let full_text = content.text().collect::<String>().trim().to_string();
+
+                    let mut description = full_text.clone();
+                    let mut gameplay_features = String::new();
+                    let mut included_dlcs = String::new();
+
+                    // Find explicit "Game Features"
+                    let features_keyword = "Game Features";
+                    // Find explicit "Included DLCs"
+                    let dlcs_keyword = "Included DLCs";
+
+                    let features_idx = description.find(features_keyword);
+                    let dlcs_idx = description.find(dlcs_keyword);
+
+                    match (features_idx, dlcs_idx) {
+                        (Some(f_idx), Some(d_idx)) => {
+                            if f_idx < d_idx {
+                                // Features first, then DLCs
+                                gameplay_features = description
+                                    [f_idx + features_keyword.len()..d_idx]
+                                    .trim()
+                                    .trim_start_matches(':')
+                                    .trim()
+                                    .to_string();
+                                included_dlcs = description[d_idx + dlcs_keyword.len()..]
+                                    .trim()
+                                    .trim_start_matches(':')
+                                    .trim()
+                                    .to_string();
+                                description = description[..f_idx].trim().to_string();
+                            } else {
+                                // DLCs first (unusual), then Features
+                                included_dlcs = description[d_idx + dlcs_keyword.len()..f_idx]
+                                    .trim()
+                                    .trim_start_matches(':')
+                                    .trim()
+                                    .to_string();
+                                gameplay_features = description[f_idx + features_keyword.len()..]
+                                    .trim()
+                                    .trim_start_matches(':')
+                                    .trim()
+                                    .to_string();
+                                description = description[..d_idx].trim().to_string();
+                            }
+                        }
+                        (Some(f_idx), None) => {
+                            // Only features
+                            gameplay_features = description[f_idx + features_keyword.len()..]
+                                .trim()
+                                .trim_start_matches(':')
+                                .trim()
+                                .to_string();
+                            description = description[..f_idx].trim().to_string();
+                        }
+                        (None, Some(d_idx)) => {
+                            // Only DLCs
+                            included_dlcs = description[d_idx + dlcs_keyword.len()..]
+                                .trim()
+                                .trim_start_matches(':')
+                                .trim()
+                                .to_string();
+                            description = description[..d_idx].trim().to_string();
+                        }
+                        (None, None) => {
+                            // Neither
+                        }
+                    }
+
+                    return (description, gameplay_features, included_dlcs);
                 }
             }
         }
     }
 
-    String::new()
+    (String::new(), String::new(), String::new())
 }
 
 /// Parse an article element into a Game struct
@@ -88,7 +156,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
 
     let details = extract_details(article);
     let features = extract_features(article);
-    let description = extract_description(article);
+    let (description, gameplay_features, included_dlcs) = extract_description_and_dlcs(article);
 
     let magnetlink = article
         .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
@@ -134,6 +202,8 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         details,
         features,
         description,
+        gameplay_features,
+        included_dlcs,
         magnetlink,
         href,
         tag,

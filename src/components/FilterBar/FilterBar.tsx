@@ -1,5 +1,5 @@
 import { createSignal, createEffect, Show, JSX } from "solid-js";
-import { Filter, X, RotateCcw } from "lucide-solid";
+import { Filter, X, RotateCcw, ChevronLeft, ChevronRight } from "lucide-solid";
 import MultiSelectDropdown from "../UI/MultiSelectDropdown/MultiSelectDropdown";
 import DualRangeSlider from "../UI/DualRangeSlider/DualRangeSlider";
 import Button from "../UI/Button/Button";
@@ -19,6 +19,9 @@ export interface FilterBarProps {
   originalSizeRange: SizeRange;
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
   class?: string;
 }
 
@@ -102,11 +105,11 @@ export default function FilterBar(props: FilterBarProps): JSX.Element {
       `}
     >
       {/* Filter Toggle Header */}
-      <button
+      <div
         onClick={() => setIsExpanded(!isExpanded())}
         class="
           w-full flex items-center justify-between gap-3 px-4 py-3
-          hover:bg-secondary-20/10 transition-colors
+          hover:bg-secondary-20/10 transition-colors cursor-pointer
         "
       >
         <div class="flex items-center gap-3">
@@ -121,7 +124,29 @@ export default function FilterBar(props: FilterBarProps): JSX.Element {
           </Show>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
+
+          {/* Pagination Controls */}
+          <div class="flex items-center gap-1 bg-secondary-20/20 rounded-lg p-1 mr-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              disabled={props.currentPage === 1}
+              onClick={() => props.onPageChange(props.currentPage - 1)}
+              class="p-1 hover:bg-accent/10 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-muted hover:text-accent"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span class="text-xs font-mono text-muted w-16 text-center select-none">
+              {props.currentPage} / {Math.max(1, props.totalPages)}
+            </span>
+            <button
+              disabled={props.currentPage >= props.totalPages}
+              onClick={() => props.onPageChange(props.currentPage + 1)}
+              class="p-1 hover:bg-accent/10 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-muted hover:text-accent"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
           <Show when={hasActiveFilters(props.filters)}>
             <button
               onClick={(e) => {
@@ -157,7 +182,7 @@ export default function FilterBar(props: FilterBarProps): JSX.Element {
             </svg>
           </div>
         </div>
-      </button>
+      </div>
 
       {/* Expandable Filter Content */}
       <Show when={isExpanded()}>

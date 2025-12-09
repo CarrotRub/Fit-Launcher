@@ -14,6 +14,10 @@ pub struct DownloadedGame {
     pub features: String,
     /// Game description (the actual game info)
     pub description: String,
+    /// Gameplay features extracted from description
+    pub gameplay_features: String,
+    /// Included DLCs section
+    pub included_dlcs: String,
     pub magnetlink: String,
     pub href: String,
     pub tag: String,

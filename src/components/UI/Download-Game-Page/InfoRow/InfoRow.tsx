@@ -12,12 +12,12 @@ interface InfoRowProps {
 export function InfoRow(props: InfoRowProps) {
     const content = (
         <>
-            <div class={`w-9 h-9 flex items-center justify-center rounded-lg flex-shrink-0 ${props.iconBgClass || "bg-secondary-20"}`}>
+            <div class={`w-12 h-12 flex items-center justify-center rounded-lg flex-shrink-0 ${props.iconBgClass || "bg-secondary-20"}`}>
                 {props.icon}
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-xs text-muted uppercase tracking-wide">{props.label}</p>
-                <p class={`font-medium text-sm ${props.multiline ? "line-clamp-2" : "line-clamp-1"}`}>
+                <p class={`font-medium text-base ${props.multiline ? "line-clamp-2" : "line-clamp-1"}`}>
                     {props.value}
                 </p>
             </div>
@@ -36,7 +36,7 @@ export function InfoRow(props: InfoRowProps) {
     }
 
     return (
-        <div class={`flex ${props.multiline ? "items-start" : "items-center"} gap-3`}>
+        <div class={`flex ${props.multiline ? "items-start" : "items-center"} gap-4`}>
             {content}
         </div>
     );

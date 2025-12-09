@@ -76,12 +76,18 @@ async fn process_image_link(src_link: String) -> anyhow::Result<String> {
     if src_link.contains("jpg.240p.") {
         let primary_image = src_link.replace("240p", "1080p");
         if check_url_status(&primary_image).await.unwrap_or(false) {
-            return Ok(primary_image);
+            return Ok(format!(
+                "https://wsrv.nl/?url={}&w=1000&q=80&output=webp",
+                primary_image
+            ));
         }
 
         let fallback_image = primary_image.replace("jpg.1080p.", "");
         if check_url_status(&fallback_image).await.unwrap_or(false) {
-            return Ok(fallback_image);
+            return Ok(format!(
+                "https://wsrv.nl/?url={}&w=1000&q=80&output=webp",
+                fallback_image
+            ));
         }
     }
 
@@ -153,7 +159,11 @@ pub async fn get_games_images(
 ) -> Result<Vec<String>, CustomError> {
     let start = Instant::now();
 
-    let cache_file_path = app_handle.path().app_cache_dir().unwrap_or_default();
+    let cache_file_path = app_handle
+        .path()
+        .app_cache_dir()
+        .unwrap_or_default()
+        .join("game_images_cache.json");
 
     {
         let mut cache = image_cache.lock().await;
