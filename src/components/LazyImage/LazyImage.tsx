@@ -1,5 +1,4 @@
 import { createSignal, createEffect, Show, onCleanup } from "solid-js";
-import { Loader2 } from "lucide-solid";
 
 interface LazyImageProps {
     src: string;
@@ -14,74 +13,64 @@ interface LazyImageProps {
 
 export default function LazyImage(props: LazyImageProps) {
     const [loaded, setLoaded] = createSignal(false);
-    const [retrying, setRetrying] = createSignal(false);
     const [currentSrc, setCurrentSrc] = createSignal(props.src);
     const [retryCount, setRetryCount] = createSignal(0);
 
-    const maxRetries = props.maxRetries ?? 5;
+    const maxRetries = props.maxRetries ?? 3;
     const baseDelay = props.retryDelay ?? 1000;
 
     let retryTimeout: number | undefined;
 
+    // Reset on src change
     createEffect(() => {
         if (props.src !== currentSrc()) {
             clearTimeout(retryTimeout);
             setLoaded(false);
-            setRetrying(false);
             setRetryCount(0);
             setCurrentSrc(props.src);
         }
     });
 
-    onCleanup(() => {
-        clearTimeout(retryTimeout);
-    });
+    onCleanup(() => clearTimeout(retryTimeout));
 
     const handleLoad = () => {
         setLoaded(true);
-        setRetrying(false);
         setRetryCount(0);
         props.onLoad?.();
     };
 
     const handleError = (e: Event) => {
         const attempts = retryCount();
-
         if (attempts < maxRetries) {
-            setRetrying(true);
             const delay = baseDelay * Math.pow(1.5, attempts);
-
             retryTimeout = setTimeout(() => {
                 setRetryCount(attempts + 1);
-                const separator = props.src.includes('?') ? '&' : '?';
-                setCurrentSrc(`${props.src}${separator}_retry=${attempts + 1}`);
+                const sep = props.src.includes('?') ? '&' : '?';
+                setCurrentSrc(`${props.src}${sep}_r=${attempts + 1}`);
             }, delay);
         } else {
-            setRetrying(false);
-            setLoaded(true);
+            setLoaded(true); // Give up, show nothing
             props.onError?.(e);
         }
     };
 
-    const isLoading = () => !loaded() || retrying();
-
     return (
         <div class={`relative ${props.class ?? ""}`} style={props.style}>
-            {/* Spinner while loading or retrying */}
-            <Show when={isLoading()}>
-                <div class="absolute inset-0 flex items-center justify-center bg-secondary-20/30">
-                    <Loader2 class="w-6 h-6 text-accent animate-spin" />
-                </div>
+            {/* Simple loading placeholder - no animation to save GPU */}
+            <Show when={!loaded()}>
+                <div class="absolute inset-0 bg-secondary-20/40" />
             </Show>
 
-            {/* Actual image */}
+            {/* Image with GPU-accelerated opacity */}
             <img
                 src={currentSrc()}
                 alt={props.alt ?? ""}
-                class={`w-full h-full object-cover transition-opacity duration-300 ${loaded() && !retrying() ? 'opacity-100' : 'opacity-0'}`}
+                class="w-full h-full object-cover will-change-[opacity]"
+                style={{ opacity: loaded() ? 1 : 0, transition: 'opacity 0.15s ease-out' }}
                 onLoad={handleLoad}
                 onError={handleError}
                 loading="lazy"
+                decoding="async"
             />
         </div>
     );

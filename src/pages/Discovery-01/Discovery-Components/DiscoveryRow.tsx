@@ -21,11 +21,10 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
     const { notify } = useToast();
     const [isFavorite, setIsFavorite] = createSignal(props.isFavorite);
 
-    // Derived: game details from description
+    // Derived: game details (memoized)
     const details = createMemo(() => {
         const desc = props.game.details;
         if (!desc) return { companies: 'N/A', language: 'N/A', original: 'N/A', repack: 'N/A' };
-
         const originalBytes = parseGameSize(desc, 'original');
         const repackBytes = parseGameSize(desc, 'repack');
         return {
@@ -36,31 +35,24 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
         };
     });
 
-    // Derived: clean display title
+    // Derived: clean title
     const displayTitle = createMemo(() =>
-        props.game.title
-            ?.replace(/\s*[:\-]\s*$/, '')
-            .replace(/\(.*?\)/g, '')
-            .replace(/\s*[:\–]\s*$/, '')
-            .replace(/[\–].*$/, '') || props.game.title
+        props.game.title?.replace(/\s*[:\-]\s*$/, '').replace(/\(.*?\)/g, '').replace(/\s*[:\–]\s*$/, '').replace(/[\–].*$/, '') || props.game.title
     );
 
-    // Derived: thumbnails and tags
-    const thumbnails = () => props.game.secondary_images?.slice(0, 3) || [];
-    const tags = () => props.game.tag?.split(',').map(t => t.trim()).slice(0, 4) || [];
+    // Derived: thumbnails and tags (sliced once)
+    const thumbnails = createMemo(() => props.game.secondary_images?.slice(0, 2) || []);
+    const tags = createMemo(() => props.game.tag?.split(',').map(t => t.trim()).slice(0, 4) || []);
 
     const handleGoToGame = async () => {
         const uuid = await commands.hashUrl(props.game.href);
-        navigate(`/game/${uuid}`, {
-            state: { gameHref: props.game.href, gameTitle: props.game.title }
-        });
+        navigate(`/game/${uuid}`, { state: { gameHref: props.game.href, gameTitle: props.game.title } });
     };
 
     const toggleFavorite = async (e: MouseEvent) => {
         e.stopPropagation();
         const newState = !isFavorite();
         setIsFavorite(newState);
-
         try {
             if (newState) {
                 await library.addGameToCollection("games_to_download", props.game);
@@ -70,26 +62,27 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                 notify(`${props.game.title} removed from favorites`, { type: "success" });
             }
         } catch {
-            setIsFavorite(!newState); // Revert on error
+            setIsFavorite(!newState);
             notify("Error updating favorites", { type: "error" });
         }
     };
 
     return (
-        <div class="group relative flex flex-col md:flex-row bg-popup-background rounded-xl border border-secondary-20 overflow-hidden">
+        // content-visibility: auto enables browser to skip rendering off-screen rows
+        <div class="group relative flex flex-col md:flex-row bg-popup-background rounded-xl border border-secondary-20 overflow-hidden" style={{ "content-visibility": "auto", "contain-intrinsic-size": "auto 200px" }}>
             {/* Image Section */}
             <div class="w-full md:w-[45%] lg:w-[40%] xl:w-[35%] h-56 md:h-48 lg:h-52 shrink-0 flex gap-1 p-1 cursor-pointer" onClick={handleGoToGame}>
                 {/* Main Image */}
-                <div class="relative w-[75%] h-full rounded-lg overflow-hidden shadow-md">
-                    <LazyImage src={props.game.img} alt={props.game.title} class="w-full h-full object-cover" />
+                <div class="relative w-[75%] h-full rounded-lg overflow-hidden">
+                    <LazyImage src={props.game.img} alt={props.game.title} class="w-full h-full" />
                 </div>
 
                 {/* Thumbnails */}
                 <div class="flex flex-col gap-1 w-[25%] h-full">
                     <For each={thumbnails()}>
-                        {(thumb, i) => (
-                            <div class="relative w-full h-full rounded-md overflow-hidden bg-black/20">
-                                <LazyImage src={thumb} alt={`Thumb ${i() + 1}`} class="w-full h-full object-cover opacity-80" />
+                        {(thumb) => (
+                            <div class="relative w-full flex-1 rounded-md overflow-hidden bg-black/20">
+                                <LazyImage src={thumb} class="w-full h-full" />
                             </div>
                         )}
                     </For>
@@ -126,31 +119,30 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                     </div>
                 </div>
 
-                {/* Metadata */}
+                {/* Metadata - using static icons to avoid recreation */}
                 <div class="grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-muted mt-3 mb-3">
-                    <MetaItem icon={<HardDrive class="w-3.5 h-3.5" />} label="Original Size" value={details().original} />
-                    <MetaItem icon={<Factory class="w-3.5 h-3.5" />} label="Publisher" value={details().companies} />
-                    <div class="col-span-2">
-                        <MetaItem icon={<Languages class="w-3.5 h-3.5" />} label="Language" value={details().language} />
+                    <div class="flex items-center gap-2">
+                        <HardDrive class="w-3.5 h-3.5 shrink-0" />
+                        <span class="truncate">Original: <span class="text-text/80">{details().original}</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Factory class="w-3.5 h-3.5 shrink-0" />
+                        <span class="truncate" title={details().companies}>Publisher: <span class="text-text/80">{details().companies}</span></span>
+                    </div>
+                    <div class="flex items-center gap-2 col-span-2">
+                        <Languages class="w-3.5 h-3.5 shrink-0" />
+                        <span class="truncate" title={details().language}>Language: <span class="text-text/80">{details().language}</span></span>
                     </div>
                 </div>
 
                 {/* Actions */}
                 <div class="flex items-center justify-between pt-3 border-t border-secondary-20/50 mt-auto">
-                    <Button label="View Details" size="sm" variant="bordered" onClick={handleGoToGame} class="opacity-90 hover:opacity-100" />
-                    <button onClick={toggleFavorite} class="p-2 rounded-lg hover:bg-secondary-20 transition-colors group/star" title={isFavorite() ? "Remove from favorites" : "Add to favorites"}>
-                        <Star class={`w-5 h-5 transition-all ${isFavorite() ? 'fill-accent text-accent' : 'text-muted group-hover/star:text-text'}`} />
+                    <Button label="View Details" size="sm" variant="bordered" onClick={handleGoToGame} />
+                    <button onClick={toggleFavorite} class="p-2 rounded-lg hover:bg-secondary-20 transition-colors" title={isFavorite() ? "Remove from favorites" : "Add to favorites"}>
+                        <Star class={`w-5 h-5 ${isFavorite() ? 'fill-accent text-accent' : 'text-muted'}`} />
                     </button>
                 </div>
             </div>
         </div>
     );
 }
-
-// Small helper component
-const MetaItem = (props: { icon: any; label: string; value: string }) => (
-    <div class="flex items-center gap-2">
-        {props.icon}
-        <span class="truncate" title={props.value}>{props.label}: <span class="text-text/80">{props.value}</span></span>
-    </div>
-);
