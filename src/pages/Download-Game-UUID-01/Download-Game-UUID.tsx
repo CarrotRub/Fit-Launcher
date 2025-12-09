@@ -1,4 +1,4 @@
-import { createResource, createSignal, createMemo, onCleanup, Switch, Match, For, Show, onMount } from "solid-js";
+import { createResource, createSignal, createMemo, createEffect, onCleanup, Switch, Match, For, Show, onMount } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
@@ -108,51 +108,57 @@ const DownloadGameUUIDPage = () => {
     );
   };
 
-  // Side effects when game href changes
-  const initGamePage = async (href: string) => {
-    if (!href) return;
-    setToDownloadLater(false);
-    setHasDebridCached(false);
-    await setupImageListener(href);
-  };
 
-  // Reactive effect on href change
-  createMemo(() => {
+  createEffect(() => {
     const href = gameHref();
-    if (href) initGamePage(href);
-  });
-
-  // Check download later status when game loads
-  createMemo(async () => {
     const g = game();
+    if (!href) return;
+
+    const initTasks: Promise<void>[] = [];
+
+    initTasks.push((async () => {
+      setHasDebridCached(false);
+      await setupImageListener(href);
+    })());
+
     if (g?.title) {
-      try {
-        const list = await library.getGamesToDownload();
-        setToDownloadLater(list.some((item) => item.title === g.title));
-      } catch { setToDownloadLater(false); }
+      initTasks.push((async () => {
+        try {
+          const list = await library.getGamesToDownload();
+          setToDownloadLater(list.some((item) => item.title === g.title));
+        } catch { setToDownloadLater(false); }
+      })());
+    } else {
+      setToDownloadLater(false);
     }
-  });
 
-  // Check debrid cache when game loads
-  createMemo(async () => {
-    const g = game();
+    // Check debrid cache (runs when game has magnetlink)
     if (g?.magnetlink) {
-      try {
-        const hash = Debrid.extractHashFromMagnet(g.magnetlink);
-        if (!hash) return;
-        const providers = await Debrid.listProviders();
-        for (const provider of providers) {
-          if (!provider.supports_cache_check) continue;
-          const hasCred = await Debrid.hasCredential(provider.id);
-          if (hasCred.status !== "ok" || !hasCred.data) continue;
-          const result = await Debrid.checkCache(provider.id, hash);
-          if (result.status === "ok" && result.data.is_cached) {
+      initTasks.push((async () => {
+        try {
+          const hash = Debrid.extractHashFromMagnet(g.magnetlink);
+          if (!hash) return;
+          const providers = await Debrid.listProviders();
+          // Check all providers concurrently
+          const results = await Promise.all(
+            providers
+              .filter(p => p.supports_cache_check)
+              .map(async (provider) => {
+                const hasCred = await Debrid.hasCredential(provider.id);
+                if (hasCred.status !== "ok" || !hasCred.data) return false;
+                const result = await Debrid.checkCache(provider.id, hash);
+                return result.status === "ok" && result.data.is_cached;
+              })
+          );
+          if (results.some(r => r)) {
             setHasDebridCached(true);
-            return;
           }
-        }
-      } catch { /* ignore */ }
+        } catch { /* ignore */ }
+      })());
     }
+
+    // Fire all tasks concurrently - don't await
+    Promise.all(initTasks);
   });
 
   onCleanup(() => imageEventUnlisten?.());
