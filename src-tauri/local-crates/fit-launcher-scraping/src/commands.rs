@@ -76,7 +76,7 @@ pub fn get_singular_game_local(app: AppHandle, url: &str) -> Result<Game, Scrapi
 #[tauri::command]
 #[specta]
 pub fn hash_url(url: &str) -> String {
-    let hash = db::hash_url(url);
+    let hash = db::hash_url(url) as u64;
     format!("{hash:016x}")
 }
 

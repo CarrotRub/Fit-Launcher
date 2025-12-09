@@ -47,9 +47,9 @@ pub fn open_connection_at(db_path: &PathBuf) -> Result<Connection, ScrapingError
 }
 
 /// Deterministic URL hash for primary key. Fixed seeds ensure same URL = same hash.
-pub fn hash_url(url: &str) -> u64 {
+pub fn hash_url(url: &str) -> i64 {
     let hasher = ahash::RandomState::with_seeds(0x1A, 0x6B, 0x4D, 0xF6);
-    hasher.hash_one(url)
+    hasher.hash_one(url) as _
 }
 
 pub fn get_metadata(conn: &Connection, key: &str) -> Result<Option<String>, ScrapingError> {
