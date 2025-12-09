@@ -84,7 +84,7 @@ export default function DiscoveryPage() {
 
       {/* Games Grid */}
       <div class="relative flex flex-col bg-gradient-to-br from-background to-background-70 w-full grow overflow-y-auto no-scrollbar">
-        <div class="flex flex-col gap-4 p-4 md:p-6 lg:p-8 max-w-[1920px] mx-auto w-full">
+        <div class="flex flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-[1920px] mx-auto w-full">
           <For each={paginatedGames()}>
             {(game) => (
               <LazyDiscoveryRow

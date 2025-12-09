@@ -99,7 +99,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                     {/* Top section */}
                     <div>
                         {/* Title */}
-                        <h3 class="text-2xl font-bold text-white mb-2 line-clamp-2 drop-shadow-lg">
+                        <h3 class="text-2xl font-bold text-white mb-3 line-clamp-2 drop-shadow-lg">
                             {displayTitle()}
                         </h3>
 
