@@ -239,5 +239,19 @@ fn set_proxy_from_sys(extra_options: &mut Map<String, Value>) {
         }
     }
     #[cfg(not(windows))]
-    {}
+    {
+        if let Ok(sysproxy::Sysproxy {
+            enable: true,
+            host,
+            port,
+            // on macos and linux desktop, this will be comma seperated CIDR/domain name.
+            bypass,
+        }) = sysproxy::Sysproxy::get_system_proxy()
+        {
+            let proxy_server = format!("{host}:{port}");
+            extra_options.insert("http-proxy".into(), proxy_server.clone().into());
+            extra_options.insert("https-proxy".into(), proxy_server.into());
+            extra_options.insert("no-proxy".into(), bypass.into());
+        }
+    }
 }
