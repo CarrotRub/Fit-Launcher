@@ -69,7 +69,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
 
     return (
         <div
-            class="group relative rounded-lg overflow-hidden cursor-pointer"
+            class="group relative hover:scale-99 duration-250 rounded-lg overflow-hidden cursor-pointer border-2 border-accent/70 "
             style={{
                 "content-visibility": "auto",
                 "contain-intrinsic-size": "auto 280px"
@@ -80,16 +80,16 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
             <div class="absolute inset-0">
                 <LazyImage src={backgroundImage()} alt="" class="w-full h-full" objectFit="cover" />
                 {/* Dark overlay - much darker for text readability */}
-                <div class="absolute inset-0 bg-black/50" />
-                <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/20" />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div class="absolute inset-0 bg-background/50" />
+                <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-background/50 to-background/20 backdrop-blur-sm " />
+                {/* <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" /> */}
             </div>
 
             {/* Content overlay */}
             <div class="relative flex h-[280px]">
                 {/* Left: Game cover image (prominent) */}
                 <div class="w-[200px] h-full shrink-0 p-4">
-                    <div class="relative w-full h-full rounded-md overflow-hidden shadow-2xl ring-1 ring-white/10">
+                    <div class="relative w-full h-full rounded-md overflow-hidden shadow-2xl ring-1 ring-text/10">
                         <LazyImage src={props.game.img} alt={props.game.title} class="w-full h-full" objectFit="cover" />
                     </div>
                 </div>
@@ -99,7 +99,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                     {/* Top section */}
                     <div>
                         {/* Title */}
-                        <h3 class="text-2xl font-bold text-white mb-3 line-clamp-2 drop-shadow-lg">
+                        <h3 class="text-2xl font-bold text-text mb-3 line-clamp-2 drop-shadow-lg">
                             {displayTitle()}
                         </h3>
 
@@ -107,7 +107,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                         <div class="flex flex-wrap gap-1.5 mb-3">
                             <For each={tags()}>
                                 {(tag) => (
-                                    <span class="px-2.5 py-1 bg-accent/80 text-white rounded text-xs font-medium uppercase tracking-wide">
+                                    <span class="px-2.5 py-1 bg-accent/80 text-text rounded text-xs font-medium uppercase tracking-wide">
                                         {tag}
                                     </span>
                                 )}
@@ -115,7 +115,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                         </div>
 
                         {/* Description */}
-                        <p class="text-sm text-white line-clamp-5 leading-relaxed" style={{ "text-shadow": "0 1px 3px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.6)" }}>
+                        <p class="text-sm text-text line-clamp-5 leading-relaxed" style={{ "text-shadow": "0 1px 3px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.6)" }}>
                             {descriptionSnippet() || 'No description available'}
                         </p>
                     </div>
@@ -126,7 +126,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                         {repackSize() && (
                             <div class="flex items-center gap-2 px-3 py-1.5 bg-secondary-20/50 backdrop-blur rounded-full">
                                 <Download class="w-4 h-4 text-accent" />
-                                <span class="text-sm font-medium text-white">{repackSize()}</span>
+                                <span class="text-sm font-medium text-text">{repackSize()}</span>
                             </div>
                         )}
 
@@ -134,17 +134,17 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                         <div class="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                             <button
                                 onClick={toggleFavorite}
-                                class="p-2.5 rounded-full transition-all duration-200 bg-secondary-20/50 hover:bg-secondary-20"
+                                class="p-2.5 rounded-full transition-all duration-200 bg-secondary-20/50 hover:bg-secondary-20 border border-accent/20"
                                 title={isFavorite() ? "Remove from library" : "Add to library"}
                             >
                                 {isFavorite()
                                     ? <BookmarkCheck class="w-5 h-5 text-accent" />
-                                    : <Bookmark class="w-5 h-5 text-white" />
+                                    : <Bookmark class="w-5 h-5 text-text" />
                                 }
                             </button>
                             <button
                                 onClick={handleGoToGame}
-                                class="px-5 py-2 bg-accent hover:bg-accent/80 text-text text-sm font-semibold rounded-full transition-all"
+                                class="px-5 py-2 bg-accent hover:bg-accent/80 border border-primary/60 text-text text-sm rounded-full transition-all duration-150"
                             >
                                 View Game
                             </button>

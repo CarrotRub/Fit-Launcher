@@ -1,4 +1,4 @@
-import { createResource, createSignal, createMemo, onCleanup, Switch, Match, For, Show } from "solid-js";
+import { createResource, createSignal, createMemo, onCleanup, Switch, Match, For, Show, onMount } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
@@ -230,7 +230,7 @@ const DownloadGameUUIDPage = () => {
 
             {/* Main Content */}
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-background">
-              <div class="max-w-[1200px] mx-auto p-4 md:p-6">
+              <div class="max-w-[1200px] md:max-w-full mx-auto p-4 md:p-6">
                 <div class="h-4" />
 
                 {/* Top Section: Gallery + Sidebar */}
@@ -244,7 +244,7 @@ const DownloadGameUUIDPage = () => {
                   <div class="flex flex-col gap-6">
                     {/* Title */}
                     <div>
-                      <h1 class="text-3xl font-bold leading-tight mb-2 text-white">
+                      <h1 class="text-3xl font-bold leading-tight mb-2 text-text">
                         {extractMainTitle(game()!.title)}
                       </h1>
                       <p class="text-sm text-muted line-clamp-3 leading-relaxed">
@@ -258,12 +258,12 @@ const DownloadGameUUIDPage = () => {
                         icon={<Magnet class="w-4 h-4" />}
                         label="Torrent Download"
                         onClick={() => handleDownloadPopup("bittorrent")}
-                        class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-white transition-all"
+                        class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
                         variant="bordered"
                       />
                       <div class="relative w-full">
                         <Show when={hasDebridCached()}>
-                          <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold uppercase rounded-sm shadow-md tracking-wider">
+                          <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-text text-[10px] font-bold uppercase rounded-sm shadow-md tracking-wider">
                             <Zap class="w-3 h-3" /> Fast
                           </div>
                         </Show>
@@ -271,7 +271,7 @@ const DownloadGameUUIDPage = () => {
                           icon={<Globe class="w-4 h-4" />}
                           label="Direct Download"
                           onClick={() => handleDownloadPopup("direct_download")}
-                          class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-white transition-all"
+                          class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
                           variant="bordered"
                         />
                       </div>
@@ -309,7 +309,6 @@ const DownloadGameUUIDPage = () => {
                         </div>
                       </ContentSection>
                     </Show>
-
                     <Show when={game()?.gameplay_features}>
                       <ContentSection title="Game Features">
                         <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify">
@@ -342,7 +341,7 @@ const DownloadGameUUIDPage = () => {
                         <div class="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-1">
                           <For each={game()?.included_dlcs.split('\n').filter(d => d.trim() && d.trim() !== ":")}>
                             {(dlc) => (
-                              <div class="text-xs text-muted/80 hover:text-white transition-colors py-1 border-b border-secondary-20/10 last:border-0">
+                              <div class="text-xs text-muted/80 hover:text-text transition-colors py-1 border-b border-secondary-20/10 last:border-0">
                                 {dlc.trim()}
                               </div>
                             )}
@@ -384,7 +383,7 @@ const MetadataRow = (props: { label: string; value: string; valueClass?: string;
 const ContentSection = (props: { title: string; children: any }) => (
   <div>
     <div class="flex items-center gap-2 mb-2 pb-1 border-b border-secondary-20">
-      <h2 class="text-lg font-semibold uppercase tracking-wide text-white">{props.title}</h2>
+      <h2 class="text-lg font-semibold uppercase tracking-wide text-text">{props.title}</h2>
     </div>
     {props.children}
   </div>
@@ -393,7 +392,7 @@ const ContentSection = (props: { title: string; children: any }) => (
 const CollapsibleContent = (props: { title: string; expanded: boolean; onToggle: () => void; children: any }) => (
   <div>
     <button onClick={props.onToggle} class="flex items-center justify-between w-full gap-2 mb-2 pb-1 border-b border-secondary-20 cursor-pointer hover:opacity-80 transition-opacity">
-      <h2 class="text-lg font-semibold uppercase tracking-wide text-white">{props.title}</h2>
+      <h2 class="text-lg font-semibold uppercase tracking-wide text-text">{props.title}</h2>
       <ChevronDown class={`w-5 h-5 text-muted transition-transform duration-200 ${props.expanded ? 'rotate-180' : ''}`} />
     </button>
     <div class={`overflow-hidden transition-all duration-200 ${props.expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -405,7 +404,7 @@ const CollapsibleContent = (props: { title: string; expanded: boolean; onToggle:
 const SidebarCard = (props: { title: string; children: any }) => (
   <div class="bg-gradient-to-br from-secondary-20/30 to-background border border-secondary-20 rounded-lg p-4">
     <div class="flex items-center gap-2 mb-3 pb-1 border-b border-secondary-20/50">
-      <h3 class="text-sm font-bold uppercase tracking-wider text-white">{props.title}</h3>
+      <h3 class="text-sm font-bold uppercase tracking-wider text-text">{props.title}</h3>
     </div>
     {props.children}
   </div>
@@ -416,7 +415,7 @@ const StatItem = (props: { icon: any; iconBg: string; label: string; value: stri
     <div class={`p-2 rounded ${props.iconBg}`}>{props.icon}</div>
     <div>
       <div class="text-xs text-muted uppercase font-bold">{props.label}</div>
-      <div class={`font-mono text-white ${props.small ? 'text-sm' : 'text-lg'}`}>{props.value}</div>
+      <div class={`font-mono text-text ${props.small ? 'text-sm' : 'text-lg'}`}>{props.value}</div>
     </div>
   </div>
 );

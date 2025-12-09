@@ -163,8 +163,8 @@ export function ScreenshotGallery(props: ScreenshotGalleryProps) {
                             <button
                                 onClick={() => goToImage(index())}
                                 class={`aspect-video rounded-lg overflow-hidden border-2 transition-all bg-secondary-20/30 ${index() === currentIndex() && img()
-                                    ? 'border-accent shadow-md shadow-accent/30'
-                                    : 'border-transparent opacity-60 hover:opacity-100'
+                                    ? 'border-accent shadow-sm  shadow-secondary/30'
+                                    : 'border-transparent opacity-60 blur-[1px] hover:opacity-100 duration-300 hover:blur-none'
                                     }`}
                                 disabled={!img()}
                             >
