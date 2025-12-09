@@ -59,7 +59,7 @@ pub fn get_singular_game_local(app: AppHandle, url: &str) -> Result<Game, Scrapi
     let conn = db::open_connection(&app)?;
     let url_hash = db::hash_url(url);
 
-    match db::get_game_by_hash(&conn, &url_hash)? {
+    match db::get_game_by_hash(&conn, url_hash)? {
         Some(game) => Ok(game),
         None => Err(ScrapingError::IOError(format!(
             "Game not found in cache: {}",
@@ -72,10 +72,12 @@ pub fn get_singular_game_local(app: AppHandle, url: &str) -> Result<Game, Scrapi
 // Scraping Commands
 // ============================================================================
 
+/// unique 16 bytes text ID for a game URL
 #[tauri::command]
 #[specta]
 pub fn hash_url(url: &str) -> String {
-    db::hash_url(url)
+    let hash = db::hash_url(url) as u64;
+    format!("{hash:016x}")
 }
 
 #[tauri::command]
@@ -102,7 +104,7 @@ pub async fn get_singular_game_info(
     }
 
     // Check if we have a valid cached version
-    if db::is_game_cache_valid(&conn, &url_hash, CACHE_EXPIRY_SECS)? {
+    if db::is_game_cache_valid(&conn, url_hash, CACHE_EXPIRY_SECS)? {
         info!("Using cached game info for {}", url_hash);
         return Ok(());
     }
@@ -133,7 +135,7 @@ pub async fn get_singular_game_info(
     .unwrap()?;
 
     // Write to cache
-    db::upsert_game(&conn, &url_hash, &game)?;
+    db::upsert_game(&conn, url_hash, &game)?;
 
     info!(
         "Game data cached for {} in {:#?}",
