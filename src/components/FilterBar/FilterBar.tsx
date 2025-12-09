@@ -1,4 +1,4 @@
-import { createSignal, createMemo, createEffect, Show } from "solid-js";
+import { createSignal, createMemo, Show, JSX, createComputed } from "solid-js";
 import { Filter, RotateCcw, ChevronLeft, ChevronRight, ChevronDown } from "lucide-solid";
 import MultiSelectDropdown from "../UI/MultiSelectDropdown/MultiSelectDropdown";
 import DualRangeSlider from "../UI/DualRangeSlider/DualRangeSlider";
@@ -30,12 +30,17 @@ export default function FilterBar(props: FilterBarProps) {
   const [originalMax, setOriginalMax] = createSignal(props.originalSizeRange.max);
 
   // Sync local state with filter reset
-  createEffect(() => {
-    if (!props.filters.repackSizeRange) {
+  createComputed(() => {
+    const repack = props.filters.repackSizeRange;
+    if (!repack) {
       setRepackMin(props.repackSizeRange.min);
       setRepackMax(props.repackSizeRange.max);
     }
-    if (!props.filters.originalSizeRange) {
+  });
+
+  createComputed(() => {
+    const original = props.filters.originalSizeRange;
+    if (!original) {
       setOriginalMin(props.originalSizeRange.min);
       setOriginalMax(props.originalSizeRange.max);
     }
@@ -43,14 +48,15 @@ export default function FilterBar(props: FilterBarProps) {
 
   // Derived
   const activeFilterCount = createMemo(() => {
-    let count = 0;
-    if (props.filters.genres.length > 0) count++;
-    if (props.filters.repackSizeRange) count++;
-    if (props.filters.originalSizeRange) count++;
-    return count;
+    const f = props.filters;
+    return (
+      (f.genres.length > 0 ? 1 : 0) +
+      (f.repackSizeRange ? 1 : 0) +
+      (f.originalSizeRange ? 1 : 0)
+    );
   });
 
-  const hasPagination = () => props.currentPage !== undefined && props.totalPages !== undefined;
+  const hasPagination = createMemo(() => props.currentPage !== undefined && props.totalPages !== undefined);
 
   // Handlers
   const updateFilters = (patch: Partial<FilterState>) => props.onFilterChange({ ...props.filters, ...patch });
@@ -64,6 +70,12 @@ export default function FilterBar(props: FilterBarProps) {
     const isFullRange = min <= props.originalSizeRange.min && max >= props.originalSizeRange.max;
     updateFilters({ originalSizeRange: isFullRange ? null : { min, max } });
   };
+
+  const commitRepack = () =>
+    handleRepackChange(repackMin(), repackMax());
+
+  const commitOriginal = () =>
+    handleOriginalChange(originalMin(), originalMax());
 
   const clearFilters = () => {
     setRepackMin(props.repackSizeRange.min);
@@ -92,11 +104,13 @@ export default function FilterBar(props: FilterBarProps) {
         <div class="flex items-center gap-3">
           {/* Pagination (optional) */}
           <Show when={hasPagination()}>
-            <Pagination
-              current={props.currentPage!}
-              total={props.totalPages!}
-              onChange={props.onPageChange!}
-            />
+            {props.currentPage && props.totalPages && props.onPageChange && (
+              <Pagination
+                current={props.currentPage}
+                total={props.totalPages}
+                onChange={props.onPageChange}
+              />
+            )}
           </Show>
 
           <Show when={hasActiveFilters(props.filters)}>
@@ -132,8 +146,9 @@ export default function FilterBar(props: FilterBarProps) {
                 minValue={repackMin()}
                 maxValue={repackMax()}
                 step={SLIDER_STEP}
-                onMinChange={(v) => { setRepackMin(v); handleRepackChange(v, repackMax()); }}
-                onMaxChange={(v) => { setRepackMax(v); handleRepackChange(repackMin(), v); }}
+                onMinChange={setRepackMin}
+                onMaxChange={setRepackMax}
+                onChangeComplete={commitRepack}
                 formatValue={formatBytesToSize}
               />
             </FilterSection>
@@ -146,8 +161,9 @@ export default function FilterBar(props: FilterBarProps) {
                 minValue={originalMin()}
                 maxValue={originalMax()}
                 step={SLIDER_STEP}
-                onMinChange={(v) => { setOriginalMin(v); handleOriginalChange(v, originalMax()); }}
-                onMaxChange={(v) => { setOriginalMax(v); handleOriginalChange(originalMin(), v); }}
+                onMinChange={setOriginalMin}
+                onMaxChange={setOriginalMax}
+                onChangeComplete={commitOriginal}
                 formatValue={formatBytesToSize}
               />
             </FilterSection>
@@ -182,7 +198,7 @@ const Pagination = (props: { current: number; total: number; onChange: (page: nu
   </div>
 );
 
-const FilterSection = (props: { label: string; count?: number; children: any }) => (
+const FilterSection = (props: { label: string; count?: number; children: JSX.Element }) => (
   <div class="space-y-2">
     <label class="text-sm font-medium text-muted flex items-center gap-2">
       {props.label}

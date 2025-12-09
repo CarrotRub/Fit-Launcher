@@ -92,6 +92,7 @@ export interface DualRangeSliderProps {
   step?: number;
   onMinChange: (value: number) => void;
   onMaxChange: (value: number) => void;
+  onChangeComplete?: () => void;
   formatValue?: (value: number) => string;
   label?: string;
   class?: string;

@@ -9,6 +9,7 @@ interface LazyImageProps {
     onError?: (e: Event) => void;
     maxRetries?: number;
     retryDelay?: number;
+    objectFit?: 'cover' | 'contain' | 'fill';
 }
 
 export default function LazyImage(props: LazyImageProps) {
@@ -49,23 +50,28 @@ export default function LazyImage(props: LazyImageProps) {
                 setCurrentSrc(`${props.src}${sep}_r=${attempts + 1}`);
             }, delay);
         } else {
-            setLoaded(true); // Give up, show nothing
+            setLoaded(true);
             props.onError?.(e);
+        }
+    };
+
+    const objectFitClass = () => {
+        switch (props.objectFit) {
+            case 'contain': return 'object-contain';
+            case 'fill': return 'object-fill';
+            default: return 'object-cover';
         }
     };
 
     return (
         <div class={`relative ${props.class ?? ""}`} style={props.style}>
-            {/* Simple loading placeholder - no animation to save GPU */}
             <Show when={!loaded()}>
                 <div class="absolute inset-0 bg-secondary-20/40" />
             </Show>
-
-            {/* Image with GPU-accelerated opacity */}
             <img
                 src={currentSrc()}
                 alt={props.alt ?? ""}
-                class="w-full h-full object-cover will-change-[opacity]"
+                class={`w-full h-full ${objectFitClass()} will-change-[opacity]`}
                 style={{ opacity: loaded() ? 1 : 0, transition: 'opacity 0.15s ease-out' }}
                 onLoad={handleLoad}
                 onError={handleError}
@@ -75,3 +81,4 @@ export default function LazyImage(props: LazyImageProps) {
         </div>
     );
 }
+
