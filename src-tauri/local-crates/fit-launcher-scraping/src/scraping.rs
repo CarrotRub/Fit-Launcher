@@ -36,6 +36,7 @@ async fn get_response(client: &reqwest::Client, url: &str) -> Result<Response, S
 
 pub async fn fetch_page(url: &str, app: &AppHandle) -> Result<String, ScrapingError> {
     let client = CUSTOM_DNS_CLIENT.read().await.clone();
+    let mut tries = 0u32;
     loop {
         let resp = get_response(&client, url).await?;
 
@@ -55,10 +56,11 @@ pub async fn fetch_page(url: &str, app: &AppHandle) -> Result<String, ScrapingEr
             ));
         }
 
-        return resp
-            .text()
-            .await
-            .map_err(|e| ScrapingError::ReqwestError(e.to_string()));
+        match resp.text().await {
+            Err(_) if tries < 5 => tries += 1,
+            Err(e) => Err(ScrapingError::ReqwestError(e.to_string()))?,
+            Ok(content) => break Ok(content),
+        }
     }
 }
 
