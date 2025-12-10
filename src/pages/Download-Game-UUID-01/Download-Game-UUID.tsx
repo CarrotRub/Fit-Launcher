@@ -138,14 +138,16 @@ const DownloadGameUUIDPage = () => {
         try {
           const hash = Debrid.extractHashFromMagnet(g.magnetlink);
           if (!hash) return;
+
+          const credInfo = await Debrid.listCredentials();
+          if (credInfo.status !== "ok") return;
+          const configuredProviders = new Set(credInfo.data.configured_providers);
+
           const providers = await Debrid.listProviders();
-          // Check all providers concurrently
           const results = await Promise.all(
             providers
-              .filter(p => p.supports_cache_check)
+              .filter(p => p.supports_cache_check && configuredProviders.has(p.id))
               .map(async (provider) => {
-                const hasCred = await Debrid.hasCredential(provider.id);
-                if (hasCred.status !== "ok" || !hasCred.data) return false;
                 const result = await Debrid.checkCache(provider.id, hash);
                 return result.status === "ok" && result.data.is_cached;
               })

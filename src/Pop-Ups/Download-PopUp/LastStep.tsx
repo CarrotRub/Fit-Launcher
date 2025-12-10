@@ -103,35 +103,25 @@ type ProviderCardProps = {
 const ProviderCard: Component<ProviderCardProps> = (props) => {
     const colors = () => props.color ? getProviderColorClasses(props.color) : null;
     const isCached = () => props.cached === true;
-    const isLoading = () => props.cached === null && props.loading;
     const isDisabled = () => props.disabled || (props.cached === false);
 
     return (
         <button
             onClick={props.onClick}
-            disabled={isDisabled() || isLoading()}
-            class={`group relative flex flex-col items-center justify-center p-5 rounded-xl bg-background border transition-all duration-200 ${isCached() && colors() ? `${colors()!.border} ${colors()!.hover}` :
-                isLoading() ? "border-secondary-20 cursor-wait" :
-                    "border-secondary-20" + (isDisabled() ? " opacity-50 cursor-not-allowed" : "")
+            disabled={isDisabled()}
+            class={`group relative flex items-center gap-4 p-4 rounded-xl bg-background border transition-all duration-200 min-h-[72px] ${isCached() && colors() ? `${colors()!.border} ${colors()!.hover}` :
+                "border-secondary-20" + (isDisabled() ? " opacity-50 cursor-not-allowed" : " hover:border-secondary-30")
                 }`}
         >
-            <div class={`relative w-20 h-20 rounded-xl flex items-center justify-center mb-4 overflow-hidden bg-gradient-to-br from-background to-secondary-20/50 border transition-colors ${isCached() && colors() ? colors()!.border : "border-secondary-20"
-                } ${isDisabled() ? "opacity-50" : ""}`}>
-                <Show when={isLoading()} fallback={
-                    typeof props.icon === "string"
-                        ? <img src={props.icon} alt={props.name} class="size-12 object-contain rounded-md" />
-                        : <Zap class={`size-12 ${isCached() && colors() ? colors()!.text : "text-muted"}`} />
-                }>
-                    <Loader2 class="size-12 text-accent animate-spin" />
-                </Show>
+            <div class={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-background to-secondary-20/50 border transition-colors ${isCached() && colors() ? colors()!.border : "border-secondary-20"}`}>
+                {typeof props.icon === "string"
+                    ? <img src={props.icon} alt={props.name} class="size-7 object-contain rounded-md" />
+                    : <Zap class={`size-7 ${isCached() && colors() ? colors()!.text : "text-muted"}`} />}
             </div>
-            <span class={`font-medium transition-colors ${isCached() ? "text-text" : "text-muted"}`}>{props.name}</span>
-            <span class={`text-xs mt-1 ${isCached() && colors() ? colors()!.text : "text-muted"}`}>
-                <Show when={isLoading()}><span class="inline-flex items-center gap-1"><Loader2 class="w-3 h-3 animate-spin" /> Checking cache...</span></Show>
-                <Show when={isCached()}><span class="inline-flex items-center gap-1"><CheckCircle class="w-3 h-3" /> Instant Download</span></Show>
-                <Show when={props.cached === false}><span class="inline-flex items-center gap-1"><XCircle class="w-3 h-3" /> Not Cached</span></Show>
-                <Show when={props.cached === undefined}>{props.subtitle}</Show>
-            </span>
+            <div class="flex flex-col items-start min-w-0">
+                <span class={`font-medium transition-colors ${isCached() ? "text-text" : "text-muted"}`}>{props.name}</span>
+                <span class={`text-xs ${isCached() && colors() ? colors()!.text : "text-muted"}`}>{props.subtitle}</span>
+            </div>
             {isCached() && colors() && <div class={`absolute inset-0 rounded-xl bg-transparent transition-colors duration-300 ${colors()!.bg}`} />}
         </button>
     );
@@ -169,9 +159,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         const [showDdlAdvanced, setShowDdlAdvanced] = createSignal(false);
 
         // Debrid state
-        const [debridProvidersLoading, setDebridProvidersLoading] = createSignal(true); // loading state for debrid providers
-        const [availableDebridProviders, setAvailableDebridProviders] = createSignal<DebridProviderInfo[]>([]); // providers with credentials (includes color, name, etc.)
+        const [debridProvidersLoading, setDebridProvidersLoading] = createSignal(true);
+        const [allDebridProviders, setAllDebridProviders] = createSignal<DebridProviderInfo[]>([]); // ALL providers
+        const [configuredDebridProviders, setConfiguredDebridProviders] = createSignal<Set<DebridProvider>>(new Set()); // providers WITH credentials
         const [debridCacheStatus, setDebridCacheStatus] = createSignal<Map<DebridProvider, boolean | null>>(new Map()); // provider -> isCached (null = still checking)
+        const [invalidApiProviders, setInvalidApiProviders] = createSignal<Set<DebridProvider>>(new Set()); // providers with bad/expired API keys
         const [selectedDebridProvider, setSelectedDebridProvider] = createSignal<DebridProvider | null>(null);
         const [debridTorrentId, setDebridTorrentId] = createSignal<string | null>(null);
         const [debridFiles, setDebridFiles] = createSignal<DebridFile[]>([]);
@@ -340,73 +332,51 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             const magnet = props.downloadedGame.magnetlink;
             const hash = magnet ? Debrid.extractHashFromMagnet(magnet) : null;
 
-            // Get list of available providers from backend
             const providerInfoList = await Debrid.listProviders();
+            setAllDebridProviders(providerInfoList);
 
-            // First pass: find providers with credentials and show them immediately (with loading state)
-            const providersWithCreds: DebridProviderInfo[] = [];
-            const initialCacheMap = new Map<DebridProvider, boolean | null>();
-
-            for (const providerInfo of providerInfoList) {
-                try {
-                    const hasCredResult = await Debrid.hasCredential(providerInfo.id);
-                    if (hasCredResult.status === "ok" && hasCredResult.data) {
-                        providersWithCreds.push(providerInfo);
-                        // If provider doesn't support cache check, mark as false immediately (no spinner)
-                        // Otherwise mark as null (still checking)
-                        initialCacheMap.set(providerInfo.id, providerInfo.supports_cache_check ? null : false);
-                    }
-                } catch (e) {
-                    console.error(`Failed to check credentials for ${providerInfo.id}:`, e);
-                }
-            }
-
-            // Show providers immediately with loading state
-            setAvailableDebridProviders(providersWithCreds);
-            setDebridCacheStatus(new Map(initialCacheMap));
+            const credInfo = await Debrid.listCredentials();
+            const configuredIds = new Set(credInfo.status === "ok" ? credInfo.data.configured_providers : []);
+            setConfiguredDebridProviders(configuredIds);
             setDebridProvidersLoading(false);
 
-            // Second pass: check cache status for providers that support it (if we have a hash)
-            if (hash) {
-                for (const providerInfo of providersWithCreds) {
-                    // Skip providers that don't support cache checking
-                    if (!providerInfo.supports_cache_check) continue;
-
-                    try {
-                        const cacheResult = await Debrid.checkCache(providerInfo.id, hash);
-                        if (cacheResult.status === "ok") {
-                            setDebridCacheStatus(prev => {
-                                const next = new Map(prev);
-                                next.set(providerInfo.id, cacheResult.data.is_cached);
-                                return next;
-                            });
-                        } else {
-                            // Failed to check - mark as not cached
-                            setDebridCacheStatus(prev => {
-                                const next = new Map(prev);
-                                next.set(providerInfo.id, false);
-                                return next;
-                            });
-                        }
-                    } catch (e) {
-                        console.error(`Failed to check cache for ${providerInfo.id}:`, e);
-                        setDebridCacheStatus(prev => {
-                            const next = new Map(prev);
-                            next.set(providerInfo.id, false);
-                            return next;
-                        });
-                    }
-                }
-            } else {
-                // No magnet/hash - mark all as not cached (for those that support cache check)
-                for (const providerInfo of providersWithCreds) {
-                    if (!providerInfo.supports_cache_check) continue;
-                    setDebridCacheStatus(prev => {
-                        const next = new Map(prev);
-                        next.set(providerInfo.id, false);
-                        return next;
-                    });
-                }
+            if (hash && configuredIds.size > 0) {
+                const providersWithCreds = providerInfoList.filter(p => configuredIds.has(p.id));
+                await Promise.all(
+                    providersWithCreds
+                        .filter(p => p.supports_cache_check)
+                        .map(async (p) => {
+                            try {
+                                const result = await Debrid.checkCache(p.id, hash);
+                                if (result.status === "ok") {
+                                    setDebridCacheStatus(prev => {
+                                        const next = new Map(prev);
+                                        next.set(p.id, result.data.is_cached);
+                                        return next;
+                                    });
+                                } else {
+                                    if (result.error === "InvalidApiKey") {
+                                        setInvalidApiProviders(prev => {
+                                            const next = new Set(prev);
+                                            next.add(p.id);
+                                            return next;
+                                        });
+                                    }
+                                    setDebridCacheStatus(prev => {
+                                        const next = new Map(prev);
+                                        next.set(p.id, false);
+                                        return next;
+                                    });
+                                }
+                            } catch {
+                                setDebridCacheStatus(prev => {
+                                    const next = new Map(prev);
+                                    next.set(p.id, false);
+                                    return next;
+                                });
+                            }
+                        })
+                );
             }
         }
 
@@ -434,7 +404,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 setDebridTorrentId(torrentId);
 
                 // For providers that don't support cache check, we poll for ready status
-                const providerInfo = availableDebridProviders().find(p => p.id === provider);
+                const providerInfo = allDebridProviders().find(p => p.id === provider);
                 if (providerInfo && !providerInfo.supports_cache_check) {
                     // Poll for up to 3 seconds to see if torrent becomes ready
                     const readyResult = await Debrid.waitForTorrentReady(provider, torrentId, 3000, 500);
@@ -725,33 +695,53 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
             return (
                 <>
-                    <div class="text-center">
-                        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4"><Download class="w-8 h-8 text-accent" /></div>
-                        <h2 class="text-xl font-bold text-text mb-2">Direct Download</h2>
-                        <p class="text-muted">Choose your download source and select files to download</p>
-                    </div>
-
                     {/* Provider Selection - shown when no provider is selected */}
                     <Show when={!hasProviderSelected()}>
-                        <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm backdrop-blur-sm bg-opacity-80">
-                            <div class="p-6">
-                                <h3 class="text-lg font-semibold text-text mb-6 text-center">Select Download Provider<div class="text-xs font-normal text-muted mt-1">Choose your preferred download source</div></h3>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    {/* Debrid Providers - sorted: cached first */}
-                                    <For each={[...availableDebridProviders()].sort((a, b) => {
-                                        const aS = debridCacheStatus().get(a.id), bS = debridCacheStatus().get(b.id);
-                                        return (aS === true ? 0 : aS === null ? 1 : 2) - (bS === true ? 0 : bS === null ? 1 : 2);
-                                    })}>
-                                        {(p) => <ProviderCard name={p.name} subtitle={p.description} icon={Zap} color={p.color} cached={debridCacheStatus().get(p.id)} loading={debridCacheStatus().get(p.id) === null} onClick={() => loadDebridProvider(p.id)} />}
-                                    </For>
-
-                                    {/* Standard DDL Providers */}
-                                    <ProviderCard name="FuckingFast" subtitle="Ultra-fast downloads" icon="https://fuckingfast.co/static/favicon.ico" onClick={() => loadHosterLinks("fuckingfast")} />
-                                    <ProviderCard name="DataNodes" subtitle="Not working at the moment" icon="https://datanodes.to/favicon.ico" disabled onClick={() => loadHosterLinks("datanodes")} />
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* File Hosters - LEFT */}
+                            <div class="bg-background-30 rounded-xl border border-secondary-20 p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <Download class="w-4 h-4 text-accent" />
+                                    <h3 class="text-sm font-semibold text-text">File Hosters</h3>
                                 </div>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <ProviderCard name="FuckingFast" subtitle="Fast downloads" icon="https://fuckingfast.co/static/favicon.ico" onClick={() => loadHosterLinks("fuckingfast")} />
+                                    <ProviderCard name="DataNodes" subtitle="Unavailable" icon="https://datanodes.to/favicon.ico" disabled onClick={() => loadHosterLinks("datanodes")} />
+                                </div>
+                            </div>
 
-                                <div class="text-xs text-center text-muted mt-6"><span class="inline-flex items-center gap-1"><Info class="w-3 h-3" />Selection affects download speed and availability</span></div>
+                            {/* Debrid Services*/}
+                            <div class="bg-background-30 rounded-xl border border-secondary-20 p-4">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <Zap class="w-4 h-4 text-emerald-500" />
+                                    <h3 class="text-sm font-semibold text-text">Debrid Services</h3>
+                                    <span class="text-xs text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">Premium</span>
+                                </div>
+                                <div class="grid grid-cols-1 gap-2">
+                                    <For each={allDebridProviders().filter(p => p.is_implemented)}>
+                                        {(p) => {
+                                            const hasKey = () => configuredDebridProviders().has(p.id);
+                                            const isInvalidApi = () => invalidApiProviders().has(p.id);
+                                            const cacheStatus = () => debridCacheStatus().get(p.id);
+                                            const subtitle = () => {
+                                                if (!hasKey()) return "No API Key";
+                                                if (isInvalidApi()) return "Invalid API Key";
+                                                if (cacheStatus() === true) return "Cached";
+                                                if (cacheStatus() === false) return "Not Cached";
+                                                return "Checking...";
+                                            };
+                                            return <ProviderCard
+                                                name={p.name}
+                                                subtitle={subtitle()}
+                                                icon={Zap}
+                                                color={p.color}
+                                                cached={hasKey() && !isInvalidApi() ? cacheStatus() : undefined}
+                                                disabled={!hasKey() || isInvalidApi()}
+                                                onClick={() => loadDebridProvider(p.id)}
+                                            />;
+                                        }}
+                                    </For>
+                                </div>
                             </div>
                         </div>
                     </Show>
@@ -784,10 +774,10 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                 </Show>
                             </div>
                         </div>
-                    </Show>
+                    </Show >
 
                     {/* Debrid Provider File List */}
-                    <Show when={selectedDebridProvider()}>
+                    < Show when={selectedDebridProvider()} >
                         {(() => {
                             const cachingStatus = debridCachingStatus();
                             if (cachingStatus && cachingStatus.isCaching) {
@@ -865,14 +855,15 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                                     </div>
                                 </>
                             );
-                        })()}
-                    </Show>
+                        })()
+                        }
+                    </Show >
                 </>
             );
         };
 
         return (
-            <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading}>
+            <Modal {...props} onClose={destroy} onConfirm={handleStartDownload} disabledConfirm={loading} maxWidth="3xl">
                 <div class="space-y-6">
                     <Show when={error()}>
                         <div class="bg-red-500/10 text-red-500 rounded-lg p-3 text-sm">{error()}</div>

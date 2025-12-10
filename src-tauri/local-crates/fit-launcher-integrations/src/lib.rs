@@ -11,7 +11,6 @@ pub use debrid::{
 };
 
 pub use credentials::{
-    CredentialError, CredentialInfo, CredentialStatus, CredentialStore, ManagedStronghold,
-    credentials_exists, credentials_get, credentials_init, credentials_list, credentials_remove,
-    credentials_status, credentials_store,
+    CredentialError, CredentialInfo, CredentialStatus, credentials_exists, credentials_get,
+    credentials_list, credentials_remove, credentials_status, credentials_store,
 };

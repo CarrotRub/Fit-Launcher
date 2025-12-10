@@ -39,7 +39,6 @@ tauri-plugin-process = "2.2.1"
 tauri-plugin-store = "2.2.0"
 tauri-plugin-single-instance = "2.2.3"
 tauri-plugin-updater = { version = "2.9.0", features = ["rustls-tls"] }
-tauri-plugin-stronghold = "2.3.1"
 tauri-helper = { workspace = true }
 
 # Specta for bindings & TypeScript generation
@@ -209,9 +208,6 @@ fitgirl-decrypt = { git = "https://github.com/CarrotRub/fitgirl-decrypt", branch
     "specta",
     "reqwest",
 ] }
-
-# Stronghold for secure credential storage
-tauri-plugin-stronghold = "2.3.1"
 
 
 [features]

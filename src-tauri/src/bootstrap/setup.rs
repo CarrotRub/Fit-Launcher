@@ -4,7 +4,6 @@ use crate::image_colors::*;
 use crate::utils::*;
 use fit_launcher_download_manager::aria2::Aria2WsClient;
 use fit_launcher_download_manager::manager::DownloadManager;
-use fit_launcher_integrations::ManagedStronghold;
 use fit_launcher_scraping::{
     discovery::refresh_discovery_games, rebuild_search_index, scraping::run_all_scrapers,
     sitemap::download_all_sitemaps,
@@ -186,8 +185,7 @@ pub async fn start_app() -> anyhow::Result<()> {
         .manage(image_cache)
         .manage(TorrentSession::new().await)
         .manage(InstallationManager::new())
-        .manage(LibrqbitSession::new().await)
-        .manage(ManagedStronghold(std::sync::Mutex::new(None)));
+        .manage(LibrqbitSession::new().await);
 
     let app = app.build(tauri::generate_context!())?;
     app.run(|app_handle, event| {
