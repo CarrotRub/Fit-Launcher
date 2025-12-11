@@ -21,7 +21,7 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
             "Error: Failed to connect to the website or the website is down. Status is : {:#?}",
             response.status()
         );
-        return Err(Box::new(ScrapingError::GlobalError(format!(
+        return Err(Box::new(ScrapingError::GeneralError(format!(
             "Error: Failed to connect to the website or the website is down. Status is : {:#?}",
             response.status()
         ))));

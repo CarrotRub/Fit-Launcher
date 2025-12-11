@@ -13,8 +13,6 @@ import { ThemeManagerApi } from './api/theme/api';
 import { Toaster, ToastProvider } from 'solid-notifications';
 import { DM } from './api/manager/api';
 import { installerService } from './api/installer/api';
-import * as Debrid from './api/debrid/api';
-import { CREDENTIAL_STORE_SALT } from './api/debrid/api';
 import createChangelogPopup from './Pop-Ups/Changelog-PopUp/Changelog-PopUp';
 import { fetchLatestGithubRelease } from './api/changelog/api';
 import { getVersion } from '@tauri-apps/api/app';
@@ -25,13 +23,6 @@ const themeManager = new ThemeManagerApi();
 function App(props: { children: number | boolean | Node | JSX.ArrayElement | (string & {}) | null | undefined; }) {
   onMount(async () => {
 
-    // Init debrid credential store early so it's ready when needed
-    // Await to ensure credentials are available before any debrid operations
-    try {
-      await Debrid.initCredentials(CREDENTIAL_STORE_SALT);
-    } catch (e) {
-      console.warn("Failed to init debrid credentials:", e);
-    }
 
     installerService.start();
 

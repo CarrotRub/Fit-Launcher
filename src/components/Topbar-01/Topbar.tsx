@@ -3,7 +3,6 @@ import { Compass, Download, Home, Library, Maximize2, Minimize2, Minus, Settings
 import { createSignal, onMount, Show } from "solid-js";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
 import { listen } from "@tauri-apps/api/event";
-import { TorrentApi } from "../../api/bittorrent/api";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 

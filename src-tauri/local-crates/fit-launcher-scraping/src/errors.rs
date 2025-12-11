@@ -1,65 +1,48 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::fmt;
-
-#[derive(Debug, Serialize, Deserialize, Type)]
-pub struct CreatingFileErrorStruct {
-    pub source: String,
-    pub fn_name: String,
-}
-
-impl fmt::Display for CreatingFileErrorStruct {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "function `{}` failed to create file: {}",
-            self.fn_name, self.source
-        )
-    }
-}
 
 #[derive(Debug, thiserror::Error, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", tag = "type", content = "data")]
 pub enum ScrapingError {
-    #[error("Failed to extract article")]
+    #[error("Failed to extract article: {0}")]
     ArticleNotFound(String),
 
-    #[error("Request Error: {0}")]
+    #[error("Request error: {0}")]
     ReqwestError(String),
 
-    #[error("Selector Parsing Error: {0}")]
+    #[error("Selector parsing error: {0}")]
     SelectorError(String),
 
-    #[error("Modifying JSON Error: {0}")]
-    FileJSONError(String),
+    #[error("JSON error: {0}")]
+    JsonError(String),
 
-    #[error("Creating File Error: {0}")]
-    CreatingFileError(CreatingFileErrorStruct),
+    #[error("General error: {0}")]
+    GeneralError(String),
 
-    #[error("Global Error: {0}")]
-    GlobalError(String),
-
-    #[error("Http Request Error: {0}")]
+    #[error("HTTP status error: {0}")]
     HttpStatusCodeError(String),
 
-    #[error("Timeout Error: {0}")]
+    #[error("Timeout error: {0}")]
     TimeoutError(String),
 
-    #[error("I/O Error: {0}")]
+    #[error("I/O error: {0}")]
     IOError(String),
 
-    #[error("Window Error: {0}")]
+    #[error("Window error: {0}")]
     WindowError(String),
 
-    #[error("Cookie Error: {0}")]
+    #[error("Cookie error: {0}")]
     CookieError(String),
 
     #[error("URL parse error: {0}")]
     UrlParseError(String),
-}
 
-unsafe impl Send for ScrapingError {}
-unsafe impl Sync for ScrapingError {}
+    #[error("Regex error: {0}")]
+    RegexError(String),
+
+    #[error("Semaphore error: {0}")]
+    SemaphoreError(String),
+}
 
 impl From<reqwest::Error> for ScrapingError {
     fn from(error: reqwest::Error) -> Self {
@@ -69,11 +52,30 @@ impl From<reqwest::Error> for ScrapingError {
 
 impl From<serde_json::Error> for ScrapingError {
     fn from(error: serde_json::Error) -> Self {
-        ScrapingError::FileJSONError(error.to_string())
+        ScrapingError::JsonError(error.to_string())
     }
 }
+
 impl From<std::io::Error> for ScrapingError {
     fn from(error: std::io::Error) -> Self {
         ScrapingError::IOError(error.to_string())
+    }
+}
+
+impl From<rusqlite::Error> for ScrapingError {
+    fn from(error: rusqlite::Error) -> Self {
+        ScrapingError::IOError(error.to_string())
+    }
+}
+
+impl From<regex::Error> for ScrapingError {
+    fn from(error: regex::Error) -> Self {
+        ScrapingError::RegexError(error.to_string())
+    }
+}
+
+impl From<tokio::sync::AcquireError> for ScrapingError {
+    fn from(error: tokio::sync::AcquireError) -> Self {
+        ScrapingError::SemaphoreError(error.to_string())
     }
 }

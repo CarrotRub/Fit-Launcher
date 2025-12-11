@@ -1,8 +1,4 @@
-use fit_launcher_scraping::search_index::SearchIndexEntry;
-
-// Note: extract_slug_and_title is pub(crate), so it's tested indirectly
-// through build_search_index. For direct unit testing, add #[cfg(test)] tests
-// in the search_index.rs module itself.
+use fit_launcher_scraping::db::SearchIndexEntry;
 
 #[test]
 fn test_search_index_entry_serialization() {
@@ -55,4 +51,3 @@ fn test_sitemap_xml_parsing() {
     assert!(urls.contains(&"https://fitgirl-repacks.site/game-one/".to_string()));
     assert!(urls.contains(&"https://fitgirl-repacks.site/game-two/".to_string()));
 }
-

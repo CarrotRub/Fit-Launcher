@@ -1,533 +1,431 @@
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
-import { useNavigate, useParams } from "@solidjs/router";
-import { useLocation } from "@solidjs/router";
+import { createResource, createSignal, createMemo, createEffect, onCleanup, Switch, Match, For, Show, onMount } from "solid-js";
+import { useNavigate, useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
 import { commands, DownloadedGame } from "../../bindings";
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Download, Factory, Gamepad2, Globe, HardDrive, Info, Languages, Loader2, Magnet, Tags, Zap } from "lucide-solid";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import {
+  ArrowLeft,
+  Bookmark,
+  BookmarkCheck,
+  ChevronDown,
+  Clock,
+  Globe,
+  Info,
+  Magnet,
+  Play,
+  Zap,
+} from "lucide-solid";
 import { extractMainTitle, formatDate, formatPlayTime } from "../../helpers/format";
+import { extractCompany, extractLanguage, parseGameSize, formatBytesToSize } from "../../helpers/gameFilters";
 import LoadingPage from "../LoadingPage-01/LoadingPage";
 import Button from "../../components/UI/Button/Button";
 import createDownloadPopup from "../../Pop-Ups/Download-PopUp/Download-PopUp";
-import { GameDetails, GamePageState } from "../../types/game";
+import { GamePageState } from "../../types/game";
 import { DownloadType } from "../../types/popup";
 import { useToast } from "solid-notifications";
 import * as Debrid from "../../api/debrid/api";
-
+import { ScreenshotGallery } from "./Download-Game-Components/ScreenshotGallery/ScreenshotGallery";
 
 const library = new LibraryApi();
 const cache = new GamesCacheApi();
 
+// --- Fetcher function for createResource ---
+async function fetchGameData(gameHref: string): Promise<DownloadedGame | null> {
+  if (!gameHref) return null;
+  await cache.getSingularGameInfo(gameHref);
+  const res = await cache.getSingularGameLocal(gameHref);
+  if (res.status === "ok") {
+    return library.gameToDownloadedGame(res.data);
+  }
+  return null;
+}
+
+// --- Main Component ---
 const DownloadGameUUIDPage = () => {
-  const [expanded, setExpanded] = createSignal(false);
-  const [gameInfo, setGameInfo] = createSignal<DownloadedGame>();
+  const navigate = useNavigate();
+  const location = useLocation<GamePageState>();
+  const { notify } = useToast();
+
+  // Core reactive source: the game href from router state
+  const gameHref = () => location.state?.gameHref ?? "";
+
+  // Main game data via createResource (handles loading state automatically)
+  const [game, { refetch }] = createResource(gameHref, fetchGameData);
+
+  // Secondary state
   const [additionalImages, setAdditionalImages] = createSignal<string[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = createSignal(0);
-  const [loading, setLoading] = createSignal(true);
   const [isToDownloadLater, setToDownloadLater] = createSignal(false);
-  const [touchStartX, setTouchStartX] = createSignal(0);
-  const [touchEndX, setTouchEndX] = createSignal(0);
-  const [swipeDirection, setSwipeDirection] = createSignal<"left" | "right" | null>(null);
   const [hasDebridCached, setHasDebridCached] = createSignal(false);
-  const [gameDetails, setGameDetails] = createSignal<GameDetails>({
-    tags: "N/A",
-    companies: "N/A",
-    language: "N/A",
-    originalSize: "N/A",
-    repackSize: "N/A"
+  const [repackFeaturesExpanded, setRepackFeaturesExpanded] = createSignal(false);
+
+  // Derived: game details extracted from description
+  const gameDetails = createMemo(() => {
+    const description = game()?.details;
+    if (!description) {
+      return { tags: "N/A", companies: "N/A", language: "N/A", originalSize: "N/A", repackSize: "N/A" };
+    }
+    const originalBytes = parseGameSize(description, 'original');
+    const repackBytes = parseGameSize(description, 'repack');
+    const tagsMatch = description.match(/Genres\/Tags:\s*([^\n]+)/i);
+    return {
+      tags: tagsMatch?.[1]?.trim() ?? "N/A",
+      companies: extractCompany(description),
+      language: extractLanguage(description),
+      originalSize: originalBytes > 0 ? formatBytesToSize(originalBytes) : "N/A",
+      repackSize: repackBytes > 0 ? formatBytesToSize(repackBytes) : "N/A"
+    };
   });
 
-  const { notify } = useToast();
-  const navigate = useNavigate();
-  const params = useParams();
+  // Image event listener for progressive loading
+  let imageEventUnlisten: UnlistenFn | null = null;
 
-  let backgroundCycleIntervalID: number;
-  let heroSectionRef: HTMLDivElement;
-
-  const location = useLocation<GamePageState>();
-
-  function goToNextImage() {
-    clearInterval(backgroundCycleIntervalID);
-    setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
-    startBackgroundCycle();
-  }
-
-  function goToPrevImage() {
-    clearInterval(backgroundCycleIntervalID);
-    setCurrentImageIndex((i) => (i - 1 + additionalImages().length) % additionalImages().length);
-    startBackgroundCycle();
-  }
-
-  function goToImage(index: number) {
-    clearInterval(backgroundCycleIntervalID);
-    setCurrentImageIndex(index);
-    startBackgroundCycle();
-  }
-
-
-  async function fetchGame(gameHref: string) {
-    try {
-      setLoading(true);
-      setHasDebridCached(false); // Reset on new game load
-      await cache.getSingularGameInfo(gameHref);
-      const res = await cache.getSingularGameLocal(gameHref);
-      if (res.status === "ok") {
-        const game = library.gameToDownloadedGame(res.data);
-        console.log(game)
-        setGameInfo(game);
-        extractDetails(game.desc);
-        checkIfInDownloadLater(game.title);
-        // Check debrid cache in background (don't await)
-        if (game.magnetlink) {
-          checkDebridCache(game.magnetlink);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load game info", err);
-    } finally {
-      setLoading(false);
+  const setupImageListener = async (href: string) => {
+    if (imageEventUnlisten) {
+      imageEventUnlisten();
+      imageEventUnlisten = null;
     }
-  }
+    setAdditionalImages([]);
 
-  async function fetchImages(gameHref: string) {
+    // Fetch cached images first
     try {
-      const images = await cache.getGameImages(gameHref);
-      if (images.status === "ok") {
+      const images = await cache.getGameImages(href);
+      if (images.status === "ok" && images.data.length > 0) {
         setAdditionalImages(images.data);
-        startBackgroundCycle();
       }
-    } catch {
-      console.warn("No additional images available");
-    }
-  }
+    } catch { /* ignore */ }
 
-  async function checkIfInDownloadLater(title: string) {
-    try {
-      const list = await library.getGamesToDownload();
-      const exists = list.some((g) => g.title === title);
-      setToDownloadLater(exists);
-    } catch (err) {
-      console.error("Error checking download later list", err);
-      setToDownloadLater(false);
-    }
-  }
-
-  async function checkDebridCache(magnet: string) {
-    try {
-      const hash = Debrid.extractHashFromMagnet(magnet);
-      if (!hash) return;
-
-      const providers = await Debrid.listProviders();
-
-      // Check each provider for credentials and cache
-      for (const providerInfo of providers) {
-        try {
-          if (!providerInfo.supports_cache_check) continue;
-
-          const hasCredResult = await Debrid.hasCredential(providerInfo.id);
-          if (hasCredResult.status !== "ok" || !hasCredResult.data) continue;
-
-          const cacheResult = await Debrid.checkCache(providerInfo.id, hash);
-          if (cacheResult.status === "ok" && cacheResult.data.is_cached) {
-            setHasDebridCached(true);
-            return; // Found a cached provider, no need to check more
-          }
-        } catch (e) {
-          console.error(`Failed to check debrid cache for ${providerInfo.id}:`, e);
+    // Listen for progressive image events
+    imageEventUnlisten = await listen<{ game_link: string; image_url: string }>(
+      "game_images::image_ready",
+      (event) => {
+        if (event.payload.game_link === href) {
+          setAdditionalImages((prev) =>
+            prev.includes(event.payload.image_url) ? prev : [...prev, event.payload.image_url]
+          );
         }
       }
-    } catch (err) {
-      console.error("Error checking debrid cache", err);
-    }
-  }
+    );
+  };
 
-  function extractDetails(description?: string) {
-    const match = (label: string) =>
-      description?.match(new RegExp(`${label}:\\s*([^\\n]+)`));
-
-    const details: GameDetails = {
-      tags: match("Genres/Tags")?.[1]?.trim() ?? "N/A",
-      companies: match("Company")?.[1]?.trim()
-        ?? match("Companies")?.[1]?.trim()
-        ?? "N/A",
-      language: match("Languages")?.[1]?.trim() ?? "N/A",
-      originalSize: match("Original Size")?.[1]?.trim() ?? "N/A",
-      repackSize: match("Repack Size")?.[1]?.trim() ?? "N/A"
-    };
-
-    setGameDetails(details);
-  }
-
-  function cutDescription(desc?: string): string {
-    if (!desc) return "Description not available";
-    const index = desc.indexOf("\nGame Description\n");
-    return index !== -1 ? desc.substring(index + 19).trim() : desc.trim();
-  }
-
-  function startBackgroundCycle() {
-    clearInterval(backgroundCycleIntervalID)
-    backgroundCycleIntervalID = setInterval(() => {
-      setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
-    }, 5000);
-  }
-
-  function handleTouchStart(e: TouchEvent) {
-    setTouchStartX(e.touches[0].clientX);
-    setTouchEndX(e.touches[0].clientX);
-    clearInterval(backgroundCycleIntervalID);
-  }
-
-  function handleTouchMove(e: TouchEvent) {
-    setTouchEndX(e.touches[0].clientX);
-    const diff = touchStartX() - touchEndX();
-    console.log("Swipe is: ", diff > 0 ? "left" : "right")
-    if (Math.abs(diff) > 30) {
-      setSwipeDirection(diff > 0 ? "left" : "right");
-    } else {
-      setSwipeDirection(null);
-    }
-  }
-
-  function handleTouchEnd() {
-    if (!swipeDirection()) {
-      startBackgroundCycle();
-      return;
-    }
-
-    if (swipeDirection() === "left") {
-      // Swipe left - go to next image
-      setCurrentImageIndex((i) => (i + 1) % additionalImages().length);
-    } else {
-      // Swipe right - go to previous image
-      setCurrentImageIndex((i) => (i - 1 + additionalImages().length) % additionalImages().length);
-    }
-
-    setSwipeDirection(null);
-    startBackgroundCycle();
-  }
-
-  async function toggleDownloadLater() {
-    const game = gameInfo();
-    // * just keeping that here cuz i sometimes need forced panics to try out unexpectedly expected stuff :3
-    // await commands.panicForce();
-    if (!game) return;
-
-    try {
-      if (isToDownloadLater()) {
-        await library.removeGameToDownload(game.title);
-        setToDownloadLater(false);
-        notify(`${game.title} has been removed from favorites`, {
-          type: "success",
-        })
-      } else {
-        await library.addGameToCollection("games_to_download", library.downloadedGameToGame(game));
-        setToDownloadLater(true);
-        notify(`${game.title} has been added to favorites`, {
-          type: "success",
-        });
-      }
-    } catch (err) {
-      console.error("Error toggling download later", err);
-      notify("Error adding to favorites", { type: "error" });
-    }
-  }
-
-
-  const handleReturn = () => navigate(localStorage.getItem("latestGlobalHref") || "/");
 
   createEffect(() => {
-    const state = location.state;
-    if (state?.gameHref) {
-      setLoading(true);
-      setGameInfo(undefined);
-      setAdditionalImages([]);
-      console.log(state.gameHref)
-      fetchGame(state.gameHref);
-      fetchImages(state.gameHref);
+    const href = gameHref();
+    const g = game();
+    if (!href) return;
+
+    const initTasks: Promise<void>[] = [];
+
+    initTasks.push((async () => {
+      setHasDebridCached(false);
+      await setupImageListener(href);
+    })());
+
+    if (g?.title) {
+      initTasks.push((async () => {
+        try {
+          const list = await library.getGamesToDownload();
+          setToDownloadLater(list.some((item) => item.title === g.title));
+        } catch { setToDownloadLater(false); }
+      })());
+    } else {
+      setToDownloadLater(false);
     }
+
+    // Check debrid cache (runs when game has magnetlink)
+    if (g?.magnetlink) {
+      initTasks.push((async () => {
+        try {
+          const hash = Debrid.extractHashFromMagnet(g.magnetlink);
+          if (!hash) return;
+
+          const credInfo = await Debrid.listCredentials();
+          if (credInfo.status !== "ok") return;
+          const configuredProviders = new Set(credInfo.data.configured_providers);
+
+          const providers = await Debrid.listProviders();
+          const results = await Promise.all(
+            providers
+              .filter(p => p.supports_cache_check && configuredProviders.has(p.id))
+              .map(async (provider) => {
+                const result = await Debrid.checkCache(provider.id, hash);
+                return result.status === "ok" && result.data.is_cached;
+              })
+          );
+          if (results.some(r => r)) {
+            setHasDebridCached(true);
+          }
+        } catch { /* ignore */ }
+      })());
+    }
+
+    // Fire all tasks concurrently - don't await
+    Promise.all(initTasks);
   });
 
-  onCleanup(() => {
-    clearInterval(backgroundCycleIntervalID);
-  });
+  onCleanup(() => imageEventUnlisten?.());
 
-  function handleDownloadPopup(downloadType: DownloadType) {
-    let onFinish = () => navigate("/downloads-page");
+  // Actions
+  const handleReturn = () => navigate(localStorage.getItem("latestGlobalHref") || "/");
+
+  const toggleDownloadLater = async () => {
+    const g = game();
+    if (!g) return;
+    try {
+      if (isToDownloadLater()) {
+        await library.removeGameToDownload(g.title);
+        setToDownloadLater(false);
+        notify(`${g.title} removed from favorites`, { type: "success" });
+      } else {
+        await library.addGameToCollection("games_to_download", library.downloadedGameToGame(g));
+        setToDownloadLater(true);
+        notify(`${g.title} added to favorites`, { type: "success" });
+      }
+    } catch {
+      notify("Error updating favorites", { type: "error" });
+    }
+  };
+
+  const handleDownloadPopup = (downloadType: DownloadType) => {
+    const g = game();
+    if (!g) return;
     createDownloadPopup({
       infoTitle: "Download Game",
-      infoMessage: `Do you want to download ${gameInfo()!.title}`,
-      downloadedGame: gameInfo()!,
+      infoMessage: `Do you want to download ${g.title}`,
+      downloadedGame: g,
       gameDetails: gameDetails(),
       downloadType,
-      onFinish
-    })
-  }
+      onFinish: () => navigate("/downloads-page")
+    });
+  };
 
   return (
-    <div class="min-h-full min-w-screen bg-background text-text flex items-center justify-center">
-      {loading() ? (
-        <LoadingPage />
-      ) : gameInfo() ? (
-        <div class=" mx-auto w-screen   pb-8">
-          {/* Hero Section */}
-          <div
-            ref={heroSectionRef!}
-            class="relative h-128 w-full bg-cover bg-center mb-6 overflow-hidden transition-all duration-1000 ease-in-out"
-            style={{
-              'background-image': `url(${additionalImages()[currentImageIndex()]})`,
-              'transform': swipeDirection() ?
-                `translateX(${swipeDirection() === 'left' ? '-10' : '10'}px)` : 'translateX(0)',
-              'transition': swipeDirection() ? 'transform 0.1s ease-out' : 'transform 0.5s ease-in-out'
-            }}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+    <div class="min-h-full w-full bg-background text-text">
+      <Switch>
+        {/* Loading */}
+        <Match when={game.loading}>
+          <LoadingPage />
+        </Match>
 
-            {/* Navigation */}
-            <Show when={additionalImages().length > 1}>
-              <div class="flex w-full justify-between items-center h-full px-4">
-                <Button
-                  icon={<ChevronLeft class="w-5 h-5 text-primary" />}
-                  onClick={goToPrevImage}
-                  size="sm"
-                  class="!rounded-full z-10"
-                  variant="glass"
-                />
+        {/* Error / Not Found */}
+        <Match when={!game.loading && !game()}>
+          <div class="flex flex-col items-center justify-center h-full px-4">
+            <div class="text-center p-6 bg-popup-background rounded-lg border border-secondary-20 w-full max-w-sm">
+              <Info class="w-10 h-10 text-accent mx-auto mb-3" />
+              <h2 class="text-xl font-bold mb-2">Game Not Found</h2>
+              <p class="text-sm text-muted mb-4">We couldn't find the game you're looking for</p>
+              <button onClick={handleReturn} class="w-full px-4 py-2 bg-accent hover:bg-accent/90 text-background rounded-lg transition-colors text-sm">
+                Back to Library
+              </button>
+            </div>
+          </div>
+        </Match>
 
-                <Button
-                  icon={<ChevronRight class="w-5 h-5 text-primary" />}
-                  onClick={goToNextImage}
-
-                  class="!rounded-full z-10"
-                  variant="glass"
-                />
-              </div>
-            </Show>
-
-            {/* Top Navigation */}
-            <div class="absolute top-3 left-3 z-10 flex gap-2">
-
+        {/* Game Loaded */}
+        <Match when={game()}>
+          <div class="flex flex-col h-full">
+            {/* Top Bar */}
+            <div class="flex items-center justify-between px-4 py-3 border-b border-secondary-20 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+              <Button icon={<ArrowLeft class="w-5 h-5" />} onClick={handleReturn} size="sm" variant="glass" label="Back" />
               <Button
-                icon={<ArrowLeft class="w-5 h-5 text-primary" />}
-                onClick={handleReturn}
-                size="sm"
-                variant="glass"
-              />
-
-              <Button
-                icon={isToDownloadLater() ?
-                  <BookmarkCheck class="w-5 h-5 text-primary" /> :
-                  <Bookmark class="w-5 h-5 text-primary" />}
+                icon={isToDownloadLater() ? <BookmarkCheck class="w-5 h-5 text-accent" /> : <Bookmark class="w-5 h-5" />}
                 onClick={toggleDownloadLater}
                 size="sm"
                 variant="glass"
-                aria-label={isToDownloadLater() ? "Remove from download later" : "Add to download later"}
+                label={isToDownloadLater() ? "Saved" : "Save"}
               />
             </div>
 
-            {/* Image Indicators */}
-            <Show when={additionalImages().length > 1}>
-              <div class="absolute bottom-16 left-0 right-0 flex justify-center gap-2 z-10">
-                {additionalImages().map((_, index) => (
-                  <button
-                    onClick={() => goToImage(index)}
-                    class={`w-2 h-2 rounded-full transition-all ${index === currentImageIndex() ? 'bg-accent w-4' : 'bg-muted/50 hover:bg-muted'}`}
-                  />
-                ))}
-              </div>
-            </Show>
+            {/* Main Content */}
+            <div class="flex-1 overflow-y-auto custom-scrollbar bg-background">
+              <div class="max-w-[1200px] md:max-w-full mx-auto p-4 md:p-6">
+                <div class="h-4" />
 
-            {/* Game Title */}
-            <div class="absolute bottom-4 left-4 right-4 z-10">
-              <h1 class="text-2xl font-bold truncate">
-                {extractMainTitle(gameInfo()!.title)}
-              </h1>
-              <p class="text-sm text-muted truncate">
-                {gameInfo()!.title}
-              </p>
+                {/* Top Section: Gallery + Sidebar */}
+                <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-6 lg:gap-8 mb-8">
+                  {/* Gallery */}
+                  <div class="min-w-0">
+                    <ScreenshotGallery images={additionalImages} autoPlayInterval={5000} />
+                  </div>
+
+                  {/* Sidebar */}
+                  <div class="flex flex-col gap-6">
+                    {/* Title */}
+                    <div>
+                      <h1 class="text-3xl font-bold leading-tight mb-2 text-text">
+                        {extractMainTitle(game()!.title)}
+                      </h1>
+                      <p class="text-sm text-muted line-clamp-3 leading-relaxed">
+                        {game()?.description?.slice(0, 150) || game()!.title}...
+                      </p>
+                    </div>
+
+                    {/* Download Actions */}
+                    <div class="flex flex-col gap-3">
+                      <Button
+                        icon={<Magnet class="w-4 h-4" />}
+                        label="Torrent Download"
+                        onClick={() => handleDownloadPopup("bittorrent")}
+                        class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
+                        variant="bordered"
+                      />
+                      <div class="relative w-full">
+                        <Show when={hasDebridCached()}>
+                          <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-text text-[10px] font-bold uppercase rounded-sm shadow-md tracking-wider">
+                            <Zap class="w-3 h-3" /> Fast
+                          </div>
+                        </Show>
+                        <Button
+                          icon={<Globe class="w-4 h-4" />}
+                          label="Direct Download"
+                          onClick={() => handleDownloadPopup("direct_download")}
+                          class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
+                          variant="bordered"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Metadata */}
+                    <div class="flex flex-col gap-1 text-sm bg-popup-background/50 p-4 rounded-lg border border-secondary-20/50">
+                      <MetadataRow label="Download Size" value={gameDetails().repackSize} valueClass="text-accent font-mono" />
+                      <MetadataRow label="Orig Size" value={gameDetails().originalSize} valueClass="text-primary font-mono" />
+                      <MetadataRow label="Publisher" value={gameDetails().companies} />
+                      <MetadataRow label="Languages" value={gameDetails().language} last />
+                    </div>
+
+                    {/* Tags */}
+                    <div class="flex flex-wrap gap-1.5">
+                      <For each={gameDetails().tags.split(',')}>
+                        {(tag) => (
+                          <span class="px-2 py-1 bg-secondary-20/30 text-secondary-foreground text-xs rounded hover:bg-secondary-20/50 cursor-default transition-colors">
+                            {tag.trim()}
+                          </span>
+                        )}
+                      </For>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lower Section */}
+                <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-8">
+                  {/* Left: About */}
+                  <div class="space-y-6">
+                    <Show when={game()?.description}>
+                      <ContentSection title="About This Game">
+                        <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify whitespace-pre-wrap">
+                          {game()?.description}
+                        </div>
+                      </ContentSection>
+                    </Show>
+                    <Show when={game()?.gameplay_features}>
+                      <ContentSection title="Game Features">
+                        <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify">
+                          <For each={game()?.gameplay_features.split('\n').filter(f => f.trim())}>
+                            {(feature) => (
+                              <div class="pl-2 border-l-2 border-accent/20"><p>{feature}</p></div>
+                            )}
+                          </For>
+                        </div>
+                      </ContentSection>
+                    </Show>
+
+                    <Show when={game()?.features}>
+                      <CollapsibleContent
+                        title="Repack Features"
+                        expanded={repackFeaturesExpanded()}
+                        onToggle={() => setRepackFeaturesExpanded(!repackFeaturesExpanded())}
+                      >
+                        <div class="text-sm text-muted leading-6 whitespace-pre-wrap font-mono bg-secondary-20/20 p-4 rounded border border-secondary-20/30">
+                          {game()?.features}
+                        </div>
+                      </CollapsibleContent>
+                    </Show>
+                  </div>
+
+                  {/* Right: Extras */}
+                  <div class="flex flex-col gap-6">
+                    <Show when={game()?.included_dlcs}>
+                      <SidebarCard title="Included DLCs">
+                        <div class="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-1">
+                          <For each={game()?.included_dlcs.split('\n').filter(d => d.trim() && d.trim() !== ":")}>
+                            {(dlc) => (
+                              <div class="text-xs text-muted/80 hover:text-text transition-colors py-1 border-b border-secondary-20/10 last:border-0">
+                                {dlc.trim()}
+                              </div>
+                            )}
+                          </For>
+                        </div>
+                      </SidebarCard>
+                    </Show>
+
+                    <Show when={game()?.executable_info?.executable_path}>
+                      <SidebarCard title="Your Activity">
+                        <div class="grid grid-cols-1 gap-4">
+                          <StatItem icon={<Clock class="w-5 h-5" />} iconBg="bg-accent/20 text-accent" label="Time Played" value={formatPlayTime(game()!.executable_info.executable_play_time)} />
+                          <StatItem icon={<Play class="w-5 h-5" />} iconBg="bg-primary/20 text-primary" label="Last Session" value={formatDate(game()!.executable_info.executable_last_opened_date)} small />
+                        </div>
+                      </SidebarCard>
+                    </Show>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div class="flex w-full flex-col items-center justify-center px-4 gap-6">
-            {/* Download Button */}
-            <div class="w-full max-w-4xl flex flex-col gap-3">
-              <div class="flex flex-col sm:flex-row gap-3 w-full">
-                <Button
-                  icon={<Magnet class="size-5" />}
-                  label="Torrent Download"
-                  onClick={() => handleDownloadPopup("bittorrent")}
-                  class="flex-1 py-3 hover:bg-accent/90 transition-colors"
-                  variant="bordered"
-                />
-                <div class="relative flex items-center justify-center">
-                  <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-secondary-20"></div>
-                  </div>
-                  <div class="relative px-2 text-xs text-muted">OR</div>
-                </div>
-                <div class="relative flex-1">
-                  <Show when={hasDebridCached()}>
-                    <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-xs font-semibold rounded-full shadow-lg animate-pulse">
-                      <Zap class="w-3 h-3" />
-                      Fast
-                    </div>
-                  </Show>
-                  <Button
-                    icon={<Globe class="size-5" />}
-                    label="Direct Download"
-                    onClick={() => handleDownloadPopup("direct_download")}
-                    class="w-full py-3 hover:bg-accent/90 transition-colors"
-                    variant="bordered"
-                  />
-                </div>
-              </div>
-              <p class="text-xs text-muted text-center">
-                Choose your preferred download method
-              </p>
-            </div>
-
-            {/* Game Info Grid */}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-              {/* Game Description */}
-              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20/50 hover:border-accent/30 transition-colors">
-                <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Info class="w-5 h-5 text-accent" />
-                  Description
-                </h2>
-                <div class="relative overflow-hidden">
-                  <p
-                    class="text-sm text-muted leading-relaxed transition-all duration-300 ease-in-out"
-                    classList={{
-                      "max-h-24": !expanded(),
-                      "max-h-[1000px]": expanded()
-                    }}
-                  >
-                    {cutDescription(gameInfo()?.desc)}
-                  </p>
-                  <div
-                    class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-popup to-transparent pointer-events-none transition-opacity duration-300"
-                    classList={{
-                      "opacity-100": !expanded(),
-                      "opacity-0": expanded()
-                    }}
-                  />
-                </div>
-                <button
-                  onClick={() => setExpanded(!expanded())}
-                  class="mt-2 text-xs flex items-center gap-1 text-accent hover:text-primary transition-colors"
-                >
-                  {expanded() ? (
-                    <>
-                      <ChevronUp class="w-4 h-4" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown class="w-4 h-4" />
-                      Read More
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Game Details */}
-              <div class="bg-popup-background rounded-lg p-4 border border-secondary-20">
-                <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                  <Gamepad2 class="w-5 h-5 text-accent" />
-                  Details
-                </h2>
-                <div class="space-y-3">
-                  <div class="flex items-start gap-2">
-                    <Tags class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Genres/Tags</p>
-                      <p class="text-sm font-medium">{gameDetails().tags}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <Factory class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Company</p>
-                      <p class="text-sm font-medium">{gameDetails().companies}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <Languages class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Languages</p>
-                      <p class="text-sm font-medium">{gameDetails().language}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Repack Size</p>
-                      <p class="text-sm font-medium">{gameDetails().repackSize}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-start gap-2">
-                    <HardDrive class="w-4 h-4 mt-0.5 text-muted flex-shrink-0" />
-                    <div>
-                      <p class="text-xs text-muted">Original Size</p>
-                      <p class="text-sm font-medium">{gameDetails().originalSize}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-          {/* Play Statistics */}
-          <Show when={gameInfo()?.executable_info?.executable_path}>
-            <div class="mt-4 bg-popup-background rounded-lg p-4 border border-secondary-20">
-              <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Clock class="w-5 h-5 text-accent" />
-                Play Stats
-              </h2>
-              <div class="grid grid-cols-3 gap-3">
-                <div class="text-center">
-                  <p class="text-xs text-muted">Play Time</p>
-                  <p class="text-sm font-medium">
-                    {formatPlayTime(gameInfo()!.executable_info.executable_play_time)}
-                  </p>
-                </div>
-                <div class="text-center">
-                  <p class="text-xs text-muted">Last Played</p>
-                  <p class="text-sm font-medium">
-                    {formatDate(gameInfo()!.executable_info.executable_last_opened_date)}
-                  </p>
-                </div>
-                <div class="text-center">
-                  <p class="text-xs text-muted">Installed</p>
-                  <p class="text-sm font-medium">
-                    {formatDate(gameInfo()!.executable_info.executable_installed_date)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Show>
-        </div>
-      ) : (
-        <div class="flex flex-col items-center justify-center h-screen px-4">
-          <div class="text-center p-6 bg-popup-background rounded-lg border border-secondary-20 w-full max-w-sm">
-            <Info class="w-10 h-10 text-accent mx-auto mb-3" />
-            <h2 class="text-xl font-bold mb-2">Game Not Found</h2>
-            <p class="text-sm text-muted mb-4">
-              We couldn't find the game you're looking for
-            </p>
-            <button
-              onClick={handleReturn}
-              class="w-full px-4 py-2 bg-accent hover:bg-accent/90 text-background rounded-lg transition-colors text-sm"
-            >
-              Back to Library
-            </button>
-          </div>
-        </div>
-      )}
+        </Match>
+      </Switch>
     </div>
   );
 };
+
+// --- Inline Sub-Components ---
+
+const MetadataRow = (props: { label: string; value: string; valueClass?: string; last?: boolean }) => (
+  <div class={`flex justify-between items-baseline py-1 ${props.last ? 'pt-2' : 'border-b border-secondary-20/30'}`}>
+    <span class="text-muted/70 text-xs font-bold uppercase tracking-wider">{props.label}</span>
+    <span class={`max-w-[200px] truncate ${props.valueClass || 'text-secondary-foreground'}`} title={props.value}>
+      {props.value}
+    </span>
+  </div>
+);
+
+const ContentSection = (props: { title: string; children: any }) => (
+  <div>
+    <div class="flex items-center gap-2 mb-2 pb-1 border-b border-secondary-20">
+      <h2 class="text-lg font-semibold uppercase tracking-wide text-text">{props.title}</h2>
+    </div>
+    {props.children}
+  </div>
+);
+
+const CollapsibleContent = (props: { title: string; expanded: boolean; onToggle: () => void; children: any }) => (
+  <div>
+    <button onClick={props.onToggle} class="flex items-center justify-between w-full gap-2 mb-2 pb-1 border-b border-secondary-20 cursor-pointer hover:opacity-80 transition-opacity">
+      <h2 class="text-lg font-semibold uppercase tracking-wide text-text">{props.title}</h2>
+      <ChevronDown class={`w-5 h-5 text-muted transition-transform duration-200 ${props.expanded ? 'rotate-180' : ''}`} />
+    </button>
+    <div class={`overflow-hidden transition-all duration-200 ${props.expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+      {props.children}
+    </div>
+  </div>
+);
+
+const SidebarCard = (props: { title: string; children: any }) => (
+  <div class="bg-gradient-to-br from-secondary-20/30 to-background border border-secondary-20 rounded-lg p-4">
+    <div class="flex items-center gap-2 mb-3 pb-1 border-b border-secondary-20/50">
+      <h3 class="text-sm font-bold uppercase tracking-wider text-text">{props.title}</h3>
+    </div>
+    {props.children}
+  </div>
+);
+
+const StatItem = (props: { icon: any; iconBg: string; label: string; value: string; small?: boolean }) => (
+  <div class="flex items-center gap-3">
+    <div class={`p-2 rounded ${props.iconBg}`}>{props.icon}</div>
+    <div>
+      <div class="text-xs text-muted uppercase font-bold">{props.label}</div>
+      <div class={`font-mono text-text ${props.small ? 'text-sm' : 'text-lg'}`}>{props.value}</div>
+    </div>
+  </div>
+);
 
 export default DownloadGameUUIDPage;

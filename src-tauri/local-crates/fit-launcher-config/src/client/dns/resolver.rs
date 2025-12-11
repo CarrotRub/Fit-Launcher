@@ -13,7 +13,7 @@ use hickory_resolver::{
 };
 use once_cell::sync::Lazy;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::client::dns::FitLauncherDnsConfig;
 
@@ -126,7 +126,7 @@ async fn resolve_with_system_dns(
 
     match system_resolver.lookup_ip(name.as_str()).await {
         Ok(lookup) => {
-            info!("System DNS resolved {}", name.as_str());
+            debug!("System DNS resolved {}", name.as_str());
 
             let addrs: Addrs = if let Some(rng) = &mut hickory_resolver.rng {
                 use rand::seq::SliceRandom;

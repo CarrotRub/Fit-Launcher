@@ -12,12 +12,11 @@ use std::{
 
 use anyhow::Result;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use futures::future::join_all;
 use lru::LruCache;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use specta::{Type, specta};
-use tauri::{AppHandle, Manager, State, Window};
+use tauri::{AppHandle, Emitter, Manager, State, Window};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 // Define a shared boolean flag
@@ -26,6 +25,15 @@ static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 #[derive(Clone, serde::Serialize, Type)]
 pub struct Payload {
     pub message: String,
+}
+
+/// Payload for progressive image loading events
+#[derive(Clone, Serialize, Type)]
+pub struct GameImageReadyPayload {
+    pub game_link: String,
+    pub image_url: String,
+    pub index: usize,
+    pub total: usize,
 }
 
 /// Helper function.
@@ -68,43 +76,25 @@ async fn process_image_link(src_link: String) -> anyhow::Result<String> {
     if src_link.contains("jpg.240p.") {
         let primary_image = src_link.replace("240p", "1080p");
         if check_url_status(&primary_image).await.unwrap_or(false) {
-            return Ok(primary_image);
+            return Ok(format!(
+                "https://wsrv.nl/?url={}&w=1000&q=80&output=webp",
+                primary_image
+            ));
         }
 
         let fallback_image = primary_image.replace("jpg.1080p.", "");
         if check_url_status(&fallback_image).await.unwrap_or(false) {
-            return Ok(fallback_image);
+            return Ok(format!(
+                "https://wsrv.nl/?url={}&w=1000&q=80&output=webp",
+                fallback_image
+            ));
         }
     }
 
     Err(anyhow::anyhow!("No valid image found for {}", src_link))
 }
 
-async fn fetch_image_links(body: &str) -> anyhow::Result<Vec<String>> {
-    let initial_images = parse_image_links(body, 3)?;
-
-    // Spawn tasks for each image processing
-    let tasks: Vec<_> = initial_images
-        .into_iter()
-        .map(|img_link| {
-            tokio::task::spawn(async move { (process_image_link(img_link).await).ok() })
-        })
-        .collect();
-
-    let results = join_all(tasks).await;
-
-    // Collect successful, non-None results
-    let mut processed = Vec::new();
-    results.into_iter().for_each(|res| {
-        if let Ok(Some(img)) = res {
-            processed.push(img);
-        }
-    });
-
-    Ok(processed)
-}
-
-async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
+async fn scrape_and_emit_images(app_handle: &AppHandle, game_link: &str) -> Result<Vec<String>> {
     if STOP_FLAG.load(Ordering::Relaxed) {
         return Err(anyhow::anyhow!("Cancelled the Event..."));
     }
@@ -112,14 +102,37 @@ async fn scrape_image_srcs(url: &str) -> Result<Vec<String>> {
     let body = CUSTOM_DNS_CLIENT
         .read()
         .await
-        .get(url)
+        .get(game_link)
         .send()
         .await?
         .text()
         .await?;
-    let images = fetch_image_links(&body).await?;
 
-    Ok(images)
+    let initial_images = parse_image_links(&body, 3)?;
+    let total = initial_images.len();
+    let mut processed_images = Vec::new();
+
+    // Process each image and emit events as they complete for UX
+    for (index, img_link) in initial_images.into_iter().enumerate() {
+        if STOP_FLAG.load(Ordering::Relaxed) {
+            break;
+        }
+
+        if let Ok(processed_url) = process_image_link(img_link).await {
+            let _ = app_handle.emit(
+                "game_images::image_ready",
+                GameImageReadyPayload {
+                    game_link: game_link.to_string(),
+                    image_url: processed_url.clone(),
+                    index,
+                    total,
+                },
+            );
+            processed_images.push(processed_url);
+        }
+    }
+
+    Ok(processed_images)
 }
 
 // Cache with a capacity of 100
@@ -150,7 +163,7 @@ pub async fn get_games_images(
         .path()
         .app_cache_dir()
         .unwrap_or_default()
-        .join("image_cache.json");
+        .join("game_images_cache.json");
 
     {
         let mut cache = image_cache.lock().await;
@@ -171,8 +184,8 @@ pub async fn get_games_images(
         return Err(anyhow::anyhow!("Scraping cancelled").into());
     }
 
-    // Fetch fresh images
-    let image_srcs = scrape_image_srcs(&game_link).await?;
+    // Fetch images with progressive emission
+    let image_srcs = scrape_and_emit_images(&app_handle, &game_link).await?;
 
     {
         let mut cache = image_cache.lock().await;

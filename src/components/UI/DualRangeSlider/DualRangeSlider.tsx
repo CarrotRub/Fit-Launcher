@@ -23,9 +23,9 @@ export default function DualRangeSlider(props: DualRangeSliderProps): JSX.Elemen
     let newValue = parseFloat(target.value);
     // Ensure min doesn't exceed max
     if (newValue > props.maxValue) {
-        newValue = props.maxValue;
-        // Force update the input value if we clamped it
-        target.value = newValue.toString();
+      newValue = props.maxValue;
+      // Force update the input value if we clamped it
+      target.value = newValue.toString();
     }
     props.onMinChange(newValue);
   };
@@ -35,9 +35,9 @@ export default function DualRangeSlider(props: DualRangeSliderProps): JSX.Elemen
     let newValue = parseFloat(target.value);
     // Ensure max doesn't go below min
     if (newValue < props.minValue) {
-        newValue = props.minValue;
-        // Force update the input value if we clamped it
-        target.value = newValue.toString();
+      newValue = props.minValue;
+      // Force update the input value if we clamped it
+      target.value = newValue.toString();
     }
     props.onMaxChange(newValue);
   };
@@ -70,9 +70,9 @@ export default function DualRangeSlider(props: DualRangeSliderProps): JSX.Elemen
           value={props.minValue}
           onInput={handleMinChange}
           onMouseDown={() => setIsDraggingMin(true)}
-          onMouseUp={() => setIsDraggingMin(false)}
+          onMouseUp={() => { setIsDraggingMin(false); props.onChangeComplete?.(); }}
           onTouchStart={() => setIsDraggingMin(true)}
-          onTouchEnd={() => setIsDraggingMin(false)}
+          onTouchEnd={() => { setIsDraggingMin(false); props.onChangeComplete?.(); }}
           class={`
             absolute w-full h-6 appearance-none bg-transparent cursor-pointer pointer-events-none
             ${props.minValue > (props.max - props.min) * 0.9 ? "z-30" : "z-20"}
@@ -104,9 +104,9 @@ export default function DualRangeSlider(props: DualRangeSliderProps): JSX.Elemen
           value={props.maxValue}
           onInput={handleMaxChange}
           onMouseDown={() => setIsDraggingMax(true)}
-          onMouseUp={() => setIsDraggingMax(false)}
+          onMouseUp={() => { setIsDraggingMax(false); props.onChangeComplete?.(); }}
           onTouchStart={() => setIsDraggingMax(true)}
-          onTouchEnd={() => setIsDraggingMax(false)}
+          onTouchEnd={() => { setIsDraggingMax(false); props.onChangeComplete?.(); }}
           class={`
             absolute w-full h-6 appearance-none bg-transparent cursor-pointer z-20 pointer-events-none
             [&::-webkit-slider-thumb]:pointer-events-auto

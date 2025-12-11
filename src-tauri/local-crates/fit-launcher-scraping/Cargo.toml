@@ -25,3 +25,4 @@ once_cell = { workspace = true }
 time = { version = "0.3.41", features = ["formatting"] }
 rand = "0.9.1"
 ahash = "0.8"
+rusqlite = { version = "0.32", features = ["bundled-full"] }

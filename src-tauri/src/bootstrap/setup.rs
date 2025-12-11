@@ -1,14 +1,12 @@
 use crate::bootstrap::hooks::shutdown_hook;
-use crate::bootstrap::json_cleanup;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
 use fit_launcher_download_manager::aria2::Aria2WsClient;
 use fit_launcher_download_manager::manager::DownloadManager;
-use fit_launcher_integrations::ManagedStronghold;
 use fit_launcher_scraping::{
-    discovery::get_100_games_unordered, get_sitemaps_website, global::functions::run_all_scrapers,
-    rebuild_search_index,
+    discovery::refresh_discovery_games, rebuild_search_index, scraping::run_all_scrapers,
+    sitemap::download_all_sitemaps,
 };
 use fit_launcher_torrent::LibrqbitSession;
 use fit_launcher_torrent::functions::TorrentSession;
@@ -65,10 +63,6 @@ pub async fn start_app() -> anyhow::Result<()> {
 
             shutdown_hook(app_handle.clone());
 
-            if let Err(err) = json_cleanup::delete_invalid_json_files(&app_handle) {
-                error!("Error deleting JSON: {:#?}", err);
-            }
-
             for create_fn in [
                 fit_launcher_config::settings::creation::create_installation_settings_file,
                 fit_launcher_config::settings::creation::create_gamehub_settings_file,
@@ -124,20 +118,17 @@ pub async fn start_app() -> anyhow::Result<()> {
 
                 local.block_on(&rt, async move {
                     let start = Instant::now();
-                    let (scrapers_res, sitemap_res) = tokio::join!(
-                        async { run_all_scrapers(app_for_scrapers.clone()).await },
-                        async { get_sitemaps_website(app_for_scrapers.clone()).await }
-                    );
 
-                    if scrapers_res.is_err() {
-                        error!("run_all_scrapers failed");
-                    }
-                    if sitemap_res.is_err() {
-                        error!("get_sitemaps_website failed");
+                    // Phase 1: Download sitemaps (populates game URLs in database)
+                    info!("Phase 1: Syncing sitemap data...");
+                    if let Err(e) = download_all_sitemaps(&app_for_scrapers).await {
+                        error!("Sitemap sync failed: {:#?}", e);
                     }
 
+                    // Phase 2: Build search index (uses sitemap data)
+                    info!("Phase 2: Building search index...");
                     if let Err(e) = rebuild_search_index(app_for_scrapers.clone()).await {
-                        error!("Failed to build search index: {:#?}", e);
+                        error!("Search index build failed: {:#?}", e);
                         if let Some(main) = app_for_scrapers.get_window("main") {
                             let _ = main.emit("search-index-error", e.to_string());
                         }
@@ -145,6 +136,13 @@ pub async fn start_app() -> anyhow::Result<()> {
                         let _ = main.emit("search-index-ready", ());
                     }
 
+                    // Phase 3: Run scrapers (fills UI categories)
+                    info!("Phase 3: Updating game categories...");
+                    if let Err(e) = run_all_scrapers(app_for_scrapers.clone()).await {
+                        error!("Scrapers failed: {:#?}", e);
+                    }
+
+                    // Show main window
                     if let Some(splash) = app_for_scrapers.get_window("splashscreen") {
                         let _ = splash.close();
                     }
@@ -153,15 +151,15 @@ pub async fn start_app() -> anyhow::Result<()> {
                         let _ = main.emit("backend-ready", ());
                     }
 
-                    info!("Critical scrapers done in {:?}", start.elapsed());
+                    info!("Startup complete in {:?}", start.elapsed());
                 });
             });
 
             spawn({
                 let app_clone = app_handle.clone();
                 async move {
-                    if let Err(err) = get_100_games_unordered(app_clone.clone()).await {
-                        error!("get_100_games_unordered failed: {:#?}", err);
+                    if let Err(err) = refresh_discovery_games(app_clone.clone()).await {
+                        error!("refresh_discovery_games failed: {:#?}", err);
                     }
                 }
             });
@@ -187,8 +185,7 @@ pub async fn start_app() -> anyhow::Result<()> {
         .manage(image_cache)
         .manage(TorrentSession::new().await)
         .manage(InstallationManager::new())
-        .manage(LibrqbitSession::new().await)
-        .manage(ManagedStronghold(std::sync::Mutex::new(None)));
+        .manage(LibrqbitSession::new().await);
 
     let app = app.build(tauri::generate_context!())?;
     app.run(|app_handle, event| {

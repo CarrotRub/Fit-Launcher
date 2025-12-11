@@ -49,9 +49,10 @@ function Library() {
       }
 
       // Convert downloadedGames (DownloadedGame[]) → Game[]
+      const downloadedAsGames = downloadedGames.map(g => libraryAPI.downloadedGameToGame(g));
 
       normalizedCollections["games_to_download"] = gamesToDownload;
-      normalizedCollections["downloaded_games"] = downloadedGames;
+      normalizedCollections["downloaded_games"] = downloadedAsGames;
 
       setCollectionList(normalizedCollections);
       setDownloadedGamesList(downloadedGames);
@@ -104,17 +105,19 @@ function Library() {
       infoMessage: "Choose your game here ! ?",
       infoFooter: "Beware, only Fitgirl Repack's games are supported !",
       action: async (game: DownloadedGame) => {
-        const newGame = libraryAPI.gameToDownloadedGame(game);
+        // Add to downloaded games list (DownloadedGame[])
         setDownloadedGamesList(prev =>
-          prev.some(g => g.title === newGame.title) ? prev : [...prev, newGame]
+          prev.some(g => g.title === game.title) ? prev : [...prev, game]
         );
+        // Add to collection as Game[]
+        const gameAsGame = libraryAPI.downloadedGameToGame(game);
         setCollectionList(prev => {
           const existing = prev.downloaded_games ?? [];
-          if (existing.some(g => g.title === newGame.title)) return prev;
+          if (existing.some(g => g.title === game.title)) return prev;
 
           return {
             ...prev,
-            downloaded_games: [...existing, newGame],
+            downloaded_games: [...existing, gameAsGame],
           };
         });
       },

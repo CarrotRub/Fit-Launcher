@@ -1,6 +1,5 @@
 import {
   commands,
-  DiscoveryGame,
   DownloadedGame,
   ExecutableInfo,
   Game,
@@ -89,23 +88,15 @@ export class LibraryApi {
     return {
       title: game.title,
       img: game.img,
-      desc: game.desc,
+      details: game.details,
+      features: game.features,
+      description: game.description,
+      gameplay_features: game.gameplay_features,
+      included_dlcs: game.included_dlcs,
       magnetlink: game.magnetlink,
       href: game.href,
       tag: game.tag,
-      pastebin: "",
-    };
-  }
-
-  discoveryGameToGame(game: DiscoveryGame): Game {
-    return {
-      title: game.game_title,
-      img: game.game_main_image,
-      desc: game.game_description,
-      magnetlink: game.game_magnetlink,
-      href: game.game_href,
-      tag: game.game_tags,
-      pastebin: game.game_torrent_paste_link,
+      secondary_images: [],
     };
   }
 
@@ -127,13 +118,16 @@ export class LibraryApi {
     return {
       title: game.title,
       img: game.img,
-      desc: game.desc,
+      details: game.details,
+      features: game.features,
+      description: game.description,
+      gameplay_features: game.gameplay_features,
+      included_dlcs: game.included_dlcs,
       magnetlink: game.magnetlink,
       href: game.href,
       tag: game.tag,
       executable_info: executableInfo,
       installation_info: installationInfo,
-      pastebin: game.pastebin,
     };
   }
 }

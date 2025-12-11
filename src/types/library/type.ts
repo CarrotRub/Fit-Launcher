@@ -1,8 +1,8 @@
 import { Accessor } from "solid-js";
-import { DownloadedGame, Game } from "../../bindings";
+import { Game } from "../../bindings";
 
 export interface CollectionListProps {
-  collectionGamesList: Accessor<Game[]> | Accessor<DownloadedGame[]>;
+  collectionGamesList: Accessor<Game[]>;
   collectionName: string;
   onCollectionRemove?: (name: string) => void;
 }

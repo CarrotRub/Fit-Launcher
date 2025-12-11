@@ -45,7 +45,7 @@ impl TorBoxClient {
             .map_err(|e| DebridError::NetworkError(e.to_string()))?;
 
         let status = response.status();
-        if status.as_u16() == 401 {
+        if status.as_u16() == 401 || status.as_u16() == 403 {
             return Err(DebridError::InvalidApiKey);
         }
         if status.as_u16() == 429 {
@@ -109,7 +109,7 @@ impl TorBoxClient {
             .map_err(|e| DebridError::NetworkError(e.to_string()))?;
 
         let status = response.status();
-        if status.as_u16() == 401 {
+        if status.as_u16() == 401 || status.as_u16() == 403 {
             return Err(DebridError::InvalidApiKey);
         }
         if status.as_u16() == 429 {
@@ -152,7 +152,7 @@ impl TorBoxClient {
             .map_err(|e| DebridError::NetworkError(e.to_string()))?;
 
         let status = response.status();
-        if status.as_u16() == 401 {
+        if status.as_u16() == 401 || status.as_u16() == 403 {
             return Err(DebridError::InvalidApiKey);
         }
         if !status.is_success() {
@@ -216,7 +216,7 @@ impl TorBoxClient {
             .map_err(|e| DebridError::NetworkError(e.to_string()))?;
 
         let status = response.status();
-        if status.as_u16() == 401 {
+        if status.as_u16() == 401 || status.as_u16() == 403 {
             return Err(DebridError::InvalidApiKey);
         }
         if !status.is_success() {

@@ -22,14 +22,17 @@ function CacheContent() {
 
   async function handleClearCache() {
     const confirmation = await confirm(
-      "This will delete every cache file. This action cannot be reverted. Are you sure?",
+      "This will reset game details and torrent session data. Search will still work. Are you sure?",
       { title: "FitLauncher", kind: "warning" }
     );
 
     if (confirmation) {
       try {
+        // Clear torrent session and DHT data
         await invoke("clear_all_cache");
-        await message("Cache cleared successfully!", {
+        // Clear scraped game data (keeps sitemap stubs for search)
+        await invoke("clear_game_cache");
+        await message("Cache cleared! Game details will be re-fetched when visited.", {
           title: "FitLauncher",
           kind: "info",
         });
@@ -111,8 +114,8 @@ function CacheContent() {
         disabled={updateClicked()}
       />
 
-      <LabelButtonSettings text="Clear All Cache Files"
-        typeText="This will remove image cache and all torrent-related cache, DHT, and session data"
+      <LabelButtonSettings text="Clear Cache"
+        typeText="Clears game details and torrent data. Search index stays intact."
         action={handleClearCache}
         buttonLabel="Clear"
         disabled={false}

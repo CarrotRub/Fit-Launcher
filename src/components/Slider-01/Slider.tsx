@@ -4,6 +4,7 @@ import { CircleArrowLeft, CircleArrowRight, MoveRight } from 'lucide-solid';
 import { SliderProps } from '../../types/components/types';
 import Button from '../UI/Button/Button';
 import { commands } from '../../bindings';
+import LazyImage from '../LazyImage/LazyImage';
 
 const Slider = (props: SliderProps): JSX.Element => {
     const navigate = useNavigate();
@@ -74,10 +75,10 @@ const Slider = (props: SliderProps): JSX.Element => {
                                 class="w-48 h-64 shrink-0 rounded-xl overflow-hidden bg-background shadow border border-secondary-30 hover:shadow-lg relative cursor-pointer group/image transition-all duration-300 hover:scale-[1.02]"
                                 onClick={() => handleImageClick(props.titles[index()], props.filePath || '', props.hrefs[index()])}
                             >
-                                <img
+                                <LazyImage
                                     src={image}
                                     alt={props.titles[index()]}
-                                    class="w-full h-full object-cover"
+                                    class="w-full h-full"
                                 />
                                 <div class="absolute bottom-0 w-full bg-gradient-to-t from-background/80 to-transparent px-3 py-2 flex justify-between items-end">
                                     <span class="text-text text-sm font-semibold truncate transition-all duration-300 group-hover/image:text-primary">

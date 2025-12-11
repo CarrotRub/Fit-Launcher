@@ -35,11 +35,15 @@ pub(crate) fn convert_legacy_downloads(
         .map(|legacy| DownloadedGame {
             title: legacy.torrentExternInfo.title,
             img: legacy.torrentExternInfo.img,
-            desc: legacy.torrentExternInfo.desc,
+            // Legacy data has combined desc - put it in details, leave others empty
+            details: legacy.torrentExternInfo.desc,
+            features: String::new(),
+            description: String::new(),
+            gameplay_features: String::new(),
+            included_dlcs: String::new(),
             magnetlink: legacy.torrentExternInfo.magnetlink,
             href: legacy.torrentExternInfo.href,
             tag: legacy.torrentExternInfo.tag,
-            pastebin: "".to_string(),
             executable_info: legacy.executableInfo.clone(),
             installation_info: InstallationInfo {
                 output_folder: legacy.torrentOutputFolder,
