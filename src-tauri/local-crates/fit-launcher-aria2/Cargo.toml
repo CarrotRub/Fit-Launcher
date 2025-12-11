@@ -21,9 +21,13 @@ sha2 = "0.10.9"
 [target.'cfg(target_os = "windows")'.dependencies]
 anyhow = { workspace = true }
 crossbeam-skiplist = "0.1.3"
+winreg = "0.55.0"
 listdisk-rs = { version = "0.3.0", default-features = false, features = [
     "wmi",
     "drive-info",
     "physical-disk",
     "utils",
 ] }
+
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+sysproxy = { git = "https://github.com/zzzgydi/sysproxy-rs", rev = "355d9c98" }
