@@ -1,5 +1,6 @@
 use std::{
     fs::Metadata,
+    io::ErrorKind,
     path::{Path, PathBuf},
     thread::JoinHandle,
 };
@@ -12,13 +13,27 @@ use tracing::error;
 
 pub type IOResult<T> = Result<T, std::io::Error>;
 pub type ReclaimSpace = LRUResult<Vec<FileInfo<String>>>;
-pub type InsertItem = LRUResult<Option<PathBuf>>;
+pub type GetItem = LRUResult<Option<PathBuf>>;
 
 /// To get command output, optionally call
 /// [`kanal::bounded`]\(0\) for an oneshot channel
 pub enum Command {
-    ReclaimSpace(isize, Option<Sender<ReclaimSpace>>),
-    InsertItem(String, PathBuf, Option<Sender<InsertItem>>),
+    /// Access item, may update LRU order.
+    AccessItem(String, Sender<GetItem>),
+    /// Access item, without LRU reorder.
+    PeekItem(String, Sender<GetItem>),
+    /// Insert item
+    InsertItem(String, PathBuf, Option<Sender<GetItem>>),
+    /// Reclaim space, may remove some files.
+    ///
+    /// returned metainfo is needed for recalculating used space.
+    ///
+    /// ### Note
+    ///
+    /// send this on capacity update and new file insertion
+    ReclaimSpace(isize, Sender<ReclaimSpace>),
+    /// Flush all files out
+    ClearCache,
 }
 
 /// To check cache open failure, see [`is_closed`][kanal::Sender::is_closed].
@@ -48,6 +63,8 @@ pub fn spawn_cache_manager(rx: Receiver<Command>) -> JoinHandle<()> {
     })
 }
 
+/// Calculate used cache size by enumrating files
+/// this will spawn a new thread
 pub async fn initialize_used_cache_size() -> IOResult<u64> {
     let metadata = tauri::async_runtime::spawn_blocking(|| {
         let mut metadata = vec![];
@@ -99,15 +116,34 @@ impl Command {
     fn exec(self, lru: &mut LruCache<String, PathBuf>) {
         match self {
             Command::ReclaimSpace(exceed, sender) => {
-                let result = lru.retain_size(exceed);
-                if let Some(sender) = sender {
-                    _ = sender.send(result);
-                }
+                _ = sender.send(lru.retain_size(exceed));
+            }
+            Command::AccessItem(key, path) => {
+                _ = path.send(lru.access(&key));
+            }
+            Command::PeekItem(key, path) => {
+                _ = path.send(lru.peek(&key));
             }
             Command::InsertItem(key, value, sendback) => {
                 let result = lru.insert(&key, &value);
                 if let Some(sendback) = sendback {
                     _ = sendback.send(result);
+                }
+            }
+            Command::ClearCache => {
+                for (key, file) in lru.as_ref().iter().flatten().collect::<Vec<_>>() {
+                    match std::fs::remove_file(&file) {
+                        Err(e) if e.kind() == ErrorKind::NotFound => (),
+                        Err(e) => {
+                            error!("failed to remove {file:?}: {e}");
+                            continue;
+                        }
+                        Ok(_) => {}
+                    }
+
+                    if lru.pop(&key).is_err() {
+                        continue;
+                    }
                 }
             }
         }
