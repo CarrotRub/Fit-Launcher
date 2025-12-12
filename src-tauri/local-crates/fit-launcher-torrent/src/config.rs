@@ -220,6 +220,17 @@ pub(crate) fn write_cfg<T: Serialize>(path: impl AsRef<Path>, cfg: &T) -> anyhow
     Ok(())
 }
 
+pub fn load_config() -> FitLauncherConfigV2 {
+    let config_dir = directories::BaseDirs::new()
+        .expect("Could not determine base directories")
+        .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+        .join("com.fitlauncher.carrotrub");
+    let v2_path = config_dir.join("config.json");
+    let legacy_path = config_dir.join("torrentConfig").join("config.json");
+
+    load_or_migrate(&legacy_path, &v2_path)
+}
+
 /// Load the config (migrating from legacy if needed). Returns the in‑memory V2 object.
 /// If a legacy config is found, it is replaced on disk and the old `torrentConfig` folder
 /// is removed.

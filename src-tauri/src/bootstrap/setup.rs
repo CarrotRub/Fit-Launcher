@@ -2,6 +2,7 @@ use crate::bootstrap::hooks::shutdown_hook;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
+use fit_launcher_cache::CacheManager;
 use fit_launcher_download_manager::aria2::Aria2WsClient;
 use fit_launcher_download_manager::manager::DownloadManager;
 use fit_launcher_scraping::{
@@ -167,6 +168,21 @@ pub async fn start_app() -> anyhow::Result<()> {
                 let app_clone = app_handle.clone();
                 async move {
                     crate::bootstrap::network::perform_network_request(app_clone).await;
+                }
+            });
+
+            spawn({
+                let app_clone = app_handle.clone();
+                let config = fit_launcher_torrent::load_config();
+                async move {
+                    match CacheManager::new(config.general.cache_size).await {
+                        Ok(manager) => {
+                            app_clone.manage(manager);
+                        }
+                        Err(e) => {
+                            error!("failed to create cache manager: {e}");
+                        }
+                    }
                 }
             });
 
