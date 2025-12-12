@@ -23,6 +23,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unitPerUnit="s"
                 unit
             />
 
@@ -35,6 +36,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unitPerUnit="s"
                 unit
             />
 
@@ -47,6 +49,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unitPerUnit="s"
                 unit
             />
 
@@ -59,6 +62,7 @@ export default function TransferLimitsPart({
                 }
                 zeroIsInfinite
                 valueType="KB/S"
+                unitPerUnit="s"
                 unit
             />
 

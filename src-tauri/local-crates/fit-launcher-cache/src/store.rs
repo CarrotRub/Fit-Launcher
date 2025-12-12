@@ -37,11 +37,9 @@ pub enum Command {
 pub fn image_path(url: impl AsRef<str>) -> PathBuf {
     let seed = ahash::RandomState::with_seed(0x4528_21e6).hash_one(url.as_ref());
     let digest = format!("{seed:032x}");
-    cache_directory()
-        .join(digest.chars().skip(0).take(2).collect::<String>())
-        .join(digest.chars().skip(2).take(2).collect::<String>())
-        .join(digest.chars().skip(4).take(2).collect::<String>())
-        .join(digest)
+    let (a, b, c) = (&digest[0..2], &digest[2..4], &digest[4..6]);
+
+    cache_directory().join(a).join(b).join(c).join(digest)
 }
 
 /// To check cache open failure, see [`is_closed`][kanal::Sender::is_closed].

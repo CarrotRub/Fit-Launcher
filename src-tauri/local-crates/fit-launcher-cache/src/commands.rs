@@ -5,12 +5,14 @@ use std::{
 };
 
 use base64::Engine;
+use fit_launcher_torrent::{functions::TorrentSession, modify_config};
 use lru_cache_adaptor::FileInfo;
 use mime_guess::Mime;
 use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use tauri::Url;
+use tracing::error;
 
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
@@ -21,11 +23,25 @@ use crate::{
 /// This will literally never fail
 #[tauri::command]
 #[specta]
-pub fn set_capacity(
+pub async fn set_capacity(
     manager: tauri::State<'_, Arc<CacheManager>>,
+    session: tauri::State<'_, TorrentSession>,
     new_capacity: u64,
 ) -> Result<(), CacheError> {
     manager.capaticy.store(new_capacity, Ordering::Release);
+
+    modify_config(|cfg| {
+        cfg.cache.cache_size = new_capacity;
+    })
+    .expect("Error modifying config for cache capacity");
+
+    let mut current_config = session.config().await;
+    current_config.cache.cache_size = new_capacity;
+    session.configure(current_config).await.map_err(|e| {
+        error!("Error updating in-memory config: {:?}", e);
+        CacheError::IO(format!("Error updating in-memory config: {e:?}"))
+    })?;
+
     Ok(())
 }
 

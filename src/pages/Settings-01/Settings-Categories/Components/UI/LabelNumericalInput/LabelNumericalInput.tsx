@@ -1,13 +1,13 @@
 import { createSignal, Show } from "solid-js";
 import NumericalInput from "../../../../../../components/UI/NumericalInput/NumericalInput";
-import { SettingsButtonLabelProps, SettingsNumericalInputLabelProps } from "../../../../../../types/settings/ui";
+import { SettingsButtonLabelProps, SettingsNumericalInputLabelProps, UnitType } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";
 import Dropdown from "../../../../../../components/UI/Dropdown/Dropdown";
 
-type UnitType = "B" | "KB" | "MB";
+
 
 export default function LabelNumericalInput(props: SettingsNumericalInputLabelProps) {
-    const [unit, setUnit] = createSignal<UnitType>("KB");
+    const [unit, setUnit] = createSignal<UnitType>(props.defaultUnitType || "KB");
 
     const getDivider = () => {
         switch (unit()) {
@@ -38,7 +38,7 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
                         {...props}
                         value={displayValue()}
                         onInput={handleInput}
-                        valueType={unit() + "/s"}
+                        valueType={unit() + (props.unitPerUnit ? "/" + props.unitPerUnit : "")}
                     />
                     <div class="w-20">
                         <Dropdown<UnitType>

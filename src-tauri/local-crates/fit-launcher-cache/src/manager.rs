@@ -14,7 +14,7 @@ pub struct CacheManager {
 impl CacheManager {
     /// note: this will also initialize the LRUCache.
     pub async fn new() -> Result<Self, CacheError> {
-        let cache_capacity = load_config().general.cache_size;
+        let cache_capacity = load_config().cache.cache_size;
         let (tx, rx) = kanal::bounded(1024);
 
         spawn_cache_manager(rx);
