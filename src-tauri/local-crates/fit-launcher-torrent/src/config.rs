@@ -52,11 +52,17 @@ pub struct General {
     pub download_dir: PathBuf,
     #[serde(default = "General::default_concurrent_downloads")]
     pub concurrent_downloads: u32,
+    pub cache_size: usize,
 }
 
 impl General {
     fn default_concurrent_downloads() -> u32 {
         5
+    }
+
+    /// 512 MiB
+    fn default_cache_size() -> usize {
+        512 * 0x100000
     }
 }
 
@@ -69,6 +75,8 @@ impl Default for General {
                 .map(|d| d.to_owned())
                 .unwrap_or_else(|| userdirs.home_dir().join("Downloads")),
             concurrent_downloads: Self::default_concurrent_downloads(),
+            // 512 MiB by default
+            cache_size: Self::default_cache_size(),
         }
     }
 }

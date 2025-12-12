@@ -115,6 +115,7 @@ members = [
     "local-crates/fit-launcher-scraping",
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",
+    "local-crates/fit-launcher-cache",
 ]
 resolver = "3"
 
