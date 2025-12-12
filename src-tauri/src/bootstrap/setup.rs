@@ -176,7 +176,7 @@ pub async fn start_app() -> anyhow::Result<()> {
                 async move {
                     match CacheManager::new().await {
                         Ok(manager) => {
-                            app_clone.manage(manager);
+                            app_clone.manage(Arc::new(manager));
                         }
                         Err(e) => {
                             error!("failed to create cache manager: {e}");

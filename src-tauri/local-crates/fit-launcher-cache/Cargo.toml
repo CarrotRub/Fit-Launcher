@@ -5,14 +5,21 @@ edition = "2024"
 
 [dependencies]
 tauri = { workspace = true }
+tokio = { workspace = true }
 specta = { workspace = true }
 tracing = { workspace = true }
 directories = { workspace = true }
 ahash = { workspace = true }
 serde = { workspace = true }
+thiserror = { workspace = true }
+reqwest = { workspace = true }
 
 fit-launcher-config = { workspace = true }
 fit-launcher-torrent = { workspace = true }
 
 lru-cache-adaptor = "0.1.1"
 kanal = { version = "0.1.1", default-features = false, features = ["async"] }
+base64 = "0.22.1"
+
+# guess MIME with filename parsed from URL
+mime_guess = "2.0"

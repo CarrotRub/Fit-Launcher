@@ -34,7 +34,7 @@ pub enum Command {
     ClearCache,
 }
 
-pub fn image_url(url: impl AsRef<str>) -> PathBuf {
+pub fn image_path(url: impl AsRef<str>) -> PathBuf {
     let seed = ahash::RandomState::with_seed(0x4528_21e6).hash_one(url.as_ref());
     let digest = format!("{seed:032x}");
     cache_directory()

@@ -1841,14 +1841,19 @@ name = "fit-launcher-cache"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "base64 0.22.1",
  "directories",
  "fit-launcher-config",
  "fit-launcher-torrent",
  "kanal",
  "lru-cache-adaptor",
+ "mime_guess",
+ "reqwest",
  "serde",
  "specta",
  "tauri",
+ "thiserror 2.0.17",
+ "tokio",
  "tracing",
 ]
 
