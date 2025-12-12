@@ -1,35 +1,51 @@
 use std::{
     fs::Metadata,
     path::{Path, PathBuf},
+    thread::JoinHandle,
 };
 
 pub use kanal;
 
-use kanal::Sender;
+use kanal::{Receiver, Sender};
 use lru_cache_adaptor::{FileInfo, LRUResult, LruCache, disklru::Store};
+use tracing::error;
 
 pub type IOResult<T> = Result<T, std::io::Error>;
 pub type ReclaimSpace = LRUResult<Vec<FileInfo<String>>>;
 pub type InsertItem = LRUResult<Option<PathBuf>>;
 
+/// To get command output, optionally call
+/// [`kanal::bounded`]\(0\) for an oneshot channel
 pub enum Command {
     ReclaimSpace(isize, Option<Sender<ReclaimSpace>>),
     InsertItem(String, PathBuf, Option<Sender<InsertItem>>),
 }
 
-pub fn spawn_cache_manager() -> kanal::AsyncSender<Command> {
-    let (tx, rx) = kanal::unbounded::<Command>();
+/// To check cache open failure, see [`is_closed`][kanal::Sender::is_closed].
+///
+/// You may also check the thread status by [`JoinHandle::is_finished`]
+///
+/// ```rust
+/// use kanal::bounded;
+/// use fit_launcher_cache::spawn_cache_manager;
+///
+/// let (tx, rx) = bounded(512);
+/// let _handler = spawn_cache_manager(rx);
+/// ```
+pub fn spawn_cache_manager(rx: Receiver<Command>) -> JoinHandle<()> {
     std::thread::spawn(move || {
         let max_files = 1024 * 1024;
-        let Ok(store) = Store::open_with_path(cache_db_path(), max_files) else {
+        let Ok(store) = Store::open_with_path(cache_db_path(), max_files).inspect_err(|e| {
+            error!("cache initialization failed: {e}");
+        }) else {
             return;
         };
+
         let mut lru: LruCache<String, PathBuf> = LruCache::new(store);
         while let Ok(command) = rx.recv() {
             command.exec(&mut lru);
         }
-    });
-    tx.to_async()
+    })
 }
 
 pub async fn initialize_used_cache_size() -> IOResult<u64> {

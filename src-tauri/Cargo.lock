@@ -1845,6 +1845,7 @@ dependencies = [
  "lru-cache-adaptor",
  "specta",
  "tauri",
+ "tracing",
 ]
 
 [[package]]

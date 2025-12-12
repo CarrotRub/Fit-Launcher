@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 tauri = { workspace = true }
 specta = { workspace = true }
+tracing = { workspace = true }
 directories = { workspace = true }
 
 fit-launcher-config = { workspace = true }
