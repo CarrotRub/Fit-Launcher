@@ -364,12 +364,6 @@ impl TorrentSession {
         let v2_path = config_dir.join("config.json");
         let legacy_path = config_dir.join("torrentConfig").join("config.json");
 
-        if !legacy_path.exists() && !v2_path.exists() {
-            match write_cfg(&v2_path, &FitLauncherConfigV2::default()) {
-                Ok(_) => info!("Default config written successfully to: {:?}", v2_path),
-                Err(e) => error!("Error writing default config: {}", e),
-            }
-        }
         warn!("Config Path: {:?}", v2_path);
 
         let config = load_or_migrate(&legacy_path, &v2_path);
