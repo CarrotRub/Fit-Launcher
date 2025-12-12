@@ -199,8 +199,11 @@ futures = "0.3.31"
 futures-util = "0.3"
 tokio-util = "0.7"
 
+# Hashing
+ahash = "0.8"
+
 # Parsing and scraping
-scraper = "0.24.0"
+scraper = "0.25.0"
 kuchiki = "0.8.1"
 regex = "1.12.2"
 select = "0.6"

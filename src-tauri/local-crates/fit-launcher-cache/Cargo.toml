@@ -8,6 +8,7 @@ tauri = { workspace = true }
 specta = { workspace = true }
 tracing = { workspace = true }
 directories = { workspace = true }
+ahash = { workspace = true }
 
 fit-launcher-config = { workspace = true }
 lru-cache-adaptor = "0.1.1"
