@@ -6,5 +6,8 @@ edition = "2024"
 [dependencies]
 tauri = { workspace = true }
 specta = { workspace = true }
+directories = { workspace = true }
 
 fit-launcher-config = { workspace = true }
+lru-cache-adaptor = "0.1.1"
+kanal = { version = "0.1.1", default-features = false, features = ["async"] }

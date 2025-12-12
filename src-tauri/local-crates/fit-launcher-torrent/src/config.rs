@@ -52,7 +52,8 @@ pub struct General {
     pub download_dir: PathBuf,
     #[serde(default = "General::default_concurrent_downloads")]
     pub concurrent_downloads: u32,
-    pub cache_size: usize,
+    #[serde(default = "General::default_cache_size")]
+    pub cache_size: u64,
 }
 
 impl General {
@@ -61,7 +62,7 @@ impl General {
     }
 
     /// 512 MiB
-    fn default_cache_size() -> usize {
+    fn default_cache_size() -> u64 {
         512 * 0x100000
     }
 }
