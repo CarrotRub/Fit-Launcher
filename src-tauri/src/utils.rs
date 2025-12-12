@@ -144,12 +144,6 @@ pub async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-struct CachedGameImages {
-    game_link: String,
-    images: Vec<String>,
-}
-
 #[tauri::command]
 #[specta]
 pub async fn get_games_images(
