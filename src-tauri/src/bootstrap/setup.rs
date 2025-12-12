@@ -173,9 +173,8 @@ pub async fn start_app() -> anyhow::Result<()> {
 
             spawn({
                 let app_clone = app_handle.clone();
-                let config = fit_launcher_torrent::load_config();
                 async move {
-                    match CacheManager::new(config.general.cache_size).await {
+                    match CacheManager::new().await {
                         Ok(manager) => {
                             app_clone.manage(manager);
                         }

@@ -52,6 +52,7 @@ pub struct General {
     pub download_dir: PathBuf,
     #[serde(default = "General::default_concurrent_downloads")]
     pub concurrent_downloads: u32,
+    /// max image cache size, in bytes
     #[serde(default = "General::default_cache_size")]
     pub cache_size: u64,
 }
