@@ -29,6 +29,9 @@ pub fn set_capacity(
     Ok(())
 }
 
+/// Download image, possibly add to LRUCache
+///
+/// return: data URI, for example `data:image/png;base64,...`
 #[tauri::command]
 #[specta]
 pub async fn cached_download_image(
