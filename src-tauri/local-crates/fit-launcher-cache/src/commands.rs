@@ -81,6 +81,12 @@ pub async fn cached_download_image(
                 let bytes_ = bytes.clone();
                 tauri::async_runtime::spawn(async move {
                     let total = manager.capaticy.load(Ordering::Acquire);
+
+                    // if file was too large, skip caching it
+                    if total < file_size {
+                        return;
+                    }
+
                     let used = manager
                         .used_space
                         .fetch_add(file_size as _, Ordering::AcqRel);
