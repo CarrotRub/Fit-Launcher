@@ -29,10 +29,27 @@ pub async fn start_app() -> anyhow::Result<()> {
         let specta_builder =
             tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
 
+        let path = "../src/bindings.ts";
         specta_builder
             .export(
-                Typescript::default().bigint(specta_typescript::BigIntExportBehavior::Number),
-                "../src/bindings.ts",
+                Typescript::default()
+                    .bigint(specta_typescript::BigIntExportBehavior::Number)
+                    .formatter(|path| {
+                        eprintln!(
+                            "format: {:?}",
+                            std::process::Command::new(if cfg!(windows) {
+                                "npx.cmd"
+                            } else {
+                                "npx"
+                            })
+                            .arg("eslint")
+                            .arg("--fix")
+                            .arg(path)
+                            .status()
+                        );
+                        Ok(())
+                    }),
+                path,
             )
             .expect("Failed to export TS bindings");
     }
