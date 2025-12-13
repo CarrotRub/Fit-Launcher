@@ -38,13 +38,7 @@ pub struct GameImageReadyPayload {
 
 /// Helper function.
 async fn check_url_status(url: &str) -> anyhow::Result<bool> {
-    let response = CUSTOM_DNS_CLIENT
-        .read()
-        .await
-        .head(url)
-        .send()
-        .await
-        .unwrap();
+    let response = CUSTOM_DNS_CLIENT.read().await.head(url).send().await?;
     Ok(response.status().is_success())
 }
 
