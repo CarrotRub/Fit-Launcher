@@ -21,7 +21,7 @@ impl CacheManager {
 
         Ok(CacheManager {
             capaticy: AtomicU64::new(cache_capacity),
-            used_space: AtomicU64::new(initialize_used_cache_size().await?),
+            used_space: AtomicU64::new(initialize_used_cache_size().await),
             command_tx: Arc::new(tx.to_async()),
         })
     }

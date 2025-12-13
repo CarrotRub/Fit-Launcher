@@ -77,21 +77,21 @@ pub fn spawn_cache_manager(rx: Receiver<Command>) -> JoinHandle<()> {
 
 /// Calculate used cache size by enumrating files
 /// this will spawn a new thread
-pub async fn initialize_used_cache_size() -> IOResult<u64> {
+pub async fn initialize_used_cache_size() -> u64 {
     let metadata = tauri::async_runtime::spawn_blocking(|| {
         let mut metadata = vec![];
         let cache_dir = cache_image_dir();
-        visit_dirs(cache_dir, &mut metadata)?;
-        IOResult::Ok(metadata)
+        _ = visit_dirs(cache_dir, &mut metadata);
+        metadata
     })
     .await
-    .expect("failed to spawn thread")?;
+    .expect("failed to spawn thread");
 
     // TODO: handle accident user delete immediately?
     // reclaim_space will handle deleted record though
 
     let used_cache_size: u64 = metadata.iter().map(|(meta, _path)| meta.len()).sum();
-    Ok(used_cache_size)
+    used_cache_size
 }
 
 fn visit_dirs(dir_path: impl AsRef<Path>, out: &mut Vec<(Metadata, PathBuf)>) -> IOResult<()> {

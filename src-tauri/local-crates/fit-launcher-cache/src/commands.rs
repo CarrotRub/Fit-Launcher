@@ -185,7 +185,7 @@ pub async fn clean_cache(manager: tauri::State<'_, Arc<CacheManager>>) -> Result
     manager.command_tx.send(Command::ClearCache).await?;
     manager
         .used_space
-        .store(initialize_used_cache_size().await?, Ordering::Release);
+        .store(initialize_used_cache_size().await, Ordering::Release);
     Ok(())
 }
 
