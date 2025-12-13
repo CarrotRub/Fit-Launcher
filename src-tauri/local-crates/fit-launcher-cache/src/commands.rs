@@ -18,9 +18,14 @@ use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
 };
 
-/// Set capacity without flushing cache
-///
-/// This will literally never fail
+#[tauri::command]
+#[specta]
+pub fn get_used_space(manager: tauri::State<'_, Arc<CacheManager>>) -> u64 {
+    manager.used_space.load(Ordering::Relaxed)
+}
+
+/// Set capacity, flush cache for shrink,
+/// and modify config (in-memory and on disk)
 #[tauri::command]
 #[specta]
 pub async fn set_capacity(
