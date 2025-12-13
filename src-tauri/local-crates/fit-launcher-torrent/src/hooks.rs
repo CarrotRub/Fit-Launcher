@@ -14,8 +14,8 @@ pub(crate) mod windows {
         SetInformationJobObject,
     };
     use windows::Win32::System::Threading::{
-        CREATE_NO_WINDOW, CREATE_SUSPENDED, CreateProcessW, PROCESS_CREATION_FLAGS,
-        PROCESS_INFORMATION, ResumeThread, STARTUPINFOW, TerminateProcess,
+        CREATE_NO_WINDOW, CREATE_SUSPENDED, CreateProcessW, PROCESS_INFORMATION, ResumeThread,
+        STARTUPINFOW, TerminateProcess,
     };
 
     use windows::core::{PCWSTR, PWSTR};
