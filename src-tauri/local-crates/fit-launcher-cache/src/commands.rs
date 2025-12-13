@@ -118,7 +118,7 @@ pub async fn cached_download_image(
                         .fetch_add(file_size as _, Ordering::AcqRel);
                     let free = total - used;
 
-                    let exceed = (file_size - free) as isize;
+                    let exceed = (file_size as i64 - free as i64) as isize;
                     claim_space(&manager, exceed).await;
 
                     let mimeext = mime_
