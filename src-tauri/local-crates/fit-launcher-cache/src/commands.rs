@@ -158,6 +158,7 @@ pub async fn cached_download_image(
                         .share_mode(0)
                         .create(true)
                         .write(true)
+                        .truncate(true)
                         .open(&img_path)
                         .await
                     else {
