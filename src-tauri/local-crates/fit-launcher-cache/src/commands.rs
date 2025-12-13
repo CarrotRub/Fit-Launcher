@@ -7,7 +7,6 @@ use std::{
 use base64::Engine;
 use fit_launcher_torrent::{functions::TorrentSession, modify_config};
 use lru_cache_adaptor::FileInfo;
-use mime_guess::Mime;
 use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
@@ -129,12 +128,7 @@ pub async fn cached_download_image(
                         claim_space(&manager, exceed).await;
                     }
 
-                    let mimeext = mime_
-                        .parse::<Mime>()
-                        .ok()
-                        .and_then(|m| m.suffix().map(|suffix| suffix.to_string()))
-                        .unwrap_or_else(|| "png".into());
-
+                    let mimeext = mime2ext::mime2ext(mime_).unwrap_or("png");
                     let img_path = image_path(&image_url).with_extension(mimeext);
 
                     let (tx, rx) = kanal::bounded(0);
