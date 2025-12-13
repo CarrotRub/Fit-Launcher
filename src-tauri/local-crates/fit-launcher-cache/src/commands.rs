@@ -198,9 +198,21 @@ async fn claim_space(manager: &CacheManager, exceed: isize) {
         .command_tx
         .send(Command::ReclaimSpace(exceed, tx))
         .await;
-    if let Ok(Ok(files)) = rx.as_async().recv().await {
-        for FileInfo { file_size, .. } in files {
-            manager.used_space.fetch_sub(file_size, Ordering::AcqRel);
+    match rx.as_async().recv().await {
+        Err(_) => (),
+        Ok(Err(e)) => {
+            info!("failed to claim space: {e}");
+        }
+        Ok(Ok(files)) => {
+            for FileInfo {
+                file_path,
+                file_size,
+                ..
+            } in files
+            {
+                info!("removed cache: {file_path:?}");
+                manager.used_space.fetch_sub(file_size, Ordering::AcqRel);
+            }
         }
     }
 }
