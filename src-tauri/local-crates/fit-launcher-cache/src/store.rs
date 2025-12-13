@@ -105,6 +105,9 @@ fn visit_dirs(dir_path: impl AsRef<Path>, out: &mut Vec<(Metadata, PathBuf)>) ->
         if metadata.is_file() {
             out.push((metadata, path));
         } else {
+            if path.ends_with("cache.sled") {
+                continue;
+            }
             _ = visit_dirs(path, out);
         }
     }
