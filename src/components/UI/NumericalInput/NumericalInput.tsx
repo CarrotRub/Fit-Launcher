@@ -19,9 +19,19 @@ export default function NumericalInput(props: NumericalInputProps) {
 
     const handleInput = (e: InputEvent) => {
         const raw = (e.currentTarget as HTMLInputElement).value;
-        setLocalValue(raw); // Update local state immediately
+        // Only allow numbers, decimal point, and minus sign
+        const filtered = raw.replace(/[^0-9.\-]/g, '');
 
-        const value = parseFloat(raw);
+        // Prevent multiple decimal points or minus signs
+        const parts = filtered.split('.');
+        const sanitized = parts.length > 2
+            ? parts[0] + '.' + parts.slice(1).join('')
+            : filtered;
+
+        setLocalValue(sanitized);
+        (e.currentTarget as HTMLInputElement).value = sanitized;
+
+        const value = parseFloat(sanitized);
         if (!isNaN(value)) {
             props.onInput(value);
         }
