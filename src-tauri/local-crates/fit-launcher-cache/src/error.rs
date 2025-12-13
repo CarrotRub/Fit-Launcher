@@ -15,6 +15,8 @@ pub enum CacheError {
     CacheMissing,
     #[error("mime guess failed")]
     MimeGuess,
+    #[error("cache capacity cannot be zero")]
+    ZeroCapacity,
 }
 
 impl From<kanal::ReceiveError> for CacheError {

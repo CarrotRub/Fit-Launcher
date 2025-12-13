@@ -32,6 +32,10 @@ pub async fn set_capacity(
     session: tauri::State<'_, TorrentSession>,
     new_capacity: u64,
 ) -> Result<(), CacheError> {
+    if new_capacity == 0 {
+        return Err(CacheError::ZeroCapacity);
+    }
+
     let old_used = manager.used_space.load(Ordering::Acquire);
     manager.capaticy.store(new_capacity, Ordering::Release);
 

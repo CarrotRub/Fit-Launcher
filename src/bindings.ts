@@ -877,7 +877,7 @@ export type Bittorrent = {
  */
 "seed-time": number | null }
 export type BittorrentStatus = { announceList: string[][]; comment: string | null; creationDate?: string | null; mode: BitTorrentFileMode | null }
-export type CacheError = { LRU: string } | { Reqwest: string } | { Kanal: string } | { IO: string } | "CacheMissing" | "MimeGuess"
+export type CacheError = { LRU: string } | { Reqwest: string } | { Kanal: string } | { IO: string } | "CacheMissing" | "MimeGuess" | "ZeroCapacity"
 export type CacheSettings = { 
 /**
  * max image cache size, in bytes
