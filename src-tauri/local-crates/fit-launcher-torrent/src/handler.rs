@@ -51,6 +51,9 @@ impl LibrqbitSession {
                     }
                     if let Ok(mut file) = tokio::fs::OpenOptions::new()
                         .share_mode(0) // exclusive open
+                        .create(true)
+                        .write(true)
+                        .truncate(true)
                         .open(torrent_path)
                         .await
                     {
