@@ -12,7 +12,7 @@ use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use tauri::Url;
-use tracing::error;
+use tracing::{error, info, warn};
 
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
@@ -30,6 +30,8 @@ pub async fn set_capacity(
 ) -> Result<(), CacheError> {
     let old_capacity = manager.capaticy.load(Ordering::Acquire);
     manager.capaticy.store(new_capacity, Ordering::Release);
+
+    info!("cache pool size: {old_capacity} -> {new_capacity}");
 
     modify_config(|cfg| {
         cfg.cache.cache_size = new_capacity;
@@ -60,6 +62,7 @@ pub async fn cached_download_image(
     image_url: String,
 ) -> Result<String, CacheError> {
     if let Ok(data_uri) = data_uri_from_cache(&manager, &image_url).await {
+        info!("cache hit: {image_url}");
         return Ok(data_uri);
     }
     let client = CUSTOM_DNS_CLIENT.read().await.clone();
@@ -76,7 +79,9 @@ pub async fn cached_download_image(
                 drop(client);
 
                 if !resp.status().is_success() {
-                    return Err(resp.error_for_status().unwrap_err())?;
+                    let e = resp.error_for_status().unwrap_err();
+                    error!("http erorr {image_url}: {e}");
+                    return Err(e)?;
                 }
 
                 let mime = resp
@@ -141,8 +146,14 @@ pub async fn cached_download_image(
 
                 return Ok(encode_data_uri(mime, &*bytes));
             }
-            Err(e) if try_ == try_times - 1 => return Err(e)?,
-            Err(_) => continue,
+            Err(e) if try_ == try_times - 1 => {
+                error!("failed to download {image_url}: {e}");
+                return Err(e)?;
+            }
+            Err(e) => {
+                warn!("retry {image_url}: {e}");
+                continue;
+            }
         }
     }
 
@@ -172,6 +183,8 @@ pub async fn clean_cache(manager: tauri::State<'_, Arc<CacheManager>>) -> Result
 }
 
 async fn claim_space(manager: &CacheManager, exceed: isize) {
+    info!("reclaim space: {exceed}");
+
     let (tx, rx) = kanal::bounded(0);
     _ = manager
         .command_tx
