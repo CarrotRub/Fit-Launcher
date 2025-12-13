@@ -43,8 +43,13 @@ export default function NumericalInput(props: NumericalInputProps) {
 
     const handleBlur = () => {
         setIsFocused(false);
-        // Sync back from props on blur to ensure consistency
-        setLocalValue(String(props.value ?? 0));
+        // Enforce min value on blur
+        const currentValue = parseFloat(localValue());
+        if (!isNaN(currentValue) && props.min !== undefined && currentValue < props.min) {
+            setLocalValue(String(props.min));
+            props.onInput(props.min);
+        }
+        props.onBlur?.();
     };
 
     const increment = () => {
@@ -62,11 +67,6 @@ export default function NumericalInput(props: NumericalInputProps) {
         const finalValue = Math.max(0, minBound);
         props.onInput(finalValue);
         setLocalValue(String(finalValue)); // Update display immediately
-    };
-
-    const handleBlur = () => {
-        setIsFocused(false);
-        props.onBlur?.();
     };
 
     return (

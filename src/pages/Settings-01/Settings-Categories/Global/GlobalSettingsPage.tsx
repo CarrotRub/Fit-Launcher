@@ -13,9 +13,11 @@ import { DownloadSettingsApi, GlobalSettingsApi } from "../../../../api/settings
 import LoadingPage from "../../../LoadingPage-01/LoadingPage";
 import Button from "../../../../components/UI/Button/Button";
 import AppInfoSettings from "./AppInfoSettings/AppInfo";
+import { CacheSettings, commands } from "../../../../bindings";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
+  const [cacheSettings, setCacheSettings] = createSignal<CacheSettings | null>(null);
   const [saveLabel, setSaveLabel] = createSignal("Save");
   const [dirtyPaths, setDirtyPaths] = createSignal<Set<string>>(new Set());
   const [pulsePaths, setPulsePaths] = createSignal<Set<string>>(new Set());
@@ -150,6 +152,17 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
     });
   }
 
+  function handleCacheChange(path: string, newValue: any) {
+    setDirtyPaths(prev => new Set([...prev, path]));
+    setCacheSettings(prev => {
+      if (!prev) return prev;
+      const newConfig = structuredClone(prev);
+      // Cache settings are flat, so we just update the key directly
+      (newConfig as any)[path] = newValue;
+      return newConfig;
+    });
+  }
+
   // Get all paths for current section to pulse on reset
   function getPathsForSection(section: string): string[] {
     switch (section) {
@@ -159,6 +172,8 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
         return ["display.show_nsfw", "display.show_overview"];
       case "install":
         return ["installation_settings.auto_install", "installation_settings.close_launcher_on_game_launch"];
+      case "cache":
+        return ["cache_size"];
       default:
         return [];
     }
@@ -175,6 +190,12 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
           break;
         case "install":
           await invoke("reset_installation_settings");
+          break;
+        case "cache":
+          // Reset cache size to 300MB and save immediately
+          const defaultCache = { cache_size: 300 * 1024 * 1024 };
+          setCacheSettings(defaultCache);
+          await handleSaveCache(defaultCache);
           break;
       }
 
@@ -225,7 +246,14 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
               savePulse={savePulse}
             />
           ),
-          cache: <CachePart settings={cacheSettings} handleTextCheckChange={handleCacheChange} />,
+          cache: (
+            <CachePart
+              settings={cacheSettings}
+              handleTextCheckChange={handleCacheChange}
+              isDirty={isDirty}
+              savePulse={savePulse}
+            />
+          ),
           appinfo: <AppInfoSettings />
         }[selectedPart()] || <p>Invalid or unsupported settings part.</p>}
 

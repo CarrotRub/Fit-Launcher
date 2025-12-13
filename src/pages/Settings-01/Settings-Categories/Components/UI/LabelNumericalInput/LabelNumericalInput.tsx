@@ -1,6 +1,6 @@
 import { createSignal, createMemo, Show } from "solid-js";
 import NumericalInput from "../../../../../../components/UI/NumericalInput/NumericalInput";
-import { SettingsNumericalInputLabelProps } from "../../../../../../types/settings/ui";
+import { SettingsNumericalInputLabelProps, UnitType } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";
 import Dropdown from "../../../../../../components/UI/Dropdown/Dropdown";
 
