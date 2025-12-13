@@ -32,10 +32,10 @@ pub async fn set_capacity(
     session: tauri::State<'_, TorrentSession>,
     new_capacity: u64,
 ) -> Result<(), CacheError> {
-    let old_capacity = manager.capaticy.load(Ordering::Acquire);
+    let old_used = manager.used_space.load(Ordering::Acquire);
     manager.capaticy.store(new_capacity, Ordering::Release);
 
-    info!("cache pool size: {old_capacity} -> {new_capacity}");
+    info!("cache pool size: set to {new_capacity} B");
 
     modify_config(|cfg| {
         cfg.cache.cache_size = new_capacity;
@@ -49,8 +49,8 @@ pub async fn set_capacity(
         CacheError::IO(format!("Error updating in-memory config: {e:?}"))
     })?;
 
-    if old_capacity > new_capacity {
-        claim_space(&manager, (old_capacity - new_capacity) as isize).await;
+    if old_used > new_capacity {
+        claim_space(&manager, (old_used - new_capacity) as isize).await;
     }
 
     Ok(())
