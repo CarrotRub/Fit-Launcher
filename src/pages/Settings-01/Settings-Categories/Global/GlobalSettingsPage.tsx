@@ -7,13 +7,7 @@ import CacheSettings from "./CacheSettings/CacheSettings";
 import { showError } from "../../../../helpers/error";
 import InstallSettingsPart from "./InstallSettings/InstallSettings";
 import DNSPart from "./DNSSettings/DNSSettings";
-import DisplayPart from "./DisplayPart/DisplayPart";
-
-import type {
-  FitLauncherDnsConfig,
-  GamehubSettings,
-  InstallationSettings
-} from "../../../../bindings";
+import DisplayPart from "./DisplayPart/DisplayPart"
 import { GlobalSettings, GlobalSettingsPart } from "../../../../types/settings/types";
 import { GlobalSettingsApi } from "../../../../api/settings/api";
 import LoadingPage from "../../../LoadingPage-01/LoadingPage";
@@ -114,28 +108,22 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
       switch (selectedPart()) {
         case "display":
           await invoke("reset_gamehub_settings");
-          await message("Display settings reset to default.", {
-            title: "FitLauncher",
-            kind: "info",
-          });
           break;
         case "dns":
           await invoke("reset_dns_settings");
-          await message("DNS settings reset to default.", {
-            title: "FitLauncher",
-            kind: "info",
-          });
           break;
         case "install":
           await invoke("reset_installation_settings");
-          await message("Installation settings reset to default.", {
-            title: "FitLauncher",
-            kind: "info",
-          });
           break;
       }
 
-      window.location.reload();
+      // Re-fetch settings to update UI
+      await getCurrentSettings();
+
+      await message("Settings reset to default.", {
+        title: "FitLauncher",
+        kind: "info",
+      });
     } catch (error: unknown) {
       await showError(error, "Error resetting settings");
     }

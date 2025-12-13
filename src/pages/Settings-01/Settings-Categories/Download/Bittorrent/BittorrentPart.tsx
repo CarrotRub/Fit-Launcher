@@ -1,60 +1,49 @@
-import { createSignal, JSX } from "solid-js";
+import { JSX } from "solid-js";
 import { SettingsSectionProps } from "../../../../../types/settings/types";
 import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
 import PageGroup from "../../Components/PageGroup";
-import LabelTextInputSettings from "../../Components/UI/LabelTextInput/LabelTextInput";
-import { Bittorrent, General } from "../../../../../bindings";
-import LabelPathInputSettings from "../../Components/UI/LabelPathInput/LabelPathInput";
+import { Bittorrent } from "../../../../../bindings";
 import LabelNumericalInput from "../../Components/UI/LabelNumericalInput/LabelNumericalInput";
 
-export default function BittorrentPart({
-    settings,
-    handleSwitchCheckChange,
-    handleTextCheckChange,
-}: SettingsSectionProps<Bittorrent>): JSX.Element {
-
-
+export default function BittorrentPart(props: SettingsSectionProps<Bittorrent>): JSX.Element {
     return (
         <PageGroup title="Bittorrent Configuration">
             <LabelCheckboxSettings
                 text="Enable DHT"
                 typeText="Distributed Hash Table - enables decentralized peer discovery without a tracker"
-                action={() => handleSwitchCheckChange?.("bittorrent.enable_dht")}
-                checked={settings()["enable-dht"]}
+                action={() => props.handleSwitchCheckChange?.("bittorrent.enable-dht")}
+                checked={props.settings()["enable-dht"]}
             />
             <LabelNumericalInput
                 text="Listening Port"
                 typeText="Port number used by the Bittorrent client to accept incoming connections"
-                value={settings()["listen-port"]}
-                onInput={(value) => handleTextCheckChange?.("bittorrent.listen_port", value)}
+                value={props.settings()["listen-port"]}
+                onInput={(value) => props.handleTextCheckChange?.("bittorrent.listen-port", value)}
             />
             <LabelNumericalInput
                 text="Max Peers"
                 typeText="Maximum number of peers to connect to per torrent"
-                value={settings()["max-peers"]}
-                onInput={(value) => handleTextCheckChange?.("bittorrent.max_peers", value)}
+                value={props.settings()["max-peers"]}
+                onInput={(value) => props.handleTextCheckChange?.("bittorrent.max-peers", value)}
             />
             <LabelNumericalInput
                 text="Seed Ratio"
-                typeText="Ratio of uploaded data to downloaded data before stopping seeding"
-                value={settings()["seed-ratio"] ?? 0}
+                typeText="Ratio of uploaded data to downloaded data before stopping seeding (0 = unlimited)"
+                value={props.settings()["seed-ratio"] ?? 0}
                 onInput={(value) =>
-                    handleTextCheckChange?.("bittorrent.seed_ratio", value === 0 ? null : value)
+                    props.handleTextCheckChange?.("bittorrent.seed-ratio", value === 0 ? null : value)
                 }
-                zeroIsInfinite
+                step={0.1}
             />
             <LabelNumericalInput
                 text="Seed Time"
-                typeText="Time in minutes to keep seeding after download completes"
-                value={settings()["seed-time"] ?? 0}
+                typeText="Time in minutes to keep seeding after download completes (0 = unlimited)"
+                value={props.settings()["seed-time"] ?? 0}
                 onInput={(value) =>
-                    handleTextCheckChange?.("bittorrent.seed_time", value === 0 ? null : value)
+                    props.handleTextCheckChange?.("bittorrent.seed-time", value === 0 ? null : value)
                 }
-                zeroIsInfinite
                 valueType="Min"
             />
-
         </PageGroup>
-
     );
 }

@@ -67,13 +67,12 @@ export interface NumericalInputProps {
   valueType?: string;
   onInput: (value: number) => void | Promise<void>;
   class?: string;
-  zeroIsInfinite?: boolean;
   unit?: boolean;
 }
 
 export interface IpAddressInputProps {
   value: string;
-  onInput?: (value: number, ...args: any[]) => void | Promise<void>;
+  action?: (e: InputEvent) => void | Promise<void>;
   disabled?: boolean;
 }
 

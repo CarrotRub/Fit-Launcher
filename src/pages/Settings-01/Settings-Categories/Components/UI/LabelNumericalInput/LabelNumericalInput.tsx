@@ -1,6 +1,6 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, createMemo, Show } from "solid-js";
 import NumericalInput from "../../../../../../components/UI/NumericalInput/NumericalInput";
-import { SettingsButtonLabelProps, SettingsNumericalInputLabelProps } from "../../../../../../types/settings/ui";
+import { SettingsNumericalInputLabelProps } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";
 import Dropdown from "../../../../../../components/UI/Dropdown/Dropdown";
 
@@ -9,36 +9,61 @@ type UnitType = "B" | "KB" | "MB";
 export default function LabelNumericalInput(props: SettingsNumericalInputLabelProps) {
     const [unit, setUnit] = createSignal<UnitType>("KB");
 
-    const getDivider = () => {
+    const unitMultiplier = createMemo(() => {
         switch (unit()) {
+            case "B": return 1;
             case "KB": return 1024;
             case "MB": return 1024 * 1024;
             default: return 1;
         }
-    };
+    });
 
-    const displayValue = () => {
-        const raw = (props.value ?? 0) / getDivider();
-        return unit() === "MB" ? Math.round(raw * 100) / 100 : Math.round(raw);
-    };
+    // ensures reactivity
+    const displayValue = createMemo(() => {
+        const rawValue = props.value ?? 0;
+        if (!props.unit) {
+            return rawValue;
+        }
+        const result = rawValue / unitMultiplier();
+        return unit() === "MB" ? Math.round(result * 100) / 100 : Math.round(result);
+    });
 
-    const handleInput = (v: number) => {
-        props.onInput?.(v === 0 ? 0 : Math.round(v * getDivider()));
+    const handleInput = (displayVal: number) => {
+        if (!props.unit) {
+            props.onInput(displayVal);
+            return;
+        }
+        const bytes = Math.round(displayVal * unitMultiplier());
+        props.onInput(bytes);
     };
 
     return (
         <li class="flex items-center justify-between py-3 px-4 bg-popup-background hover:bg-secondary-20 rounded-lg border border-secondary-20 transition-colors w-full gap-2">
             <TitleLabel text={props.text} typeText={props.typeText} />
 
-            <Show when={props.unit} fallback={
-                <NumericalInput {...props} />
-            }>
-                <div class="flex items-center gap-2">
+            <Show
+                when={props.unit}
+                fallback={
                     <NumericalInput
-                        {...props}
                         value={displayValue()}
                         onInput={handleInput}
+                        min={props.min}
+                        max={props.max}
+                        step={props.step}
+                        valueType={props.valueType}
+                        class={props.class}
+                    />
+                }
+            >
+                <div class="flex items-center gap-2">
+                    <NumericalInput
+                        value={displayValue()}
+                        onInput={handleInput}
+                        min={props.min}
+                        max={props.max}
+                        step={props.step ?? 1}
                         valueType={unit() + "/s"}
+                        class={props.class}
                     />
                     <div class="w-20">
                         <Dropdown<UnitType>
@@ -54,3 +79,4 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
         </li>
     );
 }
+

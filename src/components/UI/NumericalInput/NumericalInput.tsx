@@ -1,17 +1,24 @@
-import { createSignal, JSX } from "solid-js";
+import { createSignal, createEffect, on } from "solid-js";
 import { NumericalInputProps } from "../../../types/components/types";
-
 
 export default function NumericalInput(props: NumericalInputProps) {
     const [isFocused, setIsFocused] = createSignal(false);
+    const [localValue, setLocalValue] = createSignal<string>("");
 
-    const handleChange = (e: InputEvent) => {
+    // Sync from props only when NOT focused
+    createEffect(on(
+        () => props.value,
+        (value) => {
+            if (!isFocused()) {
+                setLocalValue(String(value ?? 0));
+            }
+        },
+        { defer: false }
+    ));
+
+    const handleInput = (e: InputEvent) => {
         const raw = (e.currentTarget as HTMLInputElement).value;
-
-        if (props.zeroIsInfinite && raw === "∞") {
-            props.onInput(0);
-            return;
-        }
+        setLocalValue(raw); // Update local state immediately
 
         const value = parseFloat(raw);
         if (!isNaN(value)) {
@@ -19,11 +26,28 @@ export default function NumericalInput(props: NumericalInputProps) {
         }
     };
 
-    const displayValue = () => {
-        if (props.zeroIsInfinite && props.value === 0 && !isFocused()) {
-            return "∞";
-        }
-        return props.value;
+    const handleFocus = () => {
+        setIsFocused(true);
+    };
+
+    const handleBlur = () => {
+        setIsFocused(false);
+        // Sync back from props on blur to ensure consistency
+        setLocalValue(String(props.value ?? 0));
+    };
+
+    const increment = () => {
+        const step = props.step ?? 1;
+        const newValue = (props.value ?? 0) + step;
+        const maxBound = props.max !== undefined ? Math.min(newValue, props.max) : newValue;
+        props.onInput(maxBound);
+    };
+
+    const decrement = () => {
+        const step = props.step ?? 1;
+        const newValue = (props.value ?? 0) - step;
+        const minBound = props.min !== undefined ? Math.max(newValue, props.min) : newValue;
+        props.onInput(Math.max(0, minBound));
     };
 
     return (
@@ -36,10 +60,11 @@ export default function NumericalInput(props: NumericalInputProps) {
             `}>
                 <input
                     type="text"
-                    value={displayValue()}
-                    onInput={handleChange}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
+                    inputmode="numeric"
+                    value={localValue()}
+                    onInput={handleInput}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
                     class={`
                       flex-1 py-2.5 pr-2 pl-4 bg-transparent
                       text-text placeholder:text-muted/60
@@ -64,7 +89,7 @@ export default function NumericalInput(props: NumericalInputProps) {
                     opacity-100
                 `}>
                     <button
-                        onClick={() => props.onInput(props.value + (props.step || 1))}
+                        onClick={increment}
                         onMouseDown={(e) => e.preventDefault()}
                         class={`
                           flex-1 px-2 flex items-center justify-center
@@ -78,7 +103,7 @@ export default function NumericalInput(props: NumericalInputProps) {
                     </button>
                     <div class="border-t border-secondary-20/50"></div>
                     <button
-                        onClick={() => props.onInput(props.value - (props.step || 1))}
+                        onClick={decrement}
                         onMouseDown={(e) => e.preventDefault()}
                         class={`
                           flex-1 px-2 flex items-center justify-center

@@ -5,10 +5,9 @@ import {
   type JSX
 } from "solid-js";
 
-import { invoke } from "@tauri-apps/api/core";
 import { message } from "@tauri-apps/plugin-dialog";
 import { showError } from "../../../../helpers/error";
-import { SettingsSectionProps, DownloadSettings, DownloadSettingsPart } from "../../../../types/settings/types";
+import { DownloadSettings, DownloadSettingsPart } from "../../../../types/settings/types";
 import GeneralSettingsPart from "./General/GeneralPart";
 import Button from "../../../../components/UI/Button/Button";
 import LoadingPage from "../../../LoadingPage-01/LoadingPage";
@@ -87,32 +86,32 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
         {{
           general: (
             <GeneralSettingsPart
-              settings={() => globalTorrentConfig()?.general!}
+              settings={() => globalTorrentConfig()!.general}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           limits: (
             <TransferLimitsPart
-              settings={() => globalTorrentConfig()?.limits!}
+              settings={() => globalTorrentConfig()!.limits}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           network: (
             <NetworkPart
-              settings={() => globalTorrentConfig()?.network!}
+              settings={() => globalTorrentConfig()!.network}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           bittorrent: (
             <BittorrentPart
-              settings={() => globalTorrentConfig()?.bittorrent!}
+              settings={() => globalTorrentConfig()!.bittorrent}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
           ),
           rpc: (
             <AriaPart
-              settings={() => globalTorrentConfig()?.rpc!}
+              settings={() => globalTorrentConfig()!.rpc}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
             />
