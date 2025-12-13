@@ -199,7 +199,11 @@ pub fn clear_game_cache(conn: &Connection) -> Result<(), ScrapingError> {
          WHERE is_scraped = 1;
          
          -- Clear category metadata
-         DELETE FROM metadata WHERE key LIKE 'category_%_updated';",
+         DELETE FROM metadata WHERE key LIKE 'category_%_updated';
+
+         -- Clear last discovery update time
+         DELETE FROM metadata WHERE key LIKE 'discovery_last_refresh';
+         ",
     )?;
     Ok(())
 }
