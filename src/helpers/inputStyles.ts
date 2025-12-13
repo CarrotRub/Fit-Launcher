@@ -2,6 +2,8 @@
  * Utility function to get border styling classes for form inputs
  * based on their current state (dirty, saving, focused, etc.)
  * 
+ * Uses the theme's --color-success CSS variable for consistency
+ * 
  * @param options.savePulse - True when save animation is active
  * @param options.isDirty - True when field has unsaved changes
  * @param options.isFocused - True when field is focused
@@ -15,13 +17,13 @@ export function getInputBorderClasses(options: {
     const { savePulse, isDirty, isFocused } = options;
 
     if (savePulse) {
-        // Bright vivid green on save (pulse effect)
-        return "border-green-400 ring-2 ring-green-400/40";
+        // Bright vivid success color on save (pulse effect)
+        return "border-success ring-2 ring-success/40";
     }
 
     if (isDirty) {
-        // Subtle transparent green while editing
-        return "border-green-500/40 ring-1 ring-green-500/10";
+        // Subtle transparent success color while editing
+        return "border-success/40 ring-1 ring-success/10";
     }
 
     if (isFocused) {
