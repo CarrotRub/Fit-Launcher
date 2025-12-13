@@ -66,6 +66,7 @@ export interface NumericalInputProps {
   step?: number;
   valueType?: string;
   onInput: (value: number) => void | Promise<void>;
+  onBlur?: () => void | Promise<void>;
   class?: string;
   zeroIsInfinite?: boolean;
   unit?: boolean;

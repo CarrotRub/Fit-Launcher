@@ -26,6 +26,11 @@ export default function NumericalInput(props: NumericalInputProps) {
         return props.value;
     };
 
+    const handleBlur = () => {
+        setIsFocused(false);
+        props.onBlur?.();
+    };
+
     return (
         <div class={`relative ${props.class || ""}`}>
             <div class={`
@@ -39,7 +44,7 @@ export default function NumericalInput(props: NumericalInputProps) {
                     value={displayValue()}
                     onInput={handleChange}
                     onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
+                    onBlur={handleBlur}
                     class={`
                       flex-1 py-2.5 pr-2 pl-4 bg-transparent
                       text-text placeholder:text-muted/60

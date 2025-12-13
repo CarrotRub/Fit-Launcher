@@ -133,8 +133,9 @@ function CacheContent({ settings, handleTextCheckChange }: SettingsSectionProps<
 
       <LabelNumericalInput
         text="Cache Size"
-        typeText="Max image cache size. Real usage can be a bit larger due to alignment and folders."
+        typeText="Max image cache size. Real usage can be a bit larger due to alignment and folders. Min value is 300"
         value={settings()?.cache_size ?? 0}
+        min={300}
         onInput={(e) => handleTextCheckChange?.("cache_size", e)}
         defaultUnitType="MB"
         unit

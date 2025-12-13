@@ -8,6 +8,8 @@ import Dropdown from "../../../../../../components/UI/Dropdown/Dropdown";
 
 export default function LabelNumericalInput(props: SettingsNumericalInputLabelProps) {
     const [unit, setUnit] = createSignal<UnitType>(props.defaultUnitType || "KB");
+    const [draft, setDraft] = createSignal<number | null>(null);
+
 
     const getDivider = () => {
         switch (unit()) {
@@ -18,12 +20,30 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
     };
 
     const displayValue = () => {
-        const raw = (props.value ?? 0) / getDivider();
-        return unit() === "MB" ? Math.round(raw * 100) / 100 : Math.round(raw);
+        if (draft() !== null) return draft()!;
+
+        let raw = (props.value ?? 0) / getDivider();
+        raw = props.min ? Math.max(props.min, raw) : raw;
+
+        return unit() === "MB"
+            ? Math.round(raw * 100) / 100
+            : Math.round(raw);
     };
 
+
     const handleInput = (v: number) => {
-        props.onInput?.(v === 0 ? 0 : Math.round(v * getDivider()));
+        setDraft(v);
+    };
+
+
+    const commit = () => {
+        if (draft() === null) return;
+
+        const v = draft()!;
+        const final = v === 0 ? 0 : Math.round(v * getDivider());
+
+        props.onInput?.(final);
+        setDraft(null);
     };
 
     return (
@@ -38,8 +58,10 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
                         {...props}
                         value={displayValue()}
                         onInput={handleInput}
-                        valueType={unit() + (props.unitPerUnit ? "/" + props.unitPerUnit : "")}
+                        onBlur={commit}
+                        valueType={`${unit()}${props.unitPerUnit ? "/" + props.unitPerUnit : ""}`}
                     />
+
                     <div class="w-20">
                         <Dropdown<UnitType>
                             list={["B", "KB", "MB"]}
