@@ -14,7 +14,7 @@ export type PageGroupProps = {
   title: string;
   children: JSX.Element;
 };
-
+export type UnitType = "B" | "KB" | "MB";
 export type SettingsLabelProps = {
   text: string;
   typeText?: string;
@@ -57,4 +57,12 @@ export type SettingsTextInputLabelProps = SettingsLabelProps &
   };
 
 export type SettingsNumericalInputLabelProps = SettingsLabelProps &
-  NumericalInputProps;
+  NumericalInputProps & {
+    defaultUnitType?: UnitType;
+    /**
+     * Unit per Unit for e.g: MB/s
+     *
+     * so unitPerUnit = s
+     */
+    unitPerUnit?: string;
+  };

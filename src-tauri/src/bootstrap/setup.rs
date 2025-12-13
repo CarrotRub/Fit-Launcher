@@ -2,6 +2,7 @@ use crate::bootstrap::hooks::shutdown_hook;
 use crate::game_info::*;
 use crate::image_colors::*;
 use crate::utils::*;
+use fit_launcher_cache::CacheManager;
 use fit_launcher_download_manager::aria2::Aria2WsClient;
 use fit_launcher_download_manager::manager::DownloadManager;
 use fit_launcher_scraping::{
@@ -12,8 +13,7 @@ use fit_launcher_torrent::LibrqbitSession;
 use fit_launcher_torrent::functions::TorrentSession;
 use fit_launcher_ui_automation::api::InstallationManager;
 use lru::LruCache;
-use serde_json::Value;
-use std::{num::NonZeroUsize, path::PathBuf, sync::Arc, time::Instant};
+use std::{num::NonZeroUsize, sync::Arc, time::Instant};
 use tauri::{Emitter, Manager, async_runtime::spawn};
 use tauri_helper::specta_collect_commands;
 use tokio::sync::Mutex;
@@ -22,17 +22,34 @@ use tracing::{error, info};
 pub async fn start_app() -> anyhow::Result<()> {
     info!("start_app: starting");
 
-    let specta_builder =
-        tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
-
     #[cfg(debug_assertions)]
     {
         use specta_typescript::Typescript;
 
+        let specta_builder =
+            tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
+
+        let path = "../src/bindings.ts";
         specta_builder
             .export(
-                Typescript::default().bigint(specta_typescript::BigIntExportBehavior::Number),
-                "../src/bindings.ts",
+                Typescript::default()
+                    .bigint(specta_typescript::BigIntExportBehavior::Number)
+                    .formatter(|path| {
+                        eprintln!(
+                            "format: {:?}",
+                            std::process::Command::new(if cfg!(windows) {
+                                "npx.cmd"
+                            } else {
+                                "npx"
+                            })
+                            .arg("eslint")
+                            .arg("--fix")
+                            .arg(path)
+                            .status()
+                        );
+                        Ok(())
+                    }),
+                path,
             )
             .expect("Failed to export TS bindings");
     }
@@ -168,6 +185,20 @@ pub async fn start_app() -> anyhow::Result<()> {
                 let app_clone = app_handle.clone();
                 async move {
                     crate::bootstrap::network::perform_network_request(app_clone).await;
+                }
+            });
+
+            spawn({
+                let app_clone = app_handle.clone();
+                async move {
+                    match CacheManager::new().await {
+                        Ok(manager) => {
+                            app_clone.manage(Arc::new(manager));
+                        }
+                        Err(e) => {
+                            error!("failed to create cache manager: {e}");
+                        }
+                    }
                 }
             });
 

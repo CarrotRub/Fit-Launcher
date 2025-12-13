@@ -64,6 +64,11 @@ export default function NumericalInput(props: NumericalInputProps) {
         setLocalValue(String(finalValue)); // Update display immediately
     };
 
+    const handleBlur = () => {
+        setIsFocused(false);
+        props.onBlur?.();
+    };
+
     return (
         <div class={`relative ${props.class || ""}`}>
             <div class={`

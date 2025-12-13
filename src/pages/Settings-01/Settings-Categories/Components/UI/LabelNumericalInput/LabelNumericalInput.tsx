@@ -4,10 +4,12 @@ import { SettingsNumericalInputLabelProps } from "../../../../../../types/settin
 import TitleLabel from "../TitleLabel/TitleLabel";
 import Dropdown from "../../../../../../components/UI/Dropdown/Dropdown";
 
-type UnitType = "B" | "KB" | "MB";
+
 
 export default function LabelNumericalInput(props: SettingsNumericalInputLabelProps) {
-    const [unit, setUnit] = createSignal<UnitType>("KB");
+    const [unit, setUnit] = createSignal<UnitType>(props.defaultUnitType || "KB");
+    const [draft, setDraft] = createSignal<number | null>(null);
+
 
     const unitMultiplier = createMemo(() => {
         switch (unit()) {
@@ -69,6 +71,7 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
                         isDirty={props.isDirty}
                         savePulse={props.savePulse}
                     />
+
                     <div class="w-20">
                         <Dropdown<UnitType>
                             list={["B", "KB", "MB"]}

@@ -6,18 +6,21 @@ import PageGroup from "../../Components/PageGroup";
 import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
 import { check } from "@tauri-apps/plugin-updater";
 import { showError } from "../../../../../helpers/error";
+import LabelNumericalInput from "../../Components/UI/LabelNumericalInput/LabelNumericalInput";
+import { CacheSettings, General } from "../../../../../bindings";
+import { SettingsSectionProps } from "../../../../../types/settings/types";
 
-export default function CacheSettings(): JSX.Element {
+export default function CachePart({ settings, handleTextCheckChange }: SettingsSectionProps<CacheSettings | null>): JSX.Element {
 
 
   return (
     <PageGroup title="Cache & Logs Settings">
-      <CacheContent />
+      <CacheContent settings={settings} handleTextCheckChange={handleTextCheckChange} />
     </PageGroup>
   );
 }
 
-function CacheContent() {
+function CacheContent({ settings, handleTextCheckChange }: SettingsSectionProps<CacheSettings | null>) {
   const [updateClicked, setUpdateClicked] = createSignal<boolean>(false);
 
   async function handleClearCache() {
@@ -126,6 +129,16 @@ function CacheContent() {
         action={handleGoToLogs}
         buttonLabel="Go!"
         disabled={false}
+      />
+
+      <LabelNumericalInput
+        text="Cache Size"
+        typeText="Max image cache size. Real usage can be a bit larger due to alignment and folders. Min value is 300"
+        value={settings()?.cache_size ?? 0}
+        min={300}
+        onInput={(e) => handleTextCheckChange?.("cache_size", e)}
+        defaultUnitType="MB"
+        unit
       />
     </>
   )
