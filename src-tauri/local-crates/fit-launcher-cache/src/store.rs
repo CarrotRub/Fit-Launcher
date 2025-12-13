@@ -45,7 +45,7 @@ pub fn image_path(url: impl AsRef<str>) -> PathBuf {
     let digest = format!("{seed:016x}");
     let (a, b, c) = (&digest[0..2], &digest[2..4], &digest[4..6]);
 
-    cache_directory().join(a).join(b).join(c).join(digest)
+    cache_image_dir().join(a).join(b).join(c).join(digest)
 }
 
 /// To check cache open failure, see [`is_closed`][kanal::Sender::is_closed].
@@ -80,7 +80,7 @@ pub fn spawn_cache_manager(rx: Receiver<Command>) -> JoinHandle<()> {
 pub async fn initialize_used_cache_size() -> IOResult<u64> {
     let metadata = tauri::async_runtime::spawn_blocking(|| {
         let mut metadata = vec![];
-        let cache_dir = cache_directory();
+        let cache_dir = cache_image_dir();
         visit_dirs(cache_dir, &mut metadata)?;
         IOResult::Ok(metadata)
     })
@@ -105,9 +105,6 @@ fn visit_dirs(dir_path: impl AsRef<Path>, out: &mut Vec<(Metadata, PathBuf)>) ->
         if metadata.is_file() {
             out.push((metadata, path));
         } else {
-            if path.ends_with("cache.sled") {
-                continue;
-            }
             _ = visit_dirs(path, out);
         }
     }
@@ -119,12 +116,15 @@ fn cache_db_path() -> PathBuf {
     cache_directory().join("cache.sled")
 }
 
+fn cache_image_dir() -> PathBuf {
+    cache_directory().join("image_cache")
+}
+
 fn cache_directory() -> PathBuf {
     directories::BaseDirs::new()
         .expect("Could not determine base directories")
         .data_local_dir()
         .join("com.fitlauncher.carrotrub")
-        .join("image_cache")
 }
 
 impl Command {
