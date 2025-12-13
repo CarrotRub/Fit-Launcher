@@ -22,6 +22,8 @@ export default function DNSPart(props: SettingsSectionProps<FitLauncherDnsConfig
                     value={props.settings()?.primary || "1.1.1.1"}
                     action={(e) => props.handleTextCheckChange?.("dns.primary", e.target.value)}
                     disabled={props.settings().system_conf}
+                    isDirty={props.isDirty?.("dns.primary")}
+                    savePulse={props.savePulse?.("dns.primary")}
                 />
 
                 <LabelInputAddress
@@ -30,6 +32,8 @@ export default function DNSPart(props: SettingsSectionProps<FitLauncherDnsConfig
                     value={props.settings().secondary || "1.0.0.1"}
                     action={(e) => props.handleTextCheckChange?.("dns.secondary", e.target.value)}
                     disabled={props.settings().system_conf}
+                    isDirty={props.isDirty?.("dns.secondary")}
+                    savePulse={props.savePulse?.("dns.secondary")}
                 />
             </PageGroup>
         </Show>

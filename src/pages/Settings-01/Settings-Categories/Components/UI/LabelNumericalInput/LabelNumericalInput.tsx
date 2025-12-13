@@ -52,6 +52,8 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
                         step={props.step}
                         valueType={props.valueType}
                         class={props.class}
+                        isDirty={props.isDirty}
+                        savePulse={props.savePulse}
                     />
                 }
             >
@@ -64,6 +66,8 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
                         step={props.step ?? 1}
                         valueType={unit() + "/s"}
                         class={props.class}
+                        isDirty={props.isDirty}
+                        savePulse={props.savePulse}
                     />
                     <div class="w-20">
                         <Dropdown<UnitType>
@@ -79,4 +83,3 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
         </li>
     );
 }
-

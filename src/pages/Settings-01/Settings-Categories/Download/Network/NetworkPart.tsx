@@ -15,6 +15,8 @@ export default function NetworkPart(props: SettingsSectionProps<Connection>): JS
                     props.handleTextCheckChange?.("network.min-split-size", value)
                 }
                 unit={true}
+                isDirty={props.isDirty?.("network.min-split-size")}
+                savePulse={props.savePulse?.("network.min-split-size")}
             />
 
             <LabelNumericalInput
@@ -25,6 +27,8 @@ export default function NetworkPart(props: SettingsSectionProps<Connection>): JS
                     props.handleTextCheckChange?.("network.connect-timeout", { secs: value, nanos: 0 })
                 }
                 valueType="Sec"
+                isDirty={props.isDirty?.("network.connect-timeout")}
+                savePulse={props.savePulse?.("network.connect-timeout")}
             />
 
             <LabelNumericalInput
@@ -35,6 +39,8 @@ export default function NetworkPart(props: SettingsSectionProps<Connection>): JS
                     props.handleTextCheckChange?.("network.rw-timeout", { secs: value, nanos: 0 })
                 }
                 valueType="Sec"
+                isDirty={props.isDirty?.("network.rw-timeout")}
+                savePulse={props.savePulse?.("network.rw-timeout")}
             />
 
             <LabelNumericalInput
@@ -44,6 +50,8 @@ export default function NetworkPart(props: SettingsSectionProps<Connection>): JS
                 onInput={(value) =>
                     props.handleTextCheckChange?.("network.split", value)
                 }
+                isDirty={props.isDirty?.("network.split")}
+                savePulse={props.savePulse?.("network.split")}
             />
 
             <LabelNumericalInput
@@ -53,6 +61,8 @@ export default function NetworkPart(props: SettingsSectionProps<Connection>): JS
                 onInput={(value) =>
                     props.handleTextCheckChange?.("network.max-connection-per-server", value)
                 }
+                isDirty={props.isDirty?.("network.max-connection-per-server")}
+                savePulse={props.savePulse?.("network.max-connection-per-server")}
             />
         </PageGroup>
     );

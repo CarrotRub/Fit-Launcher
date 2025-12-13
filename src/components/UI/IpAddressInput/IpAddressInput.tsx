@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import { IpAddressInputProps } from "../../../types/components/types";
+import { getInputBorderClasses } from "../../../helpers/inputStyles";
 
 export default function IpAddressInput(props: IpAddressInputProps) {
     const [isFocused, setIsFocused] = createSignal(false);
@@ -9,8 +10,8 @@ export default function IpAddressInput(props: IpAddressInputProps) {
             <input
                 type="text"
                 class={`w-full bg-background text-text border rounded-md py-2 px-3 
-                    focus:outline-none transition-all duration-200
-                    ${isFocused() ? "border-accent ring-1 ring-accent/20" : "border-secondary-20"}
+                    focus:outline-none transition-all duration-300
+                    ${getInputBorderClasses({ savePulse: props.savePulse, isDirty: props.isDirty, isFocused: isFocused() })}
                     ${props.disabled ? "bg-background-70 text-muted cursor-not-allowed" : ""}`}
                 value={props.value}
                 onInput={(e) => {

@@ -18,6 +18,8 @@ export type SettingsHandlers = {
 
 export type SettingsSectionProps<T> = SettingsHandlers & {
   settings: Accessor<T>;
+  isDirty?: (path: string) => boolean;
+  savePulse?: (path: string) => boolean;
 };
 
 export type GlobalSettings = {

@@ -14,6 +14,8 @@ export default function AriaPart(props: SettingsSectionProps<FitLauncherConfigAr
                 typeText="Port on which the Aria2 RPC interface will listen"
                 value={props.settings().port}
                 onInput={(value) => props.handleTextCheckChange?.("rpc.port", value)}
+                isDirty={props.isDirty?.("rpc.port")}
+                savePulse={props.savePulse?.("rpc.port")}
             />
 
             <LabelTextInputSettings

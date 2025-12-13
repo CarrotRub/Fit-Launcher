@@ -38,6 +38,8 @@ export default function GeneralSettingsPart(props: SettingsSectionProps<General>
                 typeText="How many downloads you can run at the same time"
                 value={props.settings().concurrent_downloads || 5}
                 onInput={(value) => props.handleTextCheckChange?.("general.concurrent_downloads", value)}
+                isDirty={props.isDirty?.("general.concurrent_downloads")}
+                savePulse={props.savePulse?.("general.concurrent_downloads")}
             />
         </PageGroup>
     );

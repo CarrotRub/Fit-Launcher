@@ -68,12 +68,16 @@ export interface NumericalInputProps {
   onInput: (value: number) => void | Promise<void>;
   class?: string;
   unit?: boolean;
+  isDirty?: boolean;
+  savePulse?: boolean;
 }
 
 export interface IpAddressInputProps {
   value: string;
   action?: (e: InputEvent) => void | Promise<void>;
   disabled?: boolean;
+  isDirty?: boolean;
+  savePulse?: boolean;
 }
 
 export interface SliderProps {

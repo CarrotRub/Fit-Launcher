@@ -1,7 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
-import { confirm, message } from "@tauri-apps/plugin-dialog";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
 import CacheSettings from "./CacheSettings/CacheSettings";
 import { showError } from "../../../../helpers/error";
@@ -16,6 +16,9 @@ import AppInfoSettings from "./AppInfoSettings/AppInfo";
 
 function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.Element {
   const [globalSettings, setGlobalSettings] = createSignal<GlobalSettings | null>(null);
+  const [saveLabel, setSaveLabel] = createSignal("Save");
+  const [dirtyPaths, setDirtyPaths] = createSignal<Set<string>>(new Set());
+  const [pulsePaths, setPulsePaths] = createSignal<Set<string>>(new Set());
 
 
   const selectedPart = () =>
@@ -33,6 +36,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
       const display = await GlobalSettingsApi.getGamehubSettings();
 
       setGlobalSettings({ dns, installation_settings, display });
+      setDirtyPaths(new Set<string>()); // Clear dirty tracking on load
     } catch (error: unknown) {
       await showError(error, "Error getting settings");
     }
@@ -59,10 +63,14 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
         await GlobalSettingsApi.setGamehubSettings(settings.display);
       }
 
-      await message("Settings saved successfully!", {
-        title: "FitLauncher",
-        kind: "info",
-      });
+      setSaveLabel("Saved");
+      // Trigger pulse animation on dirty fields
+      setPulsePaths(new Set<string>(dirtyPaths()));
+      setTimeout(() => {
+        setSaveLabel("Save");
+        setPulsePaths(new Set<string>());
+        setDirtyPaths(new Set<string>()); // Clear dirty after animation
+      }, 1000);
 
       // DNS changes require a restart to take effect
       if (selectedPart() === "dns") {
@@ -80,6 +88,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
   }
 
   function handleSwitchCheckChange(path: string) {
+    setDirtyPaths(prev => new Set([...prev, path]));
     setGlobalSettings(prev => {
       if (!prev) return prev;
       const newConfig = structuredClone(prev);
@@ -92,6 +101,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
   }
 
   function handleTextCheckChange(path: string, newValue: any) {
+    setDirtyPaths(prev => new Set([...prev, path]));
     setGlobalSettings(prev => {
       if (!prev) return prev;
       const newConfig = structuredClone(prev);
@@ -101,6 +111,20 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
       obj[keys[keys.length - 1]] = newValue;
       return newConfig;
     });
+  }
+
+  // Get all paths for current section to pulse on reset
+  function getPathsForSection(section: string): string[] {
+    switch (section) {
+      case "dns":
+        return ["dns.system_conf", "dns.primary", "dns.secondary"];
+      case "display":
+        return ["display.show_nsfw", "display.show_overview"];
+      case "install":
+        return ["installation_settings.auto_install", "installation_settings.close_launcher_on_game_launch"];
+      default:
+        return [];
+    }
   }
 
   async function handleResetSettings() {
@@ -120,14 +144,20 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
       // Re-fetch settings to update UI
       await getCurrentSettings();
 
-      await message("Settings reset to default.", {
-        title: "FitLauncher",
-        kind: "info",
-      });
+      // Trigger pulse on all fields in this section
+      const paths = getPathsForSection(selectedPart());
+      setPulsePaths(new Set<string>(paths));
+      setTimeout(() => {
+        setPulsePaths(new Set<string>());
+      }, 1000);
     } catch (error: unknown) {
       await showError(error, "Error resetting settings");
     }
   }
+
+  // Helpers for field-level state
+  const isDirty = (path: string) => dirtyPaths().has(path);
+  const savePulse = (path: string) => pulsePaths().has(path);
 
   return (
     <Show when={globalSettings()} fallback={<LoadingPage />}>
@@ -137,6 +167,8 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
             <DisplayPart
               settings={() => globalSettings()!.display}
               handleSwitchCheckChange={handleSwitchCheckChange}
+              isDirty={isDirty}
+              savePulse={savePulse}
             />
           ),
           dns: (
@@ -144,12 +176,16 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
               settings={() => globalSettings()!.dns}
               handleSwitchCheckChange={handleSwitchCheckChange}
               handleTextCheckChange={handleTextCheckChange}
+              isDirty={isDirty}
+              savePulse={savePulse}
             />
           ),
           install: (
             <InstallSettingsPart
               settings={() => globalSettings()!.installation_settings}
               handleSwitchCheckChange={handleSwitchCheckChange}
+              isDirty={isDirty}
+              savePulse={savePulse}
             />
           ),
           cache: <CacheSettings />,
@@ -158,7 +194,7 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
 
         <div class="flex flex-row self-end gap-3 ">
           <Button onClick={handleResetSettings} label="Reset To Default" variant="bordered" />
-          <Button onClick={handleOnSave} label="Save" variant="solid" />
+          <Button onClick={handleOnSave} label={saveLabel()} variant="solid" />
         </div>
       </div>
     </Show>

@@ -1,5 +1,6 @@
 import { createSignal, createEffect, on } from "solid-js";
 import { NumericalInputProps } from "../../../types/components/types";
+import { getInputBorderClasses } from "../../../helpers/inputStyles";
 
 export default function NumericalInput(props: NumericalInputProps) {
     const [isFocused, setIsFocused] = createSignal(false);
@@ -41,21 +42,24 @@ export default function NumericalInput(props: NumericalInputProps) {
         const newValue = (props.value ?? 0) + step;
         const maxBound = props.max !== undefined ? Math.min(newValue, props.max) : newValue;
         props.onInput(maxBound);
+        setLocalValue(String(maxBound)); // Update display immediately
     };
 
     const decrement = () => {
         const step = props.step ?? 1;
         const newValue = (props.value ?? 0) - step;
         const minBound = props.min !== undefined ? Math.max(newValue, props.min) : newValue;
-        props.onInput(Math.max(0, minBound));
+        const finalValue = Math.max(0, minBound);
+        props.onInput(finalValue);
+        setLocalValue(String(finalValue)); // Update display immediately
     };
 
     return (
         <div class={`relative ${props.class || ""}`}>
             <div class={`
                 relative overflow-hidden rounded-lg border
-                transition-all duration-200 flex items-center
-                ${isFocused() ? "border-accent ring-2 ring-accent/20" : "border-secondary-20"}
+                transition-all duration-300 flex items-center
+                ${getInputBorderClasses({ savePulse: props.savePulse, isDirty: props.isDirty, isFocused: isFocused() })}
               bg-background-70
             `}>
                 <input
