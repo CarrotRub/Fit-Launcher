@@ -15,6 +15,7 @@ export default function TransferLimitsPart(props: SettingsSectionProps<TransferL
                     props.handleTextCheckChange?.("limits.max-download", bytes === 0 ? null : bytes)
                 }
                 unit
+                unitPerUnit="s"
                 isDirty={props.isDirty?.("limits.max-download")}
                 savePulse={props.savePulse?.("limits.max-download")}
             />
@@ -27,6 +28,7 @@ export default function TransferLimitsPart(props: SettingsSectionProps<TransferL
                     props.handleTextCheckChange?.("limits.max-upload", bytes === 0 ? null : bytes)
                 }
                 unit
+                unitPerUnit="s"
                 isDirty={props.isDirty?.("limits.max-upload")}
                 savePulse={props.savePulse?.("limits.max-upload")}
             />
@@ -39,6 +41,7 @@ export default function TransferLimitsPart(props: SettingsSectionProps<TransferL
                     props.handleTextCheckChange?.("limits.max-overall-download", bytes === 0 ? null : bytes)
                 }
                 unit
+                unitPerUnit="s"
                 isDirty={props.isDirty?.("limits.max-overall-download")}
                 savePulse={props.savePulse?.("limits.max-overall-download")}
             />
@@ -51,6 +54,7 @@ export default function TransferLimitsPart(props: SettingsSectionProps<TransferL
                     props.handleTextCheckChange?.("limits.max-overall-upload", bytes === 0 ? null : bytes)
                 }
                 unit
+                unitPerUnit="s"
                 isDirty={props.isDirty?.("limits.max-overall-upload")}
                 savePulse={props.savePulse?.("limits.max-overall-upload")}
             />

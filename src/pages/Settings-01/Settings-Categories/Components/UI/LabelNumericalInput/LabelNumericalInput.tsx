@@ -8,8 +8,6 @@ import Dropdown from "../../../../../../components/UI/Dropdown/Dropdown";
 
 export default function LabelNumericalInput(props: SettingsNumericalInputLabelProps) {
     const [unit, setUnit] = createSignal<UnitType>(props.defaultUnitType || "KB");
-    const [draft, setDraft] = createSignal<number | null>(null);
-
 
     const unitMultiplier = createMemo(() => {
         switch (unit()) {
@@ -30,6 +28,16 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
         return unit() === "MB" ? Math.round(result * 100) / 100 : Math.round(result);
     });
 
+    const displayMin = createMemo(() => {
+        if (props.min === undefined || !props.unit) return props.min;
+        return props.min / unitMultiplier();
+    });
+
+    const displayMax = createMemo(() => {
+        if (props.max === undefined || !props.unit) return props.max;
+        return props.max / unitMultiplier();
+    });
+
     const handleInput = (displayVal: number) => {
         if (!props.unit) {
             props.onInput(displayVal);
@@ -38,6 +46,14 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
         const bytes = Math.round(displayVal * unitMultiplier());
         props.onInput(bytes);
     };
+
+    // Build valueType label: use unitPerUnit if provided (e.g., "/s"), otherwise just unit
+    const valueTypeLabel = createMemo(() => {
+        if (props.unitPerUnit) {
+            return unit() + "/" + props.unitPerUnit;
+        }
+        return unit();
+    });
 
     return (
         <li class="flex items-center justify-between py-3 px-4 bg-popup-background hover:bg-secondary-20 rounded-lg border border-secondary-20 transition-colors w-full gap-2">
@@ -63,10 +79,10 @@ export default function LabelNumericalInput(props: SettingsNumericalInputLabelPr
                     <NumericalInput
                         value={displayValue()}
                         onInput={handleInput}
-                        min={props.min}
-                        max={props.max}
+                        min={displayMin()}
+                        max={displayMax()}
                         step={props.step ?? 1}
-                        valueType={unit() + "/s"}
+                        valueType={valueTypeLabel()}
                         class={props.class}
                         isDirty={props.isDirty}
                         savePulse={props.savePulse}

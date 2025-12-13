@@ -18,7 +18,7 @@ export default function DNSPart(props: SettingsSectionProps<FitLauncherDnsConfig
 
                 <LabelInputAddress
                     text="Primary DNS Address"
-                    typeText="IpV4"
+                    typeText="IPv4"
                     value={props.settings()?.primary || "1.1.1.1"}
                     action={(e) => props.handleTextCheckChange?.("dns.primary", e.target.value)}
                     disabled={props.settings().system_conf}
@@ -28,7 +28,7 @@ export default function DNSPart(props: SettingsSectionProps<FitLauncherDnsConfig
 
                 <LabelInputAddress
                     text="Secondary DNS Address"
-                    typeText="IpV4"
+                    typeText="IPv4"
                     value={props.settings().secondary || "1.0.0.1"}
                     action={(e) => props.handleTextCheckChange?.("dns.secondary", e.target.value)}
                     disabled={props.settings().system_conf}
