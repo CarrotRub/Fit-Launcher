@@ -22,12 +22,12 @@ use tracing::{error, info};
 pub async fn start_app() -> anyhow::Result<()> {
     info!("start_app: starting");
 
-    let specta_builder =
-        tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
-
     #[cfg(debug_assertions)]
     {
         use specta_typescript::Typescript;
+
+        let specta_builder =
+            tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
 
         specta_builder
             .export(
