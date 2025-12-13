@@ -1,12 +1,12 @@
 use fit_launcher_torrent::functions::TorrentSession;
 use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::Result as TauriResult;
 use tauri::async_runtime::block_on;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{App, Manager};
-use tauri::{AppHandle, Result as TauriResult};
 use tokio::task::block_in_place;
-use tracing::{error, info};
+use tracing::info;
 
 pub fn setup_tray(app: &App) -> TauriResult<()> {
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

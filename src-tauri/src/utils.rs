@@ -38,13 +38,7 @@ pub struct GameImageReadyPayload {
 
 /// Helper function.
 async fn check_url_status(url: &str) -> anyhow::Result<bool> {
-    let response = CUSTOM_DNS_CLIENT
-        .read()
-        .await
-        .head(url)
-        .send()
-        .await
-        .unwrap();
+    let response = CUSTOM_DNS_CLIENT.read().await.head(url).send().await?;
     Ok(response.status().is_success())
 }
 
@@ -142,12 +136,6 @@ type ImageCache = Arc<Mutex<LruCache<String, Vec<String>>>>;
 #[specta]
 pub async fn stop_get_games_images() {
     STOP_FLAG.store(true, Ordering::Relaxed);
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-struct CachedGameImages {
-    game_link: String,
-    images: Vec<String>,
 }
 
 #[tauri::command]

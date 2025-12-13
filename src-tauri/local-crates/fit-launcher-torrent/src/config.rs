@@ -58,6 +58,11 @@ impl General {
     fn default_concurrent_downloads() -> u32 {
         5
     }
+
+    /// 512 MiB
+    fn default_cache_size() -> u64 {
+        512 * 0x100000
+    }
 }
 
 impl Default for General {
@@ -69,6 +74,28 @@ impl Default for General {
                 .map(|d| d.to_owned())
                 .unwrap_or_else(|| userdirs.home_dir().join("Downloads")),
             concurrent_downloads: Self::default_concurrent_downloads(),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Type, Debug)]
+pub struct CacheSettings {
+    /// max image cache size, in bytes
+    #[serde(default = "General::default_cache_size")]
+    pub cache_size: u64,
+}
+
+impl CacheSettings {
+    fn default_cache_size() -> u64 {
+        512 * 0x100000
+    }
+}
+
+impl Default for CacheSettings {
+    fn default() -> Self {
+        Self {
+            // 512 MiB by default
+            cache_size: Self::default_cache_size(),
         }
     }
 }
@@ -153,6 +180,7 @@ impl Default for Bittorrent {
 #[derive(Default)]
 pub struct FitLauncherConfigV2 {
     pub general: General,
+    pub cache: CacheSettings,
     pub limits: TransferLimits,
     pub network: Connection,
     pub bittorrent: Bittorrent,
@@ -170,6 +198,7 @@ impl From<LegacyFitLauncherConfig> for FitLauncherConfigV2 {
                 download_dir: old.default_download_location,
                 ..Default::default()
             },
+            cache: CacheSettings::default(),
             limits: Default::default(),
             network: Connection {
                 connect_timeout: old.peer_opts.connect_timeout,
@@ -211,6 +240,17 @@ pub(crate) fn write_cfg<T: Serialize>(path: impl AsRef<Path>, cfg: &T) -> anyhow
     Ok(())
 }
 
+pub fn load_config() -> FitLauncherConfigV2 {
+    let config_dir = directories::BaseDirs::new()
+        .expect("Could not determine base directories")
+        .config_dir() // Points to AppData\Roaming (or equivalent on other platforms)
+        .join("com.fitlauncher.carrotrub");
+    let v2_path = config_dir.join("config.json");
+    let legacy_path = config_dir.join("torrentConfig").join("config.json");
+
+    load_or_migrate(&legacy_path, &v2_path)
+}
+
 /// Load the config (migrating from legacy if needed). Returns the in‑memory V2 object.
 /// If a legacy config is found, it is replaced on disk and the old `torrentConfig` folder
 /// is removed.
@@ -243,4 +283,22 @@ fn read_cfg<T: for<'de> Deserialize<'de>>(path: impl AsRef<Path>) -> anyhow::Res
     let rdr = BufReader::new(File::open(path)?);
     let cfg = serde_json::from_reader(rdr)?;
     Ok(cfg)
+}
+
+pub fn modify_config<F>(updater: F) -> anyhow::Result<()>
+where
+    F: FnOnce(&mut FitLauncherConfigV2),
+{
+    let config_path = directories::BaseDirs::new()
+        .expect("Could not determine base directories")
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("config.json");
+
+    let mut cfg = load_config();
+
+    updater(&mut cfg);
+
+    write_cfg(config_path, &cfg)?;
+    Ok(())
 }

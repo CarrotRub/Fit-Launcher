@@ -1,12 +1,6 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
-
 use fit_launcher_torrent::functions::TorrentSession;
 use tauri::{AppHandle, Manager};
-use tokio::signal;
-use tracing::{error, info};
+use tracing::info;
 
 pub fn shutdown_hook(app_handle: AppHandle) {
     let app_handle_clone = app_handle.clone();

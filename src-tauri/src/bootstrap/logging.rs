@@ -1,7 +1,6 @@
 use once_cell::sync::OnceCell;
-use std::error::Error;
 use std::fs;
-use tracing::{info, warn};
+use tracing::info;
 use tracing_subscriber::{EnvFilter, prelude::*};
 
 static LOG_GUARD: once_cell::sync::OnceCell<tracing_appender::non_blocking::WorkerGuard> =

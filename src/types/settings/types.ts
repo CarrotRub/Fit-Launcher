@@ -1,6 +1,7 @@
 import { Accessor, Setter } from "solid-js";
 import {
   Bittorrent,
+  CacheSettings,
   Connection,
   FitLauncherConfigAria2,
   FitLauncherConfigV2,
@@ -28,9 +29,10 @@ export type GlobalSettings = {
 
 export type DownloadSettings = Pick<
   FitLauncherConfigV2,
-  "general" | "limits" | "network" | "bittorrent" | "rpc"
+  "general" | "cache" | "limits" | "network" | "bittorrent" | "rpc"
 > & {
   general: General;
+  cache: CacheSettings;
   limits: TransferLimits;
   network: Connection;
   bittorrent: Bittorrent;

@@ -101,6 +101,7 @@ fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 fit-launcher-download-manager = { path = "./local-crates/fit-launcher-download-manager" }
 fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
+fit-launcher-cache = { workspace = true }
 
 # Workspace configuration
 [workspace]
@@ -115,6 +116,7 @@ members = [
     "local-crates/fit-launcher-scraping",
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",
+    "local-crates/fit-launcher-cache",
 ]
 resolver = "3"
 
@@ -190,6 +192,7 @@ fit-launcher-torrent = { path = "./local-crates/fit-launcher-torrent" }
 fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
+fit-launcher-cache = { path = "./local-crates/fit-launcher-cache" }
 
 hickory-resolver = { version = "0.25.2", features = ["https-ring"] }
 once_cell = "1.21.3"
@@ -198,8 +201,11 @@ futures = "0.3.31"
 futures-util = "0.3"
 tokio-util = "0.7"
 
+# Hashing
+ahash = "0.8"
+
 # Parsing and scraping
-scraper = "0.24.0"
+scraper = "0.25.0"
 kuchiki = "0.8.1"
 regex = "1.12.2"
 select = "0.6"

@@ -17,6 +17,7 @@ import TransferLimitsPart from "./TransferLimits/TransferLimits";
 import NetworkPart from "./Network/NetworkPart";
 import BittorrentPart from "./Bittorrent/BittorrentPart";
 import AriaPart from "./AriaPart/AriaPart";
+import CachePart from "../Global/CacheSettings/CacheSettings";
 
 
 
