@@ -134,10 +134,15 @@ pub async fn cached_download_image(
 
                     let (tx, rx) = kanal::bounded(0);
 
+                    info!("cached {image_url} to {img_path:?}");
                     _ = manager
                         .command_tx
                         .send(Command::InsertItem(image_url, img_path.clone(), Some(tx)))
                         .await;
+
+                    if let Some(parent) = img_path.parent() {
+                        _ = tokio::fs::create_dir_all(parent).await;
+                    }
                     _ = tokio::fs::write(&img_path, &*bytes_).await;
 
                     if let Ok(Ok(Some(path))) = rx.as_async().recv().await {

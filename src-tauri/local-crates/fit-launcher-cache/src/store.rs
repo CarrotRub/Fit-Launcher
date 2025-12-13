@@ -36,7 +36,7 @@ pub enum Command {
 
 pub fn image_path(url: impl AsRef<str>) -> PathBuf {
     let seed = ahash::RandomState::with_seed(0x4528_21e6).hash_one(url.as_ref());
-    let digest = format!("{seed:032x}");
+    let digest = format!("{seed:016x}");
     let (a, b, c) = (&digest[0..2], &digest[2..4], &digest[4..6]);
 
     cache_directory().join(a).join(b).join(c).join(digest)
