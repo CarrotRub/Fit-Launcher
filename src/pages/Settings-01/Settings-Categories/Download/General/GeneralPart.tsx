@@ -1,19 +1,22 @@
-import { createSignal, JSX } from "solid-js";
+import { createSignal, JSX, createEffect } from "solid-js";
 import { SettingsSectionProps } from "../../../../../types/settings/types";
-import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
 import PageGroup from "../../Components/PageGroup";
-import LabelTextInputSettings from "../../Components/UI/LabelTextInput/LabelTextInput";
 import { General } from "../../../../../bindings";
 import LabelPathInputSettings from "../../Components/UI/LabelPathInput/LabelPathInput";
 import LabelNumericalInput from "../../Components/UI/LabelNumericalInput/LabelNumericalInput";
-import LabelDropdownSettings from "../../Components/UI/LabelDropdown/LabelDropdown";
 
-export default function GeneralSettingsPart({
-    settings,
-    handleTextCheckChange,
-}: SettingsSectionProps<General>): JSX.Element {
-    const [path, setPath] = createSignal<string>(settings().download_dir || "");
+export default function GeneralSettingsPart(props: SettingsSectionProps<General>): JSX.Element {
+    const [path, setPath] = createSignal<string>("");
     const [valid, setValid] = createSignal<boolean>(false);
+
+    // Sync path from props on initial load
+    createEffect(() => {
+        const downloadDir = props.settings().download_dir;
+        if (downloadDir && !path()) {
+            setPath(downloadDir);
+            setValid(true);
+        }
+    });
 
     return (
         <PageGroup title="Global Configuration">
@@ -26,18 +29,18 @@ export default function GeneralSettingsPart({
                     setPath(newPath);
                     setValid(isValid);
                     if (isValid) {
-                        handleTextCheckChange?.("general.download_dir", newPath)
+                        props.handleTextCheckChange?.("general.download_dir", newPath);
                     }
                 }}
             />
             <LabelNumericalInput
                 text="Maximum number of concurrent downloads"
                 typeText="How many downloads you can run at the same time"
-                value={settings().concurrent_downloads || 5}
-                onInput={(value) => handleTextCheckChange?.("general.concurrent_downloads", value)}
+                value={props.settings().concurrent_downloads || 5}
+                onInput={(value) => props.handleTextCheckChange?.("general.concurrent_downloads", value)}
+                isDirty={props.isDirty?.("general.concurrent_downloads")}
+                savePulse={props.savePulse?.("general.concurrent_downloads")}
             />
-
         </PageGroup>
-
     );
 }

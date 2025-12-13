@@ -55,7 +55,7 @@
     --color-popup-background: rgba(15, 25, 15, 1);
     --color-resume-accent: rgba(90, 190, 120, 1);
     --color-warning-orange: rgba(220, 120, 70, 1);
-    --color-success: rgba(80, 200, 120, 1);
+    --color-success: rgba(80, 160, 220, 1);
     --color-error: rgba(220, 80, 80, 1);
   }
 
@@ -111,6 +111,8 @@
     --color-popup-background: rgba(20, 10, 5, 1);
     --color-resume-accent: rgba(200, 100, 50, 1);
     --color-warning-orange: rgba(163, 66, 22, 1);
+    --color-success: rgba(120, 200, 150, 1);
+    --color-error: rgba(220, 80, 80, 1);
   }
 
   :root[data-theme="blue-cyan"] {
@@ -127,6 +129,8 @@
     --color-popup-background: rgba(5, 15, 20, 1);
     --color-resume-accent: rgba(0, 204, 204, 1);
     --color-warning-orange: rgba(255, 127, 80, 1);
+    --color-success: rgba(120, 200, 150, 1);
+    --color-error: rgba(220, 80, 80, 1);
   }
 
   :root[data-theme="gnome-dark"] {
