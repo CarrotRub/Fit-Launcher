@@ -202,11 +202,6 @@ async aria2TaskSpawn(directLinks: DirectLink[], dir: string | null) : Promise<Re
     else return { error: e  as any, status: "error" };
 }
 },
-/**
- * Download image, possibly add to LRUCache
- * 
- * return: data URI, for example `data:image/png;base64,...`
- */
 async cachedDownloadImage(imageUrl: string) : Promise<Result<string, CacheError>> {
     try {
     return { data: await TAURI_INVOKE("cached_download_image", { imageUrl }), status: "ok" };

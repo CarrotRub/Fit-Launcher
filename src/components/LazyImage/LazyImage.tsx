@@ -1,7 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createSignal, createEffect, Show, onCleanup } from "solid-js";
 import { commands } from "../../bindings";
 
 const cachedDownloadImage = commands.cachedDownloadImage;
+
+const inFlight = new Map<string, Promise<any>>();
+
+function fetchCached(src: string): Promise<any> {
+    if (inFlight.has(src)) {
+        return inFlight.get(src)!;
+    }
+
+    const promise = cachedDownloadImage(src);
+    inFlight.set(src, promise);
+    promise.finally(() => inFlight.delete(src));
+
+    return promise;
+}
 
 interface LazyImageProps {
     src: string;
@@ -20,51 +35,48 @@ export default function LazyImage(props: LazyImageProps) {
     const [currentUrl, setCurrentUrl] = createSignal<string | undefined>(undefined);
 
     const loadTimeout = props.loadTimeout ?? 15000;
-
     let loadTimeoutId: number | undefined;
+    let fetchCancelled = false;
 
-    const startLoadTimeout = () => {
-        clearTimeout(loadTimeoutId);
-        loadTimeoutId = setTimeout(() => {
-            if (!loaded()) {
-                console.warn(`LazyImage: Timeout loading ${props.src}`);
-                setLoaded(true); // Stop showing placeholder even on timeout
-            }
-        }, loadTimeout);
-    };
-
-    // When src changes, reset state and load new image
     createEffect(async () => {
         if (props.src !== currentUrl()) {
             clearTimeout(loadTimeoutId);
+            fetchCancelled = false;
             setLoaded(false);
             setCurrentSrc(undefined);
-
             setCurrentUrl(props.src);
 
-            try {
-                // Let the backend handle caching + any retries internally
-                const result = await cachedDownloadImage(props.src);
+            loadTimeoutId = setTimeout(() => {
+                if (!loaded()) {
+                    console.warn(`LazyImage: Timeout loading ${props.src}`);
+                    fetchCancelled = true;
+                    setCurrentSrc(props.src);
+                    setLoaded(true);
+                }
+            }, loadTimeout);
 
-                if (result.status == "ok") {
-                    setCurrentSrc(result.data); // data URI from cache/backend
+            try {
+                const result = await fetchCached(props.src);
+
+                if (fetchCancelled) return;
+
+                if (result.status === "ok") {
+                    setCurrentSrc(result.data);
                 } else {
-                    // On any cache/download error, fall back to original src
-                    // (backend couldn't provide it, so try direct load)
-                    console.warn(`LazyImage: Cache failed for ${props.src}`, result.error);
+                    console.warn(`LazyImage: Cache failed for ${props.src}`, result.error || 'Unknown error');
                     setCurrentSrc(props.src);
                 }
             } catch (err) {
+                if (fetchCancelled) return;
                 console.error(`LazyImage: Unexpected error fetching ${props.src}`, err);
                 setCurrentSrc(props.src);
             }
-
-            startLoadTimeout();
         }
     });
 
     onCleanup(() => {
         clearTimeout(loadTimeoutId);
+        fetchCancelled = true;
     });
 
     const handleLoad = () => {
@@ -75,7 +87,7 @@ export default function LazyImage(props: LazyImageProps) {
 
     const handleError = (e: Event) => {
         clearTimeout(loadTimeoutId);
-        setLoaded(true); // Hide placeholder even on error
+        setLoaded(true);
         props.onError?.(e);
     };
 
@@ -89,12 +101,10 @@ export default function LazyImage(props: LazyImageProps) {
 
     return (
         <div class={`relative ${props.class ?? ""}`} style={props.style}>
-            {/* Placeholder overlay while loading */}
             <Show when={!loaded()}>
                 <div class="absolute inset-0 bg-secondary-20/40" />
             </Show>
 
-            {/* Only render img when we have a src */}
             <Show when={currentSrc()}>
                 <img
                     src={currentSrc()!}
