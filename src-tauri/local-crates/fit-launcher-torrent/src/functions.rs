@@ -219,7 +219,8 @@ pub async fn aria2_client_from_config(
                 port
             ));
         }
-        let child = {
+        #[allow(unused_mut)]
+        let mut child = {
             #[cfg(windows)]
             {
                 use std::ffi::OsString;

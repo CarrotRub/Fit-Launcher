@@ -15,7 +15,6 @@ use crate::model::FileInfo;
 
 use super::*;
 
-// FIXME: `decryptTorrentFromPaste` was never getting used in frontend
 #[tauri::command]
 #[specta]
 pub async fn decrypt_torrent_from_paste(

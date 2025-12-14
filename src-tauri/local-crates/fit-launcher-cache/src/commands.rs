@@ -11,6 +11,7 @@ use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use tauri::Url;
+use tokio::io::AsyncWriteExt as _;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -146,13 +147,24 @@ pub async fn cached_download_image(
                     if let Some(parent) = img_path.parent() {
                         _ = tokio::fs::create_dir_all(parent).await;
                     }
-                    _ = tokio::fs::write(&img_path, &*bytes_).await;
 
                     if let Ok(Ok(Some(path))) = rx.as_async().recv().await {
                         if let Ok(file_len) = path.metadata().as_ref().map(Metadata::len) {
                             manager.used_space.fetch_sub(file_len, Ordering::AcqRel);
                         }
                     }
+
+                    let Ok(mut file) = tokio::fs::OpenOptions::new()
+                        .share_mode(0)
+                        .create(true)
+                        .write(true)
+                        .truncate(true)
+                        .open(&img_path)
+                        .await
+                    else {
+                        return;
+                    };
+                    _ = file.write_all(&*bytes_).await;
                 });
 
                 return Ok(encode_data_uri(mime, &*bytes));
