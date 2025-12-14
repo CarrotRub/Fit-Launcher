@@ -7,7 +7,7 @@ use librqbit::{
     api::TorrentIdOrHash,
 };
 use tokio::io::AsyncWriteExt;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{decrypt_torrent_from_paste, errors::TorrentApiError};
 
@@ -131,8 +131,12 @@ async fn get_add_torrent<'a>(
     match pastebin_link {
         Some(pastebin_link) => match decrypt_torrent_from_paste(pastebin_link.clone()).await {
             Ok(t) => {
-                info!("downloaded torrent from {pastebin_link}");
-                return Ok((AddTorrent::from_bytes(t), torrent_path));
+                if librqbit::torrent_from_bytes::<'_, librqbit_buffers::ByteBuf>(&t).is_ok() {
+                    info!("downloaded torrent from {pastebin_link}");
+                    return Ok((AddTorrent::from_bytes(t), torrent_path));
+                } else {
+                    warn!("metadata downloaded from {pastebin_link} was corrupted!");
+                }
             }
             Err(e) => {
                 error!("failed to download metainfo from {pastebin_link}: {e}");
