@@ -48,7 +48,7 @@ fn parse_image_links(body: &str, start: usize) -> anyhow::Result<Vec<String>> {
 
     for p_index in start..=5 {
         let selector = Selector::parse(&format!(
-            ".entry-content > p:nth-of-type({p_index}) img[src]"
+            ".entry-content p:nth-of-type({p_index}) img[src]"
         ))
         .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
 
