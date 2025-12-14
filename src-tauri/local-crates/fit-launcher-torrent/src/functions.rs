@@ -219,6 +219,7 @@ pub async fn aria2_client_from_config(
                 port
             ));
         }
+        #[allow(unused_mut)]
         let mut child = {
             #[cfg(windows)]
             {

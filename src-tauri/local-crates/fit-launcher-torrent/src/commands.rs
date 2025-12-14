@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use fit_launcher_ui_automation::api::InstallationManager;
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::Engine;
 use fitgirl_decrypt::base64::prelude::BASE64_STANDARD;
@@ -16,7 +15,6 @@ use crate::model::FileInfo;
 
 use super::*;
 
-// FIXME: `decryptTorrentFromPaste` was never getting used in frontend
 #[tauri::command]
 #[specta]
 pub async fn decrypt_torrent_from_paste(

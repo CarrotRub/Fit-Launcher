@@ -21,15 +21,19 @@ tracing-appender = { workspace = true }
 directories = { workspace = true }
 fit-launcher-ui-automation = { workspace = true }
 fit-launcher-config = { workspace = true }
+fit-launcher-scraping = { path = "../fit-launcher-scraping" }
 fitgirl-decrypt = { workspace = true }
 once_cell = { workspace = true }
 rand = { workspace = true }
-librqbit = "8.1.1"
+
 librqbit-core = { workspace = true }
 librqbit-buffers = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+
+librqbit = "8.1.1"
 strum = { version = "0.27.2", features = ["derive"] }
+hex = "0.4.3"
 
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = [

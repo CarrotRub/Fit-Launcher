@@ -1,6 +1,7 @@
 //! Game CRUD and category operations.
 
 use rusqlite::{Connection, OptionalExtension, params};
+use std::fmt::Display;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::errors::ScrapingError;
@@ -221,6 +222,22 @@ pub fn clear_all_game_data(conn: &Connection) -> Result<(), ScrapingError> {
 pub fn get_game_count(conn: &Connection) -> Result<usize, ScrapingError> {
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM games", [], |row| row.get(0))?;
     Ok(count as usize)
+}
+
+pub fn get_pastebin_by_magnet_hash(
+    conn: &Connection,
+    hash: impl Display,
+) -> Result<Option<String>, ScrapingError> {
+    Ok(conn.query_one(
+        r#"
+    SELECT `pastebin_link` FROM `games`
+    WHERE `is_scraped` = 1
+    AND `magnetlink` LIKE ?
+    COLLATE NOCASE;
+        "#,
+        [&format!("%{hash}%")],
+        |row| row.get(0).optional(),
+    )?)
 }
 
 pub fn get_games_by_category(
