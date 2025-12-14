@@ -69,17 +69,14 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
 
     return (
         <div
-            class="group relative cursor-pointer transition-all duration-300 hover:scale-[1.02] "
-            style={{
-                "content-visibility": "auto",
-                "contain-intrinsic-size": "auto 320px"
-            }}
+            class="group relative cursor-pointer transition-all duration-300 hover:scale-102"
+
             onClick={handleGoToGame}
         >
             <div class="absolute inset-0 bg-gradient-to-r from-accent/20 via-primary/10 to-accent/20 opacity-0 group-hover:opacity-100  transition-opacity duration-500 rounded-2xl -z-10" />
 
             {/* Main card */}
-            <div class="relative h-[320px] rounded-2xl overflow-hidden border border-primary/40 bg-gradient-to-br from-gray-900/90 via-gray-900/80 to-black/90">
+            <div class="relative h-78 rounded-2xl overflow-hidden border border-primary/40 bg-gradient-to-br from-gray-900/90 via-gray-900/80 to-black/90">
                 <div class="absolute inset-0 transition-transform duration-700 group-hover:scale-110">
                     <LazyImage
                         src={backgroundImage()}
@@ -91,14 +88,14 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
                     <div class="absolute inset-0 bg-gradient-to-t from-black/60  via-black/30 to-transparent" />
                     <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
 
-                    <div class="absolute inset-0 backdrop-blur-xs" />
-                </div>
 
+                </div>
+                <div class="absolute inset-0 backdrop-blur-xs" />
                 {/* Content */}
                 <div class="relative h-full flex p-6">
                     <div class="w-[180px] h-full shrink-0 relative">
                         <div class="absolute top-0 left-0 w-full h-[calc(100%-2rem)] transition-all duration-500 group-hover:translate-y-[-8px] ">
-                            <div class="relative w-full h-full rounded-xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-background">
+                            <div class="relative w-full h-full rounded-xl overflow-hidden ring-2 ring-primary/60 ring-offset-2 ring-offset-background">
                                 <LazyImage
                                     src={props.game.img}
                                     alt={props.game.title}
@@ -184,9 +181,9 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
 
             <Show when={isFavorite()}>
                 <div class="absolute top-4 left-4 z-10">
-                    <div class="flex items-center gap-1.5 px-3 py-1 bg-accent/20 backdrop-blur-sm rounded-full border border-accent/30">
-                        <Star class="w-3 h-3 text-accent fill-accent" />
-                        <span class="text-xs font-semibold text-accent">Wishlisted</span>
+                    <div class="flex items-center gap-1.5 px-3 py-1 bg-secondary/40 backdrop-blur-sm rounded-full border border-accent/30">
+                        <Star class="w-3 h-3 text-primary fill-primary" />
+                        <span class="text-xs font-semibold text-primary">Wishlisted</span>
                     </div>
                 </div>
             </Show>
