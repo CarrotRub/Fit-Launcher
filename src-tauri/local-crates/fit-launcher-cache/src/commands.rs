@@ -2,6 +2,7 @@ use std::{
     fmt::Display,
     fs::Metadata,
     sync::{Arc, atomic::Ordering},
+    time::Duration,
 };
 
 use base64::Engine;
@@ -185,6 +186,8 @@ pub async fn cached_download_image(
             }
             Err(e) => {
                 warn!("retry {image_url}: {e}");
+                // 0.5 * (2^try_times - 1) = 15.5 secs
+                tokio::time::sleep(Duration::from_millis(500 * 2_u64.pow(try_))).await;
                 continue;
             }
         }
