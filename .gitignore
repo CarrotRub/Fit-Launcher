@@ -1,3 +1,6 @@
+# ignore per-project build configuration
+/.cargo
+
 node_modules
 dist
 *.xml
