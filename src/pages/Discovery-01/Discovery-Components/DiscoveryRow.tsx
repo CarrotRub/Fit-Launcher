@@ -69,7 +69,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
 
     return (
         <div
-            class="group relative cursor-pointer transition-all duration-300 hover:scale-102"
+            class="group relative cursor-pointer transition-all duration-300 "
 
             onClick={handleGoToGame}
         >
@@ -152,7 +152,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
 
                             </div>
 
-                            <div class="flex items-center gap-3 z-50" >
+                            <div class="flex items-center gap-3 z-10" >
                                 <button
                                     onClick={toggleFavorite}
                                     class="relative p-3 rounded-full transition-all duration-300 bg-secondary/5  hover:bg-accent/20 border border-white/20 hover:border-accent/30 hover:scale-110 "

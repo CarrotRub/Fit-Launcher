@@ -1,8 +1,9 @@
-import { createResource, createSignal, createMemo, createEffect, onCleanup, Switch, Match, For, Show, onMount } from "solid-js";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { createResource, createSignal, createMemo, createEffect, onCleanup, Switch, Match, For, Show } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import { LibraryApi } from "../../api/library/api";
 import { GamesCacheApi } from "../../api/cache/api";
-import { commands, DownloadedGame } from "../../bindings";
+import { DownloadedGame } from "../../bindings";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import {
   ArrowLeft,
@@ -51,7 +52,7 @@ const DownloadGameUUIDPage = () => {
   const gameHref = () => location.state?.gameHref ?? "";
 
   // Main game data via createResource (handles loading state automatically)
-  const [game, { refetch }] = createResource(gameHref, fetchGameData);
+  const [game] = createResource(gameHref, fetchGameData);
 
   // Secondary state
   const [additionalImages, setAdditionalImages] = createSignal<string[]>([]);
