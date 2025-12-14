@@ -1928,6 +1928,7 @@ dependencies = [
  "directories",
  "fit-launcher-config",
  "futures",
+ "itertools",
  "kuchiki",
  "once_cell",
  "rand 0.9.2",

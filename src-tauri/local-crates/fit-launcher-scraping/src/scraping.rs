@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::StreamExt;
+use itertools::Itertools;
 use reqwest::Response;
 use scraper::Html;
 use tauri::{AppHandle, Emitter};
@@ -146,6 +147,7 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
                 .unwrap_or_default();
             Some((href, img))
         })
+        .unique()
         .take(20)
         .collect();
 
@@ -270,6 +272,7 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
     let links: Vec<String> = doc
         .select(&scraper::Selector::parse(".su-spoiler-content > a:first-child").unwrap())
         .filter_map(|e| e.value().attr("href"))
+        .unique()
         .take(20)
         .map(str::to_owned)
         .collect();
