@@ -12,7 +12,7 @@ use specta::specta;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use tauri::Url;
 use tokio::io::AsyncWriteExt as _;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
@@ -71,17 +71,24 @@ pub async fn cached_download_image(
     image_url: String,
 ) -> Result<String, CacheError> {
     if let Ok(data_uri) = data_uri_from_cache(&manager, &image_url).await {
-        info!("cache hit: {image_url}");
+        debug!("cache hit: {image_url}");
         return Ok(data_uri);
     }
     let client = CUSTOM_DNS_CLIENT.read().await.clone();
 
     let try_times = 5;
+    let req = match client.get(&image_url).build() {
+        Ok(v) => v,
+        Err(e) => {
+            error!("failed to construct request: {image_url:?}");
+            return Err(e)?;
+        }
+    };
     for try_ in 0..try_times {
         match client
             // ignoring `if-modified-since` header,
             // because we don't want more accurate cache control
-            .execute(client.get(&image_url).build().unwrap())
+            .execute(req.try_clone().unwrap())
             .await
         {
             Ok(resp) => {
@@ -138,7 +145,10 @@ pub async fn cached_download_image(
 
                     let (tx, rx) = kanal::bounded(0);
 
-                    info!("cached {image_url} to {img_path:?}");
+                    info!(
+                        "cached {image_url} to {}",
+                        img_path.to_str().unwrap_or_default()
+                    );
                     _ = manager
                         .command_tx
                         .send(Command::InsertItem(image_url, img_path.clone(), Some(tx)))
