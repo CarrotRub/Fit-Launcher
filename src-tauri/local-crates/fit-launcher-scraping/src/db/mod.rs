@@ -14,8 +14,9 @@ use crate::errors::ScrapingError;
 
 pub use games::{
     batch_insert_sitemap_stubs, cleanup_expired_games, clear_all_game_data, clear_game_cache,
-    extract_slug, get_game_by_hash, get_game_count, get_games_by_category, insert_sitemap_stub,
-    is_game_cache_valid, set_category_games, upsert_game,
+    extract_slug, get_game_by_hash, get_game_count, get_games_by_category,
+    get_pastebin_by_magnet_hash, insert_sitemap_stub, is_game_cache_valid, set_category_games,
+    upsert_game,
 };
 pub use search::{
     SearchIndexEntry, get_all_games_for_search, initialize_fts, insert_fts_entries, query_fts,
