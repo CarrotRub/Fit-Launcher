@@ -1,8 +1,8 @@
-import { createSignal, createMemo, For } from 'solid-js';
+import { createSignal, createMemo, For, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import type { Game } from '../../../bindings';
 import { commands } from '../../../bindings';
-import { Bookmark, BookmarkCheck, Download } from 'lucide-solid';
+import { Bookmark, BookmarkCheck, Download, Star } from 'lucide-solid';
 import { LibraryApi } from '../../../api/library/api';
 import { useToast } from 'solid-notifications';
 import LazyImage from '../../../components/LazyImage/LazyImage';
@@ -19,9 +19,7 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
     const navigate = useNavigate();
     const { notify } = useToast();
     const [isFavorite, setIsFavorite] = createSignal(props.isFavorite);
-    const [isHovered, setIsHovered] = createSignal(false);
 
-    // Derived values
     const repackSize = createMemo(() => {
         const bytes = parseGameSize(props.game.details || '', 'repack');
         return bytes > 0 ? formatBytesToSize(bytes) : null;
@@ -37,12 +35,19 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
         return desc.length > 280 ? `${desc.slice(0, 280).trim()}...` : desc;
     });
 
-    const tags = createMemo(() => props.game.tag?.split(',').map(t => t.trim()).slice(0, 3) || []);
+    const tags = createMemo(() => props.game.tag?.split(',').map(t => t.trim()).slice(0, 4) || []);
+
+    // Use first secondary image (in-game screenshot) as background, fallback to main image
+    const backgroundImage = createMemo(() =>
+        props.game.secondary_images?.[0] || props.game.img
+    );
 
     const handleGoToGame = async () => {
         const uuid = await commands.hashUrl(props.game.href);
         navigate(`/game/${uuid}`, { state: { gameHref: props.game.href, gameTitle: props.game.title } });
     };
+
+
 
     const toggleFavorite = async (e: MouseEvent) => {
         e.stopPropagation();
@@ -51,107 +56,140 @@ export default function DiscoveryRow(props: DiscoveryRowProps) {
         try {
             if (newState) {
                 await library.addGameToCollection("games_to_download", props.game);
-                notify(`Added to wishlist`, { type: "success" });
+                notify(`Added to favorites`, { type: "success" });
             } else {
                 await library.removeGameToDownload(props.game.title);
-                notify(`Removed from wishlist`, { type: "success" });
+                notify(`Removed from favorites`, { type: "success" });
             }
         } catch {
             setIsFavorite(!newState);
-            notify("Error updating wishlist", { type: "error" });
+            notify("Error updating favorites", { type: "error" });
         }
     };
 
-    // Use first secondary image (in-game screenshot) as background, fallback to main image
-    const backgroundImage = createMemo(() =>
-        props.game.secondary_images?.[0] || props.game.img
-    );
-
     return (
         <div
-            class="group relative hover:scale-99 duration-250 rounded-lg overflow-hidden cursor-pointer border-2 border-accent/70 "
+            class="group relative cursor-pointer transition-all duration-300 hover:scale-[1.02] "
             style={{
                 "content-visibility": "auto",
-                "contain-intrinsic-size": "auto 280px"
+                "contain-intrinsic-size": "auto 320px"
             }}
             onClick={handleGoToGame}
         >
-            {/* Full-width background image (using in-game screenshot) */}
-            <div class="absolute inset-0">
-                <LazyImage src={backgroundImage()} alt="" class="w-full h-full" objectFit="cover" />
-                {/* Dark overlay - much darker for text readability */}
-                <div class="absolute inset-0 bg-background/50" />
-                <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-background/50 to-background/20 backdrop-blur-sm " />
-                {/* <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" /> */}
-            </div>
+            <div class="absolute inset-0 bg-gradient-to-r from-accent/20 via-primary/10 to-accent/20 opacity-0 group-hover:opacity-100  transition-opacity duration-500 rounded-2xl -z-10" />
 
-            {/* Content overlay */}
-            <div class="relative flex h-[280px]">
-                {/* Left: Game cover image (prominent) */}
-                <div class="w-[200px] h-full shrink-0 p-4">
-                    <div class="relative w-full h-full rounded-md overflow-hidden shadow-2xl ring-1 ring-text/10">
-                        <LazyImage src={props.game.img} alt={props.game.title} class="w-full h-full" objectFit="cover" />
-                    </div>
+            {/* Main card */}
+            <div class="relative h-[320px] rounded-2xl overflow-hidden border border-primary/40 bg-gradient-to-br from-gray-900/90 via-gray-900/80 to-black/90">
+                <div class="absolute inset-0 transition-transform duration-700 group-hover:scale-110">
+                    <LazyImage
+                        src={backgroundImage()}
+                        alt=""
+                        class="w-full h-full"
+                        objectFit="cover"
+                    />
+
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60  via-black/30 to-transparent" />
+                    <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
+
+                    <div class="absolute inset-0 backdrop-blur-xs" />
                 </div>
 
-                {/* Right: Game info */}
-                <div class="flex flex-col justify-between py-5 pr-6 pl-2 flex-1 min-w-0">
-                    {/* Top section */}
-                    <div>
-                        {/* Title */}
-                        <h3 class="text-2xl font-bold text-text mb-3 line-clamp-2 drop-shadow-lg">
-                            {displayTitle()}
-                        </h3>
-
-                        {/* Tags */}
-                        <div class="flex flex-wrap gap-1.5 mb-3">
-                            <For each={tags()}>
-                                {(tag) => (
-                                    <span class="px-2.5 py-1 bg-accent/80 text-text rounded text-xs font-medium uppercase tracking-wide">
-                                        {tag}
-                                    </span>
-                                )}
-                            </For>
-                        </div>
-
-                        {/* Description */}
-                        <p class="text-sm text-text line-clamp-5 leading-relaxed" style={{ "text-shadow": "0 1px 3px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.6)" }}>
-                            {descriptionSnippet() || 'No description available'}
-                        </p>
-                    </div>
-
-                    {/* Bottom section */}
-                    <div class="flex items-center justify-between mt-4">
-                        {/* Size badge */}
-                        {repackSize() && (
-                            <div class="flex items-center gap-2 px-3 py-1.5 bg-secondary-20/50 backdrop-blur rounded-full">
-                                <Download class="w-4 h-4 text-accent" />
-                                <span class="text-sm font-medium text-text">{repackSize()}</span>
+                {/* Content */}
+                <div class="relative h-full flex p-6">
+                    <div class="w-[180px] h-full shrink-0 relative">
+                        <div class="absolute top-0 left-0 w-full h-[calc(100%-2rem)] transition-all duration-500 group-hover:translate-y-[-8px] ">
+                            <div class="relative w-full h-full rounded-xl overflow-hidden ring-2 ring-accent/60 ring-offset-2 ring-offset-background">
+                                <LazyImage
+                                    src={props.game.img}
+                                    alt={props.game.title}
+                                    class="w-full h-full "
+                                    objectFit="cover"
+                                />
+                                <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                             </div>
-                        )}
 
-                        {/* Actions */}
-                        <div class="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                            <button
-                                onClick={toggleFavorite}
-                                class="p-2.5 rounded-full transition-all duration-200 bg-secondary-20/50 hover:bg-secondary-20 border border-accent/20"
-                                title={isFavorite() ? "Remove from library" : "Add to library"}
-                            >
-                                {isFavorite()
-                                    ? <BookmarkCheck class="w-5 h-5 text-accent" />
-                                    : <Bookmark class="w-5 h-5 text-text" />
-                                }
-                            </button>
-                            <button
-                                onClick={handleGoToGame}
-                                class="px-5 py-2 bg-accent hover:bg-accent/80 border border-primary/60 text-text text-sm rounded-full transition-all duration-150"
-                            >
-                                View Game
-                            </button>
+                        </div>
+                    </div>
+
+                    {/* Game info */}
+                    <div class="flex flex-col justify-between pl-6 pr-4 flex-1 min-w-0">
+                        <div class="space-y-4">
+                            <div class="space-y-2">
+                                <h3 class="text-3xl font-bold text-text line-clamp-2">
+                                    {displayTitle()}
+                                </h3>
+                                <div class="h-[2px] w-16 bg-gradient-to-r from-accent to-primary rounded-full transition-all duration-300 group-hover:w-32" />
+                            </div>
+
+                            <div class="flex flex-wrap gap-2">
+                                <For each={tags()}>
+                                    {(tag, index) => (
+                                        <span
+                                            class="px-3 py-1.5 bg-secondary/10 text-text/90 rounded-full text-xs font-medium uppercase tracking-wider border border-white/20 transition-all duration-300 hover:bg-accent/50 hover:border-accent/50 hover:scale-105"
+                                            style={{
+                                                "transition-delay": `${index() * 50}ms`
+                                            }}
+                                        >
+                                            {tag}
+                                        </span>
+                                    )}
+                                </For>
+                            </div>
+
+                            <div class="relative">
+                                <p class="text-sm text-text/80 leading-relaxed line-clamp-4 transition-opacity duration-300">
+                                    {descriptionSnippet() || 'No description available'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Bottom */}
+                        <div class="flex items-center justify-between pt-4 border-t border-white/10">
+                            <div class="flex items-center gap-4">
+                                {repackSize() && (
+                                    <div class="flex items-center gap-2 px-4 py-2 bg-secondary/5 rounded-full border border-white/10 transition-all hover:bg-accent/20 hover:border-accent/30">
+                                        <Download class="w-4 h-4 text-accent" />
+                                        <span class="text-sm text-text">{repackSize()}</span>
+                                    </div>
+                                )}
+
+                            </div>
+
+                            <div class="flex items-center gap-3 z-50" >
+                                <button
+                                    onClick={toggleFavorite}
+                                    class="relative p-3 rounded-full transition-all duration-300 bg-secondary/5  hover:bg-accent/20 border border-white/20 hover:border-accent/30 hover:scale-110 "
+                                    title={isFavorite() ? "Remove from wishlist" : "Add to wishlist"}
+                                >
+                                    {isFavorite()
+                                        ? <BookmarkCheck class="w-5 h-5 text-accent" />
+                                        : <Bookmark class="w-5 h-5 text-text/70 group-hover:text-accent transition-colors" />
+                                    }
+
+                                </button>
+
+                                <button
+                                    onClick={handleGoToGame}
+                                    class="px-5 py-2 bg-accent hover:bg-accent/80 border border-primary/60 text-text text-sm rounded-full transition-all duration-250 hover:scale-105"
+                                >
+                                    View Game
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+
             </div>
+
+            <Show when={isFavorite()}>
+                <div class="absolute top-4 left-4 z-10">
+                    <div class="flex items-center gap-1.5 px-3 py-1 bg-accent/20 backdrop-blur-sm rounded-full border border-accent/30">
+                        <Star class="w-3 h-3 text-accent fill-accent" />
+                        <span class="text-xs font-semibold text-accent">Wishlisted</span>
+                    </div>
+                </div>
+            </Show>
         </div>
     );
 }
