@@ -1,7 +1,8 @@
 use crate::{manager::DownloadManager, types::*};
 use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
-use fit_launcher_torrent::functions::TorrentSession;
+#[cfg(windows)]
+use fit_launcher_ui_automation::controller_manager::ControllerManager;
 use fit_launcher_ui_automation::{
     InstallationError, api::InstallationManager, errors::ExtractError, extract_archive,
 };
@@ -26,9 +27,20 @@ pub async fn dm_add_ddl_job(
     game: Game,
 ) -> Result<JobId, String> {
     let path = std::path::PathBuf::from(target);
-    dm.add_ddl_job(files, path, game)
+    let job_id = dm
+        .add_ddl_job(files, path, game)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Register download with controller manager for early UAC prompt
+    #[cfg(windows)]
+    if let Ok(uuid) = Uuid::parse_str(&job_id) {
+        if let Err(e) = ControllerManager::global().register_download(uuid) {
+            error!("Failed to register download with controller: {}", e);
+        }
+    }
+
+    Ok(job_id)
 }
 
 #[tauri::command]
@@ -41,9 +53,20 @@ pub async fn dm_add_torrent_job(
     game: Game,
 ) -> Result<JobId, String> {
     let path = std::path::PathBuf::from(target);
-    dm.add_torrent_job(magnet, files_list, path, game)
+    let job_id = dm
+        .add_torrent_job(magnet, files_list, path, game)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    // Register download with controller manager for early UAC prompt
+    #[cfg(windows)]
+    if let Ok(uuid) = Uuid::parse_str(&job_id) {
+        if let Err(e) = ControllerManager::global().register_download(uuid) {
+            error!("Failed to register download with controller: {}", e);
+        }
+    }
+
+    Ok(job_id)
 }
 
 #[tauri::command]
@@ -89,12 +112,17 @@ pub async fn dm_run_automate_setup_install(
     );
     let id = state.create_job(job.game, job.job_path).await;
 
-    // Spawn the installation as a background task
-    // events.rs will emit setup::hook::started and setup::hook::stopped directly
-    let state_clone = state.inner().clone();
-    let app_handle_clone = app_handle.clone();
-    tokio::spawn(async move {
-        state_clone.start_job(id, app_handle_clone).await;
+    // Get the job data we need before spawning
+    // This avoids Send issues by extracting Send-safe data first
+    let manager = state.inner().clone();
+
+    // Use spawn_blocking because the installer uses Windows-specific blocking I/O
+    // that contains raw pointers (HANDLE) which aren't Send
+    tokio::task::spawn_blocking(move || {
+        let rt = tokio::runtime::Handle::current();
+        rt.block_on(async move {
+            manager.start_job(id, app_handle).await;
+        });
     });
 
     Ok(id)
@@ -161,7 +189,15 @@ pub async fn dm_extract_and_install(
 
     let id = manager.create_job(job.game, job.job_path.clone()).await;
 
-    manager.start_job(id, app_handle.clone()).await;
+    // Use spawn_blocking because the installer uses Windows-specific blocking I/O
+    // that contains raw pointers (HANDLE) which aren't Send
+    let manager_clone = manager.inner().clone();
+    tokio::task::spawn_blocking(move || {
+        let rt = tokio::runtime::Handle::current();
+        rt.block_on(async move {
+            manager_clone.start_job(id, app_handle).await;
+        });
+    });
 
     Ok(id)
 }

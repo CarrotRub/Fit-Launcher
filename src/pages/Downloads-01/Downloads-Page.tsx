@@ -3,7 +3,7 @@ import { CloudDownload, Filter, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, A
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
 
-
+import InstallQueueStatus from "../../components/InstallQueue/QueueStatus";
 import DownloadList from "./Downloads-List";
 import { formatSpeed } from "../../helpers/format";
 import { DM, GlobalDownloadManager } from "../../api/manager/api";
@@ -154,6 +154,11 @@ const DownloadPage: Component = () => {
                             <span class="font-bold text-lg">{GlobalStatsStore.stats()?.numActive}</span>
                         </div>
                     </div>
+                </div>
+
+                {/* Installation Queue Status */}
+                <div class="mt-4">
+                    <InstallQueueStatus />
                 </div>
             </div>
 

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use fit_launcher_scraping::db::extract_slug;
 use fit_launcher_scraping::structs::Game;
 use tauri::async_runtime::spawn_blocking;
 use tokio_util::sync::CancellationToken;
@@ -79,62 +80,282 @@ impl InstallationJob {
     ) -> Result<(), crate::InstallationError> {
         #[cfg(target_os = "windows")]
         {
-            use tracing::info;
+            use std::time::Duration;
+            use tauri::Emitter;
+            use tracing::{error, info, warn};
 
-            use crate::{
-                emitter::setup::progress_bar_setup_emit,
-                mighty::automation::win32::{kill_completed_setup, mute_process_audio},
-                mighty_automation::{automate_until_download, start_executable_components_args},
-                process_utils::find_child_pid_with_retry,
+            use crate::controller_client::{ControllerCommand, ControllerEvent, InstallOptions};
+            use crate::controller_manager::{ControllerManager, QueuedInstallJob};
+            use fit_launcher_config::commands::get_installation_settings;
+
+            let setup_path = self.setup_executable_path();
+            info!("Setup path: {}", setup_path.display());
+
+            // Install path: user's install folder (parent of download folder) + game slug
+            // Download folder is UUID to avoid unicode issues, but install folder uses slug
+            let slug = extract_slug(&self.game.href);
+            let install_folder = self.path.parent().unwrap_or(&self.path);
+            let install_path = install_folder.join(&slug).to_string_lossy().to_string();
+
+            info!("Install path: {}", install_path);
+
+            // Get installation settings
+            let settings = get_installation_settings();
+            let options = InstallOptions {
+                two_gb_limit: settings.two_gb_limit,
+                install_directx: settings.directx_install,
+                install_vcredist: settings.microsoftcpp_install,
             };
 
-            let setup_executable_path = self.setup_executable_path();
-            info!("Setup path is: {}", setup_executable_path.to_string_lossy());
+            let job_id_str = id.to_string();
+            let manager = ControllerManager::global();
 
-            let root_pid = start_executable_components_args(setup_executable_path)?;
-
-            let s = self.path.to_string_lossy();
-            let lower = s.to_lowercase();
-            let tag = " [fitgirl repack]";
-
-            let game_output_folder = if lower.ends_with(tag) {
-                let cut_pos = s.len() - tag.len();
-                s[..cut_pos].trim_end().to_string()
-            } else {
-                s.to_string()
+            // 1. Queue the installation
+            let queued_job = QueuedInstallJob {
+                job_id: id,
+                slug: slug.clone(),
+                setup_path: setup_path.clone(),
+                install_path: install_path.clone(),
+                options: options.clone(),
             };
 
-            automate_until_download(&game_output_folder).await;
-            info!("Game Installation has been started");
-
-            // Find the child process (setup.temp_setup) that owns the installer window
-            // We need to do this because the root setup.exe spawns a child that actually handles the UI
-            let installer_pid = find_child_pid_with_retry(root_pid, 10, 200);
-            if let Some(pid) = installer_pid {
-                info!("Found installer child process with PID: {}", pid);
-                mute_process_audio(pid);
-            } else {
-                info!("Could not find child process, monitoring all processes");
+            if let Err(e) = manager.queue_install(queued_job) {
+                error!("Failed to queue install: {}", e);
+                return Err(crate::InstallationError::IOError(e));
             }
-            let success = progress_bar_setup_emit(
-                app_handle.clone(),
-                self.cancel_emitter.clone(),
-                id,
-                Some(game_output_folder.clone()),
-                installer_pid,
-                Some(root_pid),
-            )
-            .await;
+
+            // Notify frontend that queue state changed (download moved to install queue)
+            let _ = app_handle.emit("install::queue::changed", ());
+
+            // 2. Wait for our turn
+            let cancel_token = self.cancel_emitter.clone();
+            loop {
+                if cancel_token.is_cancelled() {
+                    info!("Installation cancelled while in queue");
+                    let _ = manager.cancel_download(id);
+                    return Err(crate::InstallationError::IOError("Cancelled".to_string()));
+                }
+
+                match manager.take_next_job_if_match(id) {
+                    Ok(true) => {
+                        info!("It is our turn to install!");
+                        break;
+                    }
+                    Ok(false) => {
+                        // Not our turn or busy, wait
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    }
+                    Err(e) => {
+                        error!("Error checking queue: {}", e);
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    }
+                }
+            }
+
+            // 3. Start Installation (we are now the 'current_install')
+            // Ensure controller is running (reusing existing if alive)
+            if let Err(e) = manager.ensure_running() {
+                let _ = manager.complete_current_install();
+                return Err(crate::InstallationError::IOError(format!(
+                    "Failed to start controller: {}",
+                    e
+                )));
+            }
+
+            // Send Start command
+            if let Err(e) = manager.send_command(&ControllerCommand::StartInstall {
+                job_id: job_id_str.clone(),
+                setup_path: setup_path.to_string_lossy().to_string(),
+                install_path: install_path.clone(),
+                options,
+            }) {
+                let _ = manager.complete_current_install();
+                let _ = manager.shutdown_if_idle();
+                return Err(crate::InstallationError::IOError(format!(
+                    "Failed to send start command: {}",
+                    e
+                )));
+            }
+
+            info!("Installation command sent, monitoring events...");
+
+            // Emit hook started event for frontend
+            let _ = app_handle.emit(
+                "setup::hook::started",
+                serde_json::json!({ "id": job_id_str.clone(), "success": true }),
+            );
+
+            // Monitor events and emit to Tauri
+            let mut success = false;
+            let mut install_path_received: Option<String> = None;
+
+            // Idle timeout detection - if no events for 60s, installation is frozen
+            let mut last_event_time = std::time::Instant::now();
+            let idle_timeout = Duration::from_secs(60);
+
+            loop {
+                // Check for cancellation
+                if cancel_token.is_cancelled() {
+                    info!("Installation cancelled by user");
+                    let _ = manager.send_command(&ControllerCommand::CancelInstall {
+                        job_id: job_id_str.clone(),
+                    });
+                    // We don't break immediately, we wait for Completed/Error event from controller handling cancel
+                    // But if controller is stuck, we might need to force break.
+                    // For now, let's assume controller responds to cancel.
+                }
+
+                // Check for idle timeout (frozen installer)
+                if last_event_time.elapsed() > idle_timeout {
+                    error!("Installation appears frozen (no events for 60s), aborting...");
+                    let _ = manager.send_command(&ControllerCommand::CancelInstall {
+                        job_id: job_id_str.clone(),
+                    });
+                    let _ = app_handle.emit(
+                        "setup::progress::error",
+                        "Installation appears frozen and was aborted",
+                    );
+                    break;
+                }
+
+                // Take client out to avoid holding mutex during blocking I/O
+                // This prevents other operations (queue_install, etc) from being blocked
+                let taken_client = manager.take_client();
+                let recv_result = match taken_client {
+                    Ok(Some(mut client)) => {
+                        // Do blocking recv in spawn_blocking without holding the manager's mutex
+                        let res = tokio::task::spawn_blocking(move || {
+                            let result = client.recv_timeout(Duration::from_millis(500));
+                            (client, result)
+                        })
+                        .await
+                        .map_err(|e| format!("spawn_blocking error: {}", e));
+
+                        match res {
+                            Ok((client_back, result)) => {
+                                // Put client back regardless of recv result
+                                let _ = manager.put_client(client_back);
+                                result.map_err(|e| e.to_string())
+                            }
+                            Err(e) => Err(e),
+                        }
+                    }
+                    Ok(None) => Err("Controller not connected".to_string()),
+                    Err(e) => Err(e),
+                };
+
+                match recv_result {
+                    Ok(Some(event)) => {
+                        // Reset idle timer on any event
+                        last_event_time = std::time::Instant::now();
+
+                        match &event {
+                            ControllerEvent::Progress { job_id, percent } => {
+                                if *job_id == job_id_str {
+                                    let _ = app_handle.emit("setup::progress::percent", percent);
+                                }
+                            }
+                            ControllerEvent::Phase { job_id, phase } => {
+                                if *job_id == job_id_str {
+                                    let _ = app_handle
+                                        .emit("setup::progress::phase", format!("{:?}", phase));
+                                }
+                            }
+                            ControllerEvent::File { job_id, path } => {
+                                if *job_id == job_id_str {
+                                    let _ = app_handle.emit("setup::progress::file", path);
+                                }
+                            }
+                            ControllerEvent::GameTitle { job_id, title } => {
+                                if *job_id == job_id_str {
+                                    let _ = app_handle.emit("setup::progress::title", title);
+                                }
+                            }
+                            ControllerEvent::Completed {
+                                job_id,
+                                success: ok,
+                                install_path,
+                                error,
+                            } => {
+                                if *job_id == job_id_str {
+                                    success = *ok;
+                                    install_path_received = install_path.clone();
+                                    if success {
+                                        info!("Installation completed successfully");
+                                        let _ = app_handle
+                                            .emit("setup::progress::finished", &install_path);
+                                    } else {
+                                        let msg = error.as_deref().unwrap_or("Unknown error");
+                                        error!("Installation failed: {}", msg);
+                                        let _ = app_handle.emit("setup::progress::error", msg);
+                                    }
+                                    break;
+                                }
+                            }
+                            ControllerEvent::Error { job_id, message } => {
+                                // Some errors might be global or specific
+                                if job_id.as_deref() == Some(&job_id_str) || job_id.is_none() {
+                                    error!("Controller error: {}", message);
+                                    let _ = app_handle.emit("setup::progress::error", message);
+                                    break;
+                                }
+                            }
+                            ControllerEvent::ShuttingDown => {
+                                info!("Controller shutting down unexpectedly");
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                    Ok(None) => {
+                        // Timeout, continue loop
+                    }
+                    Err(e) => {
+                        error!("Controller connection error: {:#}", e);
+                        break;
+                    }
+                }
+            }
+
+            // Cleanup
+            let _ = manager.complete_current_install();
+            let _ = manager.shutdown_if_idle(); // Will kill process if no other jobs in queue
+
+            // Post-installation finalization: find main executable
+            if success {
+                if let Some(ref path) = install_path_received {
+                    info!("Finalizing installation: locating main executable...");
+                    // We run this async block logic here as before
+                    if let Some(exe_path) = self.find_main_executable().await {
+                        // Note: find_main_executable is async on &self
+                        info!("Main executable found: {}", exe_path);
+                        let full_exe_path = format!("{}\\{}", path, exe_path);
+                        let _ = app_handle.emit("setup::progress::executable", &full_exe_path);
+                    } else {
+                        warn!("Could not locate main executable");
+                    }
+                }
+            }
+
+            // Emit hook stopped event for frontend
+            let _ = app_handle.emit(
+                "setup::hook::stopped",
+                serde_json::json!({
+                    "id": job_id_str,
+                    "success": success,
+                    "install_path": install_path_received.clone()
+                }),
+            );
 
             if success {
-                info!("Job has completed!");
-                // Note: setup::progress::finished is already emitted by progress_bar_setup_emit
-                kill_completed_setup();
                 Ok(())
-            } else {
-                info!("Job was cancelled or timed out.");
+            } else if cancel_token.is_cancelled() {
                 Err(crate::InstallationError::IOError(
-                    "Installation cancelled or timed out".to_string(),
+                    "Installation was cancelled".to_string(),
+                ))
+            } else {
+                Err(crate::InstallationError::IOError(
+                    "Installation did not complete successfully".to_string(),
                 ))
             }
         }

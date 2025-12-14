@@ -1,2 +1,5 @@
 # we should place aria2c binaries here, like `aria2c-x86_64-pc-windows-msvc.exe`
 /aria2c-*
+
+# we should place fit-launcher-automation binaries here, like `fit-launcher-automation-x86_64-pc-windows-msvc.exe`
+/fit-launcher-automation-*

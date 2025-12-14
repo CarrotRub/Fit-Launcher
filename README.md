@@ -56,7 +56,11 @@ If you'd like to build Fit Launcher yourself, follow these steps:
 2. Ensure you have these extensions on VSCode **C/C++ Microsoft** or **CodeLLDB** and **rust-analyzer**.
 3. Clone this repository.
 4. Download and extract [aria2c.exe](https://github.com/mokurin000/aria2c-windows-hide-console/releases/) to `src-tauri/binaries/aria2c-x86_64-pc-windows-msvc.exe`.
-5. Run the build command:
+5. Run this to build the binary:
+```pwsh
+cd src-tauri; cargo build --release -p fit-launcher-automation 2>&1 | Select-Object -Last 5; Copy-Item -Force "target\release\fit-launcher-automation.exe" "binaries\fit-launcher-automation-x86_64-pc-windows-msvc.exe"
+```
+6. Run the build command:
 
 ```bash
 npm run tauri build

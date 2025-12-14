@@ -1,12 +1,12 @@
-use fit_launcher_torrent::functions::TorrentSession;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Result as TauriResult;
-use tauri::async_runtime::block_on;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{App, Manager};
-use tokio::task::block_in_place;
 use tracing::info;
+
+/// Global flag to signal intentional quit (bypasses hide-to-tray behavior)
+pub static QUITTING: AtomicBool = AtomicBool::new(false);
 
 pub fn setup_tray(app: &App) -> TauriResult<()> {
     let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -22,25 +22,27 @@ pub fn setup_tray(app: &App) -> TauriResult<()> {
             "quit" => {
                 static PROCESSING: AtomicBool = AtomicBool::new(false);
 
-                info!("quit menu item clicked... attempting graceful aria2 shutdown...");
+                info!("quit menu item clicked... shutting down...");
 
                 if PROCESSING.load(Ordering::Acquire) {
                     return;
                 }
 
                 PROCESSING.store(true, Ordering::Release);
-                let session = app.state::<TorrentSession>();
 
-                block_in_place(|| block_on(async { session.shutdown().await }));
+                // Set global quit flag to bypass ExitRequested prevention
+                QUITTING.store(true, Ordering::Release);
 
+                // Force exit immediately - aria2 will be cleaned up by OS via job object
+                // This avoids potential async deadlocks that could freeze the quit
+                info!("Exiting application...");
                 std::process::exit(0);
             }
             "show_app" => {
                 info!("show_app menu item clicked");
                 if let Some(win) = app.get_webview_window("main") {
-                    if !win.is_visible().unwrap_or(false) {
-                        let _ = win.show();
-                    }
+                    let _ = win.show();
+                    let _ = win.unminimize();
                     let _ = win.set_focus();
                 }
             }

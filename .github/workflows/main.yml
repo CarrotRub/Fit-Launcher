@@ -57,6 +57,13 @@ jobs:
           Move-Item aria2-${{ steps.get-tag.outputs.tag_ver }}-win-64bit-build1/aria2c.exe ./src-tauri/binaries/aria2c-x86_64-pc-windows-msvc.exe
           Remove-Item 64bit.zip
 
+      - name: Build automation binary
+        shell: powershell
+        run: |
+          cd src-tauri
+          cargo build --release -p fit-launcher-automation
+          Move-Item -Force "target/release/fit-launcher-automation.exe" "binaries/fit-launcher-automation-x86_64-pc-windows-msvc.exe"
+
       - name: install frontend dependencies
         run: npm install # change this to npm or pnpm depending on which one you use.
 

@@ -281,3 +281,10 @@ pub fn open_devtools(app: AppHandle) {
     let webview_window = app.get_webview_window("main").unwrap();
     webview_window.open_devtools();
 }
+#[tauri::command]
+#[specta]
+pub fn get_install_queue_status()
+-> Result<fit_launcher_ui_automation::controller_manager::QueueStatus, CustomError> {
+    fit_launcher_ui_automation::controller_manager::get_install_queue_status()
+        .map_err(|e| CustomError { message: e })
+}

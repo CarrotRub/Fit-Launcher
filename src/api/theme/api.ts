@@ -196,7 +196,7 @@ export class ThemeManagerApi {
     await mkdir(await dirname(targetPath), { recursive: true });
     await copyFile(imagePath, targetPath);
 
-    const store = await load("background_store.json", { autoSave: false });
+    const store = await load("background_store.json", { autoSave: false, defaults: {} });
     await store.set("background_image", targetPath);
     await store.set("blur_amount", blurAmount);
 
@@ -219,7 +219,7 @@ export class ThemeManagerApi {
   }
 
   public async removeBackground(): Promise<void> {
-    const store = await load("background_store.json", { autoSave: false });
+    const store = await load("background_store.json", { autoSave: false, defaults: {} });
     await store.set("background_image", "");
     await store.set("blur_amount", 0);
     window.location.reload();
@@ -229,7 +229,7 @@ export class ThemeManagerApi {
     applied: boolean;
     blur: number;
   }> {
-    const store = await load("background_store.json", { autoSave: false });
+    const store = await load("background_store.json", { autoSave: false, defaults: {} });
     const path = await store.get<string>("background_image");
     const blur = await store.get<number>("blur_amount");
     return { applied: !!path, blur: blur ?? 5 };
