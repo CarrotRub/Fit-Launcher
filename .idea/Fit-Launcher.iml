@@ -13,6 +13,9 @@
       <sourceFolder url="file://$MODULE_DIR$/src-tauri/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-download-manager/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-scraping/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-cache/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-integrations/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src-tauri/local-crates/fit-launcher-ui-automation/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/src-tauri/target" />
     </content>
     <orderEntry type="inheritedJdk" />
