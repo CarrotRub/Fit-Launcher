@@ -1895,6 +1895,7 @@ dependencies = [
  "chrono",
  "directories",
  "fit-launcher-aria2",
+ "fit-launcher-config",
  "fit-launcher-ddl",
  "fit-launcher-scraping",
  "fit-launcher-torrent",

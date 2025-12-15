@@ -32,11 +32,16 @@ pub async fn dm_add_ddl_job(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Register download with controller manager for early UAC prompt
+    // Only register download for early UAC if auto-install is enabled
     #[cfg(windows)]
-    if let Ok(uuid) = Uuid::parse_str(&job_id) {
-        if let Err(e) = ControllerManager::global().register_download(uuid) {
-            error!("Failed to register download with controller: {}", e);
+    {
+        let settings = fit_launcher_config::commands::get_installation_settings();
+        if settings.auto_install {
+            if let Ok(uuid) = Uuid::parse_str(&job_id) {
+                if let Err(e) = ControllerManager::global().register_download(uuid) {
+                    error!("Failed to register download with controller: {}", e);
+                }
+            }
         }
     }
 
@@ -58,11 +63,16 @@ pub async fn dm_add_torrent_job(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Register download with controller manager for early UAC prompt
+    // Only register download for early UAC if auto-install is enabled
     #[cfg(windows)]
-    if let Ok(uuid) = Uuid::parse_str(&job_id) {
-        if let Err(e) = ControllerManager::global().register_download(uuid) {
-            error!("Failed to register download with controller: {}", e);
+    {
+        let settings = fit_launcher_config::commands::get_installation_settings();
+        if settings.auto_install {
+            if let Ok(uuid) = Uuid::parse_str(&job_id) {
+                if let Err(e) = ControllerManager::global().register_download(uuid) {
+                    error!("Failed to register download with controller: {}", e);
+                }
+            }
         }
     }
 

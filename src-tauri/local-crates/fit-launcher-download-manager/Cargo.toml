@@ -22,3 +22,4 @@ directories = { workspace = true }
 specta = { workspace = true }
 thiserror = { workspace = true }
 fit-launcher-scraping = { path = "../fit-launcher-scraping" }
+fit-launcher-config = { path = "../fit-launcher-config" }
