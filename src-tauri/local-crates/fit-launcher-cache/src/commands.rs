@@ -164,7 +164,7 @@ async fn cache_image_async(
     let used = manager.used_space.fetch_add(file_size, Ordering::AcqRel);
     let available = capacity.saturating_sub(used);
 
-    let exceed = (file_size - available) as isize;
+    let exceed = (file_size.saturating_sub(available)) as isize;
 
     // Only claim once,
     // it will remove at least `exceed` bytes on each call
