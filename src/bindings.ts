@@ -250,19 +250,6 @@ async checkDominantColorVec(listImages: string[]) : Promise<Result<string[], str
     else return { error: e  as any, status: "error" };
 }
 },
-/**
- * Clean all cache and try to delete files
- * 
- * This will not wait for real deletion, since windows file deletion happens immediately
- */
-async cleanCache() : Promise<Result<null, CacheError>> {
-    try {
-    return { data: await TAURI_INVOKE("clean_cache"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
 async clearAllCache() : Promise<Result<null, SettingsConfigurationError>> {
     try {
     return { data: await TAURI_INVOKE("clear_all_cache"), status: "ok" };
@@ -274,6 +261,19 @@ async clearAllCache() : Promise<Result<null, SettingsConfigurationError>> {
 async clearGameCache() : Promise<Result<null, ScrapingError>> {
     try {
     return { data: await TAURI_INVOKE("clear_game_cache"), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
+/**
+ * Clean all cache and try to delete files
+ * 
+ * This will not wait for real deletion
+ */
+async clearImageCache() : Promise<Result<null, CacheError>> {
+    try {
+    return { data: await TAURI_INVOKE("clear_image_cache"), status: "ok" };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { error: e  as any, status: "error" };

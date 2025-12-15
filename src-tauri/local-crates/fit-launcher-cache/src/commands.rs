@@ -239,10 +239,12 @@ pub async fn reclaim_space(
 
 /// Clean all cache and try to delete files
 ///
-/// This will not wait for real deletion, since windows file deletion happens immediately
+/// This will not wait for real deletion
 #[tauri::command]
 #[specta]
-pub async fn clean_cache(manager: tauri::State<'_, Arc<CacheManager>>) -> Result<(), CacheError> {
+pub async fn clear_image_cache(
+    manager: tauri::State<'_, Arc<CacheManager>>,
+) -> Result<(), CacheError> {
     manager.command_tx.send(Command::ClearCache).await?;
     manager
         .used_space
