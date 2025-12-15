@@ -1,6 +1,5 @@
 use std::{
     fmt::Display,
-    fs::Metadata,
     sync::{Arc, atomic::Ordering},
     time::Duration,
 };
@@ -39,7 +38,7 @@ pub async fn set_capacity(
     }
 
     let old_used = manager.used_space.load(Ordering::Acquire);
-    manager.capaticy.store(new_capacity, Ordering::Release);
+    manager.capacity.store(new_capacity, Ordering::Release);
 
     info!("cache pool size: set to {new_capacity} B");
 
@@ -145,7 +144,7 @@ async fn cache_image_async(
     bytes: Arc<Vec<u8>>,
     file_size: u64,
 ) {
-    let capacity = manager.capaticy.load(Ordering::Acquire);
+    let capacity = manager.capacity.load(Ordering::Acquire);
 
     // Skip if file too large
     if capacity < file_size {
