@@ -1,10 +1,11 @@
 use std::{
     fmt::Display,
-    sync::{Arc, atomic::Ordering},
+    sync::{Arc, LazyLock, atomic::Ordering},
     time::Duration,
 };
 
 use base64::Engine;
+use crossbeam_skiplist::SkipMap;
 use fit_launcher_torrent::{functions::TorrentSession, modify_config};
 use lru_cache_adaptor::FileInfo;
 use specta::specta;
@@ -17,7 +18,9 @@ use tracing::{debug, error, info, warn};
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
 };
-const DOWNLOAD_SEMAPHORE: Semaphore = Semaphore::const_new(5);
+
+static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(|| SkipMap::new());
+
 #[tauri::command]
 #[specta]
 pub fn get_used_space(manager: tauri::State<'_, Arc<CacheManager>>) -> u64 {
@@ -78,14 +81,20 @@ pub async fn cached_download_image(
 
     let try_times = 5;
 
-    for try_ in 0..try_times {
-        // Rebuild request each time (avoid cloning)
-        let req = client.get(&image_url).build().map_err(|e| {
-            error!("failed to construct request: {image_url:?}");
-            e
-        })?;
+    let req = client.get(&image_url).build().map_err(|e| {
+        error!("failed to construct request: {image_url:?}");
+        e
+    })?;
 
-        match client.execute(req).await {
+    let host = req.url().host_str().unwrap_or_default();
+    let entry = PER_HOST_SEMAPHORE.get_or_insert_with(host.into(), || Semaphore::const_new(6));
+    let download_semaphore = entry.value();
+    for try_ in 0..try_times {
+        // follow browser behaviour https://stackoverflow.com/a/30064610/13121439
+        let _sem = download_semaphore.acquire().await;
+
+        // clone Request is safe, it's unrelated to underlying connection
+        match client.execute(req.try_clone().unwrap()).await {
             Ok(resp) => {
                 if !resp.status().is_success() {
                     let e = resp.error_for_status().unwrap_err();

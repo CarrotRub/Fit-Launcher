@@ -24,3 +24,4 @@ base64 = "0.22.1"
 # guess MIME with filename parsed from URL
 mime_guess = "2.0"
 mime2ext = "0.1.54"
+crossbeam-skiplist = "0.1.3"
