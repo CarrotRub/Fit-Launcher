@@ -152,18 +152,14 @@ async fn cache_image_async(
         return;
     }
 
-    // Ensure space is available BEFORE incrementing
-    loop {
-        let used = manager.used_space.load(Ordering::Acquire);
-        let available = capacity.saturating_sub(used);
+    let used = manager.used_space.load(Ordering::Acquire);
+    let available = capacity.saturating_sub(used);
 
-        if file_size <= available {
-            break;
-        }
+    let exceed = (file_size - available) as isize;
 
-        let exceed = (file_size - available) as isize;
-        claim_space(manager, exceed).await;
-    }
+    // Only claim once,
+    // it will remove at least `exceed` bytes on each call
+    claim_space(&manager, exceed).await;
 
     let mimeext = mime2ext::mime2ext(&mime).unwrap_or("png");
     let img_path = image_path(&image_url).with_extension(mimeext);
