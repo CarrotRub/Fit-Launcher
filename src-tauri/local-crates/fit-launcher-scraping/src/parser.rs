@@ -188,7 +188,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         .unwrap_or_default();
 
     let img = article
-        .select(&scraper::Selector::parse(".entry-content > p > a > img").unwrap())
+        .select(&scraper::Selector::parse(".entry-content p > a > img").unwrap())
         .next()
         .and_then(|e| e.value().attr("src"))
         .map(str::to_string)
@@ -231,7 +231,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
 pub fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
     for i in 3..10 {
         let selector = match scraper::Selector::parse(&format!(
-            ".entry-content > p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
+            ".entry-content p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
         )) {
             Ok(s) => s,
             Err(_) => continue,
@@ -260,9 +260,8 @@ pub fn extract_secondary_images(article: ElementRef<'_>) -> Vec<String> {
     let mut secondary = Vec::new();
 
     for p in 3..=5 {
-        let sel =
-            scraper::Selector::parse(&format!(".entry-content > p:nth-of-type({p}) img[src]"))
-                .unwrap();
+        let sel = scraper::Selector::parse(&format!(".entry-content p:nth-of-type({p}) img[src]"))
+            .unwrap();
         for img_el in article.select(&sel) {
             if let Some(s) = img_el.value().attr("src") {
                 secondary.push(s.to_string());

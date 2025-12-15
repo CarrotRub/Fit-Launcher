@@ -27,3 +27,4 @@ ahash = { workspace = true }
 time = { version = "0.3.41", features = ["formatting"] }
 rand = "0.9.1"
 rusqlite = { version = "0.37.0", features = ["bundled-full"] }
+itertools = "0.14"
