@@ -336,7 +336,9 @@ pub fn set_category_games(
         )?;
 
         tx.execute(
-            "INSERT INTO game_categories (url_hash, category, position) VALUES (?1, ?2, ?3)",
+            "
+            INSERT INTO game_categories (url_hash, category, position) VALUES (?1, ?2, ?3)
+            ON CONFLICT (url_hash, category) DO NOTHING",
             params![&url_hash, category, position as i64],
         )?;
     }
