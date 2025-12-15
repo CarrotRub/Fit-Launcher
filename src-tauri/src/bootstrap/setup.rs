@@ -255,16 +255,30 @@ pub async fn start_app() -> anyhow::Result<()> {
     let app = app.build(tauri::generate_context!())?;
 
     app.run(|app_handle, event| {
-        if let tauri::RunEvent::ExitRequested { api, .. } = event {
-            // Tray-based UX requires suppressing implicit exits unless explicitly quitting.
-            if crate::bootstrap::tray::QUITTING.load(std::sync::atomic::Ordering::Acquire) {
-                return;
-            }
+        match event {
+            tauri::RunEvent::ExitRequested { api, .. } => {
+                // Tray-based UX requires suppressing implicit exits unless explicitly quitting.
+                if crate::bootstrap::tray::QUITTING.load(std::sync::atomic::Ordering::Acquire) {
+                    return;
+                }
 
-            if let Some(main) = app_handle.get_webview_window("main") {
-                let _ = main.hide();
+                if let Some(main) = app_handle.get_webview_window("main") {
+                    let _ = main.hide();
+                }
+                api.prevent_exit();
             }
-            api.prevent_exit();
+            tauri::RunEvent::Exit => {
+                // Shutdown subsystems before process exit (Not Bittorrent session as that uses ARIA2 daemon in functions.rs).
+                // This ensures ports are released for relaunch scenarios.
+                info!("RunEvent::Exit - shutting down subsystems");
+
+                if let Some(librqbit) = app_handle.try_state::<LibrqbitSession>() {
+                    librqbit.shutdown();
+                }
+
+                info!("Subsystems shut down, process exiting");
+            }
+            _ => {}
         }
     });
 

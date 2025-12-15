@@ -6,14 +6,22 @@ use librqbit::{
     AddTorrent, AddTorrentOptions, AddTorrentResponse, ListOnlyResponse, Magnet, Session,
     api::TorrentIdOrHash,
 };
+use parking_lot::Mutex;
 use tokio::io::AsyncWriteExt;
 use tracing::{error, info, warn};
 
 use crate::{decrypt_torrent_from_paste, errors::TorrentApiError};
 
-#[derive(Clone)]
 pub struct LibrqbitSession {
-    session: Arc<Session>,
+    session: Arc<Mutex<Option<Arc<Session>>>>,
+}
+
+impl Clone for LibrqbitSession {
+    fn clone(&self) -> Self {
+        Self {
+            session: Arc::clone(&self.session),
+        }
+    }
 }
 
 impl LibrqbitSession {
@@ -21,7 +29,22 @@ impl LibrqbitSession {
         let session = Session::new("/temp/".into())
             .await
             .expect("Failed to start Session");
-        Self { session }
+        Self {
+            session: Arc::new(Mutex::new(Some(session))),
+        }
+    }
+
+    /// Shuts down the session by dropping it. Drop = port release.
+    /// Idempotent - safe to call multiple times.
+    pub fn shutdown(&self) {
+        if self.session.lock().take().is_some() {
+            info!("LibrqbitSession shut down");
+        }
+    }
+
+    /// Returns true if the session is still active (not shut down).
+    pub fn is_active(&self) -> bool {
+        self.session.lock().is_some()
     }
 
     pub async fn get_metadata_only(
@@ -30,8 +53,15 @@ impl LibrqbitSession {
     ) -> Result<ListOnlyResponse, TorrentApiError> {
         let (add, torrent_path) = get_add_torrent(&magnet_str).await?;
 
-        let response = self
+        // Clone Arc briefly, release lock immediately - don't hold across await
+        let session = self
             .session
+            .lock()
+            .as_ref()
+            .cloned()
+            .ok_or(TorrentApiError::LibrqbitError)?;
+
+        let response = session
             .add_torrent(
                 add,
                 Some(AddTorrentOptions {
