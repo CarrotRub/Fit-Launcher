@@ -12,6 +12,7 @@ use tracing::error;
 pub type IOResult<T> = Result<T, std::io::Error>;
 pub type ReclaimSpace = LRUResult<Vec<FileInfo<String>>>;
 pub type GetItem = LRUResult<Option<PathBuf>>;
+pub type PopItem = LRUResult<Option<(String, PathBuf)>>;
 
 /// To get command output, optionally call
 /// [`kanal::bounded`]\(0\) for an oneshot channel
@@ -22,6 +23,8 @@ pub enum Command {
     PeekItem(String, Sender<GetItem>),
     /// Insert item
     InsertItem(String, PathBuf, Option<Sender<GetItem>>),
+    /// Pop item out from LRU
+    PopItem(String, Option<Sender<PopItem>>),
     /// Reclaim space, may remove some files.
     ///
     /// returned metainfo is needed for recalculating used space.
@@ -159,6 +162,12 @@ impl Command {
                     if lru.pop(&key).is_err() {
                         continue;
                     }
+                }
+            }
+            Command::PopItem(ref key, sender) => {
+                let result = lru.pop(key);
+                if let Some(tx) = sender {
+                    _ = tx.send(result);
                 }
             }
         }

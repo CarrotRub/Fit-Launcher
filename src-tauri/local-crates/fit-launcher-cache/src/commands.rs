@@ -161,7 +161,7 @@ async fn cache_image_async(
         return;
     }
 
-    let used = manager.used_space.load(Ordering::Acquire);
+    let used = manager.used_space.fetch_add(file_size, Ordering::AcqRel);
     let available = capacity.saturating_sub(used);
 
     let exceed = (file_size - available) as isize;
@@ -214,10 +214,15 @@ async fn cache_image_async(
 
     match write_result {
         Ok(_) => {
-            manager.used_space.fetch_add(file_size, Ordering::AcqRel);
             info!("successfully cached {image_url} ({file_size} bytes)");
         }
         Err(e) => {
+            manager.used_space.fetch_sub(file_size, Ordering::AcqRel);
+            _ = manager
+                .command_tx
+                .send(Command::PopItem(image_url, None))
+                .await;
+
             error!("failed to write cache file {img_path:?}: {e}");
         }
     }
