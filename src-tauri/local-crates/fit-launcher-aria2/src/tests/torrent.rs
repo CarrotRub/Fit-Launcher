@@ -20,7 +20,7 @@ fn init_test_logging() {
 
 #[tokio::test]
 async fn add_magnet() -> Result<(), Box<dyn std::error::Error>> {
-    let session = TorrentSession::new().await;
+    let session = TorrentSession::new();
 
     let client = session.aria2_client().await?;
 
@@ -42,7 +42,7 @@ async fn add_magnet() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn add_torrent() -> Result<(), Box<dyn std::error::Error>> {
     init_test_logging();
-    let mut session = TorrentSession::new().await;
+    let session = TorrentSession::new();
     session.init_client().await;
 
     tokio::time::sleep(Duration::from_secs(1)).await;

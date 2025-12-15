@@ -12,11 +12,7 @@ use fit_launcher_scraping::{
 use fit_launcher_torrent::{LibrqbitSession, functions::TorrentSession};
 use fit_launcher_ui_automation::api::InstallationManager;
 use lru::LruCache;
-use std::{
-    num::NonZeroUsize,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{num::NonZeroUsize, sync::Arc, time::Instant};
 use tauri::{Emitter, Manager, async_runtime::spawn};
 use tauri_helper::specta_collect_commands;
 use tokio::sync::Mutex;
@@ -61,43 +57,48 @@ pub async fn start_app() -> anyhow::Result<()> {
         NonZeroUsize::new(30).unwrap(),
     )));
 
-    // We must know early if this process is a relaunch, because single-instance
-    // enforcement cannot distinguish intentional restarts from real duplicates.
-    let is_restarting = std::env::args().any(|arg| arg == "--restarting");
-
-    let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_process::init());
-
-    // Single-instance is skipped during restart to avoid the spawn-before-exit race.
-    if !is_restarting {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+    // CRITICAL: single-instance plugin MUST be the FIRST plugin registered.
+    // Otherwise it may not work reliably on Windows.
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             info!(
-                "Another instance attempted with args={:?} cwd={:?}",
+                "Single instance: Another instance attempted with args={:?} cwd={:?}",
                 args, cwd
             );
 
             // Focus logic must be tolerant to hidden or partially initialized windows.
             if let Some(main) = app.get_webview_window("main") {
+                info!("Single instance: Focusing main window");
                 let _ = main.show();
-                std::thread::sleep(Duration::from_millis(50));
                 let _ = main.unminimize();
                 let _ = main.set_focus();
             } else if let Some(splash) = app.get_webview_window("splashscreen") {
+                info!("Single instance: Focusing splashscreen");
                 let _ = splash.show();
                 let _ = splash.unminimize();
                 let _ = splash.set_focus();
+            } else {
+                info!("Single instance: No windows found to focus");
             }
-        }));
-    }
+        }))
+        // Register remaining plugins after single-instance
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
 
     let app = builder
         .setup({
-            // Explicit capture to make restart intent available inside setup.
-            let is_restarting = is_restarting;
+            let image_cache = image_cache;
 
             move |app| {
                 let app_handle = app.handle().clone();
+
+                // Initialize state here to ensure it only runs on the primary instance.
+                app.manage(image_cache);
+                app.manage(InstallationManager::new());
+
+                // TorrentSession::new() is synchronous (just loads config from disk),
+                // ensuring state is available immediately for commands like get_download_settings.
+                app.manage(TorrentSession::new());
 
                 shutdown_hook(app_handle.clone());
 
@@ -115,14 +116,24 @@ pub async fn start_app() -> anyhow::Result<()> {
                 spawn({
                     let app = app_handle.clone();
                     async move {
+                        info!("Download subsystem spawn: starting LibrqbitSession");
+                        // LibrqbitSession creates a torrent session which may be heavier.
+                        let librqbit = LibrqbitSession::new().await;
+                        info!("Download subsystem spawn: LibrqbitSession created, managing state");
+                        app.manage(librqbit);
+
+                        info!("Download subsystem spawn: getting TorrentSession state");
                         let session = app.state::<TorrentSession>();
                         let librqbit = app.state::<LibrqbitSession>();
 
+                        info!("Download subsystem spawn: calling init_client");
                         match session.init_client().await {
                             Ok(_) => {
+                                info!("Download subsystem spawn: init_client succeeded, getting aria2_client");
                                 if let Ok(client) = session.aria2_client().await {
                                     let client = Arc::new(Mutex::new(client));
 
+                                    info!("Download subsystem spawn: creating DownloadManager");
                                     let manager = DownloadManager::new(
                                         Arc::new(Mutex::new(Aria2WsClient::new(client.clone()))),
                                         app.clone(),
@@ -134,10 +145,12 @@ pub async fn start_app() -> anyhow::Result<()> {
                                         error!("Failed to load persisted jobs: {:?}", e);
                                     }
 
+                                    info!("Download subsystem spawn: managing DownloadManager and starting dispatcher");
                                     app.manage(manager.clone());
                                     fit_launcher_download_manager::dispatch::spawn_dispatcher(
                                         manager, client,
                                     );
+                                    info!("Download subsystem spawn: complete");
                                 }
                             }
                             Err(err) => error!("ARIA2 init failed: {:#?}", err),
@@ -228,19 +241,7 @@ pub async fn start_app() -> anyhow::Result<()> {
                     error!("Tray setup failed: {:#?}", e);
                 }
 
-                // During restart the single-instance callback is intentionally skipped,
-                // so we must ensure visibility manually once the window exists.
-                if is_restarting {
-                    let app = app.handle().clone();
-                    tauri::async_runtime::spawn(async move {
-                        tokio::time::sleep(Duration::from_millis(50)).await;
-                        if let Some(main) = app.get_webview_window("main") {
-                            let _ = main.show();
-                            let _ = main.unminimize();
-                            let _ = main.set_focus();
-                        }
-                    });
-                }
+
 
                 Ok(())
             }
@@ -249,11 +250,7 @@ pub async fn start_app() -> anyhow::Result<()> {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri_helper::tauri_collect_commands!())
-        .manage(image_cache)
-        .manage(TorrentSession::new().await)
-        .manage(InstallationManager::new())
-        .manage(LibrqbitSession::new().await);
+        .invoke_handler(tauri_helper::tauri_collect_commands!());
 
     let app = app.build(tauri::generate_context!())?;
 

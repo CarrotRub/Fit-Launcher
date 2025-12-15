@@ -355,7 +355,9 @@ impl TorrentSession {
         Ok(())
     }
 
-    pub async fn new() -> Self {
+    /// Creates a new TorrentSession by loading config from disk.
+    /// This is intentionally synchronous to allow safe initialization in Tauri's setup closure.
+    pub fn new() -> Self {
         warn!("Starting Initialization");
         let config_dir = directories::BaseDirs::new()
             .expect("Could not determine base directories")
