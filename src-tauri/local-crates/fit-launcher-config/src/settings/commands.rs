@@ -2,6 +2,7 @@ use directories::BaseDirs;
 use specta::specta;
 use std::fs;
 use std::path::PathBuf;
+use tauri::async_runtime::spawn_blocking;
 use tracing::error;
 use tracing::info;
 
@@ -307,21 +308,37 @@ pub async fn clear_all_cache(app: tauri::AppHandle) -> Result<(), SettingsConfig
         info!("Cleared DHT cache");
     }
 
-    // Clear image cache (stored in app cache directory)
+    _ = spawn_blocking({
+        let handle = app.clone();
+        move || {
+            for webview in handle.webviews().values() {
+                let _ = webview.clear_all_browsing_data();
+            }
+        }
+    })
+    .await;
+
+    // Clear other cache stored in app cache directory
     if let Ok(cache_dir) = app.path().app_cache_dir() {
-        if cache_dir.exists() {
-            if let Ok(mut entries) = tokio::fs::read_dir(&cache_dir).await {
-                while let Ok(Some(entry)) = entries.next_entry().await {
-                    let path = entry.path();
-                    if path.is_file() {
-                        let _ = tokio::fs::remove_file(&path).await;
-                    } else if path.is_dir() {
-                        let _ = tokio::fs::remove_dir_all(&path).await;
+        if let Ok(mut entries) = tokio::fs::read_dir(&cache_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let path = entry.path();
+                if path.is_file() {
+                    let _ = tokio::fs::remove_file(&path).await;
+                } else if path.is_dir() {
+                    // skip image_cache & cache.sled, which results untracked cached files
+                    // skip EBWebView, removing it will fail since webview2 process
+                    if ["image_cache", "cache.sled", "EBWebView"]
+                        .iter()
+                        .any(|dirname| path.ends_with(dirname))
+                    {
+                        continue;
                     }
+                    let _ = tokio::fs::remove_dir_all(&path).await;
                 }
             }
-            info!("Cleared image cache");
         }
+        info!("Cleared misc cache");
     }
 
     // Note: Game cache is now stored in SQLite database.
