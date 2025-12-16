@@ -38,6 +38,7 @@ export default function LazyImage(props: LazyImageProps) {
     });
 
     createEffect(async () => {
+        setCurrentSrc(props.src)
         const e = entry();
         if (!e) return;
         if (loaded()) return;
