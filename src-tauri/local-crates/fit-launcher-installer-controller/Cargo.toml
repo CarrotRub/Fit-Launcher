@@ -5,7 +5,7 @@ edition = "2024"
 description = "Elevated installer controller for FitLauncher - handles privileged UI automation during game installations"
 
 [[bin]]
-name = "fit-launcher-automation"
+name = "FitLauncher Installer"
 path = "src/main.rs"
 
 [build-dependencies]
