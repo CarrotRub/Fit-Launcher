@@ -9,7 +9,7 @@ use futures::{StreamExt, stream};
 use rand::{prelude::*, rng};
 use scraper::{Html, Selector};
 use serde_with::chrono::{self, DateTime, Utc};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter, Manager};
 use tracing::info;
 
 use crate::db::{self, hash_url};
@@ -155,5 +155,10 @@ pub async fn refresh_discovery_games(app: AppHandle) -> Result<(), ScrapingError
 
     write_meta_ts(&conn);
     info!("queue ready with {} games", queue.len());
+
+    if let Some(main) = app.get_window("main") {
+        let _ = main.emit("discovery-ready", ());
+    }
+
     Ok(())
 }

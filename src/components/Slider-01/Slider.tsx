@@ -23,8 +23,8 @@ const Slider = (props: SliderProps): JSX.Element => {
     };
 
 
-    const goPrevious = () => setCurrentIndex(prev => Math.max(prev - 1, 0));
-    const goNext = () => setCurrentIndex(prev => Math.min(prev + 1, props.images.length - 1));
+    const goPrevious = () => setCurrentIndex(prev => Math.max(prev - 3, 0));
+    const goNext = () => setCurrentIndex(prev => Math.min(prev + 3, props.images.length - 1));
 
     createEffect(() => {
         const container = document.querySelector<HTMLDivElement>(`#${sliderId} .slider-container`);

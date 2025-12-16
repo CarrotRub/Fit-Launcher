@@ -46,7 +46,7 @@ export class GamesCacheApi {
     return commands.getSingularGameInfo(gameLink);
   }
 
-  async getGameHash(url: string): Promise<string> {
+  async getGameHash(url: string): Promise<number> {
     return await commands.hashUrl(url);
   }
 
@@ -66,6 +66,15 @@ export class GamesCacheApi {
       typeof text === "string" && text.toLowerCase().includes("adult");
 
     return gameList.filter((game) => !isNSFW(game.tag));
+  }
+
+  /** Clear cached entries. If key is provided clears only that key. Otherwise clears all. */
+  clearCache(key?: string) {
+    if (key) {
+      this.cache.delete(key);
+    } else {
+      this.cache.clear();
+    }
   }
 
   /** Retrieve, cache and return the result of the fetcher function */
@@ -96,7 +105,12 @@ export class GamesCacheApi {
     if (typeof result === "object" && result !== null && "status" in result) {
       const resultTyped = result as Result<T, ScrapingError>;
       if (resultTyped.status === "ok") {
-        this.cache.set(key, resultTyped);
+        // Don't cache empty arrays as backend may still be populating data
+        const data = resultTyped.data;
+        const isEmpty = Array.isArray(data) && data.length === 0;
+        if (!isEmpty) {
+          this.cache.set(key, resultTyped);
+        }
       } else {
         if (resultTyped.error.type !== "articleNotFound") {
           await showError(
