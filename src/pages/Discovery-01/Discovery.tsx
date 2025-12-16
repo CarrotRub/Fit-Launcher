@@ -1,4 +1,4 @@
-import { createSignal, For, Suspense, createResource, lazy, createMemo, Show } from 'solid-js';
+import { createSignal, For, Suspense, createResource, lazy, createMemo, Show, onMount, onCleanup } from 'solid-js';
 import type { Game } from '../../bindings';
 import LoadingPage from '../LoadingPage-01/LoadingPage';
 import { GamesCacheApi } from '../../api/cache/api';
@@ -6,6 +6,7 @@ import { LibraryApi } from '../../api/library/api';
 import FilterBar from '../../components/FilterBar/FilterBar';
 import { FilterState, DEFAULT_FILTER_STATE, SizeRange } from '../../types/filters';
 import { getAllGenres, getSizeRange, filterGames } from '../../helpers/gameFilters';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 const LazyDiscoveryRow = lazy(() => import("./Discovery-Components/DiscoveryRow"));
 
@@ -32,9 +33,19 @@ async function fetchDiscoveryData() {
 }
 
 export default function DiscoveryPage() {
-  const [data] = createResource(fetchDiscoveryData);
+  const [data, { refetch }] = createResource(fetchDiscoveryData);
   const [filters, setFilters] = createSignal<FilterState>(DEFAULT_FILTER_STATE);
   const [currentPage, setCurrentPage] = createSignal(1);
+
+  onMount(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen('discovery-ready', () => {
+      gameCacheInst.clearCache('discovery');
+      refetch();
+    }).then(fn => { unlisten = fn; });
+
+    onCleanup(() => { unlisten?.(); });
+  });
 
   // Derived state
   const games = () => data()?.games ?? [];

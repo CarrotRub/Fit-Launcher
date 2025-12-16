@@ -1,8 +1,9 @@
-import { createContext, useContext, createSignal, createResource, createMemo, JSX, Accessor } from "solid-js";
+import { createContext, useContext, createSignal, createResource, createMemo, JSX, Accessor, onMount, onCleanup } from "solid-js";
 import type { Game } from "../../bindings";
 import { GamesCacheApi } from "../../api/cache/api";
 import { FilterState, DEFAULT_FILTER_STATE, SizeRange } from "../../types/filters";
 import { getAllGenres, getSizeRange, filterGames } from "../../helpers/gameFilters";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 const cache = new GamesCacheApi();
 
@@ -40,8 +41,18 @@ const GamehubContext = createContext<GamehubContextType>();
 const DEFAULT_SIZE_RANGE: SizeRange = { min: 0, max: 100 * 1024 * 1024 * 1024 };
 
 export function GamehubProvider(props: { children: JSX.Element }) {
-  const [data] = createResource(fetchAllGamehubData);
+  const [data, { refetch }] = createResource(fetchAllGamehubData);
   const [filters, setFilters] = createSignal<FilterState>(DEFAULT_FILTER_STATE);
+
+  onMount(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen('backend-ready', () => {
+      cache.clearCache();
+      refetch();
+    }).then(fn => { unlisten = fn; });
+
+    onCleanup(() => { unlisten?.(); });
+  });
 
   // Accessors for each category
   const popular = () => data()?.popular ?? [];
