@@ -15,25 +15,17 @@ pub fn start_executable(path: String) {
 
     #[cfg(target_os = "windows")]
     {
-        use std::ffi::OsStr;
-        use std::os::windows::ffi::OsStrExt;
         use windows::Win32::UI::Shell::ShellExecuteW;
         use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
         use windows::core::PCWSTR;
 
         // Convert path to wide string
-        let path_wide: Vec<u16> = OsStr::new(&path)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect();
+        let path_wide: Vec<u16> = encode_utf16le_with_null(&path);
 
         // Get working directory (parent of executable)
         let current = PathBuf::from(".");
         let working_dir = path.parent().unwrap_or(&current);
-        let working_dir_wide: Vec<u16> = OsStr::new(working_dir)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect();
+        let working_dir_wide: Vec<u16> = encode_utf16le_with_null(working_dir);
 
         // ShellExecuteW with "open" verb - Windows handles UAC automatically
         let result = unsafe {
@@ -52,7 +44,7 @@ pub fn start_executable(path: String) {
             info!("Executable launched via shell: {}", path.display());
         } else {
             error!(
-                "Failed to launch executable via shell, error code: {}",
+                "Failed to launch {path:?} via shell, error code: {}",
                 result_code
             );
         }
@@ -63,4 +55,11 @@ pub fn start_executable(path: String) {
     // by allowing custom commands, `protonrun` e.g. should be supported automatically
     // Add usage of wine + check beforehand with Flatpak if steamos
     {}
+}
+
+#[cfg(windows)]
+fn encode_utf16le_with_null(s: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
+    use std::os::windows::ffi::OsStrExt;
+
+    s.as_ref().encode_wide().chain(std::iter::once(0)).collect()
 }

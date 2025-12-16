@@ -1,22 +1,25 @@
 use std::{
     fmt::Display,
-    fs::Metadata,
-    sync::{Arc, atomic::Ordering},
+    sync::{Arc, LazyLock, atomic::Ordering},
+    time::Duration,
 };
 
 use base64::Engine;
+use crossbeam_skiplist::SkipMap;
 use fit_launcher_torrent::{functions::TorrentSession, modify_config};
 use lru_cache_adaptor::FileInfo;
 use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use tauri::Url;
-use tokio::io::AsyncWriteExt as _;
-use tracing::{error, info, warn};
+use tauri::{Url, async_runtime::spawn_blocking};
+use tokio::{io::AsyncWriteExt as _, sync::Semaphore};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
 };
+
+static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(|| SkipMap::new());
 
 #[tauri::command]
 #[specta]
@@ -38,7 +41,7 @@ pub async fn set_capacity(
     }
 
     let old_used = manager.used_space.load(Ordering::Acquire);
-    manager.capaticy.store(new_capacity, Ordering::Release);
+    manager.capacity.store(new_capacity, Ordering::Release);
 
     info!("cache pool size: set to {new_capacity} B");
 
@@ -61,36 +64,41 @@ pub async fn set_capacity(
     Ok(())
 }
 
-/// Download image, possibly add to LRUCache
-///
-/// return: data URI, for example `data:image/png;base64,...`
 #[tauri::command]
 #[specta]
 pub async fn cached_download_image(
     manager: tauri::State<'_, Arc<CacheManager>>,
     image_url: String,
 ) -> Result<String, CacheError> {
+    // Check cache first
     if let Ok(data_uri) = data_uri_from_cache(&manager, &image_url).await {
-        info!("cache hit: {image_url}");
+        debug!("cache hit: {image_url}");
         return Ok(data_uri);
     }
-    let client = CUSTOM_DNS_CLIENT.read().await.clone();
+
+    let client_guard = CUSTOM_DNS_CLIENT.read().await;
+    let client = &*client_guard;
 
     let try_times = 5;
-    for try_ in 0..try_times {
-        match client
-            // ignoring `if-modified-since` header,
-            // because we don't want more accurate cache control
-            .execute(client.get(&image_url).build().unwrap())
-            .await
-        {
-            Ok(resp) => {
-                drop(client);
 
+    let req = client.get(&image_url).build().inspect_err(|_e| {
+        error!("failed to construct request: {image_url:?}");
+    })?;
+
+    let host = req.url().host_str().unwrap_or_default();
+    let entry = PER_HOST_SEMAPHORE.get_or_insert_with(host.into(), || Semaphore::const_new(6));
+    let download_semaphore = entry.value();
+    for try_ in 0..try_times {
+        // follow browser behaviour https://stackoverflow.com/a/30064610/13121439
+        let _sem = download_semaphore.acquire().await;
+
+        // clone Request is safe, it's unrelated to underlying connection
+        match client.execute(req.try_clone().unwrap()).await {
+            Ok(resp) => {
                 if !resp.status().is_success() {
                     let e = resp.error_for_status().unwrap_err();
-                    error!("http erorr {image_url}: {e}");
-                    return Err(e)?;
+                    error!("http error {image_url}: {e}");
+                    return Err(e.into());
                 }
 
                 let mime = resp
@@ -99,88 +107,124 @@ pub async fn cached_download_image(
                     .and_then(|h| h.to_str().ok().map(str::to_string))
                     .or_else(|| {
                         let url = Url::parse(&image_url).ok()?;
-                        let filename = url.path_segments()?.last()?;
-
+                        let filename = url.path_segments()?.next_back()?;
                         let mime = mime_guess::from_path(filename).first()?;
-                        let type_ = mime.type_();
-                        let subtype = mime.subtype();
-
-                        Some(format!("{type_}/{subtype}"))
+                        Some(format!("{}/{}", mime.type_(), mime.subtype()))
                     })
                     .unwrap_or_else(|| "image/png".into());
-                let bytes = Arc::new(resp.bytes().await?);
+
+                let bytes: Arc<Vec<u8>> = Arc::new(resp.bytes().await?.iter().as_slice().into());
                 let file_size = bytes.len() as u64;
 
+                // Return immediately, cache asynchronously
+                let data_uri = encode_data_uri(&mime, bytes.clone()).await;
+
                 let manager = manager.inner().clone();
-                let mime_ = mime.clone();
-                let bytes_ = bytes.clone();
+                let image_url_clone = image_url.clone();
+                let mime_clone = mime.clone();
+
                 tauri::async_runtime::spawn(async move {
-                    let total = manager.capaticy.load(Ordering::Acquire);
-
-                    // if file was too large, skip caching it
-                    if total < file_size {
-                        return;
-                    }
-
-                    let used = manager
-                        .used_space
-                        .fetch_add(file_size as _, Ordering::AcqRel);
-                    let free = total - used;
-
-                    let exceed = (file_size as i64 - free as i64) as isize;
-
-                    if exceed > 0 {
-                        claim_space(&manager, exceed).await;
-                    }
-
-                    let mimeext = mime2ext::mime2ext(mime_).unwrap_or("png");
-                    let img_path = image_path(&image_url).with_extension(mimeext);
-
-                    let (tx, rx) = kanal::bounded(0);
-
-                    info!("cached {image_url} to {img_path:?}");
-                    _ = manager
-                        .command_tx
-                        .send(Command::InsertItem(image_url, img_path.clone(), Some(tx)))
+                    cache_image_async(&manager, image_url_clone, mime_clone, bytes, file_size)
                         .await;
-
-                    if let Some(parent) = img_path.parent() {
-                        _ = tokio::fs::create_dir_all(parent).await;
-                    }
-
-                    if let Ok(Ok(Some(path))) = rx.as_async().recv().await {
-                        if let Ok(file_len) = path.metadata().as_ref().map(Metadata::len) {
-                            manager.used_space.fetch_sub(file_len, Ordering::AcqRel);
-                        }
-                    }
-
-                    let Ok(mut file) = tokio::fs::OpenOptions::new()
-                        .share_mode(0)
-                        .create(true)
-                        .write(true)
-                        .truncate(true)
-                        .open(&img_path)
-                        .await
-                    else {
-                        return;
-                    };
-                    _ = file.write_all(&*bytes_).await;
                 });
 
-                return Ok(encode_data_uri(mime, &*bytes));
+                return Ok(data_uri);
             }
             Err(e) if try_ == try_times - 1 => {
                 error!("failed to download {image_url}: {e}");
-                return Err(e)?;
+                return Err(e.into());
             }
             Err(e) => {
                 warn!("retry {image_url}: {e}");
-                continue;
+                let delay = (500 * 2_u64.pow(try_)).min(4000);
+                tokio::time::sleep(Duration::from_millis(delay)).await;
             }
         }
     }
 
     unreachable!()
+}
+
+async fn cache_image_async(
+    manager: &CacheManager,
+    image_url: String,
+    mime: String,
+    bytes: Arc<Vec<u8>>,
+    file_size: u64,
+) {
+    let capacity = manager.capacity.load(Ordering::Acquire);
+
+    // Skip if file too large
+    if capacity < file_size {
+        info!("skipping cache for {image_url}: file too large ({file_size} > {capacity})");
+        return;
+    }
+
+    let used = manager.used_space.fetch_add(file_size, Ordering::AcqRel);
+    let available = capacity.saturating_sub(used);
+
+    let exceed = (file_size.saturating_sub(available)) as isize;
+
+    // Only claim once,
+    // it will remove at least `exceed` bytes on each call
+    claim_space(&manager, exceed).await;
+
+    let mimeext = mime2ext::mime2ext(&mime).unwrap_or("png");
+    let img_path = image_path(&image_url).with_extension(mimeext);
+
+    let (tx, rx) = kanal::bounded(0);
+
+    info!("caching {image_url} to {}", img_path.display());
+
+    _ = manager
+        .command_tx
+        .send(Command::InsertItem(
+            image_url.clone(),
+            img_path.clone(),
+            Some(tx),
+        ))
+        .await;
+
+    if let Some(parent) = img_path.parent() {
+        _ = tokio::fs::create_dir_all(parent).await;
+    }
+
+    // Handle evicted file
+    if let Ok(Ok(Some(old_path))) = rx.as_async().recv().await
+        && let Ok(file_len) = old_path.metadata().map(|m| m.len())
+    {
+        manager.used_space.fetch_sub(file_len, Ordering::AcqRel);
+        info!("evicted old cache file: {old_path:?} ({file_len} bytes)");
+    }
+
+    let write_result = async {
+        let mut file = tokio::fs::OpenOptions::new()
+            .share_mode(0)
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&img_path)
+            .await?;
+        file.write_all(&bytes).await?;
+        file.flush().await?;
+        Ok::<_, std::io::Error>(())
+    }
+    .await;
+
+    match write_result {
+        Ok(_) => {
+            info!("successfully cached {image_url} ({file_size} bytes)");
+        }
+        Err(e) => {
+            manager.used_space.fetch_sub(file_size, Ordering::AcqRel);
+            _ = manager
+                .command_tx
+                .send(Command::PopItem(image_url, None))
+                .await;
+
+            error!("failed to write cache file {img_path:?}: {e}");
+        }
+    }
 }
 
 #[tauri::command]
@@ -194,10 +238,12 @@ pub async fn reclaim_space(
 
 /// Clean all cache and try to delete files
 ///
-/// This will not wait for real deletion, since windows file deletion happens immediately
+/// This will not wait for real deletion
 #[tauri::command]
 #[specta]
-pub async fn clean_cache(manager: tauri::State<'_, Arc<CacheManager>>) -> Result<(), CacheError> {
+pub async fn clear_image_cache(
+    manager: tauri::State<'_, Arc<CacheManager>>,
+) -> Result<(), CacheError> {
     manager.command_tx.send(Command::ClearCache).await?;
     manager
         .used_space
@@ -250,14 +296,16 @@ async fn data_uri_from_cache(
             let image_raw = tokio::fs::read(path).await?;
             let mime = format!("{}/{}", mime.type_(), mime.subtype());
 
-            Ok(encode_data_uri(mime, image_raw))
+            Ok(encode_data_uri(mime, Arc::new(image_raw)).await)
         }
         _ => Err(CacheError::CacheMissing),
     }
 }
 
-fn encode_data_uri(mime: impl Display, image_raw: impl AsRef<[u8]>) -> String {
+async fn encode_data_uri(mime: impl Display, image_raw: Arc<Vec<u8>>) -> String {
     let base64_engine = base64::engine::general_purpose::STANDARD;
-    let encoded = base64_engine.encode(image_raw.as_ref());
+    let encoded = spawn_blocking(move || base64_engine.encode(image_raw.as_ref()))
+        .await
+        .expect("failed to spawn encoding task");
     format!("data:{mime};base64,{encoded}")
 }

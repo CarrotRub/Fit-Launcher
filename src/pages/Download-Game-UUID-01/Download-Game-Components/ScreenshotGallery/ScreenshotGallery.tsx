@@ -20,7 +20,7 @@ export function ScreenshotGallery(props: ScreenshotGalleryProps) {
     const imageCount = createMemo(() => images().length);
     const placeholderCount = () => props.placeholderCount ?? 5;
 
-    const displayCount = createMemo(() => imageCount() > 0 ? imageCount() : placeholderCount());
+
 
     createEffect(() => {
         const count = imageCount();

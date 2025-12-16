@@ -6,7 +6,7 @@ use kanal::AsyncSender;
 use crate::{error::CacheError, initialize_used_cache_size, spawn_cache_manager, store::Command};
 
 pub struct CacheManager {
-    pub(crate) capaticy: AtomicU64,
+    pub(crate) capacity: AtomicU64,
     pub(crate) used_space: AtomicU64,
     pub(crate) command_tx: Arc<AsyncSender<Command>>,
 }
@@ -20,7 +20,7 @@ impl CacheManager {
         spawn_cache_manager(rx);
 
         Ok(CacheManager {
-            capaticy: AtomicU64::new(cache_capacity),
+            capacity: AtomicU64::new(cache_capacity),
             used_space: AtomicU64::new(initialize_used_cache_size().await),
             command_tx: Arc::new(tx.to_async()),
         })

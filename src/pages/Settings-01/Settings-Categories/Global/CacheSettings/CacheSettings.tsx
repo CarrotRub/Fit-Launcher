@@ -9,6 +9,7 @@ import { showError } from "../../../../../helpers/error";
 import LabelNumericalInput from "../../Components/UI/LabelNumericalInput/LabelNumericalInput";
 import { CacheSettings } from "../../../../../bindings";
 import { SettingsSectionProps } from "../../../../../types/settings/types";
+import { commands } from "../../../../../bindings";
 
 export default function CachePart(props: SettingsSectionProps<CacheSettings | null>): JSX.Element {
   return (
@@ -34,10 +35,12 @@ function CacheContent(props: SettingsSectionProps<CacheSettings | null>) {
 
     if (confirmation) {
       try {
+        // Clear image cache
+        await commands.clearImageCache();
         // Clear torrent session and DHT data
-        await invoke("clear_all_cache");
+        await commands.clearAllCache();
         // Clear scraped game data (keeps sitemap stubs for search)
-        await invoke("clear_game_cache");
+        await commands.clearGameCache();
         await message("Cache cleared! Game details will be re-fetched when visited.", {
           title: "FitLauncher",
           kind: "info",
