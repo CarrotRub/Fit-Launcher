@@ -1,5 +1,5 @@
-import { onMount, lazy, JSX } from 'solid-js';
-import { Route, Router, useLocation } from '@solidjs/router';
+import { onMount, lazy, JSX, onCleanup } from 'solid-js';
+import { Route, Router } from '@solidjs/router';
 import Topbar from './components/Topbar-01/Topbar';
 import '@fontsource-variable/mulish';
 import '@fontsource-variable/lexend';
@@ -11,15 +11,18 @@ import { check } from '@tauri-apps/plugin-updater';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { ThemeManagerApi } from './api/theme/api';
 import { Toaster, ToastProvider } from 'solid-notifications';
-import { DM } from './api/manager/api';
 import { installerService } from './api/installer/api';
 import createChangelogPopup from './Pop-Ups/Changelog-PopUp/Changelog-PopUp';
 import { fetchLatestGithubRelease } from './api/changelog/api';
 import { getVersion } from '@tauri-apps/api/app';
-import { lt, SemVer } from 'semver';
+import { lt } from 'semver';
 
 const themeManager = new ThemeManagerApi();
 
+export const pageAbortController = new AbortController();
+
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function App(props: { children: number | boolean | Node | JSX.ArrayElement | (string & {}) | null | undefined; }) {
   onMount(async () => {
 
@@ -65,10 +68,12 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
     // });
 
   });
-
+  onCleanup(() => {
+    pageAbortController.abort();
+  });
   async function handleChangelog() {
-    let latestVer = localStorage.getItem("version");
-    let updatedVer = await getVersion();
+    const latestVer = localStorage.getItem("version");
+    const updatedVer = await getVersion();
 
     if (!latestVer) {
       createChangelogPopup({

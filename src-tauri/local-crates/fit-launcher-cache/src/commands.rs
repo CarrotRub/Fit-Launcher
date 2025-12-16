@@ -81,9 +81,8 @@ pub async fn cached_download_image(
 
     let try_times = 5;
 
-    let req = client.get(&image_url).build().map_err(|e| {
+    let req = client.get(&image_url).build().inspect_err(|_e| {
         error!("failed to construct request: {image_url:?}");
-        e
     })?;
 
     let host = req.url().host_str().unwrap_or_default();

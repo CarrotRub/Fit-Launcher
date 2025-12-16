@@ -1,106 +1,92 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { createSignal, createEffect, Show, onCleanup } from "solid-js";
+import {
+    createSignal,
+    createEffect,
+    Show,
+    onCleanup,
+    onMount,
+    JSX
+} from "solid-js";
+import {
+    observeVisibility,
+    priorityFromEntry,
+    queueImage
+} from "../../services/imagesScheduler";
+import { pageAbortController } from "../../App";
 import { commands } from "../../bindings";
-
-const cachedDownloadImage = commands.cachedDownloadImage;
-
-const inFlight = new Map<string, Promise<any>>();
-
-function fetchCached(src: string): Promise<any> {
-    if (inFlight.has(src)) {
-        return inFlight.get(src)!;
-    }
-
-    const promise = cachedDownloadImage(src);
-    inFlight.set(src, promise);
-    promise.finally(() => inFlight.delete(src));
-
-    return promise;
-}
 
 interface LazyImageProps {
     src: string;
     alt?: string;
     class?: string;
-    style?: any;
-    onLoad?: () => void;
-    onError?: (e: Event) => void;
-    objectFit?: 'cover' | 'contain' | 'fill';
-    loadTimeout?: number;
+    style?: string | JSX.CSSProperties;
+    objectFit?: "cover" | "contain" | "fill";
 }
 
 export default function LazyImage(props: LazyImageProps) {
+    const [entry, setEntry] = createSignal<IntersectionObserverEntry | null>(null);
     const [loaded, setLoaded] = createSignal(false);
-    const [currentSrc, setCurrentSrc] = createSignal<string | undefined>(undefined);
-    const [currentUrl, setCurrentUrl] = createSignal<string | undefined>(undefined);
+    const [currentSrc, setCurrentSrc] = createSignal<string>();
 
-    const loadTimeout = props.loadTimeout ?? 15000;
-    let loadTimeoutId: number | undefined;
-    let fetchCancelled = false;
+    let el!: HTMLDivElement;
+    let abort = new AbortController();
+    let unobserve: (() => void) | undefined;
+
+    onMount(() => {
+        unobserve = observeVisibility(el, (e) => {
+            setEntry(e);
+        });
+    });
 
     createEffect(async () => {
-        if (props.src !== currentUrl()) {
-            clearTimeout(loadTimeoutId);
-            fetchCancelled = false;
-            setLoaded(false);
-            setCurrentSrc(undefined);
-            setCurrentUrl(props.src);
+        const e = entry();
+        if (!e) return;
+        if (loaded()) return;
 
-            loadTimeoutId = setTimeout(() => {
-                if (!loaded()) {
-                    console.warn(`LazyImage: Timeout loading ${props.src}`);
-                    fetchCancelled = true;
-                    setCurrentSrc(props.src);
-                    setLoaded(true);
-                }
-            }, loadTimeout);
+        abort.abort();
+        abort = new AbortController();
+        if (e.isIntersecting) {
+            // Try to use cached version immediately if visible or else it will cause some stutters
+            const result = await commands.cachedDownloadImage(props.src);
+            setCurrentSrc(result.status === "ok" ? result.data : props.src);
+            setLoaded(true);
+            return;
+        }
+        try {
+            const priority = priorityFromEntry(e);
 
-            try {
-                const result = await fetchCached(props.src);
+            const result = await queueImage(
+                props.src,
+                priority,
+                mergeAbortSignals(abort.signal, pageAbortController.signal)
+            );
 
-                if (fetchCancelled) return;
-
-                if (result.status === "ok") {
-                    setCurrentSrc(result.data);
-                } else {
-                    console.warn(`LazyImage: Cache failed for ${props.src}`, result.error || 'Unknown error');
-                    setCurrentSrc(props.src);
-                }
-            } catch (err) {
-                if (fetchCancelled) return;
-                console.error(`LazyImage: Unexpected error fetching ${props.src}`, err);
+            if (result.status === "ok") {
+                setCurrentSrc(result.data);
+            } else {
                 setCurrentSrc(props.src);
             }
+        } catch (err) {
+            if (!abort.signal.aborted) {
+                setCurrentSrc(props.src);
+            }
+            console.error("Error setting src: ", err)
         }
     });
 
     onCleanup(() => {
-        clearTimeout(loadTimeoutId);
-        fetchCancelled = true;
+        abort.abort();
+        unobserve?.();
     });
 
-    const handleLoad = () => {
-        clearTimeout(loadTimeoutId);
-        setLoaded(true);
-        props.onLoad?.();
-    };
-
-    const handleError = (e: Event) => {
-        clearTimeout(loadTimeoutId);
-        setLoaded(true);
-        props.onError?.(e);
-    };
-
-    const objectFitClass = () => {
-        switch (props.objectFit) {
-            case 'contain': return 'object-contain';
-            case 'fill': return 'object-fill';
-            default: return 'object-cover';
-        }
-    };
+    const objectFitClass = () =>
+        props.objectFit === "contain"
+            ? "object-contain"
+            : props.objectFit === "fill"
+                ? "object-fill"
+                : "object-cover";
 
     return (
-        <div class={`relative ${props.class ?? ""}`} style={props.style}>
+        <div ref={el} class={`relative ${props.class ?? ""}`} style={props.style}>
             <Show when={!loaded()}>
                 <div class="absolute inset-0 bg-secondary-20/40" />
             </Show>
@@ -109,14 +95,24 @@ export default function LazyImage(props: LazyImageProps) {
                 <img
                     src={currentSrc()!}
                     alt={props.alt ?? ""}
-                    class={`w-full h-full ${objectFitClass()} will-change-[opacity]`}
-                    style={{ opacity: loaded() ? 1 : 0, transition: 'opacity 0.15s ease-out' }}
-                    onLoad={handleLoad}
-                    onError={handleError}
-                    loading="lazy"
+                    class={`w-full h-full ${objectFitClass()}`}
+                    onLoad={() => setLoaded(true)}
+                    onError={() => setLoaded(true)}
                     decoding="async"
                 />
             </Show>
         </div>
     );
+}
+
+function mergeAbortSignals(...signals: AbortSignal[]) {
+    const ctrl = new AbortController();
+    const listeners = signals.map(sig => {
+        const fn = () => ctrl.abort();
+        sig.addEventListener("abort", fn);
+        return () => sig.removeEventListener("abort", fn);
+    });
+    if (signals.some(s => s.aborted)) ctrl.abort();
+    onCleanup(() => listeners.forEach(remove => remove()));
+    return ctrl.signal;
 }
