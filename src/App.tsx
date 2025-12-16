@@ -38,7 +38,7 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
       const { applied, blur } = await themeManager.loadBackgroundState();
       if (applied) {
         const store = await import('@tauri-apps/plugin-store');
-        const bgStore = await store.load('background_store.json', { autoSave: false });
+        const bgStore = await store.load('background_store.json', { autoSave: false, defaults: {} });
         const imageLink = await bgStore.get<string>('background_image');
         const bgEl = document.querySelector('.background-style') as HTMLElement | null;
         const blurEl = document.querySelector('.background-blur-whole') as HTMLElement | null;

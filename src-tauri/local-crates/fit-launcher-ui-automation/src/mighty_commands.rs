@@ -1,6 +1,4 @@
 use std::path::PathBuf;
-#[cfg(target_os = "windows")]
-use std::process::Command;
 
 use specta::specta;
 #[cfg(target_os = "windows")]
@@ -8,26 +6,55 @@ use tracing::{error, info};
 
 /// Start an executable using tauri::command
 ///
-/// Do not worry about using String, since the path will always be obtained by dialog through Tauri thus making it always corret for the OS.
+/// Uses ShellExecuteW to delegate to the Windows shell, which handles UAC
+/// elevation automatically if the executable requires it.
 #[tauri::command]
 #[specta]
 pub fn start_executable(path: String) {
     let path = PathBuf::from(path);
-    let current = PathBuf::from(".");
-    #[cfg(target_os = "windows")]
-    match Command::new(&path)
-        .current_dir(path.parent().unwrap_or_else(|| &current))
-        .spawn()
-    {
-        Ok(child) => {
-            info!("Executable started with PID: {}", child.id());
-        }
-        Err(e) => {
-            error!("Failed to start executable: {}", e);
 
-            if let Some(32) = e.raw_os_error() {
-                error!("Another process is using the executable.");
-            }
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use windows::Win32::UI::Shell::ShellExecuteW;
+        use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+        use windows::core::PCWSTR;
+
+        // Convert path to wide string
+        let path_wide: Vec<u16> = OsStr::new(&path)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        // Get working directory (parent of executable)
+        let current = PathBuf::from(".");
+        let working_dir = path.parent().unwrap_or(&current);
+        let working_dir_wide: Vec<u16> = OsStr::new(working_dir)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+
+        // ShellExecuteW with "open" verb - Windows handles UAC automatically
+        let result = unsafe {
+            ShellExecuteW(
+                None,
+                PCWSTR::null(),
+                PCWSTR(path_wide.as_ptr()),
+                PCWSTR::null(),
+                PCWSTR(working_dir_wide.as_ptr()),
+                SW_SHOWNORMAL,
+            )
+        };
+
+        let result_code = result.0 as isize;
+        if result_code > 32 {
+            info!("Executable launched via shell: {}", path.display());
+        } else {
+            error!(
+                "Failed to launch executable via shell, error code: {}",
+                result_code
+            );
         }
     }
 

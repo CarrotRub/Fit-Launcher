@@ -1,12 +1,13 @@
+#[cfg(windows)]
+pub mod controller_client;
+#[cfg(windows)]
+pub mod controller_manager;
 pub mod emitter;
 pub mod extraction;
 #[cfg(windows)]
 pub mod mighty;
-#[cfg(windows)]
-pub mod mighty_automation;
 pub mod mighty_commands;
 pub mod process_utils;
-pub mod winevents;
 use std::time::Duration;
 
 pub use extraction::*;

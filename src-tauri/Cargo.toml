@@ -8,7 +8,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2.5.2", features = [] }
+tauri-build = { version = "2.5.3", features = [] }
 tauri-helper = "0.2.1"
 
 [profile.dev]
@@ -34,12 +34,12 @@ inherits = 'release'
 [dependencies]
 # Tauri plugins
 tauri = { workspace = true }
-tauri-plugin-dialog = "2.2.0"
+tauri-plugin-dialog = "2.4.2"
 tauri-plugin-shell = { workspace = true }
-tauri-plugin-fs = "2.2.1"
-tauri-plugin-process = "2.2.1"
-tauri-plugin-store = "2.2.0"
-tauri-plugin-single-instance = "2.2.3"
+tauri-plugin-fs = "2.4.4"
+tauri-plugin-process = "2.3.1"
+tauri-plugin-store = "2.4.1"
+tauri-plugin-single-instance = "2.3.6"
 tauri-plugin-updater = { version = "2.9.0", features = ["rustls-tls"] }
 tauri-helper = { workspace = true }
 
@@ -105,6 +105,7 @@ members = [
     "local-crates/fit-launcher-config",
     "local-crates/fit-launcher-ddl",
     "local-crates/fit-launcher-integrations",
+    "local-crates/fit-launcher-installer-controller",
     "local-crates/fit-launcher-library",
     "local-crates/fit-launcher-scraping",
     "local-crates/fit-launcher-torrent",
@@ -115,7 +116,7 @@ resolver = "3"
 
 #TODO: Clean unused deps
 [workspace.dependencies]
-tauri = { version = "2.9.2", features = [
+tauri = { version = "2.9.5", features = [
     "protocol-asset",
     "tray-icon",
     "devtools",
@@ -176,6 +177,8 @@ windows = { version = "0.62.2", features = [
     # admin elevated check
     "Win32_Security",
     "Win32_System_Threading",
+    # process enumeration
+    "Win32_System_Diagnostics_ToolHelp",
 ] }
 windows-result = "0.4.1"
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }

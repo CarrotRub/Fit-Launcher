@@ -12,12 +12,13 @@ use fit_launcher_torrent::model::FileInfo;
 use fit_launcher_torrent::{FitLauncherConfigAria2, LibrqbitSession};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
+use uuid::Uuid;
 
 /// Debounce time for saving to disk
 const SAVE_DEBOUNCE_MS: u64 = 400;
@@ -130,7 +131,11 @@ impl DownloadManager {
                     for gid in gids {
                         let aria_guard = dm.aria.lock().await;
                         if let Err(e) = aria_guard.pause(&gid).await {
-                            error!("Failed to pause gid {} during load: {:?}", gid, e);
+                            // GIDs from previous sessions may not exist in aria2 anymore - this is normal
+                            debug!(
+                                "Could not pause gid {} during load (likely stale): {:?}",
+                                gid, e
+                            );
                         }
                         // small yield to avoid hammering aria2 in busy startup scenarios
                         tokio::task::yield_now().await;
@@ -157,8 +162,11 @@ impl DownloadManager {
         target: PathBuf,
         game: Game,
     ) -> Result<JobId> {
-        let clean_title = Self::sanitize_filename(&game.title);
-        let folder_name = format!("{} [Fitgirl Repack]", clean_title);
+        // Use UUID as folder name to avoid unicode/ASCII issues with installer controller
+        // The installer controller has issues with certain unicode characters, but setup.exe
+        // doesn't care about its parent folder name - only the final install path matters
+        let job_id = Uuid::new_v4();
+        let folder_name = job_id.to_string();
         let dir = target.join(folder_name);
 
         let mut job = Job::new_ddl(files.clone(), target.clone(), game, dir.clone());
@@ -181,6 +189,7 @@ impl DownloadManager {
         info!("All direct links have successfully start !");
 
         // register job & indices
+        job.id = job_id.to_string();
         job.gids = gids.clone();
         job.state = DownloadState::Active;
         job.metadata.updated_at = Utc::now();
@@ -253,10 +262,11 @@ impl DownloadManager {
             .filter_map(|&i| files.get(i).cloned())
             .collect();
 
-        let job_path = meta
-            .output_folder
-            .file_name()
-            .expect("invalid output_folder: no last component");
+        // Use UUID as folder name to avoid unicode/ASCII issues with installer controller
+        // This ensures consistency with DDL downloads and avoids any character encoding problems
+        let job_id = Uuid::new_v4();
+        let folder_name = job_id.to_string();
+        let job_path = target.join(&folder_name);
 
         let mut job = Job::new_torrent(
             bytes.clone(),
@@ -264,7 +274,7 @@ impl DownloadManager {
             info_hash.clone(),
             magnet.clone(),
             target.clone(),
-            target.join(job_path),
+            job_path,
             selected_files,
             game,
         );
@@ -278,6 +288,7 @@ impl DownloadManager {
             .add_torrent(bytes.clone(), dir.clone(), files_list.clone())
             .await?;
 
+        job.id = job_id.to_string();
         job.gids = vec![gid.clone()];
         job.state = DownloadState::Active;
         job.metadata.updated_at = Utc::now();
@@ -502,6 +513,16 @@ impl DownloadManager {
                     let mut ih = self.infohash_index.write().await;
                     ih.remove(&t.info_hash);
                 }
+                if let Ok(uuid) = Uuid::parse_str(job_id) {
+                    let _ =
+                        fit_launcher_ui_automation::controller_manager::ControllerManager::global()
+                            .cancel_download(uuid);
+                    // Also try to shutdown if we just cancelled the last thing keeping it alive
+                    let _ =
+                        fit_launcher_ui_automation::controller_manager::ControllerManager::global()
+                            .shutdown_if_idle();
+                }
+
                 let _ = self
                     .tauri_handle
                     .emit("download::job_removed", job_id.to_string());
@@ -515,7 +536,7 @@ impl DownloadManager {
             for gid in gids {
                 let aria_guard = self.aria.lock().await;
                 if let Err(e) = aria_guard.remove(&gid).await {
-                    error!("Failed to remove gid {} from aria2: {:?}", gid, e);
+                    debug!("Failed to remove gid {} from aria2: {:?}", gid, e);
                 }
             }
             self.request_save_debounced().await;

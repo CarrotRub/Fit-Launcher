@@ -29,7 +29,7 @@ pub mod os_windows {
     }
 
     unsafe extern "system" fn enum_child_windows_proc_class(hwnd: HWND, lparam: LPARAM) -> BOOL {
-        let data = &*(lparam.0 as *const EnumChildWindowsDataClass);
+        let data = unsafe { &*(lparam.0 as *const EnumChildWindowsDataClass) };
 
         let mut buf = [0u16; 256];
         let len = unsafe { GetClassNameW(hwnd, &mut buf) };

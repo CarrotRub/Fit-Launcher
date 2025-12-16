@@ -159,9 +159,8 @@ async fn file_allocation_method(
         };
 
         if media_type.is_ok() {
-            use tracing::info;
-
-            info!("MediaType for {dir}: {media_type:?}");
+            use tracing::debug;
+            debug!("MediaType for {dir}: {media_type:?}");
         }
 
         CACHE.insert(dir.into(), media_type.unwrap_or(MediaType::HDD));
@@ -186,7 +185,7 @@ fn set_proxy_from_sys(extra_options: &mut Map<String, Value>) {
     {
         const REGISTRY_PATH: &str =
             r#"Software\Microsoft\Windows\CurrentVersion\Internet Settings"#;
-        use tracing::{info, warn};
+        use tracing::warn;
         use winreg::RegKey;
         use winreg::enums::{HKEY_CURRENT_USER, KEY_READ};
 
@@ -201,7 +200,8 @@ fn set_proxy_from_sys(extra_options: &mut Map<String, Value>) {
             .is_ok_and(|enable| enable == 1);
         // ignore disabled proxy
         if !enabled {
-            info!("skip to read system proxy: proxy disabled");
+            use tracing::debug;
+            debug!("skip to read system proxy: proxy disabled");
             return;
         }
 
