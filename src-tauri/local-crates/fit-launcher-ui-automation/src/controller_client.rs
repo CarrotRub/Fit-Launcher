@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use tracing::{debug, info};
 
 #[cfg(windows)]
@@ -44,6 +45,21 @@ impl Default for InstallOptions {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub enum ExclusionAction {
+    Add(String),
+    Remove(String),
+}
+
+impl std::fmt::Display for ExclusionAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Add(p) => write!(f, "Add: {p}"),
+            Self::Remove(p) => write!(f, "Remove: {p}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ControllerCommand {
@@ -55,6 +71,9 @@ pub enum ControllerCommand {
     },
     CancelInstall {
         job_id: String,
+    },
+    FolderExclusion {
+        action: ExclusionAction,
     },
     Shutdown,
     ShutdownIfIdle,
@@ -102,6 +121,10 @@ pub enum ControllerEvent {
         job_id: String,
         success: bool,
         install_path: Option<String>,
+        error: Option<String>,
+    },
+    FolderExclusionResult {
+        success: bool,
         error: Option<String>,
     },
     Error {

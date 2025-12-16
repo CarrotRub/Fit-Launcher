@@ -431,11 +431,7 @@ impl DownloadManager {
     }
 
     async fn resume_torrent(&self, job: &Job) -> Result<()> {
-        let torrent_bytes = if let Some(t) = &job.torrent {
-            Some(t.torrent_bytes.clone())
-        } else {
-            None
-        };
+        let torrent_bytes = job.torrent.as_ref().map(|t| t.torrent_bytes.clone());
 
         let magnet = job.torrent.as_ref().map(|t| t.magnet.clone());
         let files_list = job

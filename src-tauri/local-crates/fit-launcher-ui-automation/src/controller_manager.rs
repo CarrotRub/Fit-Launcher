@@ -202,13 +202,11 @@ impl ControllerManager {
             state.pipe_name.is_none()
         };
 
-        if should_spawn {
-            if let Err(e) = self.ensure_running() {
-                warn!(
-                    "Could not pre-start controller (will retry on install): {}",
-                    e
-                );
-            }
+        if should_spawn && let Err(e) = self.ensure_running() {
+            warn!(
+                "Could not pre-start controller (will retry on install): {}",
+                e
+            );
         }
 
         Ok(())

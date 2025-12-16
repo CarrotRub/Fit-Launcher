@@ -18,6 +18,8 @@
 //! - Injection into the GUI process
 //! - Kernel exploits / UAC bypass chains / compromised host
 
+use std::path::Path;
+
 use anyhow::{Result, bail};
 use tracing::{debug, error, info, warn};
 use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
@@ -35,6 +37,7 @@ use windows::Win32::System::Pipes::{
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use windows::core::PCWSTR;
 
+use crate::defender::{ExclusionError, folder_exclusion};
 use crate::installer::InstallerRunner;
 use crate::ipc::protocol::{Command, Event, decode_message, encode_message};
 
@@ -250,6 +253,32 @@ impl IpcServer {
                 info!("Cancellation requested: job={}", job_id);
                 if let Some(runner) = installer {
                     runner.cancel();
+                }
+            }
+            Command::FolderExclusion { action } => {
+                info!("Folder Exclusion Action: {action}");
+
+                match folder_exclusion(action) {
+                    Ok(res) => {
+                        info!(
+                            "Folder exclusion successful: action={:?}, path={}",
+                            res.action, res.path
+                        );
+                        self.send_event(&Event::FolderExclusionResult {
+                            success: true,
+                            error: None,
+                        })?;
+                    }
+                    Err(err) => {
+                        error!("Folder exclusion failed: {:?}", err);
+
+                        self.send_event(&Event::FolderExclusionResult {
+                            success: false,
+                            error: Some(err.to_string()),
+                        })?;
+
+                        return Err(anyhow::anyhow!(err));
+                    }
                 }
             }
             Command::Shutdown => {

@@ -526,6 +526,14 @@ async extractFuckingfastDdl(fuckingfastLinks: string[]) : Promise<DirectLink[]> 
 async findGameExecutable(folderPath: string) : Promise<string | null> {
     return await TAURI_INVOKE("find_game_executable", { folderPath });
 },
+async folderExclusion(action: ExclusionAction) : Promise<Result<null, string>> {
+    try {
+    return { data: await TAURI_INVOKE("folder_exclusion", { action }), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async getCollectionList() : Promise<GameCollection[]> {
     return await TAURI_INVOKE("get_collection_list");
 },
@@ -936,6 +944,7 @@ export type Duration = { secs: number; nanos: number }
  * Possible errors during requesting/decrypting/decoding/deserialization e.g.
  */
 export type Error = { KeyLengthMismatch: number } | "ZeroIterations" | "IllFormedURL" | { Reqwest: string } | { Base58: string } | { Base64: string } | "DecompressError" | "AesGcm" | { JSONSerialize: string }
+export type ExclusionAction = { Add: string } | { Remove: string }
 export type ExecutableInfo = { executable_path: string; executable_last_opened_date: string | null; executable_play_time: number; executable_installed_date: string | null; executable_disk_size: number }
 export type ExtractError = { Io: string } | { Unrar: string } | { InstallationError: InstallationError } | "NoParentDirectory" | "NoRarFileFound"
 export type File = { index: number; path: string; length: number; completedLength: number; selected: boolean; uris: Uri[] }

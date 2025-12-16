@@ -45,6 +45,7 @@ export type AddLocalGamePopupProps<T extends any[] = any[]> = PopupProps<T> &
 export type DownloadPopupProps<T extends any[] = any[]> = PopupProps<T> & {
   downloadedGame: DownloadedGame;
   gameDetails: GameDetails;
+  folderExclusion: boolean;
   downloadType: "bittorrent" | "direct_download";
   onFinish: () => void | Promise<void>;
 };
