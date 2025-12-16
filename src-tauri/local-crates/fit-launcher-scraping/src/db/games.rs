@@ -203,7 +203,7 @@ pub fn clear_game_cache(conn: &Connection) -> Result<(), ScrapingError> {
          DELETE FROM metadata WHERE key LIKE 'category_%_updated';
 
          -- Clear last discovery update time
-         DELETE FROM metadata WHERE key LIKE 'discovery_last_refresh';
+         DELETE FROM metadata WHERE key = 'discovery_last_refresh';
          ",
     )?;
     Ok(())
@@ -212,10 +212,12 @@ pub fn clear_game_cache(conn: &Connection) -> Result<(), ScrapingError> {
 /// Use this for a full reset (will require re-downloading sitemaps).
 pub fn clear_all_game_data(conn: &Connection) -> Result<(), ScrapingError> {
     conn.execute_batch(
-        "DELETE FROM game_categories;
-         DELETE FROM games;
-         DELETE FROM metadata WHERE key LIKE 'category_%_updated';",
+        "
+    -- Remove all stub from sitemaps
+    DELETE FROM games;
+    ",
     )?;
+    clear_game_cache(conn)?;
     Ok(())
 }
 
