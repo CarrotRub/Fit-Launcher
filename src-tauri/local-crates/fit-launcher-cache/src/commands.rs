@@ -11,7 +11,7 @@ use lru_cache_adaptor::FileInfo;
 use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use tauri::Url;
+use tauri::{Url, async_runtime::spawn_blocking};
 use tokio::{io::AsyncWriteExt as _, sync::Semaphore};
 use tracing::{debug, error, info, warn};
 
@@ -117,7 +117,7 @@ pub async fn cached_download_image(
                 let file_size = bytes.len() as u64;
 
                 // Return immediately, cache asynchronously
-                let data_uri = encode_data_uri(&mime, &*bytes);
+                let data_uri = encode_data_uri(&mime, bytes.clone()).await;
 
                 let manager = manager.inner().clone();
                 let image_url_clone = image_url.clone();
@@ -296,14 +296,16 @@ async fn data_uri_from_cache(
             let image_raw = tokio::fs::read(path).await?;
             let mime = format!("{}/{}", mime.type_(), mime.subtype());
 
-            Ok(encode_data_uri(mime, image_raw))
+            Ok(encode_data_uri(mime, Arc::new(image_raw)).await)
         }
         _ => Err(CacheError::CacheMissing),
     }
 }
 
-fn encode_data_uri(mime: impl Display, image_raw: impl AsRef<[u8]>) -> String {
+async fn encode_data_uri(mime: impl Display, image_raw: Arc<Vec<u8>>) -> String {
     let base64_engine = base64::engine::general_purpose::STANDARD;
-    let encoded = base64_engine.encode(image_raw.as_ref());
+    let encoded = spawn_blocking(move || base64_engine.encode(image_raw.as_ref()))
+        .await
+        .expect("failed to spawn encoding task");
     format!("data:{mime};base64,{encoded}")
 }
