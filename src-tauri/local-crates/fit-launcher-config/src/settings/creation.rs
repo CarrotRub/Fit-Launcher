@@ -27,8 +27,9 @@ impl Default for InstallationSettings {
 
 #[derive(Debug, Serialize, Deserialize, Type)]
 pub struct GamehubSettings {
-    nsfw_censorship: bool,
-    auto_get_colors_popular_games: bool,
+    pub nsfw_censorship: bool,
+    pub auto_get_colors_popular_games: bool,
+    pub close_to_tray: bool,
 }
 
 impl Default for GamehubSettings {
@@ -36,6 +37,7 @@ impl Default for GamehubSettings {
         GamehubSettings {
             nsfw_censorship: true,
             auto_get_colors_popular_games: false,
+            close_to_tray: true,
         }
     }
 }
