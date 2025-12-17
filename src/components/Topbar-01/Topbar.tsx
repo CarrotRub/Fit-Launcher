@@ -31,7 +31,10 @@ export default function Topbar() {
         permissionGranted = permission === "granted";
       }
       if (permissionGranted) {
-        sendNotification({ title: "FitLauncher", body: "Minimized to tray, you can disable this in the settings" });
+        sendNotification({
+          title: "FitLauncher is running in the tray",
+          body: "The app was minimized to the system tray. You can change this behavior in Settings."
+        });
       }
       return;
     }
