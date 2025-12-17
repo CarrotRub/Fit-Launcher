@@ -187,7 +187,9 @@ windows = { version = "0.62.2", features = [
 ] }
 windows-result = "0.4.1"
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
-sysinfo = "0.37.2"
+sysinfo = { version = "0.37.2", default-features = false, features = [
+    "system",
+] }
 fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation" }
 fit-launcher-torrent = { path = "./local-crates/fit-launcher-torrent" }
 fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
