@@ -16,6 +16,8 @@ import createChangelogPopup from './Pop-Ups/Changelog-PopUp/Changelog-PopUp';
 import { fetchLatestGithubRelease } from './api/changelog/api';
 import { getVersion } from '@tauri-apps/api/app';
 import { lt } from 'semver';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { load as loadStore } from '@tauri-apps/plugin-store';
 
 const themeManager = new ThemeManagerApi();
 
@@ -40,13 +42,11 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
     try {
       const { applied, blur } = await themeManager.loadBackgroundState();
       if (applied) {
-        const store = await import('@tauri-apps/plugin-store');
-        const bgStore = await store.load('background_store.json', { autoSave: false, defaults: {} });
+        const bgStore = await loadStore('background_store.json', { autoSave: false, defaults: {} });
         const imageLink = await bgStore.get<string>('background_image');
         const bgEl = document.querySelector('.background-style') as HTMLElement | null;
         const blurEl = document.querySelector('.background-blur-whole') as HTMLElement | null;
         if (imageLink && bgEl && blurEl) {
-          const { convertFileSrc } = await import('@tauri-apps/api/core');
           bgEl.style.backgroundImage = `url(${convertFileSrc(imageLink)})`;
           blurEl.style.backdropFilter = `blur(${blur}px)`;
         }
