@@ -17,7 +17,6 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
   const [newThemes, setNewThemes] = createSignal<string[]>([]);
   const [currentTheme, setCurrentTheme] = createSignal<string>("Dark Purple");
   const [blurAmount, setBlurAmount] = createSignal<number>(5);
-  const [bgApplied, setBgApplied] = createSignal<boolean>(false);
 
   onMount(async () => {
     try {
@@ -28,7 +27,6 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
 
       const stored = await themeAPI.loadBackgroundState();
       setBlurAmount(stored.blur);
-      setBgApplied(stored.applied);
 
       const savedThemeKey = localStorage.getItem("theme");
       const savedThemeDisplay = savedThemeKey
@@ -96,7 +94,6 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
           typeText="Disabled for now, too unpredictable"
           action={async () => {
             await themeAPI.chooseAndSetBackgroundImage(blurAmount());
-            setBgApplied(true);
           }}
           buttonLabel="+"
           disabled={true}

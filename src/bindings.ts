@@ -718,8 +718,8 @@ async openLogsDirectory() : Promise<Result<null, string>> {
     else return { error: e  as any, status: "error" };
 }
 },
-async panicForce() : Promise<null> {
-    return await TAURI_INVOKE("panic_force");
+async panicForce() : Promise<void> {
+    await TAURI_INVOKE("panic_force");
 },
 async querySearchIndex(query: string) : Promise<Result<SearchIndexEntry[], ScrapingError>> {
     try {

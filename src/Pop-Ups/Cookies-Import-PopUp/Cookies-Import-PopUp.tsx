@@ -1,11 +1,9 @@
 import { createSignal, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
-import { Info, UploadCloud } from "lucide-solid";
-import Button from "../../components/UI/Button/Button";
+import { UploadCloud } from "lucide-solid";
 import { PopupProps } from "../../types/popup";
 import { Modal } from "../Modal/Modal";
 import { useDropZone } from "../../components/DropZone-01/DropZone";
-import { message } from "@tauri-apps/plugin-dialog";
 import { showError } from "../../helpers/error";
 
 export default function createCookiesImportPopup(props: PopupProps<[File]>) {
@@ -19,7 +17,7 @@ export default function createCookiesImportPopup(props: PopupProps<[File]>) {
 
     render(() => {
         const [droppedFileName, setDroppedFileName] = createSignal<string | null>(null);
-        const [droppedFilePath, setDroppedFilePath] = createSignal<string | null>(null);
+        const [, setDroppedFilePath] = createSignal<string | null>(null);
 
         const handleManualDrop = async (e: DragEvent) => {
             e.preventDefault();

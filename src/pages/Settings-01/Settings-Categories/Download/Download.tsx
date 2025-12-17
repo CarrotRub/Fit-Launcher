@@ -16,8 +16,6 @@ import TransferLimitsPart from "./TransferLimits/TransferLimits";
 import NetworkPart from "./Network/NetworkPart";
 import BittorrentPart from "./Bittorrent/BittorrentPart";
 import AriaPart from "./AriaPart/AriaPart";
-import CachePart from "../Global/CacheSettings/CacheSettings";
-
 
 function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }): JSX.Element {
   const [globalTorrentConfig, setGlobalTorrentConfig] = createSignal<DownloadSettings | null>(null);
@@ -49,6 +47,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
       if (!prevConfig) return prevConfig;
       const newConfig = structuredClone(prevConfig);
       const keys = path.split(".");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let obj: any = newConfig;
       for (let i = 0; i < keys.length - 1; i++) {
         obj = obj[keys[i]];
@@ -64,6 +63,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
       if (!prevConfig) return prevConfig;
       const newConfig = structuredClone(prevConfig);
       const keys = path.split(".");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let obj: any = newConfig;
       for (let i = 0; i < keys.length - 1; i++) {
         obj = obj[keys[i]];

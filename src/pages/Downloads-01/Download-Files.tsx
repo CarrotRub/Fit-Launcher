@@ -1,15 +1,13 @@
 import { Accessor, Component, createMemo, For } from "solid-js";
 import { formatBytes } from "../../helpers/format";
-import { DirectLink, File, FileInfo } from "../../bindings";
+import { File } from "../../bindings";
 
 const DownloadFiles: Component<{ gameFiles: Record<string, File> }> = (props) => {
-    const getFileNameFromPath = (path: string) => path.split(/[\\/]/).pop() || path;
-
     return (
         <div class="border-t border-secondary-20/30 p-4 space-y-3">
             <div class="space-y-2">
                 <For each={Object.values(props.gameFiles)} fallback={<div class="text-muted/80">No files found.</div>}>
-                    {(file, i) => (
+                    {(file) => (
                         <FileRow file={file} />
                     )}
                 </For>

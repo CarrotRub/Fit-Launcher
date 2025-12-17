@@ -34,7 +34,7 @@ export class GamesCacheApi {
   async getSingularGameLocal(
     url: string
   ): Promise<Result<Game, ScrapingError>> {
-    let hash = await commands.hashUrl(url);
+    const hash = await commands.hashUrl(url);
     return await this.getCached(`singularGameLocal:${hash}`, () =>
       commands.getSingularGameLocal(url)
     );

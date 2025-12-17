@@ -1,13 +1,13 @@
-import { Component, createMemo, createSignal, For, Show, onMount, onCleanup, Accessor, createEffect } from "solid-js";
+import { Component, createMemo, createSignal, Show, onMount, onCleanup, Accessor, createEffect } from "solid-js";
 import { HardDrive, ArrowDown, ArrowUp, ChevronUp, ChevronDown, Folder, Pause, Play, Settings, Trash2, RefreshCw, AlertTriangle } from "lucide-solid";
 import { InstallationApi } from "../../api/installation/api";
 import { installerService } from "../../api/installer/api";
 import { listen } from "@tauri-apps/api/event";
 
-import { formatBytes, formatSpeed, toNumber } from "../../helpers/format";
+import { formatBytes, formatSpeed } from "../../helpers/format";
 import Button from "../../components/UI/Button/Button";
 import DownloadFiles from "./Download-Files";
-import { AggregatedStatus, DownloadState, File, FileStatus, Job } from "../../bindings";
+import { AggregatedStatus, File, Job } from "../../bindings";
 import { DM } from "../../api/manager/api";
 import { createStore, reconcile } from "solid-js/store";
 import { useToast } from "solid-notifications";
@@ -131,7 +131,7 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
                 );
                 return;
             }
-            
+
             if (instState === "failed") {
                 // Retry installation
                 await installerService.retryInstall(props.item());
@@ -163,7 +163,9 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
         } catch (err) {
             console.error("toggleAction failed:", err);
         } finally {
-            props.refreshDownloads && (await props.refreshDownloads());
+            if (props.refreshDownloads) {
+                await props.refreshDownloads();
+            }
         }
     };
 
@@ -310,13 +312,12 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
                             </div>
                             <div class="w-full h-2 bg-secondary-20/30 rounded-full overflow-hidden">
                                 <div
-                                    class={`h-full transition-all duration-500 ease-out ${
-                                        installState() === "failed" 
-                                            ? "bg-gradient-to-r from-red-500 to-red-400" 
-                                            : installState() === "installing"
+                                    class={`h-full transition-all duration-500 ease-out ${installState() === "failed"
+                                        ? "bg-gradient-to-r from-red-500 to-red-400"
+                                        : installState() === "installing"
                                             ? "bg-gradient-to-r from-accent to-primary/80 animate-pulse"
                                             : "bg-gradient-to-r from-accent to-primary/80"
-                                    }`}
+                                        }`}
                                     style={{ width: `${props.item().source === "Ddl" ? progressPercentage() : jobStatus()?.progress_percentage.toFixed(1)}%` }}
                                 />
                             </div>
@@ -324,10 +325,10 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
 
                         {/* Buttons */}
                         <div class="flex items-center gap-2 ml-auto">
-                            <Button 
-                                variant="bordered" 
-                                onClick={toggleAction} 
-                                label={currentAction().label} 
+                            <Button
+                                variant="bordered"
+                                onClick={toggleAction}
+                                label={currentAction().label}
                                 icon={currentAction().icon}
                                 class={installState() === "failed" ? "!border-red-400/50 !text-red-400 hover:!bg-red-500/10" : ""}
                             />

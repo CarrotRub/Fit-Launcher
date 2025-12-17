@@ -1,4 +1,4 @@
-import { createSignal, JSX } from "solid-js";
+import { createSignal } from "solid-js";
 import { RangeSliderProps } from "../../../types/components/types";
 
 

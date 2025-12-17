@@ -1,4 +1,4 @@
-import { createSignal, createEffect, JSX } from "solid-js";
+import { createSignal, JSX } from "solid-js";
 import { DualRangeSliderProps } from "../../../types/components/types";
 
 export default function DualRangeSlider(props: DualRangeSliderProps): JSX.Element {

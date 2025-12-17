@@ -45,7 +45,7 @@ export default function Searchbar(props: SearchbarProps) {
       setIndexError(null);
     });
 
-    const errorUnlisten = await listen("search-index-error", (event: any) => {
+    const errorUnlisten = await listen<string>("search-index-error", (event) => {
       setIndexError(event.payload || "Search index error");
     });
 

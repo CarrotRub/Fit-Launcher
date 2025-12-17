@@ -2,7 +2,7 @@ import { A, useLocation } from "@solidjs/router";
 import { Compass, Download, Home, Library, Maximize2, Minimize2, Minus, Settings, X } from "lucide-solid";
 import { createSignal, onMount, Show } from "solid-js";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
-import { listen } from "@tauri-apps/api/event";
+import { listen, Event } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { sendNotification, isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
@@ -10,8 +10,6 @@ import { GlobalSettingsApi } from "../../api/settings/api";
 import { commands } from "../../bindings";
 
 export default function Topbar() {
-  const [isDialogOpen, setIsDialogOpen] = createSignal(false);
-  const [notificationMessage, setNotificationMessage] = createSignal('');
   const [isMaximized, setIsMaximized] = createSignal(false);
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const location = useLocation();
@@ -119,15 +117,12 @@ export default function Topbar() {
     document.getElementById('titlebar-maximize')?.addEventListener('click', handleMaximize);
     document.getElementById('titlebar-close')?.addEventListener('click', () => handleWindowClose());
 
-    listen('network-failure', (event: any) => {
-      setNotificationMessage(`Network failure: ${event.payload.message}`);
-      setIsDialogOpen(true);
+    listen('network-failure', (event: Event<{ message: string }>) => {
+      console.error(`Network failure: ${event.payload.message}`);
     });
 
-    listen('scraping_failed_event', (event: any) => {
-      setNotificationMessage(`Scraping failed: ${event.payload.message}`);
-      setIsDialogOpen(true);
-      console.log('Scraping failed:', event.payload.message);
+    listen('scraping_failed_event', (event: Event<{ message: string }>) => {
+      console.error('Scraping failed:', event.payload.message);
     });
 
     return () => {

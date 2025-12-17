@@ -1,6 +1,5 @@
 import { Show } from "solid-js";
-import Button from "../../components/UI/Button/Button";
-import { ModalPopupProps, PopupProps } from "../../types/popup";
+import { PopupProps } from "../../types/popup";
 import { Modal } from "../Modal/Modal";
 import { render } from "solid-js/web";
 

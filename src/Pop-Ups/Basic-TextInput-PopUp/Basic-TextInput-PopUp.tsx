@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal } from "solid-js";
 import { Modal } from "../Modal/Modal";
 import { PopupTextInputProps } from "../../types/popup";
 import TextInput from "../../components/UI/TextInput/TextInput";

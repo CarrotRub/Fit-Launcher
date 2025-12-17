@@ -1,12 +1,11 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 import type { JSX } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
-import { resolveError, showError } from "../../../../helpers/error";
+import { showError } from "../../../../helpers/error";
 import {
     Zap,
     Key,
     CheckCircle,
-    XCircle,
     Eye,
     EyeOff,
     Trash2,
@@ -19,7 +18,6 @@ import {
 import * as Debrid from "../../../../api/debrid/api";
 import type { DebridProvider, DebridProviderInfo, CredentialStatus } from "../../../../bindings";
 import Button from "../../../../components/UI/Button/Button";
-import LoadingPage from "../../../LoadingPage-01/LoadingPage";
 
 type ProviderState = {
     hasCredential: boolean;

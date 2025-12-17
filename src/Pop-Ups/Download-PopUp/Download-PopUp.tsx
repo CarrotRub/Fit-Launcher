@@ -1,12 +1,8 @@
 import { createSignal, onMount, Show, Component, For } from "solid-js";
-import { message } from "@tauri-apps/plugin-dialog";
 import { showError } from "../../helpers/error";
 import { render } from "solid-js/web";
 import {
-  HardDrive,
-  Library,
   Loader2,
-  Check,
   AlertCircle,
   Settings,
 } from "lucide-solid";
@@ -16,7 +12,6 @@ import PathInput from "../../components/UI/PathInput/PathInput";
 import { InstallationSettings } from "../../bindings";
 import { Modal } from "../Modal/Modal";
 import createLastStepDownloadPopup from "./LastStep";
-import { invoke } from "@tauri-apps/api/core";
 import Checkbox from "../../components/UI/Checkbox/Checkbox";
 
 
@@ -34,7 +29,6 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
   const DownloadPopupModal: Component = () => {
     const [pathInput, setPathInput] = createSignal<string>("");
     const [isPathValid, setIsPathValid] = createSignal(false);
-    const [isFinalStep, setIsFinalStep] = createSignal(false);
     const [isInitialized, setIsInitialized] = createSignal(false);
 
     const [installationSettings, setInstallationSettings] = createSignal<InstallationSettings>({
@@ -69,8 +63,8 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
     onMount(async () => {
       try {
-        let downloadSettings = await DownloadSettingsApi.getDownloadSettings();
-        let settings = await GlobalSettingsApi.getInstallationSettings();
+        const downloadSettings = await DownloadSettingsApi.getDownloadSettings();
+        const settings = await GlobalSettingsApi.getInstallationSettings();
         if (downloadSettings.status === "ok") {
           console.log("settings: ", downloadSettings.data)
           setPathInput(downloadSettings.data.general.download_dir);
@@ -168,7 +162,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                         </span>
                         <Checkbox
                           checked={installationSettings()[key]}
-                          action={(e) =>
+                          action={() =>
                             handleCheckboxChange(key)
                           }
                         />

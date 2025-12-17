@@ -11,8 +11,8 @@ export default defineConfig([
             perfectionist,
         },
         rules: {
-            '@typescript-eslint/no-unused-vars': 'off',
             '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-unused-vars': 'off',
             'perfectionist/sort-objects': ['error', {
                 type: 'alphabetical',
             }],

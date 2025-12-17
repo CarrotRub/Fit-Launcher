@@ -24,7 +24,7 @@ export class InstallationApi {
       return result;
     }
 
-    return { status: "ok", data: "" };
+    return { data: "", status: "ok" };
   }
 
   async startExtractionDdl(job: Job): Promise<Result<string, ExtractError>> {
@@ -44,6 +44,6 @@ export class InstallationApi {
       return result;
     }
 
-    return { status: "ok", data: "" };
+    return { data: "", status: "ok" };
   }
 }

@@ -132,33 +132,33 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
       if (!prev) return prev;
       const newConfig = structuredClone(prev);
       const keys = path.split(".");
-      let obj: any = newConfig;
-      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      let obj: Record<string, unknown> = newConfig as unknown as Record<string, unknown>;
+      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]] as Record<string, unknown>;
       obj[keys[keys.length - 1]] = !obj[keys[keys.length - 1]];
       return newConfig;
     });
   }
 
-  function handleTextCheckChange(path: string, newValue: any) {
+  function handleTextCheckChange(path: string, newValue: string | number | boolean) {
     setDirtyPaths(prev => new Set([...prev, path]));
     setGlobalSettings(prev => {
       if (!prev) return prev;
       const newConfig = structuredClone(prev);
       const keys = path.split(".");
-      let obj: any = newConfig;
-      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      let obj: Record<string, unknown> = newConfig as unknown as Record<string, unknown>;
+      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]] as Record<string, unknown>;
       obj[keys[keys.length - 1]] = newValue;
       return newConfig;
     });
   }
 
-  function handleCacheChange(path: string, newValue: any) {
+  function handleCacheChange(path: string, newValue: string | number | boolean) {
     setDirtyPaths(prev => new Set([...prev, path]));
     setCacheSettings(prev => {
       if (!prev) return prev;
       const newConfig = structuredClone(prev);
       // Cache settings are flat, so we just update the key directly
-      (newConfig as any)[path] = newValue;
+      (newConfig as Record<string, unknown>)[path] = newValue;
       return newConfig;
     });
   }

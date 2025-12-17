@@ -73,9 +73,9 @@ class InstallerService {
                 if (execInfo) {
                   dwlnd_game.executable_info = execInfo;
                   dwlnd_game.installation_info = {
-                    output_folder: payload.install_path,
                     download_folder: job.job_path,
                     file_list: [],
+                    output_folder: payload.install_path,
                   };
                 }
               }

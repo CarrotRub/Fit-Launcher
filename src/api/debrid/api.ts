@@ -191,8 +191,8 @@ export function toDirectLinks(debridLinks: DebridDirectLink[]): {
     size: number;
 }[] {
     return debridLinks.map((link) => ({
-        url: link.url,
         filename: link.filename,
         size: link.size,
+        url: link.url,
     }));
 }

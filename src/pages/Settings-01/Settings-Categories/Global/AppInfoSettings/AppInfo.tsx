@@ -1,11 +1,8 @@
 import { getTauriVersion, getVersion } from '@tauri-apps/api/app';
-import { For, JSX, Show, createSignal, onMount } from 'solid-js';
-import { Check, Github, InfoIcon, MessageCircle, Code2 } from 'lucide-solid';
+import { JSX, Show, createSignal, onMount } from 'solid-js';
+import { Github, InfoIcon, MessageCircle, Code2 } from 'lucide-solid';
 import PageGroup from '../../Components/PageGroup';
-import LabelButtonSettings from '../../Components/UI/LabelButton/LabelButton';
 import { open } from '@tauri-apps/plugin-shell';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { commands } from '../../../../../bindings';
 
 export default function AppInfoSettings(): JSX.Element {

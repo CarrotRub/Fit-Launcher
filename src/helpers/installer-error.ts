@@ -7,7 +7,7 @@ export async function handleInstallerError(err: unknown) {
             if (installErr === "AdminModeError") {
                 await message(
                     "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
-                    { title: "Administrator Rights Required", kind: "error" }
+                    { kind: "error", title: "Administrator Rights Required" }
                 );
             } else if (
                 typeof installErr === "object" &&
@@ -17,50 +17,50 @@ export async function handleInstallerError(err: unknown) {
                 await message(
                     `Installation failed due to an IO error:\n${(installErr as { IOError: string }).IOError
                     }`,
-                    { title: "IO Error", kind: "error" }
+                    { kind: "error", title: "IO Error" }
                 );
             } else {
                 await message("An unknown installation error occurred.", {
-                    title: "Installation Error",
                     kind: "error",
+                    title: "Installation Error",
                 });
             }
         } else if ("Io" in err) {
             await message(`A general IO error occurred:\n${(err as { Io: string }).Io}`, {
-                title: "IO Error",
                 kind: "error",
+                title: "IO Error",
             });
         } else if ("Unrar" in err) {
             await message(`Failed to extract archive:\n${(err as { Unrar: string }).Unrar}`, {
-                title: "Extraction Error",
                 kind: "error",
+                title: "Extraction Error",
             });
         } else {
             // Fallback for other objects
             await message(`An unknown error occurred: ${JSON.stringify(err)}`, {
-                title: "Unknown Error",
                 kind: "error",
+                title: "Unknown Error",
             });
         }
     } else if (err === "NoParentDirectory") {
         await message(
             "Extraction failed because the parent directory doesn't exist.",
-            { title: "Missing Directory", kind: "error" }
+            { kind: "error", title: "Missing Directory" }
         );
     } else if (err === "NoRarFileFound") {
         await message("No RAR file found in the download directory.", {
-            title: "Missing Archive File",
             kind: "error",
+            title: "Missing Archive File",
         });
     } else if (err === "AdminModeError") {
         await message(
             "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
-            { title: "Administrator Rights Required", kind: "error" }
+            { kind: "error", title: "Administrator Rights Required" }
         );
     } else {
         await message("An unknown error occurred during extraction.", {
-            title: "Unknown Error",
             kind: "error",
+            title: "Unknown Error",
         });
     }
 }

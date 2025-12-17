@@ -58,8 +58,8 @@ export const createDownloadsStore = () => {
   });
 
   return {
-    jobs: () => state.jobs,
     getJob: (id: string) => jobsMap.get(id),
+    jobs: () => state.jobs,
   };
 };
 
