@@ -249,8 +249,12 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         }
 
         async function handleStartDownload() {
+            setLoading(true);
+            setError(null);
             const settings = await DownloadSettingsApi.getDownloadSettings();
             if (settings.status !== "ok") {
+                setLoading(false);
+                setError(String(settings.error));
                 throw new Error(String(settings.error));
             }
 
@@ -275,8 +279,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 return handleDebridDownload();
             }
 
-            setLoading(true);
-            setError(null);
 
             try {
 

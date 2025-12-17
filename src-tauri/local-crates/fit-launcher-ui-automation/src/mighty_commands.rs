@@ -1,12 +1,14 @@
-use std::path::PathBuf;
+use std::{fs, path::PathBuf, str::FromStr};
 
+use directories::BaseDirs;
 use specta::specta;
 #[cfg(target_os = "windows")]
 use tracing::{error, info};
 
 use crate::{
-    controller_client::{ControllerCommand, ControllerEvent, ExclusionAction},
+    controller_client::{ControllerCommand, ControllerEvent},
     controller_manager::ControllerManager,
+    defender::{ExclusionAction, FolderExclusionEntry, load_exclusions, now_utc, save_exclusions},
 };
 
 /// Start an executable using tauri::command
@@ -83,7 +85,9 @@ pub async fn folder_exclusion(action: ExclusionAction) -> Result<(), String> {
 
     info!("Sending command...");
     manager
-        .send_command(&ControllerCommand::FolderExclusion { action })
+        .send_command(&ControllerCommand::FolderExclusion {
+            action: action.clone(),
+        })
         .map_err(|e| format!("Failed to send command: {}", e))?;
     info!("command sent...");
     let timeout = Duration::from_secs(10);
@@ -119,6 +123,38 @@ pub async fn folder_exclusion(action: ExclusionAction) -> Result<(), String> {
             Ok(Some(ControllerEvent::FolderExclusionResult { success, error })) => {
                 if success {
                     info!("Folder exclusion succeeded");
+
+                    let Some(base_dirs) = BaseDirs::new() else {
+                        error!("Failed to determine base directories");
+                        return Err(
+                            "Folder added successfully but failed to determine base directories"
+                                .to_string(),
+                        );
+                    };
+
+                    let exclusions_file_path = base_dirs
+                        .config_dir()
+                        .join("com.fitlauncher.carrotrub")
+                        .join("fitgirlConfig")
+                        .join("settings")
+                        .join("data")
+                        .join("folder_exclusions.json");
+
+                    let mut file = load_exclusions(&exclusions_file_path);
+
+                    let excluded_path = match &action {
+                        ExclusionAction::Add(p) | ExclusionAction::Remove(p) => PathBuf::from(p),
+                    };
+
+                    file.entries.push(FolderExclusionEntry {
+                        action: action.clone(),
+                        timestamp_utc: now_utc(),
+                    });
+
+                    save_exclusions(&exclusions_file_path, &file)
+                        .map_err(|e| format!("Failed to save exclusion file: {e}"))?;
+
+                    info!("Path excluded and saved: {}", excluded_path.display());
                     return Ok(());
                 } else {
                     return Err(error.unwrap_or("Folder exclusion failed".into()));

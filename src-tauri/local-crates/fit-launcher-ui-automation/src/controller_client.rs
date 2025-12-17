@@ -24,6 +24,8 @@ use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
 #[cfg(windows)]
 use windows::core::PCWSTR;
 
+use crate::defender::ExclusionAction;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Protocol Types (mirrored from controller crate)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,21 +43,6 @@ impl Default for InstallOptions {
             two_gb_limit: false,
             install_directx: true,
             install_vcredist: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub enum ExclusionAction {
-    Add(String),
-    Remove(String),
-}
-
-impl std::fmt::Display for ExclusionAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Add(p) => write!(f, "Add: {p}"),
-            Self::Remove(p) => write!(f, "Remove: {p}"),
         }
     }
 }

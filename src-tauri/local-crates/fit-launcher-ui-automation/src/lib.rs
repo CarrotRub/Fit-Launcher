@@ -4,6 +4,10 @@ pub mod controller_client;
 pub mod controller_manager;
 pub mod emitter;
 pub mod extraction;
+
+#[cfg(windows)]
+pub mod defender;
+
 #[cfg(windows)]
 pub mod mighty;
 pub mod mighty_commands;
