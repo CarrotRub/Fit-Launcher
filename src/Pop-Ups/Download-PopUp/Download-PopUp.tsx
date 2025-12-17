@@ -69,6 +69,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
         if (downloadSettings.status === "ok") {
           console.log("settings: ", downloadSettings.data)
           setPathInput(downloadSettings.data.general.download_dir);
+          setFolderExclusion(downloadSettings.data.general.folder_exclusion)
           setIsPathValid(true);
         } else {
           setPathInput("");

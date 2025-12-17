@@ -4,6 +4,7 @@ import PageGroup from "../../Components/PageGroup";
 import { General } from "../../../../../bindings";
 import LabelPathInputSettings from "../../Components/UI/LabelPathInput/LabelPathInput";
 import LabelNumericalInput from "../../Components/UI/LabelNumericalInput/LabelNumericalInput";
+import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckbox";
 
 export default function GeneralSettingsPart(props: SettingsSectionProps<General>): JSX.Element {
     const [path, setPath] = createSignal<string>("");
@@ -40,6 +41,12 @@ export default function GeneralSettingsPart(props: SettingsSectionProps<General>
                 onInput={(value) => props.handleTextCheckChange?.("general.concurrent_downloads", value)}
                 isDirty={props.isDirty?.("general.concurrent_downloads")}
                 savePulse={props.savePulse?.("general.concurrent_downloads")}
+            />
+            <LabelCheckboxSettings
+                text="Exclude app folders from Windows Defender"
+                typeText="Automatically adds FitLauncher download directory to Windows Defender exclusions to prevent errors and false positives."
+                action={() => props.handleSwitchCheckChange?.("general.folder_exclusion")}
+                checked={props.settings().folder_exclusion}
             />
         </PageGroup>
     );

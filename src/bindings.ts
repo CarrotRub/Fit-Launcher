@@ -994,7 +994,7 @@ included_dlcs: string; magnetlink: string; href: string; tag: string;
 secondary_images: string[]; pastebin_link?: string }
 export type GameCollection = { name: string; games_list: Game[] }
 export type GamehubSettings = { nsfw_censorship: boolean; auto_get_colors_popular_games: boolean }
-export type General = { download_dir: string; concurrent_downloads?: number }
+export type General = { download_dir: string; concurrent_downloads?: number; folder_exclusion: boolean }
 export type GlobalStat = { downloadSpeed: number; uploadSpeed: number; numActive: number; numWaiting: number; numStopped: number; numStoppedTotal: number }
 export type InstallationError = { IOError: string } | "AdminModeError"
 export type InstallationInfo = { output_folder: string; download_folder: string; file_list: string[] }
