@@ -19,7 +19,7 @@ use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
 };
 
-static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(|| SkipMap::new());
+static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(SkipMap::new);
 
 #[tauri::command]
 #[specta]
@@ -167,7 +167,7 @@ async fn cache_image_async(
 
     // Only claim once,
     // it will remove at least `exceed` bytes on each call
-    claim_space(&manager, exceed).await;
+    claim_space(manager, exceed).await;
 
     let mimeext = mime2ext::mime2ext(&mime).unwrap_or("png");
     let img_path = image_path(&image_url).with_extension(mimeext);
@@ -233,7 +233,8 @@ pub async fn reclaim_space(
     manager: tauri::State<'_, Arc<CacheManager>>,
     space: isize,
 ) -> Result<(), CacheError> {
-    Ok(claim_space(&manager, space).await)
+    claim_space(&manager, space).await;
+    Ok(())
 }
 
 /// Clean all cache and try to delete files

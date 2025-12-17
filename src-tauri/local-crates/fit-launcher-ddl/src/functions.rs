@@ -60,14 +60,12 @@ pub(crate) async fn get_all_download_links(url: String) -> Result<Vec<String>, B
     for content in &spoiler_content {
         let spoiler_doc = scraper::Html::parse_fragment(content);
         for element in spoiler_doc.select(&a_selector) {
-            if let Some(href) = element.value().attr("href") {
-                if href.contains("_fitgirl-repacks.site_") {
-                    original_repack_links.push(href.to_string());
-                } else if href.contains("fg-optional-") {
-                    original_repack_links.push(href.to_string());
-                } else if href.starts_with("https://fuckingfast.co/") {
-                    original_repack_links.push(href.to_string());
-                }
+            if let Some(href) = element.value().attr("href")
+                && (href.contains("_fitgirl-repacks.site_")
+                    || href.contains("fg-optional-")
+                    || href.starts_with("https://fuckingfast.co/"))
+            {
+                original_repack_links.push(href.to_string());
             }
         }
     }

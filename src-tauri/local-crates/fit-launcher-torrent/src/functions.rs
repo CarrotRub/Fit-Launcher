@@ -233,7 +233,7 @@ pub async fn aria2_client_from_config(
                         .into_iter()
                         .map(|s| s.into())
                         .collect::<Vec<OsString>>(),
-                    Some(&download_location),
+                    Some(download_location),
                 )
                 .context("Failed to start aria2c")?
             }
@@ -307,6 +307,12 @@ pub async fn aria2_client_from_config(
 
 fn is_port_available(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
+impl Default for TorrentSession {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TorrentSession {

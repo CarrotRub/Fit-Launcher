@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "prepare": "husky"
   },
   "license": "GPL-3.0-only",
   "dependencies": {
@@ -51,6 +52,8 @@
     "eslint": "^9.39.2",
     "eslint-plugin-perfectionist": "^4.15.1",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "postcss": "^8.5.5",
     "tailwindcss": "^4.1.10",
     "typescript": "^5.8.3",
@@ -58,5 +61,10 @@
     "vite": "^5.4.2",
     "vite-plugin-solid": "^2.8.0",
     "vite-plugin-static-copy": "^1.0.6"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ]
   }
 }

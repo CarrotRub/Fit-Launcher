@@ -322,18 +322,16 @@ impl InstallationJob {
             let _ = manager.shutdown_if_idle(); // Will kill process if no other jobs in queue
 
             // Post-installation finalization: find main executable
-            if success {
-                if let Some(ref path) = install_path_received {
-                    info!("Finalizing installation: locating main executable...");
-                    // We run this async block logic here as before
-                    if let Some(exe_path) = self.find_main_executable().await {
-                        // Note: find_main_executable is async on &self
-                        info!("Main executable found: {}", exe_path);
-                        let full_exe_path = format!("{}\\{}", path, exe_path);
-                        let _ = app_handle.emit("setup::progress::executable", &full_exe_path);
-                    } else {
-                        warn!("Could not locate main executable");
-                    }
+            if success && let Some(ref path) = install_path_received {
+                info!("Finalizing installation: locating main executable...");
+                // We run this async block logic here as before
+                if let Some(exe_path) = self.find_main_executable().await {
+                    // Note: find_main_executable is async on &self
+                    info!("Main executable found: {}", exe_path);
+                    let full_exe_path = format!("{}\\{}", path, exe_path);
+                    let _ = app_handle.emit("setup::progress::executable", &full_exe_path);
+                } else {
+                    warn!("Could not locate main executable");
                 }
             }
 

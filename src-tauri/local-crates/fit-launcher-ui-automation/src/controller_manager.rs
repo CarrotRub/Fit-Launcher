@@ -35,6 +35,7 @@ pub struct QueueStatus {
     pub active: Option<String>,
 }
 
+#[derive(Default)]
 struct ManagerState {
     client: Option<ControllerClient>,
     pipe_name: Option<String>,
@@ -43,20 +44,6 @@ struct ManagerState {
     install_queue: VecDeque<QueuedInstallJob>,
     current_install: Option<Uuid>,
     current_install_slug: Option<String>, // For UI
-}
-
-impl Default for ManagerState {
-    fn default() -> Self {
-        Self {
-            client: None,
-            pipe_name: None,
-            spawning: false,
-            pending_downloads: HashSet::new(),
-            install_queue: VecDeque::new(),
-            current_install: None,
-            current_install_slug: None,
-        }
-    }
 }
 
 // ControllerClient contains Windows HANDLE (raw pointer). Safe across threads
@@ -202,13 +189,11 @@ impl ControllerManager {
             state.pipe_name.is_none()
         };
 
-        if should_spawn {
-            if let Err(e) = self.ensure_running() {
-                warn!(
-                    "Could not pre-start controller (will retry on install): {}",
-                    e
-                );
-            }
+        if should_spawn && let Err(e) = self.ensure_running() {
+            warn!(
+                "Could not pre-start controller (will retry on install): {}",
+                e
+            );
         }
 
         Ok(())
@@ -271,14 +256,14 @@ impl ControllerManager {
             return Ok(false);
         }
 
-        if let Some(front) = state.install_queue.front() {
-            if front.job_id == job_id {
-                let job = state.install_queue.pop_front().unwrap();
-                state.current_install = Some(job_id);
-                state.current_install_slug = Some(job.slug.clone()); // For UI
-                info!("Claiming install slot for job {} ({})", job_id, job.slug);
-                return Ok(true);
-            }
+        if let Some(front) = state.install_queue.front()
+            && front.job_id == job_id
+        {
+            let job = state.install_queue.pop_front().unwrap();
+            state.current_install = Some(job_id);
+            state.current_install_slug = Some(job.slug.clone()); // For UI
+            info!("Claiming install slot for job {} ({})", job_id, job.slug);
+            return Ok(true);
         }
 
         Ok(false)

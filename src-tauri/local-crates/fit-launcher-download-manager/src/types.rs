@@ -154,6 +154,7 @@ impl Job {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_torrent(
         bytes: Vec<u8>,
         file_indices: Vec<usize>,

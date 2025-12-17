@@ -36,12 +36,11 @@ pub async fn dm_add_ddl_job(
     #[cfg(windows)]
     {
         let settings = fit_launcher_config::commands::get_installation_settings();
-        if settings.auto_install {
-            if let Ok(uuid) = Uuid::parse_str(&job_id) {
-                if let Err(e) = ControllerManager::global().register_download(uuid) {
-                    error!("Failed to register download with controller: {}", e);
-                }
-            }
+        if settings.auto_install
+            && let Ok(uuid) = Uuid::parse_str(&job_id)
+            && let Err(e) = ControllerManager::global().register_download(uuid)
+        {
+            error!("Failed to register download with controller: {}", e);
         }
     }
 
@@ -67,12 +66,11 @@ pub async fn dm_add_torrent_job(
     #[cfg(windows)]
     {
         let settings = fit_launcher_config::commands::get_installation_settings();
-        if settings.auto_install {
-            if let Ok(uuid) = Uuid::parse_str(&job_id) {
-                if let Err(e) = ControllerManager::global().register_download(uuid) {
-                    error!("Failed to register download with controller: {}", e);
-                }
-            }
+        if settings.auto_install
+            && let Ok(uuid) = Uuid::parse_str(&job_id)
+            && let Err(e) = ControllerManager::global().register_download(uuid)
+        {
+            error!("Failed to register download with controller: {}", e);
         }
     }
 

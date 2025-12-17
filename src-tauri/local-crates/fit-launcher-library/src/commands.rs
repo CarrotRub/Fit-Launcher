@@ -358,10 +358,10 @@ pub fn find_game_executable(folder_path: String) -> Option<String> {
             let path = entry.path();
             if path.is_dir() {
                 collect_exes(&path, candidates, depth + 1);
-            } else if path.extension().map(|e| e == "exe").unwrap_or(false) {
-                if let Ok(meta) = fs::metadata(&path) {
-                    candidates.push((path, meta.len()));
-                }
+            } else if path.extension().map(|e| e == "exe").unwrap_or(false)
+                && let Ok(meta) = fs::metadata(&path)
+            {
+                candidates.push((path, meta.len()));
             }
         }
     }

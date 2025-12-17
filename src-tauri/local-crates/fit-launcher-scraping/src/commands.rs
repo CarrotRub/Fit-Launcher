@@ -97,10 +97,10 @@ pub async fn get_singular_game_info(
 
     // Clean up expired cache entries (24 hours)
     const CACHE_EXPIRY_SECS: i64 = 60 * 60 * 24;
-    if let Ok(deleted) = db::cleanup_expired_games(&conn, CACHE_EXPIRY_SECS) {
-        if deleted > 0 {
-            info!("Cleaned up {} expired game cache entries", deleted);
-        }
+    if let Ok(deleted) = db::cleanup_expired_games(&conn, CACHE_EXPIRY_SECS)
+        && deleted > 0
+    {
+        info!("Cleaned up {} expired game cache entries", deleted);
     }
 
     // Check if we have a valid cached version

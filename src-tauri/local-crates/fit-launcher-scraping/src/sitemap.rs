@@ -128,14 +128,14 @@ fn parse_sitemap_content(content: &str) -> Result<Vec<SearchIndexEntry>, Scrapin
     for url_node in doc.select(&url_selector) {
         if let Some(loc_node) = url_node.select(&loc_selector).next() {
             let url_text = loc_node.text().collect::<String>().trim().to_string();
-            if !url_text.is_empty() {
-                if let Some((slug, title)) = extract_slug_and_title(&url_text) {
-                    entries.push(SearchIndexEntry {
-                        slug,
-                        title,
-                        href: url_text,
-                    });
-                }
+            if !url_text.is_empty()
+                && let Some((slug, title)) = extract_slug_and_title(&url_text)
+            {
+                entries.push(SearchIndexEntry {
+                    slug,
+                    title,
+                    href: url_text,
+                });
             }
         }
     }

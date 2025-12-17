@@ -328,6 +328,6 @@ pub async fn aria2_global_stat(
 
 #[tauri::command]
 #[specta]
-pub fn panic_force(_app: AppHandle) -> () {
+pub fn panic_force(_app: AppHandle) {
     panic!("INTENTIONAL PANIC");
 }

@@ -87,7 +87,7 @@ impl LibrqbitSession {
                         .open(torrent_path)
                         .await
                     {
-                        _ = file.write_all(&*torrent_bytes).await;
+                        _ = file.write_all(&torrent_bytes).await;
                     }
                 });
 
@@ -135,7 +135,7 @@ async fn get_add_torrent<'a>(
     let torrent_dir = app_local_dir.join("torrents");
     let app_data_dir = base_dir.data_dir().join(app_id);
 
-    let magnet = Magnet::parse(&magnet_str).map_err(|_| TorrentApiError::InvalidMagnet)?;
+    let magnet = Magnet::parse(magnet_str).map_err(|_| TorrentApiError::InvalidMagnet)?;
     let magnet_hash = magnet
         .as_id20()
         .map(|id| id.as_string())
@@ -158,8 +158,8 @@ async fn get_add_torrent<'a>(
             .and_then(|o| o);
     }
 
-    match pastebin_link {
-        Some(pastebin_link) => match decrypt_torrent_from_paste(pastebin_link.clone()).await {
+    if let Some(pastebin_link) = pastebin_link {
+        match decrypt_torrent_from_paste(pastebin_link.clone()).await {
             Ok(t) => {
                 if librqbit::torrent_from_bytes::<'_, librqbit_buffers::ByteBuf>(&t).is_ok() {
                     info!("downloaded torrent from {pastebin_link}");
@@ -171,9 +171,8 @@ async fn get_add_torrent<'a>(
             Err(e) => {
                 error!("failed to download metainfo from {pastebin_link}: {e}");
             }
-        },
-        None => (),
-    };
+        }
+    }
 
     Ok((AddTorrent::from_url(magnet_str), torrent_path))
 }
