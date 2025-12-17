@@ -78,7 +78,7 @@ chrono = "0.4.38"
 
 
 # Caching
-lru = "0.12.4"
+lru = "0.16.2"
 
 # Image processing
 image = "0.25.4"
