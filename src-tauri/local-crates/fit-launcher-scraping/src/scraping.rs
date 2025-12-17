@@ -52,9 +52,11 @@ pub async fn fetch_page(url: &str, app: &AppHandle) -> Result<String, ScrapingEr
         }
 
         if !resp.status().is_success() {
-            return Err(ScrapingError::HttpStatusCodeError(
-                resp.status().to_string(),
-            ));
+            return Err(ScrapingError::HttpStatusCodeError(format!(
+                "{} - {}",
+                resp.status(),
+                url
+            )));
         }
 
         match resp.text().await {
@@ -272,6 +274,11 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
     let links: Vec<String> = doc
         .select(&scraper::Selector::parse(".su-spoiler-content > a:first-child").unwrap())
         .filter_map(|e| e.value().attr("href"))
+        .filter(|href| {
+            href.starts_with("https://fitgirl-repacks.site/")
+                && !href.contains('<')
+                && !href.contains('>')
+        })
         .unique()
         .take(20)
         .map(str::to_owned)
