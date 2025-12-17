@@ -47,10 +47,9 @@ fn parse_image_links(body: &str, start: usize) -> anyhow::Result<Vec<String>> {
     let mut images = Vec::new();
 
     for p_index in start..=5 {
-        let selector = Selector::parse(&format!(
-            ".entry-content p:nth-of-type({p_index}) img[src]"
-        ))
-        .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
+        let selector =
+            Selector::parse(&format!(".entry-content p:nth-of-type({p_index}) img[src]"))
+                .map_err(|_| anyhow::anyhow!("Invalid CSS selector for paragraph {}", p_index))?;
 
         for element in document.select(&selector) {
             if let Some(src) = element.value().attr("src") {
@@ -287,4 +286,27 @@ pub fn get_install_queue_status()
 -> Result<fit_launcher_ui_automation::controller_manager::QueueStatus, CustomError> {
     fit_launcher_ui_automation::controller_manager::get_install_queue_status()
         .map_err(|e| CustomError { message: e })
+}
+
+#[tauri::command]
+#[specta]
+pub fn is_controller_running() -> bool {
+    #[cfg(windows)]
+    {
+        fit_launcher_ui_automation::controller_manager::ControllerManager::global().is_running()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+#[tauri::command]
+#[specta]
+pub fn quit_app() {
+    use std::sync::atomic::Ordering;
+
+    info!("quit_app called - setting QUITTING flag and exiting...");
+    crate::bootstrap::tray::QUITTING.store(true, Ordering::Release);
+    std::process::exit(0);
 }

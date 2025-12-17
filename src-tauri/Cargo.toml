@@ -95,6 +95,7 @@ fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 fit-launcher-download-manager = { path = "./local-crates/fit-launcher-download-manager" }
 fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
 fit-launcher-cache = { workspace = true }
+tauri-plugin-notification = "2.3.3"
 
 # Workspace configuration
 [workspace]

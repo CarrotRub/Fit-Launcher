@@ -249,6 +249,7 @@ pub async fn start_app() -> anyhow::Result<()> {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri_helper::tauri_collect_commands!());
 

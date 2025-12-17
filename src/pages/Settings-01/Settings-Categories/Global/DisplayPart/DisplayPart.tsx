@@ -43,7 +43,7 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
   createEffect(() => {
     const el = document.querySelector(".background-blur-whole") as HTMLElement | null;
     if (el) el.style.backdropFilter = `blur(${blurAmount()}px)`;
-    load("background_store.json", { autoSave: false }).then(store => {
+    load("background_store.json", { autoSave: false, defaults: {} }).then(store => {
       store.set("blur_amount", blurAmount());
     });
   });
@@ -56,6 +56,12 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
           typeText="Hides any NSFW content everywhere except in downloaded games"
           action={() => props.handleSwitchCheckChange?.("display.nsfw_censorship")}
           checked={props.settings().nsfw_censorship}
+        />
+        <LabelCheckboxSettings
+          text="Close to Tray"
+          typeText="When closing, minimize to system tray instead of fully exiting"
+          action={() => props.handleSwitchCheckChange?.("display.close_to_tray")}
+          checked={props.settings().close_to_tray}
         />
         <LabelDropdownSettings
           text="Change Themes"
