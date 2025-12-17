@@ -214,23 +214,11 @@ fn set_proxy_from_sys(extra_options: &mut Map<String, Value>) {
 
         if let Ok(proxy_override) = ie_settings.get_value::<String, _>("ProxyOverride") {
             let no_proxy = proxy_override
-                .split(";")
+                .split(';')
                 .filter(|host| {
+                    // Skip <local> and wildcards (TODO: support wildcard matching)
                     // https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-ie-clientnetworkprotocolimplementation-hklmproxyoverride#values
-                    if *host == "<local>" {
-                        return false;
-                    }
-
-                    if host.contains("*") {
-                        // TODO: support wildcard IP range and wildcard domain suffix match.
-                        return false;
-                    }
-
-                    // assume it's a valid hostname, that can be one of:
-                    // - CIDR range (IPv4/IPv6)
-                    // - full domain
-                    // - subdomain match (.example.com)
-                    true
+                    *host != "<local>" && !host.contains('*')
                 })
                 .collect::<Vec<_>>()
                 .join(",");

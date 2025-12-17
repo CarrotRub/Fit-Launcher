@@ -252,6 +252,10 @@ pub async fn clear_image_cache(
     Ok(())
 }
 
+/// Reclaim at least `exceed` bytes from the cache.
+///
+/// This function is intentionally infallible: failures are logged but don't
+/// propagate errors, since cache reclamation is best-effort.
 async fn claim_space(manager: &CacheManager, exceed: isize) {
     info!("reclaim space: {exceed}");
 
