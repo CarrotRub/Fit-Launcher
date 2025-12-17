@@ -81,7 +81,11 @@ chrono = "0.4.38"
 lru = "0.16.2"
 
 # Image processing
-image = "0.25.4"
+image = { version = "0.25.4", default-features = false, features = [
+    "png",
+    "jpeg",
+    "webp",
+] }
 color-thief = "0.2.2"
 
 # Local Crates
@@ -199,12 +203,18 @@ tokio-util = "0.7"
 
 # Hashing
 ahash = "0.8"
+sha2 = "0.10"
+
+# Time and identifiers
+chrono = "0.4"
+uuid = { version = "1.18", features = ["v4"] }
+
+# Concurrency
+crossbeam-skiplist = "0.1.3"
 
 # Parsing and scraping
 scraper = "0.25.0"
-kuchiki = "0.8.1"
 regex = "1.12.2"
-select = "0.6"
 thiserror = "2.0.12"
 fitgirl-decrypt = { git = "https://github.com/CarrotRub/fitgirl-decrypt", branch = "specta", default-features = false, features = [
     "specta",

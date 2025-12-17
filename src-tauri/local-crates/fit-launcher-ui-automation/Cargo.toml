@@ -19,10 +19,10 @@ specta = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
-parking_lot = "0.12"
-once_cell = "1.19"
-tokio-util = "0.7.17"
-uuid = { version = "1.18.1", features = ["v4"] }
+parking_lot = { workspace = true }
+once_cell = { workspace = true }
+tokio-util = { workspace = true }
+uuid = { workspace = true }
 unrar = "0.5.8"
 inno = { git = "https://github.com/mokurin000/inno/", branch = "runentry-zlibrs" }
 
@@ -47,4 +47,3 @@ windows-result = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 fix-path-env = { workspace = true }
-
