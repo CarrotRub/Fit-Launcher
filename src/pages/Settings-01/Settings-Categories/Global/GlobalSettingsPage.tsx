@@ -257,10 +257,12 @@ function GlobalSettingsPage(props: { settingsPart: GlobalSettingsPart }): JSX.El
           appinfo: <AppInfoSettings />
         }[selectedPart()] || <p>Invalid or unsupported settings part.</p>}
 
-        <div class="flex flex-row self-end gap-3 ">
-          <Button onClick={handleResetSettings} label="Reset To Default" variant="bordered" />
-          <Button onClick={handleOnSave} label={saveLabel()} variant="solid" />
-        </div>
+        <Show when={selectedPart() !== "appinfo"}>
+          <div class="flex flex-row self-end gap-3 ">
+            <Button onClick={handleResetSettings} label="Reset To Default" variant="bordered" />
+            <Button onClick={handleOnSave} label={saveLabel()} variant="solid" />
+          </div>
+        </Show>
       </div>
     </Show>
   );
