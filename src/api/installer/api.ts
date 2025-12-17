@@ -16,6 +16,7 @@ class InstallerService {
   private pendingJobs = new Map<string, Job>();
   private failedInstalls = new Set<string>();
   private installingJobs = new Set<string>();
+  private lastErrors = new Map<string, string>();
 
   start() {
     if (this.started) return;
@@ -46,6 +47,13 @@ class InstallerService {
 
       this.installedGames.add(job.id);
       await this.handle(job);
+    });
+
+    // Listen for error messages from the controller
+    listen<string>("setup::progress::error", (event) => {
+      for (const [hookId, job] of this.activeInstalls.entries()) {
+        this.lastErrors.set(job.id, event.payload);
+      }
     });
 
     listen("setup::hook::stopped", async (event) => {
@@ -98,7 +106,9 @@ class InstallerService {
         }
       } else {
         this.failedInstalls.add(job.id);
-        emit("installer::state::changed", { jobId: job.id, state: "failed" });
+        const errorMsg = this.lastErrors.get(job.id);
+        emit("installer::state::changed", { error: errorMsg, jobId: job.id, state: "failed" });
+        this.lastErrors.delete(job.id);
       }
 
       this.activeInstalls.delete(payload.id);

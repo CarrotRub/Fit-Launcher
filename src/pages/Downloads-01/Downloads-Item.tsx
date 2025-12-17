@@ -19,6 +19,7 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
     const [jobStatus, setJobStatus] = createSignal<AggregatedStatus | null>(null);
     const [fileStore, setFileStore] = createStore<Record<string, File>>({});
     const [installState, setInstallState] = createSignal<"idle" | "installing" | "failed" | "success">("idle");
+    const [installError, setInstallError] = createSignal<string | null>(null);
     const { notify } = useToast();
 
     onMount(() => {
@@ -56,17 +57,21 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
 
         // Listen for installer state changes
         let unsubInstaller: (() => void) | undefined;
-        listen<{ jobId: string; state: string }>("installer::state::changed", (event) => {
+        listen<{ jobId: string; state: string; error?: string }>("installer::state::changed", (event) => {
             if (event.payload.jobId === props.item().id) {
                 const state = event.payload.state;
                 if (state === "installing") {
                     setInstallState("installing");
+                    setInstallError(null);
                 } else if (state === "failed") {
                     setInstallState("failed");
+                    setInstallError(event.payload.error || null);
                 } else if (state === "success") {
                     setInstallState("success");
+                    setInstallError(null);
                 } else if (state === "cleared") {
                     setInstallState("idle");
+                    setInstallError(null);
                 }
             }
         }).then((unsub) => {
@@ -294,9 +299,15 @@ const DownloadItem: Component<{ item: Accessor<Job>; refreshDownloads?: () => Pr
                             <div class="flex justify-between text-xs text-muted/80 mb-1.5">
                                 <span class="capitalize">
                                     {installState() === "failed" ? (
-                                        <span class="flex items-center gap-1 text-red-400 font-medium">
+                                        <span
+                                            class="flex items-center gap-1 text-red-400 font-medium cursor-help"
+                                            title={installError() || "Installation failed"}
+                                        >
                                             <AlertTriangle class="w-3 h-3" />
-                                            Failed To Install
+                                            <span>Failed</span>
+                                            <Show when={installError()}>
+                                                <span class="text-xs opacity-70">(hover for details)</span>
+                                            </Show>
                                         </span>
                                     ) : installState() === "installing" ? (
                                         <span class="text-accent">Installing...</span>

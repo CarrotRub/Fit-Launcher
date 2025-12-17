@@ -12,6 +12,9 @@ use crate::InstallationError;
 #[derive(Clone)]
 pub struct InstallationJob {
     pub id: Uuid,
+    /// The original download ID from the download manager.
+    /// Used to clean up pending_downloads when installation starts.
+    pub download_id: Option<Uuid>,
     pub cancel_emitter: CancellationToken,
     pub game: Game,
     pub path: PathBuf,
@@ -113,6 +116,7 @@ impl InstallationJob {
             // 1. Queue the installation
             let queued_job = QueuedInstallJob {
                 job_id: id,
+                download_id: self.download_id,
                 slug: slug.clone(),
                 setup_path: setup_path.clone(),
                 install_path: install_path.clone(),

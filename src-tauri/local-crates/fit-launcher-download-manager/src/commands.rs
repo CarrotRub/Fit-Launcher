@@ -118,7 +118,9 @@ pub async fn dm_run_automate_setup_install(
         "Starting installation process for: {}",
         &job.metadata.game_title
     );
-    let id = state.create_job(job.game, job.job_path).await;
+    // Parse the download ID if valid UUID, otherwise None (though it should be valid for our downloads)
+    let download_id = Uuid::parse_str(&job.id).ok();
+    let id = state.create_job(job.game, job.job_path, download_id).await;
 
     // Get the job data we need before spawning
     // This avoids Send issues by extracting Send-safe data first
@@ -197,7 +199,11 @@ pub async fn dm_extract_and_install(
         set.join_all().await;
     }
 
-    let id = manager.create_job(job.game, job.job_path.clone()).await;
+    // Parse the download ID if valid UUID
+    let download_id = Uuid::parse_str(&job.id).ok();
+    let id = manager
+        .create_job(job.game, job.job_path.clone(), download_id)
+        .await;
 
     // Use spawn_blocking because the installer uses Windows-specific blocking I/O
     // that contains raw pointers (HANDLE) which aren't Send

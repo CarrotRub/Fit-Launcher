@@ -1,32 +1,16 @@
 import { message } from "@tauri-apps/plugin-dialog";
 
+/**
+ * Handle errors from dm_extract_and_install command.
+ * 
+ * Note: Installation errors from the controller process are NOT handled here - 
+ * they come via setup::hook::stopped events with success=false.
+ * This only handles EXTRACTION errors that happen before the controller takes over.
+ */
 export async function handleInstallerError(err: unknown) {
     if (typeof err === "object" && err !== null) {
-        if ("InstallationError" in err) {
-            const installErr = (err as { InstallationError: unknown }).InstallationError;
-            if (installErr === "AdminModeError") {
-                await message(
-                    "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
-                    { kind: "error", title: "Administrator Rights Required" }
-                );
-            } else if (
-                typeof installErr === "object" &&
-                installErr !== null &&
-                "IOError" in installErr
-            ) {
-                await message(
-                    `Installation failed due to an IO error:\n${(installErr as { IOError: string }).IOError
-                    }`,
-                    { kind: "error", title: "IO Error" }
-                );
-            } else {
-                await message("An unknown installation error occurred.", {
-                    kind: "error",
-                    title: "Installation Error",
-                });
-            }
-        } else if ("Io" in err) {
-            await message(`A general IO error occurred:\n${(err as { Io: string }).Io}`, {
+        if ("Io" in err) {
+            await message(`A file system error occurred:\n${(err as { Io: string }).Io}`, {
                 kind: "error",
                 title: "IO Error",
             });
@@ -36,7 +20,6 @@ export async function handleInstallerError(err: unknown) {
                 title: "Extraction Error",
             });
         } else {
-            // Fallback for other objects
             await message(`An unknown error occurred: ${JSON.stringify(err)}`, {
                 kind: "error",
                 title: "Unknown Error",
@@ -52,11 +35,6 @@ export async function handleInstallerError(err: unknown) {
             kind: "error",
             title: "Missing Archive File",
         });
-    } else if (err === "AdminModeError") {
-        await message(
-            "Installation requires administrator privileges.\nPlease restart FitLauncher as administrator.",
-            { kind: "error", title: "Administrator Rights Required" }
-        );
     } else {
         await message("An unknown error occurred during extraction.", {
             kind: "error",
@@ -64,3 +42,4 @@ export async function handleInstallerError(err: unknown) {
         });
     }
 }
+

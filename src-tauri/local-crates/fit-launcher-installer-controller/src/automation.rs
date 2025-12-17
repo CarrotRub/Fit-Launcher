@@ -34,7 +34,7 @@ where
     None
 }
 
-fn window_with_title(title_prefix: &str) -> Option<HWND> {
+pub fn window_with_title(title_prefix: &str) -> Option<HWND> {
     struct EnumData {
         prefix: String,
         result: Option<HWND>,

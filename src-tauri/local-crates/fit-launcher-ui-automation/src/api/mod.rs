@@ -24,10 +24,16 @@ impl InstallationManager {
         }
     }
 
-    pub async fn create_job(&self, game: Game, download_path: PathBuf) -> Uuid {
+    pub async fn create_job(
+        &self,
+        game: Game,
+        download_path: PathBuf,
+        download_id: Option<Uuid>,
+    ) -> Uuid {
         let id = Uuid::new_v4();
         let job = InstallationJob {
             id,
+            download_id,
             cancel_emitter: CancellationToken::new(),
             game,
             path: download_path,

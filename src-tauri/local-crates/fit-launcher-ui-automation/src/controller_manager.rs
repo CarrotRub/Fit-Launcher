@@ -22,6 +22,7 @@ use crate::controller_client::{
 #[derive(Debug, Clone)]
 pub struct QueuedInstallJob {
     pub job_id: Uuid,
+    pub download_id: Option<Uuid>,
     pub slug: String,
     pub setup_path: PathBuf,
     pub install_path: String,
@@ -201,8 +202,12 @@ impl ControllerManager {
 
     pub fn queue_install(&self, job: QueuedInstallJob) -> Result<(), String> {
         let job_id = job.job_id;
+        let download_id = job.download_id;
         let mut state = self.lock_state()?;
 
+        if let Some(dl_id) = download_id {
+            state.pending_downloads.remove(&dl_id);
+        }
         state.pending_downloads.remove(&job_id);
         state.install_queue.push_back(job);
 
