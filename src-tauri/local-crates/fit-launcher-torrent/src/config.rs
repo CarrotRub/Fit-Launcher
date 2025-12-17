@@ -167,7 +167,7 @@ impl Default for Bittorrent {
     fn default() -> Self {
         Self {
             enable_dht: true,
-            listen_port: 51413,
+            listen_port: 6881,
             max_peers: 60,
             seed_ratio: None,
             seed_time: None,

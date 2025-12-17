@@ -180,7 +180,9 @@ pub async fn dm_extract_and_install(
         groups.entry(group.into()).or_default().push(entry.path());
     }
 
-    for paths in groups.values() {
+    for paths in groups.values_mut() {
+        // Sort to ensure we extract from the first part (e.g., .part1.rar, not .part3.rar)
+        paths.sort();
         if let Some(first) = paths.first() {
             info!("Extracting {first:?} in-place...");
             extract_archive(first)?;

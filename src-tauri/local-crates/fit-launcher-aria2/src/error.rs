@@ -7,6 +7,9 @@ pub enum Aria2Error {
     #[error("ws-jsonrpc not configured properly!")]
     NotConfigured,
 
+    #[error("{0}")]
+    InitializationFailed(String),
+
     #[error("RPC error: {0}")]
     RPCError(String),
 }

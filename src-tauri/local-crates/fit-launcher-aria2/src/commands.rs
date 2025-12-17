@@ -40,7 +40,7 @@ pub async fn aria2_start_download(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     aria2_add_uri(&aria2_client, url, dir, filename, state.config().await.rpc).await
 }
@@ -57,7 +57,7 @@ pub async fn aria2_start_torrent(
 ) -> Result<String, Aria2Error> {
     let aria2_client = state.aria2_client().await.map_err(|e| {
         error!("Error getting aria2 client: {e}");
-        Aria2Error::NotConfigured
+        Aria2Error::InitializationFailed(e.to_string())
     })?;
 
     aria2_add_torrent(&aria2_client, torrent, dir, selected_files).await
@@ -73,7 +73,7 @@ pub async fn aria2_pause(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.pause(&gid).await?)
 }
@@ -85,7 +85,7 @@ pub async fn aria2_pause_all(state: tauri::State<'_, TorrentSession>) -> Result<
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.pause_all().await?)
 }
@@ -100,7 +100,7 @@ pub async fn aria2_resume(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.unpause(&gid).await?)
 }
@@ -112,7 +112,7 @@ pub async fn aria2_resume_all(state: tauri::State<'_, TorrentSession>) -> Result
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.unpause_all().await?)
 }
@@ -127,7 +127,7 @@ pub async fn aria2_remove(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.remove(&gid).await?)
 }
@@ -142,7 +142,7 @@ pub async fn aria2_get_status(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let status: Status = aria2_client.tell_status(&gid).await?;
     Ok(status)
@@ -156,7 +156,7 @@ pub async fn aria2_get_list_active(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let active = aria2_client.tell_active().await?;
     Ok(active)
@@ -170,7 +170,7 @@ pub async fn aria2_get_list_waiting(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let waiting = aria2_client.tell_waiting(0, 100).await?;
     Ok(waiting)
@@ -184,7 +184,7 @@ pub async fn aria2_get_list_stopped(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let stopped = aria2_client.tell_stopped(0, 100).await?;
     Ok(stopped)
@@ -198,7 +198,7 @@ pub async fn aria2_get_all_list(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let mut active = aria2_client.tell_active().await?;
     let mut waiting = aria2_client.tell_waiting(0, 100).await?;
@@ -222,7 +222,7 @@ pub async fn aria2_get_version(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let status = aria2_client.get_version().await?;
     Ok(status)
@@ -241,7 +241,7 @@ pub async fn aria2_task_spawn(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let mut results = Vec::with_capacity(direct_links.len());
 
@@ -285,7 +285,7 @@ pub async fn aria2_task_progress(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let mut completed_length = 0;
     let mut total_length = 0;
@@ -320,7 +320,7 @@ pub async fn aria2_global_stat(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let stat = aria2_client.get_global_stat().await?;
     Ok(stat)

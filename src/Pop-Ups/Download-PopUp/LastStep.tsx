@@ -274,12 +274,18 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                 if (props.downloadType === "bittorrent") {
                     const selected = Array.from(selectedFileIndices());
-                    await DM.addTorrent(game.magnetlink, selected, path, game);
+                    const result = await DM.addTorrent(game.magnetlink, selected, path, game);
+                    if (result.status === "error") {
+                        throw new Error(result.error);
+                    }
                 } else {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
 
-                    await DM.addDdl(selectedLinks, path, game);
+                    const result = await DM.addDdl(selectedLinks, path, game);
+                    if (result.status === "error") {
+                        throw new Error(result.error);
+                    }
                 }
 
                 props.onFinish?.();
@@ -287,7 +293,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
-                await showError(err, "Error");
+                await showError(err, "Download Failed");
                 setError(err.message ?? "Failed");
             } finally {
                 setLoading(false);

@@ -174,7 +174,7 @@ async fn cache_image_async(
 
     let (tx, rx) = kanal::bounded(0);
 
-    info!("caching {image_url} to {}", img_path.display());
+    debug!("caching {image_url} to {}", img_path.display());
 
     _ = manager
         .command_tx
@@ -194,7 +194,7 @@ async fn cache_image_async(
         && let Ok(file_len) = old_path.metadata().map(|m| m.len())
     {
         manager.used_space.fetch_sub(file_len, Ordering::AcqRel);
-        info!("evicted old cache file: {old_path:?} ({file_len} bytes)");
+        debug!("evicted old cache file: {old_path:?} ({file_len} bytes)");
     }
 
     let write_result = async {
@@ -213,7 +213,7 @@ async fn cache_image_async(
 
     match write_result {
         Ok(_) => {
-            info!("successfully cached {image_url} ({file_size} bytes)");
+            debug!("successfully cached {image_url} ({file_size} bytes)");
         }
         Err(e) => {
             manager.used_space.fetch_sub(file_size, Ordering::AcqRel);
@@ -257,7 +257,7 @@ pub async fn clear_image_cache(
 /// This function is intentionally infallible: failures are logged but don't
 /// propagate errors, since cache reclamation is best-effort.
 async fn claim_space(manager: &CacheManager, exceed: isize) {
-    info!("reclaim space: {exceed}");
+    debug!("reclaim space: {exceed}");
 
     let (tx, rx) = kanal::bounded(0);
     _ = manager
