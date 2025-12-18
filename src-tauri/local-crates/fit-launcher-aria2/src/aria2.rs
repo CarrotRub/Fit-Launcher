@@ -139,6 +139,17 @@ async fn file_allocation_method(extra_options: &mut Map<String, Value>, dir: imp
             .unwrap();
         }
 
+        // On Windows, `falloc` relies on SetFileValidData, which requires
+        // Administrator privileges since it could potentially leak data from the raw disk.
+        //
+        // If privilege is missing, aria2 will fallback to `prealloc`,
+        // which fills the file with zeros before actual writing. This fallback
+        // is acceptable for HDD usage.
+        //
+        // `none` disables pre-allocation entirely, writing the file directly.
+        //
+        // On Linux/Mac, aria2 will always use `falloc` in auto mode, as
+        // `fallocate()` on Unix-like systems does not require root access.
         let result = match &media_type {
             Ok(MediaType::SCM | MediaType::SSD) => "none",
             Ok(_) => "falloc",
