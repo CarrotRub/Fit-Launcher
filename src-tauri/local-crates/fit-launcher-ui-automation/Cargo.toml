@@ -9,6 +9,7 @@ tracing-subscriber = { workspace = true }
 [dependencies]
 fit-launcher-scraping = { path = "../fit-launcher-scraping" }
 
+directories = { workspace = true }
 sysinfo = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -47,4 +48,3 @@ windows-result = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 fix-path-env = { workspace = true }
-

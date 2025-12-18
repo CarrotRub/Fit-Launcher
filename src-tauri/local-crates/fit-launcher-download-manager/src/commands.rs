@@ -7,7 +7,13 @@ use fit_launcher_ui_automation::{
     InstallationError, api::InstallationManager, errors::ExtractError, extract_archive,
 };
 use specta::specta;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    os::windows::process::CommandExt,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::Arc,
+};
 use tauri::State;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -67,11 +73,11 @@ pub async fn dm_add_torrent_job(
     #[cfg(windows)]
     {
         let settings = fit_launcher_config::commands::get_installation_settings();
-        if settings.auto_install {
-            if let Ok(uuid) = Uuid::parse_str(&job_id) {
-                if let Err(e) = ControllerManager::global().register_download(uuid) {
-                    error!("Failed to register download with controller: {}", e);
-                }
+        if settings.auto_install
+            && let Ok(uuid) = Uuid::parse_str(&job_id)
+        {
+            if let Err(e) = ControllerManager::global().register_download(uuid) {
+                error!("Failed to register download with controller: {}", e);
             }
         }
     }

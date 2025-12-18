@@ -1,9 +1,10 @@
-import { message } from "@tauri-apps/plugin-dialog";
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { showError } from "../../helpers/error";
-import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X, Zap, CheckCircle, XCircle, Loader2 } from "lucide-solid";
+import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X, Zap, Loader2 } from "lucide-solid";
 import { createSignal, For, onMount, Show, Component } from "solid-js";
 import { render } from "solid-js/web";
-import { FileInfo, DebridProvider, DebridFile, DebridProviderInfo } from "../../bindings";
+import { FileInfo, DebridProvider, DebridFile, DebridProviderInfo, ExclusionAction, commands } from "../../bindings";
 import { Modal } from "../Modal/Modal";
 import { DownloadPopupProps } from "../../types/popup";
 import { DownloadSettingsApi } from "../../api/settings/api";
@@ -11,7 +12,7 @@ import Checkbox from "../../components/UI/Checkbox/Checkbox";
 import { formatBytes, toTitleCaseExceptions } from "../../helpers/format";
 import LoadingPage from "../../pages/LoadingPage-01/LoadingPage";
 import { DirectLinkWrapper } from "../../types/download";
-import { classifyDdlFiles, classifyTorrentFiles, classifyDebridFiles, type LabeledDebridFile } from "../../helpers/classify";
+import { classifyDdlFiles, classifyTorrentFiles, classifyDebridFiles } from "../../helpers/classify";
 import { DM } from "../../api/manager/api";
 import * as Debrid from "../../api/debrid/api";
 
@@ -138,7 +139,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
     const LastStepPopup = () => {
         const [loading, setLoading] = createSignal(true);
         const [error, setError] = createSignal<string | null>(null);
-
+        const [folderExclusion, setFolderExclusion] = createSignal<boolean>(false);
         // Torrent state
         const [listFiles, setListFiles] = createSignal<FileInfo[]>([]);
         const [selectedFileIndices, setSelectedFileIndices] = createSignal(new Set<number>());
@@ -179,6 +180,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         } | null>(null);
 
         onMount(async () => {
+            setFolderExclusion(props.folderExclusion)
             try {
                 if (props.downloadType === "bittorrent") {
                     await initTorrent();
@@ -247,21 +249,39 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         }
 
         async function handleStartDownload() {
+            setLoading(true);
+            setError(null);
+            const settings = await DownloadSettingsApi.getDownloadSettings();
+            if (settings.status !== "ok") {
+                setLoading(false);
+                setError(String(settings.error));
+                throw new Error(String(settings.error));
+            }
+
+            const path = settings.data.general.download_dir;
+
+            if (folderExclusion()) {
+                try {
+                    const exclusionAction: ExclusionAction = { Add: path };
+                    const res = await commands.folderExclusion(exclusionAction);
+                    console.log("Folder successfully excluded:", res);
+                } catch (err) {
+                    console.error("Failed to exclude folder from Defender:", err);
+                    await showError(
+                        "Could not exclude download folder from Windows Defender. The installation might be blocked.",
+                        "Warning"
+                    );
+                }
+            }
+
             // If debrid provider is selected, use the debrid download handler
             if (selectedDebridProvider()) {
                 return handleDebridDownload();
             }
 
-            setLoading(true);
-            setError(null);
 
             try {
-                const settings = await DownloadSettingsApi.getDownloadSettings();
-                if (settings.status !== "ok") {
-                    throw new Error(String(settings.error));
-                }
 
-                const path = settings.data.general.download_dir;
                 // Convert DownloadedGame to Game for DM API
                 const game = { ...props.downloadedGame, secondary_images: [] as string[] };
 

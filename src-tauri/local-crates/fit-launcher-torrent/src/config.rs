@@ -52,6 +52,8 @@ pub struct General {
     pub download_dir: PathBuf,
     #[serde(default = "General::default_concurrent_downloads")]
     pub concurrent_downloads: u32,
+    pub folder_exclusion: bool,
+    pub folder_exclusion_cleanup: bool,
 }
 
 impl General {
@@ -74,6 +76,8 @@ impl Default for General {
                 .map(|d| d.to_owned())
                 .unwrap_or_else(|| userdirs.home_dir().join("Downloads")),
             concurrent_downloads: Self::default_concurrent_downloads(),
+            folder_exclusion: true,
+            folder_exclusion_cleanup: true,
         }
     }
 }

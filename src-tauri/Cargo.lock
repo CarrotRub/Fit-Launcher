@@ -2000,6 +2000,7 @@ name = "fit-launcher-ui-automation"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "directories",
  "fit-launcher-config",
  "fit-launcher-scraping",
  "fix-path-env",

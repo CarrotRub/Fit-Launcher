@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
+use specta::Type;
 use tracing::{debug, info};
 
 #[cfg(windows)]
@@ -22,6 +23,8 @@ use windows::Win32::UI::Shell::{SHELLEXECUTEINFOW, ShellExecuteExW};
 use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
 #[cfg(windows)]
 use windows::core::PCWSTR;
+
+use crate::defender::{ExclusionAction, ExclusionCleanupPolicy};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Protocol Types (mirrored from controller crate)
@@ -55,6 +58,12 @@ pub enum ControllerCommand {
     },
     CancelInstall {
         job_id: String,
+    },
+    FolderExclusion {
+        action: ExclusionAction,
+    },
+    CleanupPolicy {
+        exclusion_folder: ExclusionCleanupPolicy,
     },
     Shutdown,
     ShutdownIfIdle,
@@ -102,6 +111,10 @@ pub enum ControllerEvent {
         job_id: String,
         success: bool,
         install_path: Option<String>,
+        error: Option<String>,
+    },
+    FolderExclusionResult {
+        success: bool,
         error: Option<String>,
     },
     Error {
@@ -331,14 +344,12 @@ pub fn find_controller_binary() -> Result<PathBuf> {
         .to_path_buf();
 
     let candidates = [
-        exe_dir.join("fit-launcher-automation.exe"),
-        exe_dir
-            .join("resources")
-            .join("fit-launcher-automation.exe"),
+        exe_dir.join("FitLauncherService.exe"),
+        exe_dir.join("resources").join("FitLauncherService.exe"),
         exe_dir
             .join("..")
             .join("resources")
-            .join("fit-launcher-automation.exe"),
+            .join("FitLauncherService.exe"),
     ];
 
     candidates
