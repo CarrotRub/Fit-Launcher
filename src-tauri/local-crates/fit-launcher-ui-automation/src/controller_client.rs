@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use specta::Type;
 use tracing::{debug, info};
 
 #[cfg(windows)]

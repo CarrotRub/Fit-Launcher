@@ -275,13 +275,13 @@ pub fn kill_process(pid: u32) {
     }
 
     unsafe {
-        if let Ok(handle) = OpenProcess(PROCESS_TERMINATE, false, pid) {
-            if !handle.is_invalid() {
-                if TerminateProcess(handle, 1).is_ok() {
-                    info!("Terminated process PID {}", pid);
-                }
-                let _ = CloseHandle(handle);
+        if let Ok(handle) = OpenProcess(PROCESS_TERMINATE, false, pid)
+            && !handle.is_invalid()
+        {
+            if TerminateProcess(handle, 1).is_ok() {
+                info!("Terminated process PID {}", pid);
             }
+            let _ = CloseHandle(handle);
         }
     }
 }

@@ -179,11 +179,12 @@ unsafe extern "system" fn event_callback(
             if len > 0 {
                 let title = String::from_utf16_lossy(&buf[..len as usize]);
 
-                if title.contains("Setup") || title.contains("%") || title.contains("Finalization")
+                if (title.contains("Setup")
+                    || title.contains("%")
+                    || title.contains("Finalization"))
+                    && let Some(event) = parse_window_title(&title)
                 {
-                    if let Some(event) = parse_window_title(&title) {
-                        let _ = tx.send(event);
-                    }
+                    let _ = tx.send(event);
                 }
             }
         }

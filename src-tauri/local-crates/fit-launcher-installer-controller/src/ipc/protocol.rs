@@ -1,7 +1,5 @@
 //! IPC Protocol definitions. Messages are JSON with 4-byte LE length prefix.
 
-use std::path::{Path, PathBuf};
-
 use serde::{Deserialize, Serialize};
 
 use crate::defender::{ExclusionAction, ExclusionCleanupPolicy};

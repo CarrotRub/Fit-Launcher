@@ -1,7 +1,7 @@
 use directories::BaseDirs;
 use specta::specta;
+use std::path::PathBuf;
 use std::time::Duration;
-use std::{fs, path::PathBuf, str::FromStr};
 use tracing::{error, info};
 
 use crate::{

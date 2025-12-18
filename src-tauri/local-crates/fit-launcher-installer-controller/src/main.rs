@@ -34,8 +34,8 @@
 //! ```
 
 pub mod automation;
-pub mod errors;
 pub mod defender;
+pub mod errors;
 pub mod events;
 pub mod installer;
 pub mod ipc;

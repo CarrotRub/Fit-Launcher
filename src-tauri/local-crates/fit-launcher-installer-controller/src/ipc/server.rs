@@ -18,8 +18,6 @@
 //! - Injection into the GUI process
 //! - Kernel exploits / UAC bypass chains / compromised host
 
-use std::path::Path;
-
 use anyhow::{Result, bail};
 use tracing::{debug, error, info, warn};
 use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
@@ -37,7 +35,7 @@ use windows::Win32::System::Pipes::{
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use windows::core::PCWSTR;
 
-use crate::defender::{ExclusionAction, ExclusionCleanupPolicy, ExclusionError, folder_exclusion};
+use crate::defender::{ExclusionAction, ExclusionCleanupPolicy, folder_exclusion};
 use crate::installer::InstallerRunner;
 use crate::ipc::protocol::{Command, Event, decode_message, encode_message};
 
@@ -234,7 +232,7 @@ impl IpcServer {
                 let runner =
                     InstallerRunner::new(job_id.clone(), setup_path, install_path, options);
 
-                match runner.run(|event| self.send_event(&event)) {
+                match runner.run(|event| self.send_event(event)) {
                     Ok(()) => info!("Installation completed: job={}", job_id),
                     Err(e) => {
                         error!("Installation failed: job={}, error={:#}", job_id, e);
