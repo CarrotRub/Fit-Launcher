@@ -45,6 +45,7 @@ struct ManagerState {
     install_queue: VecDeque<QueuedInstallJob>,
     current_install: Option<Uuid>,
     current_install_slug: Option<String>, // For UI
+    folder_exclusion_active: bool,
 }
 
 // ControllerClient contains Windows HANDLE (raw pointer). Safe across threads
@@ -320,7 +321,8 @@ impl ControllerManager {
 
     pub fn should_shutdown(&self) -> Result<bool, String> {
         let state = self.lock_state()?;
-        Ok(state.pending_downloads.is_empty()
+        Ok(!state.folder_exclusion_active
+            && state.pending_downloads.is_empty()
             && state.install_queue.is_empty()
             && state.current_install.is_none())
     }
@@ -359,6 +361,13 @@ impl ControllerManager {
             .lock()
             .map(|s| s.client.is_some())
             .unwrap_or(false)
+    }
+
+    pub fn set_folder_exclusion_active(&self, active: bool) -> Result<(), String> {
+        let mut state = self.lock_state()?;
+        state.folder_exclusion_active = active;
+        info!("Folder exclusion active = {}", active);
+        Ok(())
     }
 }
 

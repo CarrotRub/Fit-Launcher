@@ -1,6 +1,10 @@
 //! IPC Protocol definitions. Messages are JSON with 4-byte LE length prefix.
 
+use std::path::{Path, PathBuf};
+
 use serde::{Deserialize, Serialize};
+
+use crate::defender::{ExclusionAction, ExclusionCleanupPolicy};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Commands (GUI → Controller)
@@ -34,6 +38,12 @@ pub enum Command {
     },
     CancelInstall {
         job_id: String,
+    },
+    FolderExclusion {
+        action: ExclusionAction,
+    },
+    CleanupPolicy {
+        exclusion_folder: ExclusionCleanupPolicy,
     },
     Shutdown,
     ShutdownIfIdle,
@@ -108,6 +118,10 @@ pub enum Event {
     Error {
         job_id: Option<String>,
         message: String,
+    },
+    FolderExclusionResult {
+        success: bool,
+        error: Option<String>,
     },
     ShuttingDown,
 }

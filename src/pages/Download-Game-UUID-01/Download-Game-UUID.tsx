@@ -194,6 +194,8 @@ const DownloadGameUUIDPage = () => {
       infoTitle: "Download Game",
       infoMessage: `Do you want to download ${g.title}`,
       downloadedGame: g,
+      //todo: add in config settings
+      folderExclusion: false,
       gameDetails: gameDetails(),
       downloadType,
       onFinish: () => navigate("/downloads-page")

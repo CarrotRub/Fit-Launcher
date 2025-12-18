@@ -1,6 +1,6 @@
 import { message } from "@tauri-apps/plugin-dialog";
-import { GlobalSettingsApi } from "../settings/api";
-import { commands, Job } from "../../bindings";
+import { DownloadSettingsApi, GlobalSettingsApi } from "../settings/api";
+import { commands, ExclusionCleanupPolicy, Job } from "../../bindings";
 import { listen, emit } from "@tauri-apps/api/event";
 import { LibraryApi } from "../library/api";
 import { handleInstallerError } from "../../helpers/installer-error";
@@ -18,6 +18,26 @@ class InstallerService {
   private installingJobs = new Set<string>();
   private lastErrors = new Map<string, string>();
 
+  async unexcludeFolder(installPath: string) {
+    const settings = await DownloadSettingsApi.getDownloadSettings();
+    if (
+      settings.status === "ok" &&
+      settings.data.general.folder_exclusion_cleanup
+    ) {
+      const exclusionPolicy: ExclusionCleanupPolicy = {
+        RemoveAfterInstall: installPath,
+      };
+      const res = await commands.folderExclusionCleanup(exclusionPolicy);
+
+      if (res.status === "ok") {
+        console.log("Exclusion Folder Policy completed successfully");
+        return;
+      } else {
+        console.error("Error in the Exclusion Folder Policy:", res.error);
+      }
+    }
+  }
+
   start() {
     if (this.started) return;
     this.started = true;
@@ -30,7 +50,10 @@ class InstallerService {
         this.installingJobs.add(job.id);
         this.pendingJobs.delete(jobId);
         console.log(`[Installer] Hook started: ${job.game.title}`);
-        emit("installer::state::changed", { jobId: job.id, state: "installing" });
+        emit("installer::state::changed", {
+          jobId: job.id,
+          state: "installing",
+        });
         break;
       }
     });
@@ -57,17 +80,26 @@ class InstallerService {
     });
 
     listen("setup::hook::stopped", async (event) => {
-      const payload = event.payload as { id: string; success: boolean; install_path?: string };
+      const payload = event.payload as {
+        id: string;
+        success: boolean;
+        install_path?: string;
+      };
 
       const job = this.activeInstalls.get(payload.id);
       if (!job) return;
 
-      console.log(`[Installer] Hook stopped: ${job.game.title}, success=${payload.success}`);
+      console.log(
+        `[Installer] Hook stopped: ${job.game.title}, success=${payload.success}`
+      );
       this.installingJobs.delete(job.id);
 
       if (payload.success) {
         try {
-          console.log("[Installer] Processing successful installation:", job.game.title);
+          console.log(
+            "[Installer] Processing successful installation:",
+            job.game.title
+          );
 
           const settings = await GlobalSettingsApi.getInstallationSettings();
           const lib_api = new LibraryApi();
@@ -75,9 +107,14 @@ class InstallerService {
 
           if (payload.install_path) {
             try {
-              const exePath = await commands.findGameExecutable(payload.install_path);
+              const exePath = await commands.findGameExecutable(
+                payload.install_path
+              );
               if (exePath) {
-                const execInfo = await commands.executableInfoDiscovery(exePath, payload.install_path);
+                const execInfo = await commands.executableInfoDiscovery(
+                  exePath,
+                  payload.install_path
+                );
                 if (execInfo) {
                   dwlnd_game.executable_info = execInfo;
                   dwlnd_game.installation_info = {
@@ -100,7 +137,11 @@ class InstallerService {
           await commands.dmCleanJob(job.id, payload.id);
 
           console.log("[Installer] Complete:", job.game.title);
-          emit("installer::state::changed", { jobId: job.id, state: "success" });
+          emit("installer::state::changed", {
+            jobId: job.id,
+            state: "success",
+          });
+          await this.unexcludeFolder(job.metadata.target_path);
         } catch (err) {
           console.error("[Installer] Error in success handler:", err);
         }
@@ -145,8 +186,6 @@ class InstallerService {
       this.pendingJobs.delete(job.id);
     }
   }
-
-
 
   isInstallFailed(jobId: string): boolean {
     return this.failedInstalls.has(jobId);

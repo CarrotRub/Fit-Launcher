@@ -6,6 +6,7 @@ fn main() {
     #[cfg(windows)]
     {
         let mut res = tauri_winres::WindowsResource::new();
+        res.set("ProductName", "FitLauncherService");
 
         // Require administrator privileges
         res.set_manifest(

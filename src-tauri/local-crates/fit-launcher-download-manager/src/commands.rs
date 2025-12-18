@@ -7,7 +7,13 @@ use fit_launcher_ui_automation::{
     InstallationError, api::InstallationManager, errors::ExtractError, extract_archive,
 };
 use specta::specta;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::HashMap,
+    os::windows::process::CommandExt,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::Arc,
+};
 use tauri::State;
 use tracing::{error, info};
 use uuid::Uuid;

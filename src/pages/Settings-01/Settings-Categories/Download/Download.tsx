@@ -106,6 +106,7 @@ function DownloadConfigurationPage(props: { settingsPart: DownloadSettingsPart }
             <GeneralSettingsPart
               settings={() => globalTorrentConfig()!.general}
               handleTextCheckChange={handleTextCheckChange}
+              handleSwitchCheckChange={handleSwitchCheckChange}
               isDirty={isDirty}
               savePulse={savePulse}
             />

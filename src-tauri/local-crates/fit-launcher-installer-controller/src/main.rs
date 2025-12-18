@@ -35,6 +35,7 @@
 
 pub mod automation;
 pub mod errors;
+pub mod defender;
 pub mod events;
 pub mod installer;
 pub mod ipc;
@@ -63,7 +64,7 @@ fn main() {
     // Expected: installer-controller.exe <pipe_name>
     let pipe_name = args.get(1).cloned().unwrap_or_else(|| {
         // Default pipe name for testing
-        r"\\.\pipe\fit-launcher-automation".to_string()
+        r"\\.\pipe\FitLauncherService".to_string()
     });
 
     info!("Using pipe: {}", pipe_name);

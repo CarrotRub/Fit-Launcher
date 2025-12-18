@@ -18,6 +18,12 @@ pub enum DownloadSource {
     Torrent,
 }
 
+#[derive(Clone, Serialize, Deserialize, Type)]
+pub enum ExclusionAction {
+    Add(String),
+    Remove(String),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type)]
 #[serde(rename_all = "kebab-case")]
 #[derive(Default)]

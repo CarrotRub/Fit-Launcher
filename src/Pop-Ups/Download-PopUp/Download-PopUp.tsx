@@ -30,6 +30,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
     const [pathInput, setPathInput] = createSignal<string>("");
     const [isPathValid, setIsPathValid] = createSignal(false);
     const [isInitialized, setIsInitialized] = createSignal(false);
+    const [folderExclusion, setFolderExclusion] = createSignal<boolean>(true);
 
     const [installationSettings, setInstallationSettings] = createSignal<InstallationSettings>({
       auto_clean: false,
@@ -68,6 +69,7 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
         if (downloadSettings.status === "ok") {
           console.log("settings: ", downloadSettings.data)
           setPathInput(downloadSettings.data.general.download_dir);
+          setFolderExclusion(downloadSettings.data.general.folder_exclusion)
           setIsPathValid(true);
         } else {
           setPathInput("");
@@ -86,7 +88,10 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
 
     function handleConfirm() {
       destroy()
-      createLastStepDownloadPopup({ ...props });
+      createLastStepDownloadPopup({
+        ...props,
+        folderExclusion: folderExclusion(),
+      });
     }
 
     return (
@@ -134,7 +139,6 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                       }
                     }
                   }}
-
                   class="w-full"
                 />
                 <Show when={!isPathValid() && pathInput()}>
@@ -143,7 +147,24 @@ export default function createDownloadPopup(props: DownloadPopupProps) {
                     Directory doesn't exist or isn't accessible
                   </p>
                 </Show>
+
+                {/* Defender Exclusion Checkbox */}
+                <div class="mt-3 flex flex-col">
+                  <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <Checkbox
+                      checked={folderExclusion()}
+                      action={() => { setFolderExclusion(!folderExclusion()) }}
+                    />
+                    <span class="text-sm text-text">
+                      Exclude this folder from Windows Defender (recommended to prevent installation issues)
+                    </span>
+                  </label>
+                  <p class="text-xs text-muted ml-6 mt-0.5">
+                    Needed so Windows Defender doesn’t block or remove installation files.
+                  </p>
+                </div>
               </div>
+
 
               {/* Installation Options */}
               <div class="space-y-3">

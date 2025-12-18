@@ -18,6 +18,8 @@
 //! - Injection into the GUI process
 //! - Kernel exploits / UAC bypass chains / compromised host
 
+use std::path::Path;
+
 use anyhow::{Result, bail};
 use tracing::{debug, error, info, warn};
 use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
@@ -35,6 +37,7 @@ use windows::Win32::System::Pipes::{
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use windows::core::PCWSTR;
 
+use crate::defender::{ExclusionAction, ExclusionCleanupPolicy, ExclusionError, folder_exclusion};
 use crate::installer::InstallerRunner;
 use crate::ipc::protocol::{Command, Event, decode_message, encode_message};
 
@@ -252,6 +255,32 @@ impl IpcServer {
                     runner.cancel();
                 }
             }
+            Command::FolderExclusion { action } => {
+                info!("Folder Exclusion Action: {action}");
+
+                match folder_exclusion(action) {
+                    Ok(res) => {
+                        info!(
+                            "Folder exclusion successful: action={:?}, path={}",
+                            res.action, res.path
+                        );
+                        self.send_event(&Event::FolderExclusionResult {
+                            success: true,
+                            error: None,
+                        })?;
+                    }
+                    Err(err) => {
+                        error!("Folder exclusion failed: {:?}", err);
+
+                        self.send_event(&Event::FolderExclusionResult {
+                            success: false,
+                            error: Some(err.to_string()),
+                        })?;
+
+                        return Err(anyhow::anyhow!(err));
+                    }
+                }
+            }
             Command::Shutdown => {
                 info!("Shutdown requested");
                 self.send_event(&Event::ShuttingDown)?;
@@ -262,6 +291,41 @@ impl IpcServer {
                     info!("ShutdownIfIdle: no active install, shutting down");
                     self.send_event(&Event::ShuttingDown)?;
                     return Ok(true);
+                }
+            }
+            Command::CleanupPolicy { exclusion_folder } => {
+                info!("Folder Exclusion Action: {exclusion_folder}");
+                let action = match exclusion_folder {
+                    ExclusionCleanupPolicy::Keep(_) => None,
+                    ExclusionCleanupPolicy::RemoveAfterInstall(s) => {
+                        Some(ExclusionAction::Remove(s))
+                    }
+                };
+                if let Some(action) = action {
+                    match folder_exclusion(action) {
+                        Ok(res) => {
+                            info!(
+                                "Folder exclusion successful: action={:?}, path={}",
+                                res.action, res.path
+                            );
+                            self.send_event(&Event::FolderExclusionResult {
+                                success: true,
+                                error: None,
+                            })?;
+                        }
+                        Err(err) => {
+                            error!("Folder exclusion failed: {:?}", err);
+
+                            self.send_event(&Event::FolderExclusionResult {
+                                success: false,
+                                error: Some(err.to_string()),
+                            })?;
+
+                            return Err(anyhow::anyhow!(err));
+                        }
+                    }
+                } else {
+                    info!("Folder  will be kept in excluded list");
                 }
             }
         }
