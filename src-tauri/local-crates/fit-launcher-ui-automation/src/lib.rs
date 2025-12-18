@@ -8,8 +8,6 @@ pub mod extraction;
 #[cfg(windows)]
 pub mod defender;
 
-#[cfg(windows)]
-pub mod mighty;
 pub mod mighty_commands;
 pub mod process_utils;
 use std::time::Duration;
