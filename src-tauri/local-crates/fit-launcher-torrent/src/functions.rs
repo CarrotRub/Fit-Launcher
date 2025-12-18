@@ -72,6 +72,7 @@ async fn find_port_in_range(start: u16, count: u16, exclude: Option<u16>) -> Opt
 fn build_aria2_args(
     cfg: &FitLauncherConfigV2,
     session_path: &Path,
+    log_path: &Path,
     rpc_port: u16,
     bt_port: u16,
 ) -> Vec<String> {
@@ -138,6 +139,9 @@ fn build_aria2_args(
     // Session persistence --------------------------------------------------
     a.push("--save-session".into());
     a.push(session_path.display().to_string());
+    a.push("--log".into());
+    a.push(log_path.display().to_string());
+    a.push("--log-level=warn".into());
 
     match cfg.rpc.file_allocation {
         FileAllocation::Auto => {
@@ -156,6 +160,7 @@ fn build_aria2_args(
 pub async fn aria2_client_from_config(
     config: &FitLauncherConfigV2,
     session_path: impl AsRef<OsStr>,
+    log_path: impl AsRef<OsStr>,
     v2_path: impl AsRef<Path>,
 ) -> anyhow::Result<aria2_ws::Client> {
     let FitLauncherConfigAria2 {
@@ -229,10 +234,16 @@ pub async fn aria2_client_from_config(
 
                 spawn_with_job_object(
                     exec.as_os_str(),
-                    &build_aria2_args(config, Path::new(&session_path.as_ref()), rpc_port, bt_port)
-                        .into_iter()
-                        .map(|s| s.into())
-                        .collect::<Vec<OsString>>(),
+                    &build_aria2_args(
+                        config,
+                        Path::new(&session_path),
+                        Path::new(&log_path),
+                        rpc_port,
+                        bt_port,
+                    )
+                    .into_iter()
+                    .map(|s| s.into())
+                    .collect::<Vec<OsString>>(),
                     Some(&download_location),
                 )
                 .context("Failed to start aria2c")?
@@ -246,6 +257,7 @@ pub async fn aria2_client_from_config(
                     .args(build_aria2_args(
                         config,
                         Path::new(&session_path.as_ref()),
+                        Path::new(&log_path),
                         rpc_port,
                         bt_port,
                     ))
@@ -318,6 +330,7 @@ impl TorrentSession {
             .join("com.fitlauncher.carrotrub");
 
         let aria2_session = config_dir.join("aria2.session");
+        let aria2_log = config_dir.join("logs").join("aria2.log");
 
         let v2_path = &*config_dir.join("config.json");
         let legacy_path = &*config_dir.join("torrentConfig").join("config.json");
@@ -331,16 +344,15 @@ impl TorrentSession {
         let final_config = load_or_migrate(legacy_path, v2_path);
 
         let aria2_client =
-            match aria2_client_from_config(&final_config, aria2_session, v2_path).await {
-                Ok(c) => {
+            aria2_client_from_config(&final_config, aria2_session, aria2_log, v2_path)
+                .await
+                .inspect(|_| {
                     info!("Connected to aria2c successfully");
-                    Some(c)
-                }
-                Err(e) => {
+                })
+                .inspect_err(|e| {
                     error!("Failed to connect to aria2: {:#}", e);
-                    None
-                }
-            };
+                })
+                .ok();
 
         let mut shared_guard = self.shared.write();
         if let Some(shared) = shared_guard.as_mut() {

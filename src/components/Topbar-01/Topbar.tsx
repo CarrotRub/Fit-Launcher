@@ -4,7 +4,10 @@ import { createSignal, onMount, Show } from "solid-js";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { sendNotification, isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
 import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
+import { GlobalSettingsApi } from "../../api/settings/api";
+import { commands } from "../../bindings";
 
 export default function Topbar() {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -13,43 +16,48 @@ export default function Topbar() {
   const [isFullscreen, setIsFullscreen] = createSignal(false);
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
-  const [showTrayDialog, setShowTrayDialog] = createSignal(false);
-  const [canConfirmTrayDialog, setCanConfirmTrayDialog] = createSignal(false);
-
 
   const appWindow = getCurrentWebviewWindow();
 
   async function handleWindowClose() {
-    const hasSeenTrayMessage = localStorage.getItem("hasSeenTrayMessage");
-    if (hasSeenTrayMessage) {
+    const settings = await GlobalSettingsApi.getGamehubSettings();
+
+    if (settings.close_to_tray) {
       await appWindow.hide();
+
+      let permissionGranted = await isPermissionGranted();
+      if (!permissionGranted) {
+        const permission = await requestPermission();
+        permissionGranted = permission === "granted";
+      }
+      if (permissionGranted) {
+        sendNotification({
+          title: "FitLauncher is running in the tray",
+          body: "The app was minimized to the system tray. You can change this behavior in Settings."
+        });
+      }
       return;
     }
 
-    let resolveFn: () => void;
-    const done = new Promise<void>((resolve) => {
-      resolveFn = resolve;
-    });
+    // Close instantly mode - check if controller is running
+    const controllerRunning = await commands.isControllerRunning();
 
-    const [disabledConfirm, setDisabledConfirm] = createSignal(true);
+    if (controllerRunning) {
+      // Warn user that controller will be killed
+      createBasicChoicePopup({
+        infoTitle: "Installation In Progress",
+        infoMessage: "An installation is currently running. Closing will stop the installation.\n\nAre you sure you want to exit?",
+        confirmLabel: "Exit Anyway",
+        cancelLabel: "Cancel",
+        action: async () => {
+          await commands.quitApp();
+        },
+      });
+      return;
+    }
 
-    setTimeout(() => {
-      setDisabledConfirm(false);
-    }, 5000);
-
-    createBasicChoicePopup({
-      infoTitle: "Heads up!",
-      infoMessage: "Fit Launcher is still running in the background.\nYou can find it in the taskbar tray.\nYou're gonna have to wait 5 seconds with me right now so you read everything but don't worry it's only a one time thing :) ",
-      disabledConfirm,
-      action: () => {
-        if (disabledConfirm()) return;
-        localStorage.setItem("hasSeenTrayMessage", "true");
-        resolveFn();
-      },
-    });
-
-    await done;
-    await appWindow.hide();
+    // No controller running, exit immediately
+    await commands.quitApp();
   }
 
   async function handleMaximize() {

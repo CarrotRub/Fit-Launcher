@@ -91,39 +91,50 @@ async fn scrape_new_games_page(page: u32, app: AppHandle) -> Result<Vec<Game>, S
 pub async fn scrape_new_games(app: AppHandle) -> Result<(), ScrapingError> {
     let start = Instant::now();
 
-    let conn = db::open_connection(&app)?;
-    let existing_games = db::get_games_by_category(&conn, "newly_added").unwrap_or_default();
-    if !existing_games.is_empty() {
-        info!(
-            "Newly added games cached ({} games), skipping scrape",
-            existing_games.len()
-        );
-        return Ok(());
-    }
-    drop(conn);
-
     let stream = futures::stream::iter((1..=2).map(|page| {
         let ah = app.clone();
         async move { scrape_new_games_page(page, ah).await }
     }))
     .buffer_unordered(2);
 
-    let mut games = Vec::new();
+    let mut scraped_games = Vec::new();
     futures::pin_mut!(stream);
     while let Some(result) = stream.next().await {
         match result {
-            Ok(mut page_games) => games.append(&mut page_games),
+            Ok(mut page_games) => scraped_games.append(&mut page_games),
             Err(e) => error!("Page scrape failed: {:?}", e),
         }
     }
 
-    if games.is_empty() {
-        warn!("No newly added games found");
+    if scraped_games.is_empty() {
+        warn!("No newly added games found on website");
         return Ok(());
     }
 
-    write_games_to_db(&app, &games, "newly_added")?;
-    info!("New games scraped in {:?}", start.elapsed());
+    let current_urls: std::collections::HashSet<_> =
+        scraped_games.iter().map(|g| g.href.clone()).collect();
+
+    let conn = db::open_connection(&app)?;
+    let existing_games = db::get_games_by_category(&conn, "newly_added").unwrap_or_default();
+    let existing_urls: std::collections::HashSet<_> =
+        existing_games.iter().map(|g| g.href.clone()).collect();
+
+    if current_urls == existing_urls && existing_games.len() == scraped_games.len() {
+        info!(
+            "Newly added games already in sync ({} games), skipping",
+            existing_games.len()
+        );
+        return Ok(());
+    }
+
+    info!(
+        "Syncing newly added games: {} on site, {} in DB",
+        scraped_games.len(),
+        existing_games.len()
+    );
+
+    write_games_to_db(&app, &scraped_games, "newly_added")?;
+    info!("New games synced in {:?}", start.elapsed());
     Ok(())
 }
 
@@ -251,17 +262,6 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
 pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError> {
     let start = Instant::now();
 
-    let conn = db::open_connection(&app)?;
-    let existing = db::get_games_by_category(&conn, "recently_updated").unwrap_or_default();
-    if !existing.is_empty() {
-        info!(
-            "Recently updated games cached ({} games), skipping slow scrape",
-            existing.len()
-        );
-        return Ok(());
-    }
-    drop(conn);
-
     let body = fetch_page(
         "https://fitgirl-repacks.site/category/updates-digest/",
         &app,
@@ -277,7 +277,32 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
         .map(str::to_owned)
         .collect();
 
+    if links.is_empty() {
+        warn!("No recently updated game links found on website");
+        return Ok(());
+    }
+
+    let current_urls: std::collections::HashSet<_> = links.iter().cloned().collect();
+
     let conn = db::open_connection(&app)?;
+    let existing = db::get_games_by_category(&conn, "recently_updated").unwrap_or_default();
+    let existing_urls: std::collections::HashSet<_> =
+        existing.iter().map(|g| g.href.clone()).collect();
+
+    if current_urls == existing_urls && existing.len() == links.len() {
+        info!(
+            "Recently updated games already in sync ({} games), skipping",
+            existing.len()
+        );
+        return Ok(());
+    }
+
+    info!(
+        "Syncing recently updated games: {} on site, {} in DB",
+        links.len(),
+        existing.len()
+    );
+
     let mut valid_games = Vec::with_capacity(links.len());
     let mut missing_links = Vec::new();
 
@@ -322,7 +347,7 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
 
     write_games_to_db(&app, &valid_games, "recently_updated")?;
     app.emit("scraping_complete", "Recent updates scraped").ok();
-    info!("Recent updates scraped in {:?}", start.elapsed());
+    info!("Recent updates synced in {:?}", start.elapsed());
     Ok(())
 }
 

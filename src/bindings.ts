@@ -704,6 +704,9 @@ async importCookiesFile(jsonPath: string) : Promise<Result<null, string>> {
     else return { error: e  as any, status: "error" };
 }
 },
+async isControllerRunning() : Promise<boolean> {
+    return await TAURI_INVOKE("is_controller_running");
+},
 async listTorrentFiles(magnet: string) : Promise<Result<FileInfo[], TorrentApiError>> {
     try {
     return { data: await TAURI_INVOKE("list_torrent_files", { magnet }), status: "ok" };
@@ -741,6 +744,9 @@ async querySearchIndex(query: string) : Promise<Result<SearchIndexEntry[], Scrap
     if(e instanceof Error) throw e;
     else return { error: e  as any, status: "error" };
 }
+},
+async quitApp() : Promise<void> {
+    await TAURI_INVOKE("quit_app");
 },
 async rebuildSearchIndex() : Promise<Result<null, ScrapingError>> {
     try {
@@ -1002,7 +1008,7 @@ included_dlcs: string; magnetlink: string; href: string; tag: string;
  */
 secondary_images: string[]; pastebin_link?: string }
 export type GameCollection = { name: string; games_list: Game[] }
-export type GamehubSettings = { nsfw_censorship: boolean; auto_get_colors_popular_games: boolean }
+export type GamehubSettings = { nsfw_censorship: boolean; auto_get_colors_popular_games: boolean; close_to_tray: boolean }
 export type General = { download_dir: string; concurrent_downloads?: number; folder_exclusion: boolean; folder_exclusion_cleanup: boolean }
 export type GlobalStat = { downloadSpeed: number; uploadSpeed: number; numActive: number; numWaiting: number; numStopped: number; numStoppedTotal: number }
 export type InstallationError = { IOError: string } | "AdminModeError"
