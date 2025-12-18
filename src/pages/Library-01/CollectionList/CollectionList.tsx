@@ -1,13 +1,11 @@
-import { For, createSignal, onMount, Show, createEffect } from "solid-js";
+import { For, createSignal, Show, createEffect } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { render } from "solid-js/web";
-import BasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { message } from "@tauri-apps/plugin-dialog";
 import { showError } from "../../../helpers/error";
 import { commands, Game } from "../../../bindings";
 import { CollectionListProps } from "../../../types/library/type";
 import { LibraryApi } from "../../../api/library/api";
-import { ChevronDown, ChevronUp, Trash2, X, ChevronRight } from "lucide-solid";
+import { ChevronDown, Trash2, X, ChevronRight } from "lucide-solid";
 import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 
 const api = new LibraryApi();

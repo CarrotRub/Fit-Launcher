@@ -37,7 +37,7 @@ export default function createPathInputPopup(props: PopupPathInputProps<[string]
                             )}
 
                             <PathInput
-                                onPathChange={(path, isValid) => setTextInputValue(path)}
+                                onPathChange={(path) => setTextInputValue(path)}
                                 value={textInputValue()}
                                 {...props}
                             />

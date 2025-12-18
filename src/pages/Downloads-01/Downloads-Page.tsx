@@ -1,13 +1,12 @@
-import { Component, createMemo, createSignal, onMount } from "solid-js";
-import { CloudDownload, Filter, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, ArrowUp, Activity } from "lucide-solid";
+import { Component, createMemo, createSignal } from "solid-js";
+import { CloudDownload, Funnel, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, ArrowUp, Activity } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
-
 import InstallQueueStatus from "../../components/InstallQueue/QueueStatus";
 import DownloadList from "./Downloads-List";
 import { formatSpeed } from "../../helpers/format";
-import { DM, GlobalDownloadManager } from "../../api/manager/api";
-import { AggregatedStatus, DownloadSource, Job, Status } from "../../bindings";
+import { DM } from "../../api/manager/api";
+import { AggregatedStatus, DownloadSource } from "../../bindings";
 import { DownloadsStore } from "../../stores/download";
 import { GlobalStatsStore } from "../../stores/globalStats";
 
@@ -26,7 +25,6 @@ const DownloadPage: Component = () => {
 
     const filteredItems = createMemo(() => {
         const f = activeFilter();
-        const statuses: Status[] = [];
         return jobs().filter((job) => {
             if (f === "All") return true;
             if (f === "Torrent") return job.source === "Torrent";
@@ -82,7 +80,7 @@ const DownloadPage: Component = () => {
                             onClick={() => setActiveFilter("All")}
                             class={`px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 ${activeFilter() === "All" ? "bg-primary/20 border-primary/50 text-primary" : "bg-secondary-20/10 hover:bg-secondary-20/20 border-secondary-20/30"} border transition-all shadow-secondary-20/10 hover:shadow-secondary-20/20 group`}
                         >
-                            <Filter class="w-5 h-5 opacity-70" />
+                            <Funnel class="w-5 h-5 opacity-70" />
                             <span>All</span>
                         </button>
 

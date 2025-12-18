@@ -79,7 +79,7 @@ function transformChangelogHTML(html: string): string {
         const match = fullText.match(typeRegex);
 
         // Capture original innerHTML (preserves inline formatting)
-        let originalInner = li.innerHTML;
+        const originalInner = li.innerHTML;
 
         if (match) {
             const type = match[1].toLowerCase();

@@ -11,7 +11,7 @@ export interface FilterState {
 
 export const DEFAULT_FILTER_STATE: FilterState = {
   genres: [],
-  repackSizeRange: null,
   originalSizeRange: null,
+  repackSizeRange: null,
 };
 

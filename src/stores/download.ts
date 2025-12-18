@@ -1,4 +1,4 @@
-import { createRoot, onCleanup } from "solid-js";
+import { createRoot } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 import { DM } from "../api/manager/api";
 import type { Job } from "../bindings";
@@ -52,15 +52,15 @@ export const createDownloadsStore = () => {
 
   syncState(DM.getAll());
 
-  onCleanup(() => {
-    unsubscribes.forEach((fn) => fn());
-    jobsMap.clear();
-  });
-
   return {
-    jobs: () => state.jobs,
+    dispose: () => {
+      unsubscribes.forEach((fn) => fn());
+      jobsMap.clear();
+    },
     getJob: (id: string) => jobsMap.get(id),
+    jobs: () => state.jobs,
   };
 };
 
 export const DownloadsStore = createRoot(createDownloadsStore);
+

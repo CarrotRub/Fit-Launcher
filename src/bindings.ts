@@ -734,8 +734,8 @@ async openLogsDirectory() : Promise<Result<null, string>> {
     else return { error: e  as any, status: "error" };
 }
 },
-async panicForce() : Promise<null> {
-    return await TAURI_INVOKE("panic_force");
+async panicForce() : Promise<void> {
+    await TAURI_INVOKE("panic_force");
 },
 async querySearchIndex(query: string) : Promise<Result<SearchIndexEntry[], ScrapingError>> {
     try {
@@ -868,7 +868,7 @@ async updateDownloadedGameExecutableInfo(gameTitle: string, executableInfo: Exec
 /** user-defined types **/
 
 export type AggregatedStatus = { total_length: number; completed_length: number; download_speed: number; upload_speed: number; per_file: Partial<{ [key in string]: FileStatus }>; state: DownloadState; progress_percentage: number }
-export type Aria2Error = "NotConfigured" | { RPCError: string }
+export type Aria2Error = "NotConfigured" | { InitializationFailed: string } | { RPCError: string } | { Timeout: string } | "StaleConnection"
 export type AriaTask = { gid: string; filename: string }
 export type AriaTaskProgress = { completed: number; download_speed: number; total_length: number; completed_length: number }
 export type AriaTaskResult = { task: AriaTask | null; error: Aria2Error | null }

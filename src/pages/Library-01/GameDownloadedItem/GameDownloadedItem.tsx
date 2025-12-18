@@ -1,12 +1,10 @@
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { message } from "@tauri-apps/plugin-dialog";
 import { showError } from "../../../helpers/error";
-import { Play, Settings, Star, Info, Trash2, Pin, BookmarkPlus } from "lucide-solid";
-import { DownloadedGame, Game, ExecutableInfo, commands, GameCollection } from "../../../bindings";
+import { Play, Settings, Info, Trash2, BookmarkPlus } from "lucide-solid";
+import { DownloadedGame, Game, ExecutableInfo, commands } from "../../../bindings";
 import { LibraryApi } from "../../../api/library/api";
-import BasicPathInputPopup from "../../../Pop-Ups/Basic-PathInput-PopUp/Basic-PathInput-PopUp";
 import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
-import { render } from "solid-js/web";
 import { Accessor } from "solid-js";
 import Button from "../../../components/UI/Button/Button";
 import createPathInputPopup from "../../../Pop-Ups/Basic-PathInput-PopUp/Basic-PathInput-PopUp";
@@ -66,7 +64,6 @@ export default function GameDownloadedItem(props: {
       infoFooter: "",
       action: async (path: string) => {
         const info = await getExecutableInfo(path, folder);
-        console.warn
         if (info) {
           await api.updateGameExecutableInfo(game.title, info);
           props.onGameInfoUpdate?.(game.title, info);

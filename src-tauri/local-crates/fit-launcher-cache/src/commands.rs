@@ -19,7 +19,7 @@ use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
 };
 
-static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(|| SkipMap::new());
+static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(SkipMap::new);
 
 #[tauri::command]
 #[specta]
@@ -33,7 +33,7 @@ pub fn get_used_space(manager: tauri::State<'_, Arc<CacheManager>>) -> u64 {
 #[specta]
 pub async fn set_capacity(
     manager: tauri::State<'_, Arc<CacheManager>>,
-    session: tauri::State<'_, TorrentSession>,
+    session: tauri::State<'_, Arc<TorrentSession>>,
     new_capacity: u64,
 ) -> Result<(), CacheError> {
     if new_capacity == 0 {
@@ -167,14 +167,14 @@ async fn cache_image_async(
 
     // Only claim once,
     // it will remove at least `exceed` bytes on each call
-    claim_space(&manager, exceed).await;
+    claim_space(manager, exceed).await;
 
     let mimeext = mime2ext::mime2ext(&mime).unwrap_or("png");
     let img_path = image_path(&image_url).with_extension(mimeext);
 
     let (tx, rx) = kanal::bounded(0);
 
-    info!("caching {image_url} to {}", img_path.display());
+    debug!("caching {image_url} to {}", img_path.display());
 
     _ = manager
         .command_tx
@@ -194,7 +194,7 @@ async fn cache_image_async(
         && let Ok(file_len) = old_path.metadata().map(|m| m.len())
     {
         manager.used_space.fetch_sub(file_len, Ordering::AcqRel);
-        info!("evicted old cache file: {old_path:?} ({file_len} bytes)");
+        debug!("evicted old cache file: {old_path:?} ({file_len} bytes)");
     }
 
     let write_result = async {
@@ -213,7 +213,7 @@ async fn cache_image_async(
 
     match write_result {
         Ok(_) => {
-            info!("successfully cached {image_url} ({file_size} bytes)");
+            debug!("successfully cached {image_url} ({file_size} bytes)");
         }
         Err(e) => {
             manager.used_space.fetch_sub(file_size, Ordering::AcqRel);
@@ -233,7 +233,8 @@ pub async fn reclaim_space(
     manager: tauri::State<'_, Arc<CacheManager>>,
     space: isize,
 ) -> Result<(), CacheError> {
-    Ok(claim_space(&manager, space).await)
+    claim_space(&manager, space).await;
+    Ok(())
 }
 
 /// Clean all cache and try to delete files
@@ -251,8 +252,12 @@ pub async fn clear_image_cache(
     Ok(())
 }
 
+/// Reclaim at least `exceed` bytes from the cache.
+///
+/// This function is intentionally infallible: failures are logged but don't
+/// propagate errors, since cache reclamation is best-effort.
 async fn claim_space(manager: &CacheManager, exceed: isize) {
-    info!("reclaim space: {exceed}");
+    debug!("reclaim space: {exceed}");
 
     let (tx, rx) = kanal::bounded(0);
     _ = manager

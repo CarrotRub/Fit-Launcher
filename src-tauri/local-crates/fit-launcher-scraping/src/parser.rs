@@ -236,20 +236,19 @@ pub fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
             Ok(s) => s,
             Err(_) => continue,
         };
-        if let Some(img_el) = article.select(&selector).next() {
-            if let Some(src) = img_el.value().attr("src") {
-                return Some(src.to_string());
-            }
+        if let Some(img_el) = article.select(&selector).next()
+            && let Some(src) = img_el.value().attr("src")
+        {
+            return Some(src.to_string());
         }
     }
 
     if let Some(img_el) = article
         .select(&scraper::Selector::parse(".entry-content img").unwrap())
         .next()
+        && let Some(src) = img_el.value().attr("src")
     {
-        if let Some(src) = img_el.value().attr("src") {
-            return Some(src.to_string());
-        }
+        return Some(src.to_string());
     }
 
     None

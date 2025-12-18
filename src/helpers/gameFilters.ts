@@ -109,7 +109,7 @@ export function getSizeRange(
   if (min === Infinity) min = 0;
   if (max === 0) max = 100 * 1024 * 1024 * 1024; // 100 GB default
 
-  return { min, max };
+  return { max, min };
 }
 
 /**

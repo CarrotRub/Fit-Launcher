@@ -98,7 +98,9 @@ pub async fn start_app() -> anyhow::Result<()> {
 
                 // TorrentSession::new() is synchronous (just loads config from disk),
                 // ensuring state is available immediately for commands like get_download_settings.
-                app.manage(TorrentSession::new());
+                // Wrapped in Arc so it can be shared with Aria2WsClient for reconnection.
+                let torrent_session = Arc::new(TorrentSession::new());
+                app.manage(torrent_session);
 
                 shutdown_hook(app_handle.clone());
 
@@ -123,7 +125,7 @@ pub async fn start_app() -> anyhow::Result<()> {
                         app.manage(librqbit);
 
                         info!("Download subsystem spawn: getting TorrentSession state");
-                        let session = app.state::<TorrentSession>();
+                        let session = app.state::<Arc<TorrentSession>>();
                         let librqbit = app.state::<LibrqbitSession>();
 
                         info!("Download subsystem spawn: calling init_client");
@@ -132,10 +134,12 @@ pub async fn start_app() -> anyhow::Result<()> {
                                 info!("Download subsystem spawn: init_client succeeded, getting aria2_client");
                                 if let Ok(client) = session.aria2_client().await {
                                     let client = Arc::new(Mutex::new(client));
+                                    // Clone the Arc<TorrentSession> for Aria2WsClient reconnection capability
+                                    let session_arc = Arc::clone(&session);
 
                                     info!("Download subsystem spawn: creating DownloadManager");
                                     let manager = DownloadManager::new(
-                                        Arc::new(Mutex::new(Aria2WsClient::new(client.clone()))),
+                                        Arc::new(Mutex::new(Aria2WsClient::new(client.clone(), session_arc))),
                                         app.clone(),
                                         session.config().await.rpc,
                                         librqbit.clone(),

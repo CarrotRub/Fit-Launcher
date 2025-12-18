@@ -1,6 +1,6 @@
-import { createSignal, createEffect, onCleanup, Show, For, createMemo } from 'solid-js';
+import { createSignal, createEffect, onCleanup, Show, For, createMemo, type JSX } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { commands, Game } from '../../../../bindings';
+import { commands } from '../../../../bindings';
 import { ChevronLeft, ChevronRight, Star, HardDrive, Languages, Building2, ArrowRight } from 'lucide-solid';
 import LoadingPage from '../../../LoadingPage-01/LoadingPage';
 import { useGamehub } from '../../GamehubContext';
@@ -117,7 +117,7 @@ export default function PopularGames() {
 }
 
 // Helper components
-const NavButton = (props: { onClick: () => void; children: any }) => (
+const NavButton = (props: { onClick: () => void; children: JSX.Element }) => (
   <button
     onClick={(e) => { e.stopPropagation(); props.onClick(); }}
     class="w-10 h-10 flex items-center justify-center z-20 rounded-full bg-background/90 backdrop-blur-md border border-secondary-20 shadow-lg hover:bg-accent/20 transition-all duration-300 hover:scale-110 active:scale-95"
@@ -126,7 +126,7 @@ const NavButton = (props: { onClick: () => void; children: any }) => (
   </button>
 );
 
-const DetailItem = (props: { icon: any; label: string; value: string }) => (
+const DetailItem = (props: { icon: JSX.Element; label: string; value: string }) => (
   <div class="flex items-start gap-3">
     <div class="p-2 bg-accent/10 rounded-lg text-accent">{props.icon}</div>
     <div>

@@ -68,7 +68,7 @@ export class ThemeManagerApi {
         );
         const themeContent = await readTextFile(themePath);
 
-        let styleEl =
+        const styleEl =
           document.getElementById("theme-style") ||
           document.createElement("style");
         if (!styleEl.id) {
@@ -97,8 +97,8 @@ export class ThemeManagerApi {
     try {
       const filePath = await open({
         directory: false,
+        filters: [{ extensions: ["css"], name: "CSS" }],
         multiple: false,
-        filters: [{ name: "CSS", extensions: ["css"] }],
       });
 
       if (!filePath) return;
@@ -129,8 +129,8 @@ export class ThemeManagerApi {
       await writeTextFile(fullPath, content);
 
       await message("Theme added successfully!", {
-        title: "FitLauncher",
         kind: "info",
+        title: "FitLauncher",
       });
     } catch (e) {
       console.error("Error adding theme:", e);
@@ -165,8 +165,8 @@ export class ThemeManagerApi {
     try {
       await remove(themePath);
       await message(`Theme "${themeName}" removed.`, {
-        title: "FitLauncher",
         kind: "info",
+        title: "FitLauncher",
       });
     } catch (err) {
       console.error("Failed to remove theme:", err);
@@ -209,8 +209,8 @@ export class ThemeManagerApi {
 
   public async chooseAndSetBackgroundImage(blurAmount: number): Promise<void> {
     const imagePath = await open({
+      filters: [{ extensions: ["png", "jpeg", "jpg", "webp"], name: "Image" }],
       multiple: false,
-      filters: [{ name: "Image", extensions: ["png", "jpeg", "jpg", "webp"] }],
     });
 
     if (typeof imagePath === "string") {

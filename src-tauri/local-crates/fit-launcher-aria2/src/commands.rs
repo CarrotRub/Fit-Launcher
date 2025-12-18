@@ -1,6 +1,7 @@
 use aria2_ws::response::{GlobalStat, Status, Version};
 use fit_launcher_ddl::DirectLink;
 use specta::specta;
+use std::sync::Arc;
 use tauri::AppHandle;
 use tracing::error;
 
@@ -32,7 +33,7 @@ use fit_launcher_torrent::functions::TorrentSession;
 #[tauri::command]
 #[specta]
 pub async fn aria2_start_download(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     url: Vec<String>,
     dir: Option<String>,
     filename: Option<String>,
@@ -40,7 +41,7 @@ pub async fn aria2_start_download(
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     aria2_add_uri(&aria2_client, url, dir, filename, state.config().await.rpc).await
 }
@@ -50,14 +51,14 @@ pub async fn aria2_start_download(
 #[tauri::command]
 #[specta]
 pub async fn aria2_start_torrent(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     torrent: Vec<u8>,
     dir: Option<String>,
     selected_files: Vec<usize>,
 ) -> Result<String, Aria2Error> {
     let aria2_client = state.aria2_client().await.map_err(|e| {
         error!("Error getting aria2 client: {e}");
-        Aria2Error::NotConfigured
+        Aria2Error::InitializationFailed(e.to_string())
     })?;
 
     aria2_add_torrent(&aria2_client, torrent, dir, selected_files).await
@@ -67,13 +68,13 @@ pub async fn aria2_start_torrent(
 #[tauri::command]
 #[specta]
 pub async fn aria2_pause(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     gid: String,
 ) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.pause(&gid).await?)
 }
@@ -81,11 +82,13 @@ pub async fn aria2_pause(
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.pauseAll
 #[tauri::command]
 #[specta]
-pub async fn aria2_pause_all(state: tauri::State<'_, TorrentSession>) -> Result<(), Aria2Error> {
+pub async fn aria2_pause_all(
+    state: tauri::State<'_, Arc<TorrentSession>>,
+) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.pause_all().await?)
 }
@@ -94,13 +97,13 @@ pub async fn aria2_pause_all(state: tauri::State<'_, TorrentSession>) -> Result<
 #[tauri::command]
 #[specta]
 pub async fn aria2_resume(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     gid: String,
 ) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.unpause(&gid).await?)
 }
@@ -108,11 +111,13 @@ pub async fn aria2_resume(
 /// https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpauseAll
 #[tauri::command]
 #[specta]
-pub async fn aria2_resume_all(state: tauri::State<'_, TorrentSession>) -> Result<(), Aria2Error> {
+pub async fn aria2_resume_all(
+    state: tauri::State<'_, Arc<TorrentSession>>,
+) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.unpause_all().await?)
 }
@@ -121,13 +126,13 @@ pub async fn aria2_resume_all(state: tauri::State<'_, TorrentSession>) -> Result
 #[tauri::command]
 #[specta]
 pub async fn aria2_remove(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     gid: String,
 ) -> Result<(), Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     Ok(aria2_client.remove(&gid).await?)
 }
@@ -136,13 +141,13 @@ pub async fn aria2_remove(
 #[tauri::command]
 #[specta]
 pub async fn aria2_get_status(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     gid: String,
 ) -> Result<Status, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let status: Status = aria2_client.tell_status(&gid).await?;
     Ok(status)
@@ -151,12 +156,12 @@ pub async fn aria2_get_status(
 #[tauri::command]
 #[specta]
 pub async fn aria2_get_list_active(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let active = aria2_client.tell_active().await?;
     Ok(active)
@@ -165,12 +170,12 @@ pub async fn aria2_get_list_active(
 #[tauri::command]
 #[specta]
 pub async fn aria2_get_list_waiting(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let waiting = aria2_client.tell_waiting(0, 100).await?;
     Ok(waiting)
@@ -179,12 +184,12 @@ pub async fn aria2_get_list_waiting(
 #[tauri::command]
 #[specta]
 pub async fn aria2_get_list_stopped(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let stopped = aria2_client.tell_stopped(0, 100).await?;
     Ok(stopped)
@@ -193,12 +198,12 @@ pub async fn aria2_get_list_stopped(
 #[tauri::command]
 #[specta]
 pub async fn aria2_get_all_list(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<Vec<Status>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let mut active = aria2_client.tell_active().await?;
     let mut waiting = aria2_client.tell_waiting(0, 100).await?;
@@ -217,12 +222,12 @@ pub async fn aria2_get_all_list(
 #[tauri::command]
 #[specta]
 pub async fn aria2_get_version(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<Version, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let status = aria2_client.get_version().await?;
     Ok(status)
@@ -236,12 +241,12 @@ pub async fn aria2_get_version(
 pub async fn aria2_task_spawn(
     direct_links: Vec<DirectLink>,
     dir: Option<String>,
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<Vec<AriaTaskResult>, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let mut results = Vec::with_capacity(direct_links.len());
 
@@ -280,12 +285,12 @@ pub async fn aria2_task_spawn(
 #[specta]
 pub async fn aria2_task_progress(
     tasks: Vec<AriaTask>,
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<AriaTaskProgress, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let mut completed_length = 0;
     let mut total_length = 0;
@@ -315,12 +320,12 @@ pub async fn aria2_task_progress(
 #[tauri::command]
 #[specta]
 pub async fn aria2_global_stat(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<GlobalStat, Aria2Error> {
     let aria2_client = state
         .aria2_client()
         .await
-        .map_err(|_| Aria2Error::NotConfigured)?;
+        .map_err(|e| Aria2Error::InitializationFailed(e.to_string()))?;
 
     let stat = aria2_client.get_global_stat().await?;
     Ok(stat)
@@ -328,6 +333,6 @@ pub async fn aria2_global_stat(
 
 #[tauri::command]
 #[specta]
-pub fn panic_force(_app: AppHandle) -> () {
+pub fn panic_force(_app: AppHandle) {
     panic!("INTENTIONAL PANIC");
 }

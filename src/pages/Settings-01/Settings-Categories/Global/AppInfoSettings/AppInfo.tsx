@@ -1,11 +1,8 @@
 import { getTauriVersion, getVersion } from '@tauri-apps/api/app';
-import { For, JSX, Show, createSignal, onMount } from 'solid-js';
-import { Check, Github, InfoIcon, MessageCircle, Code2 } from 'lucide-solid';
+import { JSX, Show, createSignal, onMount } from 'solid-js';
+import { Github, InfoIcon, MessageCircle, Code2, Heart } from 'lucide-solid';
 import PageGroup from '../../Components/PageGroup';
-import LabelButtonSettings from '../../Components/UI/LabelButton/LabelButton';
 import { open } from '@tauri-apps/plugin-shell';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { commands } from '../../../../../bindings';
 
 export default function AppInfoSettings(): JSX.Element {
@@ -91,33 +88,61 @@ function AppInfoContent() {
                 </div>
             </div>
 
-            {/* Social Links */}
-            <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm p-6">
-                <h3 class="text-lg font-semibold text-text mb-4">Contact Us</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Social Links */}
+                <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm p-6 flex flex-col h-full">
+                    <h3 class="text-lg font-semibold text-text mb-4">Contact Us</h3>
 
-                <div class="flex flex-wrap gap-4">
-                    {/* Discord Button */}
-                    <button
-                        onClick={() => openLink("https://discord.com/invite/cXaBWdcUSF")}
-                        class="group relative flex items-center gap-3 px-4 py-3 rounded-lg bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border border-[#5865F2]/20 transition-colors"
-                    >
-                        <div class="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center">
-                            <MessageCircle class="w-4 h-4 text-white" />
-                        </div>
-                        <span class="font-medium text-text">Discord</span>
-                        <div class="absolute inset-0 rounded-lg bg-[#5865F2]/0 group-hover:bg-[#5865F2]/5 transition-colors" />
-                    </button>
+                    <p class="text-sm text-muted mb-4">
+                        This project is not affiliated with or endorsed by FitGirl. It is an independent community project.
+                    </p>
 
-                    {/* GitHub Button */}
+                    <div class="grid grid-cols-2 gap-4 mt-auto">
+                        {/* Discord Button */}
+                        <button
+                            onClick={() => openLink("https://discord.com/invite/cXaBWdcUSF")}
+                            class="group relative flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border border-[#5865F2]/20 transition-colors w-full"
+                        >
+                            <div class="w-8 h-8 rounded-full bg-[#5865F2] flex items-center justify-center shrink-0">
+                                <MessageCircle class="w-4 h-4 text-white" />
+                            </div>
+                            <span class="font-medium text-text">Discord</span>
+                            <div class="absolute inset-0 rounded-lg bg-[#5865F2]/0 group-hover:bg-[#5865F2]/5 transition-colors" />
+                        </button>
+
+                        {/* GitHub Button */}
+                        <button
+                            onClick={() => openLink("https://github.com/CarrotRub/Fit-Launcher")}
+                            class="group relative flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-[#333]/10 hover:bg-[#333]/20 border border-[#333]/20 transition-colors w-full"
+                        >
+                            <div class="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center shrink-0">
+                                <Github class="w-4 h-4 text-white" />
+                            </div>
+                            <span class="font-medium text-text">GitHub</span>
+                            <div class="absolute inset-0 rounded-lg bg-[#333]/0 group-hover:bg-[#333]/5 transition-colors" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Support Section */}
+                <div class="bg-background-30 rounded-xl border border-secondary-20 shadow-sm p-6 flex flex-col h-full">
+                    <h3 class="text-lg font-semibold text-text mb-4 flex items-center gap-2">
+                        Support
+                    </h3>
+
+                    <p class="text-sm text-muted mb-6">
+                        If you enjoy FitGirl’s work, please consider donating directly to FitGirl.
+                    </p>
+
                     <button
-                        onClick={() => openLink("https://github.com/CarrotRub/Fit-Launcher")}
-                        class="group relative flex items-center gap-3 px-4 py-3 rounded-lg bg-[#333]/10 hover:bg-[#333]/20 border border-[#333]/20 transition-colors"
+                        onClick={() => openLink("https://fitgirl-repacks.site/donations/")}
+                        class="group relative flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 transition-colors w-full mt-auto"
                     >
-                        <div class="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center">
-                            <Github class="w-4 h-4 text-white" />
+                        <div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center shrink-0">
+                            <Heart class="w-4 h-4 text-white" />
                         </div>
-                        <span class="font-medium text-text">GitHub</span>
-                        <div class="absolute inset-0 rounded-lg bg-[#333]/0 group-hover:bg-[#333]/5 transition-colors" />
+                        <span class="font-medium text-text">Donate to FitGirl</span>
+                        <div class="absolute inset-0 rounded-lg bg-pink-500/0 group-hover:bg-pink-500/5 transition-colors" />
                     </button>
                 </div>
             </div>

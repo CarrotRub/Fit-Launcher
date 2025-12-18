@@ -14,7 +14,7 @@ export function getInputBorderClasses(options: {
     isDirty?: boolean;
     isFocused?: boolean;
 }): string {
-    const { savePulse, isDirty, isFocused } = options;
+    const { isDirty, isFocused, savePulse } = options;
 
     if (savePulse) {
         // Bright vivid success color on save (pulse effect)

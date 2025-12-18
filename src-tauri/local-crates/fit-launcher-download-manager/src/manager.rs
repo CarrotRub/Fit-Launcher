@@ -772,16 +772,6 @@ impl DownloadManager {
         }
     }
 
-    fn sanitize_filename(input: &str) -> String {
-        let invalid = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
-        input
-            .chars()
-            .filter(|c| !invalid.contains(c))
-            .collect::<String>()
-            .trim()
-            .to_string()
-    }
-
     /// Return a snapshot of all jobs
     pub async fn all_jobs(&self) -> Vec<Job> {
         self.jobs.read().await.values().cloned().collect()

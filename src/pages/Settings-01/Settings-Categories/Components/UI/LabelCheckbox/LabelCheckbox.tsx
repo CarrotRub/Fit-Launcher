@@ -1,6 +1,5 @@
 import Checkbox from "../../../../../../components/UI/Checkbox/Checkbox";
-import { SettingsTypes } from "../../../../../../types/settings/types";
-import { SettingsCheckboxLabelProps, SettingsLabelProps } from "../../../../../../types/settings/ui";
+import { SettingsCheckboxLabelProps } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";
 
 export default function LabelCheckboxSettings(props: SettingsCheckboxLabelProps) {

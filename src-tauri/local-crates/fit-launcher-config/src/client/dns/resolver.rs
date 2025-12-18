@@ -154,8 +154,7 @@ async fn resolve_with_system_dns(
 
 /// Uses OS DNS config which works through VPN tunnels.
 fn new_system_resolver() -> io::Result<TokioResolver> {
-    let (config, opts) =
-        read_system_conf().map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+    let (config, opts) = read_system_conf().map_err(|e| io::Error::other(e.to_string()))?;
 
     Ok(
         TokioResolver::builder_with_config(config, TokioConnectionProvider::default())

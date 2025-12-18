@@ -1,5 +1,5 @@
 import RangeSlider from "../../../../../../components/UI/RangeSlider/RangeSlider";
-import { SettingsInputAddressLabelProps, SettingsRangeLabelProps } from "../../../../../../types/settings/ui";
+import { SettingsRangeLabelProps } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";
 
 export default function LabelRangeSettings(props: SettingsRangeLabelProps) {

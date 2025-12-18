@@ -14,9 +14,7 @@ tokio = { workspace = true }
 reqwest = { workspace = true, features = ["cookies"] }
 anyhow = { workspace = true }
 scraper = { workspace = true, features = ["atomic"] }
-kuchiki = { workspace = true }
 regex = { workspace = true }
-select = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["chrono"] }
@@ -25,6 +23,6 @@ once_cell = { workspace = true }
 ahash = { workspace = true }
 
 time = { version = "0.3.41", features = ["formatting"] }
-rand = "0.9.1"
-rusqlite = { version = "0.37.0", features = ["bundled-full"] }
+rand = { workspace = true }
+rusqlite = { version = "0.37.0", features = ["bundled"] }
 itertools = "0.14"

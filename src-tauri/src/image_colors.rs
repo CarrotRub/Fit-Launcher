@@ -1,5 +1,5 @@
-use color_thief::{get_palette, ColorFormat};
-use image::{load_from_memory, DynamicImage, ImageError};
+use color_thief::{ColorFormat, get_palette};
+use image::{DynamicImage, ImageError, load_from_memory};
 use specta::specta;
 use thiserror::Error;
 

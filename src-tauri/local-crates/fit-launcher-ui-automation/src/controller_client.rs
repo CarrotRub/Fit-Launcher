@@ -187,7 +187,7 @@ impl ControllerClient {
             lpVerb: PCWSTR(verb.as_ptr()),
             lpFile: PCWSTR(file.as_ptr()),
             lpParameters: PCWSTR(params.as_ptr()),
-            nShow: SW_HIDE.0 as i32,
+            nShow: SW_HIDE.0,
             ..Default::default()
         };
 

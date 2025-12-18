@@ -42,12 +42,11 @@ pub async fn dm_add_ddl_job(
     #[cfg(windows)]
     {
         let settings = fit_launcher_config::commands::get_installation_settings();
-        if settings.auto_install {
-            if let Ok(uuid) = Uuid::parse_str(&job_id) {
-                if let Err(e) = ControllerManager::global().register_download(uuid) {
-                    error!("Failed to register download with controller: {}", e);
-                }
-            }
+        if settings.auto_install
+            && let Ok(uuid) = Uuid::parse_str(&job_id)
+            && let Err(e) = ControllerManager::global().register_download(uuid)
+        {
+            error!("Failed to register download with controller: {}", e);
         }
     }
 
@@ -75,10 +74,9 @@ pub async fn dm_add_torrent_job(
         let settings = fit_launcher_config::commands::get_installation_settings();
         if settings.auto_install
             && let Ok(uuid) = Uuid::parse_str(&job_id)
+            && let Err(e) = ControllerManager::global().register_download(uuid)
         {
-            if let Err(e) = ControllerManager::global().register_download(uuid) {
-                error!("Failed to register download with controller: {}", e);
-            }
+            error!("Failed to register download with controller: {}", e);
         }
     }
 
@@ -126,7 +124,9 @@ pub async fn dm_run_automate_setup_install(
         "Starting installation process for: {}",
         &job.metadata.game_title
     );
-    let id = state.create_job(job.game, job.job_path).await;
+    // Parse the download ID if valid UUID, otherwise None (though it should be valid for our downloads)
+    let download_id = Uuid::parse_str(&job.id).ok();
+    let id = state.create_job(job.game, job.job_path, download_id).await;
 
     // Get the job data we need before spawning
     // This avoids Send issues by extracting Send-safe data first
@@ -188,7 +188,9 @@ pub async fn dm_extract_and_install(
         groups.entry(group.into()).or_default().push(entry.path());
     }
 
-    for paths in groups.values() {
+    for paths in groups.values_mut() {
+        // Sort to ensure we extract from the first part (e.g., .part1.rar, not .part3.rar)
+        paths.sort();
         if let Some(first) = paths.first() {
             info!("Extracting {first:?} in-place...");
             extract_archive(first)?;
@@ -203,7 +205,11 @@ pub async fn dm_extract_and_install(
         set.join_all().await;
     }
 
-    let id = manager.create_job(job.game, job.job_path.clone()).await;
+    // Parse the download ID if valid UUID
+    let download_id = Uuid::parse_str(&job.id).ok();
+    let id = manager
+        .create_job(job.game, job.job_path.clone(), download_id)
+        .await;
 
     // Use spawn_blocking because the installer uses Windows-specific blocking I/O
     // that contains raw pointers (HANDLE) which aren't Send

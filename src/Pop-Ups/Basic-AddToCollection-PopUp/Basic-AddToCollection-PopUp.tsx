@@ -9,7 +9,6 @@ import LabelCheckboxSettings from "../../pages/Settings-01/Settings-Categories/C
 import { GameCollection } from "../../bindings";
 import { render } from "solid-js/web";
 import { FolderPlus, Plus } from "lucide-solid";
-import createBasicTextInputPopup from "../Basic-TextInput-PopUp/Basic-TextInput-PopUp";
 
 const createAddToCollectionPopup = (props: AddToCollectionProps) => {
   const [selectedCollections, setSelectedCollections] = createSignal<string[]>([]);

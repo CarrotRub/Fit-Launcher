@@ -133,11 +133,15 @@ impl InstallerRunner {
                 error: Some("Installation was cancelled".to_string()),
             })?;
         } else {
+            // Try to capture actual error message from installer window
+            let error_msg = crate::errors::capture_error_text()
+                .unwrap_or_else(|| "Installation did not complete successfully".to_string());
+
             emit(&Event::Completed {
                 job_id: self.job_id.clone(),
                 success: false,
                 install_path: None,
-                error: Some("Installation did not complete successfully".to_string()),
+                error: Some(error_msg),
             })?;
         }
 
@@ -250,6 +254,17 @@ impl InstallerRunner {
 
         loop {
             if self.is_cancelled() {
+                break;
+            }
+
+            // Check for error dialog (ISDone.dll popup) on every iteration
+            // This catches errors even while progress events are still flowing
+            if let Some(error_msg) = crate::errors::capture_error_text() {
+                warn!("Error dialog detected: {}", error_msg);
+                emit(&Event::Phase {
+                    job_id: self.job_id.clone(),
+                    phase: InstallPhase::Failed,
+                })?;
                 break;
             }
 

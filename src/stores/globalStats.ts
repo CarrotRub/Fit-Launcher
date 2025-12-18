@@ -27,9 +27,9 @@ export const createGlobalStatsStore = () => {
   syncStats();
 
   return {
+    cleanup: () => unsubscribes.forEach((u) => u()),
     stats,
     syncStats,
-    cleanup: () => unsubscribes.forEach((u) => u()),
   };
 };
 

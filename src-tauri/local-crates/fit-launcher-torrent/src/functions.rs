@@ -234,17 +234,11 @@ pub async fn aria2_client_from_config(
 
                 spawn_with_job_object(
                     exec.as_os_str(),
-                    &build_aria2_args(
-                        config,
-                        Path::new(&session_path),
-                        Path::new(&log_path),
-                        rpc_port,
-                        bt_port,
-                    )
-                    .into_iter()
-                    .map(|s| s.into())
-                    .collect::<Vec<OsString>>(),
-                    Some(&download_location),
+                    &build_aria2_args(config, Path::new(&session_path.as_ref()), rpc_port, bt_port)
+                        .into_iter()
+                        .map(|s| s.into())
+                        .collect::<Vec<OsString>>(),
+                    Some(download_location),
                 )
                 .context("Failed to start aria2c")?
             }
@@ -319,6 +313,12 @@ pub async fn aria2_client_from_config(
 
 fn is_port_available(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
+impl Default for TorrentSession {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TorrentSession {

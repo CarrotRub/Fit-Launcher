@@ -2,8 +2,6 @@ use serde::Serialize;
 use specta::Type;
 use std::fmt;
 
-
-
 #[derive(Debug, Serialize, Type)]
 pub struct SettingsConfigurationError {
     pub message: String,

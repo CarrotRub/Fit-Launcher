@@ -20,17 +20,17 @@ export interface GitHubRelease {
  * Type priority for sorting (lower = higher priority)
  */
 export const TYPE_PRIORITY: Record<string, number> = {
-  feat: 1,
-  fix: 2,
-  refactor: 3,
-  core: 4,
-  perf: 5,
-  docs: 6,
-  style: 7,
-  test: 8,
+  build: 11,
   chore: 9,
   ci: 10,
-  build: 11,
+  core: 4,
+  docs: 6,
+  feat: 1,
+  fix: 2,
+  perf: 5,
+  refactor: 3,
+  style: 7,
+  test: 8,
 };
 
 /**
@@ -67,11 +67,11 @@ function sortChangelogItems(body: string): string {
       if (inListSection) {
         const items = currentSection.map((l) => ({
           line: l,
-          type: extractType(l.trim()),
           priority: (() => {
             const t = extractType(l.trim());
             return t ? TYPE_PRIORITY[t] ?? 999 : 999;
           })(),
+          type: extractType(l.trim()),
         }));
         items.sort((a, b) => a.priority - b.priority);
         sections.push(items.map((i) => i.line));
@@ -86,11 +86,11 @@ function sortChangelogItems(body: string): string {
     if (inListSection) {
       const items = currentSection.map((l) => ({
         line: l,
-        type: extractType(l.trim()),
         priority: (() => {
           const t = extractType(l.trim());
           return t ? TYPE_PRIORITY[t] ?? 999 : 999;
         })(),
+        type: extractType(l.trim()),
       }));
       items.sort((a, b) => a.priority - b.priority);
       sections.push(items.map((i) => i.line));
@@ -158,14 +158,14 @@ export async function fetchLatestGithubRelease(
 
   return [
     {
-      version: release.tag_name || release.name || "Unknown",
-      date: new Date(release.published_at).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
       body: sanitizedHtml,
+      date: new Date(release.published_at).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
       url: release.html_url,
+      version: release.tag_name || release.name || "Unknown",
     },
   ];
 }
@@ -198,14 +198,14 @@ export async function fetchAllGithubReleases(
       const cleaned = cleanReleaseBody(r.body);
       const sanitizedHtml = await convertMarkdownToHtml(cleaned);
       return {
-        version: r.tag_name || r.name || "Unknown",
-        date: new Date(r.published_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
         body: sanitizedHtml,
+        date: new Date(r.published_at).toLocaleDateString("en-US", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
         url: r.html_url,
+        version: r.tag_name || r.name || "Unknown",
       };
     })
   );

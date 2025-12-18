@@ -1,5 +1,5 @@
 import TextInput from "../../../../../../components/UI/TextInput/TextInput";
-import { SettingsDropdownLabelProps, SettingsTextInputLabelProps } from "../../../../../../types/settings/ui";
+import { SettingsTextInputLabelProps } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";
 
 export default function LabelTextInputSettings(props: SettingsTextInputLabelProps) {

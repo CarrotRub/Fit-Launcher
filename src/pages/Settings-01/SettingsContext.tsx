@@ -1,5 +1,5 @@
 import { createContext, useContext } from "solid-js";
-import { createSignal, type Accessor, type Setter, type JSX } from "solid-js";
+import { createSignal, JSX } from "solid-js";
 import type { SettingsContextType, SettingsGroup, SettingsPart } from "../../types/settings/types";
 
 const SettingsContext = createContext<SettingsContextType>();

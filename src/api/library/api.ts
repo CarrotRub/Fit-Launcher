@@ -20,7 +20,7 @@ export class LibraryApi {
   }
 
   async hasDownloadedGame(game: DownloadedGame): Promise<boolean> {
-    let result = await commands.getDownloadedGames();
+    const result = await commands.getDownloadedGames();
     if (result.includes(game)) {
       return true;
     }
@@ -86,48 +86,48 @@ export class LibraryApi {
 
   downloadedGameToGame(game: DownloadedGame): Game {
     return {
-      title: game.title,
-      img: game.img,
+      description: game.description,
       details: game.details,
       features: game.features,
-      description: game.description,
       gameplay_features: game.gameplay_features,
+      href: game.href,
+      img: game.img,
       included_dlcs: game.included_dlcs,
       magnetlink: game.magnetlink,
-      href: game.href,
-      tag: game.tag,
       secondary_images: [],
+      tag: game.tag,
+      title: game.title,
     };
   }
 
   gameToDownloadedGame(game: Game): DownloadedGame {
     const executableInfo: ExecutableInfo = {
-      executable_path: "",
-      executable_last_opened_date: null,
-      executable_play_time: 0,
-      executable_installed_date: null,
       executable_disk_size: 0,
+      executable_installed_date: null,
+      executable_last_opened_date: null,
+      executable_path: "",
+      executable_play_time: 0,
     };
 
     const installationInfo: InstallationInfo = {
-      output_folder: "",
       download_folder: "",
       file_list: [],
+      output_folder: "",
     };
 
     return {
-      title: game.title,
-      img: game.img,
-      details: game.details,
-      features: game.features,
       description: game.description,
-      gameplay_features: game.gameplay_features,
-      included_dlcs: game.included_dlcs,
-      magnetlink: game.magnetlink,
-      href: game.href,
-      tag: game.tag,
+      details: game.details,
       executable_info: executableInfo,
+      features: game.features,
+      gameplay_features: game.gameplay_features,
+      href: game.href,
+      img: game.img,
+      included_dlcs: game.included_dlcs,
       installation_info: installationInfo,
+      magnetlink: game.magnetlink,
+      tag: game.tag,
+      title: game.title,
     };
   }
 }

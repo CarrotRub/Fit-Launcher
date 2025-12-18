@@ -1,4 +1,3 @@
-import { action } from "@solidjs/router";
 import Button from "../../../../../../components/UI/Button/Button";
 import { SettingsButtonLabelProps } from "../../../../../../types/settings/ui";
 import TitleLabel from "../TitleLabel/TitleLabel";

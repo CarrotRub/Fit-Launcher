@@ -1,11 +1,5 @@
 import { createSignal, onMount, For, Show } from "solid-js";
-import { render } from "solid-js/web";
-import { appDataDir, join } from "@tauri-apps/api/path";
-import { mkdir, writeTextFile, readDir, readTextFile } from "@tauri-apps/plugin-fs";
-import { message } from "@tauri-apps/plugin-dialog";
 import { showError } from "../../helpers/error";
-
-import AddLocalGamePopUp from "../../Pop-Ups/Add-Local-Game-PopUp/Add-Local-Game-PopUp";
 import CollectionList from './CollectionList/CollectionList';
 import GameDownloadedItem, { LayoutType } from "./GameDownloadedItem/GameDownloadedItem";
 import {
@@ -14,20 +8,16 @@ import {
   LibraryBig,
   FolderPlus,
   PackagePlus,
-  PackageCheck,
   ListCollapse,
   Grid2X2Plus
 } from 'lucide-solid';
 import Button from "../../components/UI/Button/Button";
-import CreateBasicTextInputPopup from "../../Pop-Ups/Basic-TextInput-PopUp/Basic-TextInput-PopUp";
 import { LibraryApi } from "../../api/library/api";
-import { DownloadedGame, Game, GameCollection } from "../../bindings";
+import { DownloadedGame, Game } from "../../bindings";
 import createAddLocalGamePopup from "../../Pop-Ups/Add-Local-Game-PopUp/Add-Local-Game-PopUp";
-import { GamesCacheApi } from "../../api/cache/api";
 import createBasicTextInputPopup from "../../Pop-Ups/Basic-TextInput-PopUp/Basic-TextInput-PopUp";
 
 const libraryAPI = new LibraryApi();
-const cacheAPI = new GamesCacheApi();
 
 function Library() {
   const [collectionList, setCollectionList] = createSignal<Record<string, Game[]>>({});

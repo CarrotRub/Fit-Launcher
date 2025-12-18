@@ -5,10 +5,10 @@ edition = "2024"
 
 [dependencies]
 aria2-ws = { workspace = true }
-chrono = "0.4.42"
+chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = "1.18.1"
+uuid = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
@@ -16,7 +16,7 @@ fit-launcher-aria2 = { workspace = true }
 fit-launcher-torrent = { workspace = true }
 fit-launcher-ddl = { path = "../fit-launcher-ddl" }
 fit-launcher-ui-automation = { path = "../fit-launcher-ui-automation" }
-sha2 = "0.10.9"
+sha2 = { workspace = true }
 tauri = { workspace = true }
 directories = { workspace = true }
 specta = { workspace = true }

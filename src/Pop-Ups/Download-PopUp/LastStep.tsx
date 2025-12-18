@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { showError } from "../../helpers/error";
 import { AlertTriangle, Box, ChevronDown, ChevronRight, Download, Info, Languages, MemoryStick, X, Zap, Loader2 } from "lucide-solid";
 import { createSignal, For, onMount, Show, Component } from "solid-js";
@@ -160,7 +158,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         const [showDdlAdvanced, setShowDdlAdvanced] = createSignal(false);
 
         // Debrid state
-        const [debridProvidersLoading, setDebridProvidersLoading] = createSignal(true);
+        const [, setDebridProvidersLoading] = createSignal(true);
         const [allDebridProviders, setAllDebridProviders] = createSignal<DebridProviderInfo[]>([]); // ALL providers
         const [configuredDebridProviders, setConfiguredDebridProviders] = createSignal<Set<DebridProvider>>(new Set()); // providers WITH credentials
         const [debridCacheStatus, setDebridCacheStatus] = createSignal<Map<DebridProvider, boolean | null>>(new Map()); // provider -> isCached (null = still checking)
@@ -235,7 +233,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         function toggleFileSelection(index: number) {
             setSelectedFileIndices((prev) => {
                 const next = new Set(prev);
-                next.has(index) ? next.delete(index) : next.add(index);
+                if (next.has(index)) {
+                    next.delete(index);
+                } else {
+                    next.add(index);
+                }
                 return next;
             });
         }
@@ -243,7 +245,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         function toggleDdlSelection(url: string) {
             setDdlSelectedUrls((prev) => {
                 const next = new Set(prev);
-                next.has(url) ? next.delete(url) : next.add(url);
+                if (next.has(url)) {
+                    next.delete(url);
+                } else {
+                    next.add(url);
+                }
                 return next;
             });
         }
@@ -287,19 +293,26 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                 if (props.downloadType === "bittorrent") {
                     const selected = Array.from(selectedFileIndices());
-                    await DM.addTorrent(game.magnetlink, selected, path, game);
+                    const result = await DM.addTorrent(game.magnetlink, selected, path, game);
+                    if (result.status === "error") {
+                        throw new Error(result.error);
+                    }
                 } else {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
 
-                    await DM.addDdl(selectedLinks, path, game);
+                    const result = await DM.addDdl(selectedLinks, path, game);
+                    if (result.status === "error") {
+                        throw new Error(result.error);
+                    }
                 }
 
                 props.onFinish?.();
                 destroy();
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
-                await showError(err, "Error");
+                await showError(err, "Download Failed");
                 setError(err.message ?? "Failed");
             } finally {
                 setLoading(false);
@@ -459,6 +472,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 // Auto-select all files
                 setSelectedDebridFiles(new Set(files.map(f => f.id)));
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (e: any) {
                 console.error("loadDebridProvider error", e);
                 setError(e.message ?? `Failed to load from ${provider}`);
@@ -495,6 +509,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     const files = infoResult.data.files;
                     setDebridFiles(files);
                     setSelectedDebridFiles(new Set(files.map(f => f.id)));
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 } catch (e: any) {
                     setError(e.message ?? "Failed to load files");
                 } finally {
@@ -532,7 +547,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         function toggleDebridFileSelection(fileId: string) {
             setSelectedDebridFiles(prev => {
                 const next = new Set(prev);
-                next.has(fileId) ? next.delete(fileId) : next.add(fileId);
+                if (next.has(fileId)) {
+                    next.delete(fileId);
+                } else {
+                    next.add(fileId);
+                }
                 return next;
             });
         }
@@ -588,6 +607,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 props.onFinish?.();
                 destroy();
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 await showError(err, "Error");
                 setError(err.message ?? "Failed");

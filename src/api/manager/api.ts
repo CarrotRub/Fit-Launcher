@@ -55,7 +55,7 @@ export class GlobalDownloadManager {
     }
 
     try {
-      let resAll = await commands.dmAllJobs();
+      const resAll = await commands.dmAllJobs();
       let all: Job[] = [];
       if (resAll.status === "ok") {
         all = resAll.data;
@@ -88,8 +88,8 @@ export class GlobalDownloadManager {
       return await commands.dmAddDdlJob(files, target, game);
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }
@@ -104,8 +104,8 @@ export class GlobalDownloadManager {
       return await commands.dmAddTorrentJob(magnet, filesList, target, game);
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }
@@ -113,11 +113,11 @@ export class GlobalDownloadManager {
   async pause(jobId: string): Promise<Result<void, string>> {
     try {
       await commands.dmPause(jobId);
-      return { status: "ok", data: undefined };
+      return { data: undefined, status: "ok" };
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }
@@ -125,11 +125,11 @@ export class GlobalDownloadManager {
   async resume(jobId: string): Promise<Result<void, string>> {
     try {
       await commands.dmResume(jobId);
-      return { status: "ok", data: undefined };
+      return { data: undefined, status: "ok" };
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }
@@ -137,11 +137,11 @@ export class GlobalDownloadManager {
   async remove(jobId: string): Promise<Result<void, string>> {
     try {
       await commands.dmRemove(jobId);
-      return { status: "ok", data: undefined };
+      return { data: undefined, status: "ok" };
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }
@@ -153,11 +153,11 @@ export class GlobalDownloadManager {
   async saveNow(): Promise<Result<void, string>> {
     try {
       await commands.dmSaveNow();
-      return { status: "ok", data: undefined };
+      return { data: undefined, status: "ok" };
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }
@@ -165,11 +165,11 @@ export class GlobalDownloadManager {
   async loadFromDisk(): Promise<Result<void, string>> {
     try {
       await commands.dmLoadFromDisk();
-      return { status: "ok", data: undefined };
+      return { data: undefined, status: "ok" };
     } catch (e) {
       return {
-        status: "error",
         error: e instanceof Error ? e.message : (e as any),
+        status: "error",
       };
     }
   }

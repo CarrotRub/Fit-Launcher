@@ -6,7 +6,7 @@ import { DropdownProps } from "../../../types/components/types";
 export default function Dropdown<T extends string | number>(props: DropdownProps<T>) {
     const [isOpen, setIsOpen] = createSignal(false);
     const [isAnimating, setIsAnimating] = createSignal(false);
-    const [hoveredItem, setHoveredItem] = createSignal<T | null>(null);
+    const [setHoveredItem] = createSignal<T | null>(null);
 
     const handleSelection = async (item: T) => {
         setIsAnimating(true);

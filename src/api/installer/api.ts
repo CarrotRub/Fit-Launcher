@@ -16,6 +16,7 @@ class InstallerService {
   private pendingJobs = new Map<string, Job>();
   private failedInstalls = new Set<string>();
   private installingJobs = new Set<string>();
+  private lastErrors = new Map<string, string>();
 
   async unexcludeFolder(installPath: string) {
     const settings = await DownloadSettingsApi.getDownloadSettings();
@@ -71,6 +72,13 @@ class InstallerService {
       await this.handle(job);
     });
 
+    // Listen for error messages from the controller
+    listen<string>("setup::progress::error", (event) => {
+      for (const [hookId, job] of this.activeInstalls.entries()) {
+        this.lastErrors.set(job.id, event.payload);
+      }
+    });
+
     listen("setup::hook::stopped", async (event) => {
       const payload = event.payload as {
         id: string;
@@ -110,9 +118,9 @@ class InstallerService {
                 if (execInfo) {
                   dwlnd_game.executable_info = execInfo;
                   dwlnd_game.installation_info = {
-                    output_folder: payload.install_path,
                     download_folder: job.job_path,
                     file_list: [],
+                    output_folder: payload.install_path,
                   };
                 }
               }
@@ -139,7 +147,9 @@ class InstallerService {
         }
       } else {
         this.failedInstalls.add(job.id);
-        emit("installer::state::changed", { jobId: job.id, state: "failed" });
+        const errorMsg = this.lastErrors.get(job.id);
+        emit("installer::state::changed", { error: errorMsg, jobId: job.id, state: "failed" });
+        this.lastErrors.delete(job.id);
       }
 
       this.activeInstalls.delete(payload.id);

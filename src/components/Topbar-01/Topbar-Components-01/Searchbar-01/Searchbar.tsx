@@ -30,7 +30,8 @@ export default function Searchbar(props: SearchbarProps) {
   const [isFocused, setIsFocused] = createSignal(false);
   const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
   let debounceTimer: number | undefined;
-
+  let readyUnlisten: (() => void) | undefined;
+  let errorUnlisten: (() => void) | undefined;
 
   onMount(async () => {
     // Check if URL has a search parameter
@@ -41,21 +42,21 @@ export default function Searchbar(props: SearchbarProps) {
     }
 
     // Listen for index rebuild events to clear any cached errors
-    const readyUnlisten = await listen("search-index-ready", () => {
+    readyUnlisten = await listen("search-index-ready", () => {
       setIndexError(null);
     });
 
-    const errorUnlisten = await listen("search-index-error", (event: any) => {
+    errorUnlisten = await listen<string>("search-index-error", (event) => {
       setIndexError(event.payload || "Search index error");
     });
+  });
 
-    onCleanup(() => {
-      readyUnlisten();
-      errorUnlisten();
-      if (debounceTimer !== undefined) {
-        clearTimeout(debounceTimer);
-      }
-    });
+  onCleanup(() => {
+    readyUnlisten?.();
+    errorUnlisten?.();
+    if (debounceTimer !== undefined) {
+      clearTimeout(debounceTimer);
+    }
   });
 
   function getUrlParameter(name: string): string {

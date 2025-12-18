@@ -22,6 +22,7 @@ use crate::controller_client::{
 #[derive(Debug, Clone)]
 pub struct QueuedInstallJob {
     pub job_id: Uuid,
+    pub download_id: Option<Uuid>,
     pub slug: String,
     pub setup_path: PathBuf,
     pub install_path: String,
@@ -35,6 +36,7 @@ pub struct QueueStatus {
     pub active: Option<String>,
 }
 
+#[derive(Default)]
 struct ManagerState {
     client: Option<ControllerClient>,
     pipe_name: Option<String>,
@@ -44,22 +46,6 @@ struct ManagerState {
     current_install: Option<Uuid>,
     current_install_slug: Option<String>, // For UI
     folder_exclusion_active: bool,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for ManagerState {
-    fn default() -> Self {
-        Self {
-            client: None,
-            pipe_name: None,
-            spawning: false,
-            pending_downloads: HashSet::new(),
-            install_queue: VecDeque::new(),
-            current_install: None,
-            current_install_slug: None,
-            folder_exclusion_active: false,
-        }
-    }
 }
 
 // ControllerClient contains Windows HANDLE (raw pointer). Safe across threads
@@ -217,8 +203,12 @@ impl ControllerManager {
 
     pub fn queue_install(&self, job: QueuedInstallJob) -> Result<(), String> {
         let job_id = job.job_id;
+        let download_id = job.download_id;
         let mut state = self.lock_state()?;
 
+        if let Some(dl_id) = download_id {
+            state.pending_downloads.remove(&dl_id);
+        }
         state.pending_downloads.remove(&job_id);
         state.install_queue.push_back(job);
 
@@ -272,14 +262,14 @@ impl ControllerManager {
             return Ok(false);
         }
 
-        if let Some(front) = state.install_queue.front() {
-            if front.job_id == job_id {
-                let job = state.install_queue.pop_front().unwrap();
-                state.current_install = Some(job_id);
-                state.current_install_slug = Some(job.slug.clone()); // For UI
-                info!("Claiming install slot for job {} ({})", job_id, job.slug);
-                return Ok(true);
-            }
+        if let Some(front) = state.install_queue.front()
+            && front.job_id == job_id
+        {
+            let job = state.install_queue.pop_front().unwrap();
+            state.current_install = Some(job_id);
+            state.current_install_slug = Some(job.slug.clone()); // For UI
+            info!("Claiming install slot for job {} ({})", job_id, job.slug);
+            return Ok(true);
         }
 
         Ok(false)

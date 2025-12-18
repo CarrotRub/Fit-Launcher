@@ -1,4 +1,3 @@
-import { JSX } from "solid-js";
 import { ButtonProps } from "../../../types/components/types";
 
 const Button = (props: ButtonProps) => {

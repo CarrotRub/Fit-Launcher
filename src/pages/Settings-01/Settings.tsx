@@ -1,4 +1,4 @@
-import { createSignal, onMount, type JSX } from "solid-js";
+import { onMount, type JSX } from "solid-js";
 import DownloadConfigurationPage from "./Settings-Categories/Download/Download";
 import GlobalSettingsPage from "./Settings-Categories/Global/GlobalSettingsPage";
 import DebridSettingsPage from "./Settings-Categories/Debrid/DebridSettings";
@@ -6,12 +6,7 @@ import DebridSettingsPage from "./Settings-Categories/Debrid/DebridSettings";
 import {
   Settings,
   Globe,
-  Package2,
-  Database,
   Network,
-  Server,
-  Save,
-  Users,
   Gauge,
   Magnet,
   Cpu,
@@ -131,7 +126,7 @@ function SettingsSidebar(): JSX.Element {
   );
 }
 
-function SidebarLink(props: { id: string; label: string; icon: (props: any) => JSX.Element; onClick: () => void }) {
+function SidebarLink(props: { id: string; label: string; icon: (props: { size: number; class?: string }) => JSX.Element; onClick: () => void }) {
   const Icon = props.icon;
   return (
     <li>
