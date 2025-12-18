@@ -24,12 +24,7 @@ pub async fn aria2_add_uri(
     #[cfg(windows)]
     {
         if aria2_cfg.file_allocation.is_auto() {
-            file_allocation_method(
-                &mut options.extra_options,
-                dir.as_deref().unwrap_or("."),
-                aria2_cfg.start_daemon,
-            )
-            .await;
+            file_allocation_method(&mut options.extra_options, dir.as_deref().unwrap_or(".")).await;
         };
     }
 
@@ -87,11 +82,7 @@ pub async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Ar
 }
 
 #[cfg(windows)]
-async fn file_allocation_method(
-    extra_options: &mut Map<String, Value>,
-    dir: impl AsRef<str>,
-    aria2_priviledged: bool,
-) {
+async fn file_allocation_method(extra_options: &mut Map<String, Value>, dir: impl AsRef<str>) {
     let dir = dir.as_ref();
 
     let file_allocation = {
@@ -149,7 +140,6 @@ async fn file_allocation_method(
         }
 
         let result = match &media_type {
-            Ok(MediaType::SCM | MediaType::SSD) if aria2_priviledged => "falloc",
             Ok(MediaType::SCM | MediaType::SSD) => "none",
             Ok(_) => "falloc",
             Err(e) => {
