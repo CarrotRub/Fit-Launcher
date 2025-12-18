@@ -33,7 +33,7 @@ pub fn get_used_space(manager: tauri::State<'_, Arc<CacheManager>>) -> u64 {
 #[specta]
 pub async fn set_capacity(
     manager: tauri::State<'_, Arc<CacheManager>>,
-    session: tauri::State<'_, TorrentSession>,
+    session: tauri::State<'_, Arc<TorrentSession>>,
     new_capacity: u64,
 ) -> Result<(), CacheError> {
     if new_capacity == 0 {

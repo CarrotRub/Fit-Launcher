@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use fitgirl_decrypt::Paste;
 use fitgirl_decrypt::base64::Engine;
@@ -127,7 +128,7 @@ pub async fn magnet_to_file(
 #[tauri::command]
 #[specta]
 pub async fn get_download_settings(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
 ) -> Result<FitLauncherConfigV2, TorrentApiError> {
     Ok(state.config().await)
 }
@@ -135,7 +136,7 @@ pub async fn get_download_settings(
 #[tauri::command]
 #[specta]
 pub async fn change_download_settings(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     config: FitLauncherConfigV2,
 ) -> Result<(), TorrentApiError> {
     state.configure(config).await?;
@@ -145,7 +146,7 @@ pub async fn change_download_settings(
 #[tauri::command]
 #[specta]
 pub async fn config_change_only_path(
-    state: tauri::State<'_, TorrentSession>,
+    state: tauri::State<'_, Arc<TorrentSession>>,
     download_path: String,
 ) -> Result<(), TorrentApiError> {
     let mut current_config = state.config().await;

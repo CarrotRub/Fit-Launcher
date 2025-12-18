@@ -12,6 +12,12 @@ pub enum Aria2Error {
 
     #[error("RPC error: {0}")]
     RPCError(String),
+
+    #[error("Operation timed out: {0}")]
+    Timeout(String),
+
+    #[error("Connection is stale, reconnection required")]
+    StaleConnection,
 }
 
 impl From<aria2_ws::Error> for Aria2Error {

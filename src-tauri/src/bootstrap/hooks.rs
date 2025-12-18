@@ -1,4 +1,5 @@
 use fit_launcher_torrent::functions::TorrentSession;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager};
 use tracing::info;
 
@@ -7,7 +8,7 @@ pub fn shutdown_hook(app_handle: AppHandle) {
     tokio::spawn(async move {
         let _ = tokio::signal::ctrl_c().await;
         info!("Ctrl-C received: shutting down TorrentSession...");
-        if let Some(session) = app_handle_clone.try_state::<TorrentSession>() {
+        if let Some(session) = app_handle_clone.try_state::<Arc<TorrentSession>>() {
             session.shutdown().await;
         }
         std::process::exit(0);
