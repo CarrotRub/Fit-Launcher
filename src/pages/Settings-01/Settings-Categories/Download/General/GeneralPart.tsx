@@ -48,6 +48,13 @@ export default function GeneralSettingsPart(props: SettingsSectionProps<General>
                 action={() => props.handleSwitchCheckChange?.("general.folder_exclusion")}
                 checked={props.settings().folder_exclusion}
             />
+            <LabelCheckboxSettings
+                text="Automatically clean up Windows Defender exclusions"
+                typeText="Removes FitLauncher folders from Windows Defender exclusions when they are no longer used or have been deleted."
+                action={() => props.handleSwitchCheckChange?.("general.folder_exclusion_cleanup")}
+                checked={props.settings().folder_exclusion_cleanup}
+            />
+
         </PageGroup>
     );
 }

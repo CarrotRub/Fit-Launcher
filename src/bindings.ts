@@ -534,6 +534,14 @@ async folderExclusion(action: ExclusionAction) : Promise<Result<null, string>> {
     else return { error: e  as any, status: "error" };
 }
 },
+async folderExclusionCleanup(policy: ExclusionCleanupPolicy) : Promise<Result<null, string>> {
+    try {
+    return { data: await TAURI_INVOKE("folder_exclusion_cleanup", { policy }), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async getCollectionList() : Promise<GameCollection[]> {
     return await TAURI_INVOKE("get_collection_list");
 },
@@ -945,6 +953,7 @@ export type Duration = { secs: number; nanos: number }
  */
 export type Error = { KeyLengthMismatch: number } | "ZeroIterations" | "IllFormedURL" | { Reqwest: string } | { Base58: string } | { Base64: string } | "DecompressError" | "AesGcm" | { JSONSerialize: string }
 export type ExclusionAction = { Add: string } | { Remove: string }
+export type ExclusionCleanupPolicy = { Keep: string } | { RemoveAfterInstall: string }
 export type ExecutableInfo = { executable_path: string; executable_last_opened_date: string | null; executable_play_time: number; executable_installed_date: string | null; executable_disk_size: number }
 export type ExtractError = { Io: string } | { Unrar: string } | { InstallationError: InstallationError } | "NoParentDirectory" | "NoRarFileFound"
 export type File = { index: number; path: string; length: number; completedLength: number; selected: boolean; uris: Uri[] }
@@ -994,7 +1003,7 @@ included_dlcs: string; magnetlink: string; href: string; tag: string;
 secondary_images: string[]; pastebin_link?: string }
 export type GameCollection = { name: string; games_list: Game[] }
 export type GamehubSettings = { nsfw_censorship: boolean; auto_get_colors_popular_games: boolean }
-export type General = { download_dir: string; concurrent_downloads?: number; folder_exclusion: boolean }
+export type General = { download_dir: string; concurrent_downloads?: number; folder_exclusion: boolean; folder_exclusion_cleanup: boolean }
 export type GlobalStat = { downloadSpeed: number; uploadSpeed: number; numActive: number; numWaiting: number; numStopped: number; numStoppedTotal: number }
 export type InstallationError = { IOError: string } | "AdminModeError"
 export type InstallationInfo = { output_folder: string; download_folder: string; file_list: string[] }

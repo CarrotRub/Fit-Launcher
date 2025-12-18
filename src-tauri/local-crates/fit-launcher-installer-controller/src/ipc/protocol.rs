@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::defender::ExclusionAction;
+use crate::defender::{ExclusionAction, ExclusionCleanupPolicy};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Commands (GUI → Controller)
@@ -41,6 +41,9 @@ pub enum Command {
     },
     FolderExclusion {
         action: ExclusionAction,
+    },
+    CleanupPolicy {
+        exclusion_folder: ExclusionCleanupPolicy,
     },
     Shutdown,
     ShutdownIfIdle,

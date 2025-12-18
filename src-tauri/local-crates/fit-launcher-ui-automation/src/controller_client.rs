@@ -24,7 +24,7 @@ use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
 #[cfg(windows)]
 use windows::core::PCWSTR;
 
-use crate::defender::ExclusionAction;
+use crate::defender::{ExclusionAction, ExclusionCleanupPolicy};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Protocol Types (mirrored from controller crate)
@@ -61,6 +61,9 @@ pub enum ControllerCommand {
     },
     FolderExclusion {
         action: ExclusionAction,
+    },
+    CleanupPolicy {
+        exclusion_folder: ExclusionCleanupPolicy,
     },
     Shutdown,
     ShutdownIfIdle,
@@ -341,14 +344,12 @@ pub fn find_controller_binary() -> Result<PathBuf> {
         .to_path_buf();
 
     let candidates = [
-        exe_dir.join("fit-launcher-automation.exe"),
-        exe_dir
-            .join("resources")
-            .join("fit-launcher-automation.exe"),
+        exe_dir.join("FitLauncherService.exe"),
+        exe_dir.join("resources").join("FitLauncherService.exe"),
         exe_dir
             .join("..")
             .join("resources")
-            .join("fit-launcher-automation.exe"),
+            .join("FitLauncherService.exe"),
     ];
 
     candidates

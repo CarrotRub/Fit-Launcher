@@ -20,7 +20,7 @@
     "createUpdaterArtifacts": "v1Compatible",
     "externalBin": [
       "binaries/aria2c",
-      "binaries/fit-launcher-automation"
+      "binaries/FitLauncherService"
     ]
   },
   "build": {

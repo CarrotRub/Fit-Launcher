@@ -2,4 +2,5 @@
 /aria2c-*
 
 # we should place fit-launcher-automation binaries here, like `fit-launcher-automation-x86_64-pc-windows-msvc.exe`
+/FitLauncherService-*
 /fit-launcher-automation-*

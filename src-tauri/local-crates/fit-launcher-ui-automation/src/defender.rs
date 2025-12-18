@@ -39,15 +39,30 @@ impl std::fmt::Display for ExclusionAction {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Type)]
 pub struct FolderExclusionEntry {
-    pub action: ExclusionAction,
+    pub path: String,
     pub timestamp_utc: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Type)]
 pub struct FolderExclusionsFile {
     pub entries: Vec<FolderExclusionEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
+pub enum ExclusionCleanupPolicy {
+    Keep(String),
+    RemoveAfterInstall(String),
+}
+
+impl std::fmt::Display for ExclusionCleanupPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Keep(p) => write!(f, "Keep: {p}"),
+            Self::RemoveAfterInstall(p) => write!(f, "RemoveAfterInstall: {p}"),
+        }
+    }
 }
 
 pub(crate) fn now_utc() -> i64 {

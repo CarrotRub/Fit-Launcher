@@ -11,6 +11,21 @@ pub enum ExclusionAction {
     Remove(String),
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ExclusionCleanupPolicy {
+    Keep(String),
+    RemoveAfterInstall(String),
+}
+
+impl std::fmt::Display for ExclusionCleanupPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Keep(p) => write!(f, "Keep: {p}"),
+            Self::RemoveAfterInstall(p) => write!(f, "RemoveAfterInstall: {p}"),
+        }
+    }
+}
+
 impl std::fmt::Display for ExclusionAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
