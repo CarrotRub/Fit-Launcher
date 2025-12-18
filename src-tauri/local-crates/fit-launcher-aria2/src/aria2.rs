@@ -24,12 +24,7 @@ pub async fn aria2_add_uri(
     #[cfg(windows)]
     {
         if aria2_cfg.file_allocation.is_auto() {
-            file_allocation_method(
-                &mut options.extra_options,
-                dir.as_deref().unwrap_or("."),
-                aria2_cfg.start_daemon,
-            )
-            .await;
+            file_allocation_method(&mut options.extra_options, dir.as_deref().unwrap_or(".")).await;
         };
     }
 
@@ -87,11 +82,7 @@ pub async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Ar
 }
 
 #[cfg(windows)]
-async fn file_allocation_method(
-    extra_options: &mut Map<String, Value>,
-    dir: impl AsRef<str>,
-    aria2_priviledged: bool,
-) {
+async fn file_allocation_method(extra_options: &mut Map<String, Value>, dir: impl AsRef<str>) {
     let dir = dir.as_ref();
 
     let file_allocation = {
@@ -148,8 +139,18 @@ async fn file_allocation_method(
             .unwrap();
         }
 
+        // On Windows, `falloc` relies on SetFileValidData, which requires
+        // Administrator privileges since it could potentially leak data from the raw disk.
+        //
+        // If privilege is missing, aria2 will fallback to `prealloc`,
+        // which fills the file with zeros before actual writing. This fallback
+        // is acceptable for HDD usage.
+        //
+        // `none` disables pre-allocation entirely, writing the file directly.
+        //
+        // On Linux/Mac, aria2 will always use `falloc` in auto mode, as
+        // `fallocate()` on Unix-like systems does not require root access.
         let result = match &media_type {
-            Ok(MediaType::SCM | MediaType::SSD) if aria2_priviledged => "falloc",
             Ok(MediaType::SCM | MediaType::SSD) => "none",
             Ok(_) => "falloc",
             Err(e) => {
