@@ -39,7 +39,7 @@ async fn head_ok(url: &str) -> bool {
         .unwrap_or(false)
 }
 
-async fn fix_img(src: &str) -> String {
+pub async fn try_high_res_img(src: &str) -> String {
     if !src.contains("jpg.240p.") {
         return src.into();
     }
@@ -136,7 +136,7 @@ pub async fn refresh_discovery_games(app: AppHandle) -> Result<(), ScrapingError
         // Upgrade secondary image quality
         for g in &mut fresh {
             g.secondary_images = stream::iter(g.secondary_images.clone())
-                .map(|s| async move { fix_img(&s).await })
+                .map(|s| async move { try_high_res_img(&s).await })
                 .buffer_unordered(5)
                 .collect::<Vec<_>>()
                 .await;

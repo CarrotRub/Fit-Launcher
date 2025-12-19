@@ -148,7 +148,7 @@ fn extract_description_and_dlcs(article: ElementRef<'_>) -> (String, String, Str
 
 /// Parse an article element into a Game struct
 ///
-/// Note: secondary_images must be set manually
+/// Note: to have high-res secondary images, try [`crate::discovery::try_high_res_img`]
 pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
     let title = article
         .select(&scraper::Selector::parse(".entry-title").unwrap())
