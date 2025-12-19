@@ -39,6 +39,7 @@ pub mod errors;
 pub mod events;
 pub mod installer;
 pub mod ipc;
+pub mod utils;
 
 use std::env;
 use tracing::{Level, error, info};

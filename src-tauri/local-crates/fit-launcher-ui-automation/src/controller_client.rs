@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 #[cfg(windows)]
+use crate::encode_utf16le_with_null;
+#[cfg(windows)]
 use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
@@ -172,13 +174,9 @@ impl ControllerClient {
     pub fn spawn_and_connect(controller_path: &PathBuf, pipe_name: &str) -> Result<Self> {
         info!("Spawning elevated controller: {:?}", controller_path);
 
-        let verb: Vec<u16> = "runas\0".encode_utf16().collect();
-        let file: Vec<u16> = controller_path
-            .to_string_lossy()
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
-        let params: Vec<u16> = pipe_name.encode_utf16().chain(std::iter::once(0)).collect();
+        let verb = encode_utf16le_with_null("runas");
+        let file = encode_utf16le_with_null(controller_path);
+        let params = encode_utf16le_with_null(pipe_name);
 
         let mut sei = SHELLEXECUTEINFOW {
             cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
@@ -204,7 +202,9 @@ impl ControllerClient {
     }
 
     fn connect_with_timeout(pipe_name: &str, timeout_ms: u32) -> Result<Self> {
-        let pipe_wide: Vec<u16> = pipe_name.encode_utf16().chain(std::iter::once(0)).collect();
+        use crate::encode_utf16le_with_null;
+
+        let pipe_wide = encode_utf16le_with_null(pipe_name);
 
         unsafe {
             if !WaitNamedPipeW(PCWSTR(pipe_wide.as_ptr()), timeout_ms).as_bool() {

@@ -14,7 +14,6 @@ use fit_launcher_ui_automation::api::InstallationManager;
 use lru::LruCache;
 use std::{num::NonZeroUsize, sync::Arc, time::Instant};
 use tauri::{Emitter, Manager, async_runtime::spawn};
-use tauri_helper::specta_collect_commands;
 use tokio::sync::Mutex;
 use tracing::{error, info};
 
@@ -24,6 +23,7 @@ pub async fn start_app() -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     {
         use specta_typescript::Typescript;
+        use tauri_helper::specta_collect_commands;
 
         let specta_builder =
             tauri_specta::Builder::<tauri::Wry>::new().commands(specta_collect_commands!());
