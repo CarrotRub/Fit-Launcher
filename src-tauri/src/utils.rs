@@ -1,3 +1,10 @@
+use anyhow::Result;
+use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
+use futures::StreamExt;
+use lru::LruCache;
+use scraper::{Html, Selector};
+use serde::{Deserialize, Serialize};
+use specta::{Type, specta};
 use std::{
     collections::HashMap,
     error::Error,
@@ -9,13 +16,6 @@ use std::{
     },
     time::Instant,
 };
-
-use anyhow::Result;
-use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use lru::LruCache;
-use scraper::{Html, Selector};
-use serde::{Deserialize, Serialize};
-use specta::{Type, specta};
 use tauri::{AppHandle, Emitter, Manager, State, Window};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
@@ -65,26 +65,32 @@ fn parse_image_links(body: &str, start: usize) -> anyhow::Result<Vec<String>> {
     Ok(images)
 }
 
-async fn process_image_link(src_link: String) -> anyhow::Result<String> {
-    if src_link.contains("jpg.240p.") {
-        let primary_image = src_link.replace("240p", "1080p");
-        if check_url_status(&primary_image).await.unwrap_or(false) {
-            return Ok(format!(
-                "https://wsrv.nl/?url={}&w=1000&q=80&output=webp",
-                primary_image
-            ));
-        }
-
-        let fallback_image = primary_image.replace("jpg.1080p.", "");
-        if check_url_status(&fallback_image).await.unwrap_or(false) {
-            return Ok(format!(
-                "https://wsrv.nl/?url={}&w=1000&q=80&output=webp",
-                fallback_image
-            ));
-        }
+async fn process_image_link(src_link: String) -> Option<String> {
+    if !src_link.contains("jpg.240p.") {
+        return None;
     }
 
-    Err(anyhow::anyhow!("No valid image found for {}", src_link))
+    let primary_image = src_link.replace("240p", "1080p");
+    let fallback_image = primary_image.replace("jpg.1080p.", "");
+
+    let candidates = vec![primary_image, fallback_image];
+
+    let valid_urls: Vec<_> = futures::stream::iter(candidates)
+        .map(|url| async move {
+            if check_url_status(&url).await.unwrap_or(false) {
+                Some(url)
+            } else {
+                None
+            }
+        })
+        .buffer_unordered(2)
+        .filter_map(|x| async move { x })
+        .collect()
+        .await;
+
+    valid_urls
+        .first()
+        .map(|url| format!("https://wsrv.nl/?url={}&w=1000&q=80&output=webp", url))
 }
 
 async fn scrape_and_emit_images(app_handle: &AppHandle, game_link: &str) -> Result<Vec<String>> {
@@ -103,27 +109,34 @@ async fn scrape_and_emit_images(app_handle: &AppHandle, game_link: &str) -> Resu
 
     let initial_images = parse_image_links(&body, 3)?;
     let total = initial_images.len();
-    let mut processed_images = Vec::new();
 
     // Process each image and emit events as they complete for UX
-    for (index, img_link) in initial_images.into_iter().enumerate() {
-        if STOP_FLAG.load(Ordering::Relaxed) {
-            break;
-        }
+    let processed_images = futures::stream::iter(initial_images.into_iter().enumerate())
+        .map(|(index, img_link)| {
+            let app_handle = app_handle.clone();
+            let game_link = game_link.to_string();
 
-        if let Ok(processed_url) = process_image_link(img_link).await {
-            let _ = app_handle.emit(
-                "game_images::image_ready",
-                GameImageReadyPayload {
-                    game_link: game_link.to_string(),
-                    image_url: processed_url.clone(),
-                    index,
-                    total,
-                },
-            );
-            processed_images.push(processed_url);
-        }
-    }
+            async move {
+                if let Some(url) = process_image_link(img_link).await {
+                    let _ = app_handle.emit(
+                        "game_images::image_ready",
+                        GameImageReadyPayload {
+                            game_link,
+                            image_url: url.clone(),
+                            index,
+                            total,
+                        },
+                    );
+                    Some(url)
+                } else {
+                    None
+                }
+            }
+        })
+        .buffer_unordered(4)
+        .filter_map(|x| async move { x })
+        .collect::<Vec<_>>()
+        .await;
 
     Ok(processed_images)
 }
@@ -177,7 +190,12 @@ pub async fn get_games_images(
     {
         let mut cache = image_cache.lock().await;
         cache.put(game_link.clone(), image_srcs.clone());
-        save_cache_to_file(&cache_file_path, &cache).await?;
+
+        let cache_snapshot = cache.clone();
+        let path = cache_file_path.clone();
+        tokio::spawn(async move {
+            let _ = save_cache_to_file(&path, &cache_snapshot).await;
+        });
     }
 
     info!("Image fetch completed in {:?}", start.elapsed());

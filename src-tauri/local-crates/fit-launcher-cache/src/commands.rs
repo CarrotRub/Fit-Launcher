@@ -1,6 +1,9 @@
 use std::{
     fmt::Display,
-    sync::{Arc, LazyLock, atomic::Ordering},
+    sync::{
+        Arc, LazyLock,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -13,13 +16,15 @@ use specta::specta;
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use tauri::{Url, async_runtime::spawn_blocking};
 use tokio::{io::AsyncWriteExt as _, sync::Semaphore};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
 };
 
 static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(SkipMap::new);
+static URL_DOWNLOAD_CACHING: LazyLock<SkipMap<String, Arc<AtomicBool>>> =
+    LazyLock::new(SkipMap::new);
 
 #[tauri::command]
 #[specta]
@@ -70,9 +75,20 @@ pub async fn cached_download_image(
     manager: tauri::State<'_, Arc<CacheManager>>,
     image_url: String,
 ) -> Result<String, CacheError> {
+    let entry = URL_DOWNLOAD_CACHING
+        .get_or_insert_with(image_url.clone(), || Arc::new(AtomicBool::new(false)));
+    let caching = entry.value().clone();
+
+    // Note: this is best-effort to reduce repeated download
+    while caching.load(Ordering::Acquire) {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    caching.store(true, Ordering::Release);
+
     // Check cache first
     if let Ok(data_uri) = data_uri_from_cache(&manager, &image_url).await {
-        debug!("cache hit: {image_url}");
+        trace!("cache hit: {image_url}");
+        caching.store(false, Ordering::Release);
         return Ok(data_uri);
     }
 
@@ -124,14 +140,15 @@ pub async fn cached_download_image(
                 let mime_clone = mime.clone();
 
                 tauri::async_runtime::spawn(async move {
-                    cache_image_async(&manager, image_url_clone, mime_clone, bytes, file_size)
-                        .await;
+                    cache_image_async(manager, image_url_clone, mime_clone, bytes, file_size).await;
+                    caching.store(false, Ordering::Release);
                 });
 
                 return Ok(data_uri);
             }
             Err(e) if try_ == try_times - 1 => {
                 error!("failed to download {image_url}: {e}");
+                caching.store(false, Ordering::Release);
                 return Err(e.into());
             }
             Err(e) => {
@@ -146,7 +163,7 @@ pub async fn cached_download_image(
 }
 
 async fn cache_image_async(
-    manager: &CacheManager,
+    manager: Arc<CacheManager>,
     image_url: String,
     mime: String,
     bytes: Arc<Vec<u8>>,
@@ -167,7 +184,12 @@ async fn cache_image_async(
 
     // Only claim once,
     // it will remove at least `exceed` bytes on each call
-    claim_space(manager, exceed).await;
+    if exceed > 0 {
+        let manager_ = manager.clone();
+        tokio::task::spawn(async move {
+            claim_space(&manager_, exceed).await;
+        });
+    }
 
     let mimeext = mime2ext::mime2ext(&mime).unwrap_or("png");
     let img_path = image_path(&image_url).with_extension(mimeext);

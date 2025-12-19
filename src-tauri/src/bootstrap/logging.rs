@@ -31,10 +31,11 @@ pub fn init_logging() {
     LOG_GUARD.set(guard).unwrap();
 
     // Filter to reduce spam from aria2_ws websocket reconnection attempts
-    let filter = EnvFilter::builder()
-        .from_env()
-        .unwrap_or(EnvFilter::new("info,aria2_ws=warn"))
-        .add_directive("aria2_ws=warn".parse().unwrap());
+    let env_filter = std::env::var("RUST_LOG").ok();
+    let filter = match env_filter {
+        Some(env) if !env.is_empty() => EnvFilter::new(env),
+        _ => EnvFilter::new("info,aria2_ws=warn"),
+    };
 
     tracing_subscriber::registry()
         .with(

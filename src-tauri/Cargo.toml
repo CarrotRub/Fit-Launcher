@@ -64,6 +64,7 @@ reqwest = { workspace = true }
 
 # Async and concurrency
 tokio = { workspace = true }
+futures = { workspace = true }
 
 # Parsing and scraping
 scraper = { workspace = true }
