@@ -12,7 +12,10 @@ use specta::specta;
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use tauri::{Url, async_runtime::spawn_blocking};
-use tokio::{io::AsyncWriteExt as _, sync::Semaphore};
+use tokio::{
+    io::AsyncWriteExt as _,
+    sync::{RwLock, Semaphore},
+};
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -20,6 +23,7 @@ use crate::{
 };
 
 static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(SkipMap::new);
+static PER_URL_RWLOCK: LazyLock<SkipMap<String, RwLock<()>>> = LazyLock::new(SkipMap::new);
 
 #[tauri::command]
 #[specta]
@@ -70,11 +74,18 @@ pub async fn cached_download_image(
     manager: tauri::State<'_, Arc<CacheManager>>,
     image_url: String,
 ) -> Result<String, CacheError> {
+    let entry = PER_URL_RWLOCK.get_or_insert_with(image_url.clone(), || RwLock::const_new(()));
+    let lock = entry.value();
+
     // Check cache first
+    let read_guard = lock.read().await;
     if let Ok(data_uri) = data_uri_from_cache(&manager, &image_url).await {
         debug!("cache hit: {image_url}");
         return Ok(data_uri);
     }
+    drop(read_guard);
+
+    let _write_guard = lock.write().await;
 
     let client_guard = CUSTOM_DNS_CLIENT.read().await;
     let client = &*client_guard;
