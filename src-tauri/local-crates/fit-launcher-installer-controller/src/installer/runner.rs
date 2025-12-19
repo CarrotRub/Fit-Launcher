@@ -1,13 +1,16 @@
 //! Installer runner that coordinates the installation workflow.
 
 use std::path::PathBuf;
-use std::process::{Child, Command};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 use tracing::{info, warn};
+use windows::Win32::System::Threading::GetProcessId;
+use windows::Win32::UI::Shell::{SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW};
+use windows::Win32::UI::WindowsAndMessaging::SW_SHOWMINNOACTIVE;
+use windows::core::PCWSTR;
 
 use crate::automation::{
     click_install, click_next, click_ok, completed_setup, kill_process, mute_process_audio,
@@ -15,6 +18,7 @@ use crate::automation::{
 };
 use crate::events::{EventMonitor, InstallEvent};
 use crate::ipc::protocol::{Event, InstallOptions, InstallPhase};
+use crate::utils::encode_utf16le_with_null;
 
 /// Orchestrates the complete installation workflow.
 pub struct InstallerRunner {
@@ -74,8 +78,7 @@ impl InstallerRunner {
             phase: InstallPhase::Preparing,
         })?;
 
-        let child = self.spawn_setup(&components)?;
-        let root_pid = child.id();
+        let root_pid = self.spawn_setup(&components)?;
         info!("Started setup.exe with PID: {}", root_pid);
 
         // Give the installer time to start
@@ -173,7 +176,7 @@ impl InstallerRunner {
     }
 
     /// Spawn the setup executable.
-    fn spawn_setup(&self, components_arg: &str) -> Result<Child> {
+    fn spawn_setup(&self, components_arg: &str) -> Result<u32> {
         // FitGirl repacks sometimes have a temp setup pattern
         let temp_path = self.setup_path.with_extension("temp_setup.exe");
 
@@ -181,25 +184,42 @@ impl InstallerRunner {
         std::fs::copy(&self.setup_path, &temp_path)
             .with_context(|| format!("Failed to copy setup to temp location: {:?}", temp_path))?;
 
-        // CRITICAL: Set working directory to where the .bin files are
-        // Inno Setup needs to find its data files (fg-01.bin, fg-02.bin, etc.)
+        let verb = encode_utf16le_with_null("runas");
+        let file = encode_utf16le_with_null(temp_path);
+        let params = encode_utf16le_with_null(components_arg);
         let working_dir = self
             .setup_path
             .parent()
             .context("Setup path has no parent directory")?;
 
-        let mut cmd = Command::new(&temp_path);
-        cmd.current_dir(working_dir);
+        // CRITICAL: Set working directory to where the .bin files are
+        // Inno Setup needs to find its data files (fg-01.bin, fg-02.bin, etc.)
+        let directory = encode_utf16le_with_null(working_dir);
 
-        if !components_arg.is_empty() {
-            cmd.arg(components_arg);
+        let params = if !components_arg.is_empty() {
+            PCWSTR(params.as_ptr())
+        } else {
+            PCWSTR::null()
+        };
+
+        let mut sei = SHELLEXECUTEINFOW {
+            cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+            fMask: SEE_MASK_NOCLOSEPROCESS,
+            lpVerb: PCWSTR(verb.as_ptr()),
+            lpFile: PCWSTR(file.as_ptr()),
+            lpParameters: params,
+            lpDirectory: PCWSTR(directory.as_ptr()),
+            nShow: SW_SHOWMINNOACTIVE.0,
+            ..Default::default()
+        };
+
+        unsafe {
+            ShellExecuteExW(&mut sei).with_context(|| "Failed to spawn setup.exe")?;
+
+            // SAFETY: ShellExecuteExW error muse be handled for valid handle
+            let child_proc = windows::core::Owned::new(sei.hProcess);
+            Ok(GetProcessId(*child_proc))
         }
-
-        let child = cmd
-            .spawn()
-            .with_context(|| format!("Failed to spawn setup: {:?}", temp_path))?;
-
-        Ok(child)
     }
 
     /// Run the UI automation sequence.
