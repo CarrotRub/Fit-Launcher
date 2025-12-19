@@ -17,6 +17,7 @@ use std::{
     time::Instant,
 };
 use tauri::{AppHandle, Emitter, Manager, State, Window};
+use tauri_specta::Event;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 // Define a shared boolean flag
@@ -28,7 +29,7 @@ pub struct Payload {
 }
 
 /// Payload for progressive image loading events
-#[derive(Clone, Serialize, Type)]
+#[derive(Clone, Serialize, Type, Event)]
 pub struct GameImageReadyPayload {
     pub game_link: String,
     pub image_url: String,

@@ -13,6 +13,7 @@ export function ScreenshotGallery(props: ScreenshotGalleryProps) {
     const [touchStartX, setTouchStartX] = createSignal(0);
     const [touchEndX, setTouchEndX] = createSignal(0);
     const [swipeDirection, setSwipeDirection] = createSignal<"left" | "right" | null>(null);
+    const [isHovered, setIsHovered] = createSignal(false);
 
     let cycleIntervalID: number;
 
@@ -30,7 +31,7 @@ export function ScreenshotGallery(props: ScreenshotGalleryProps) {
     });
 
     const startCycle = () => {
-        if (props.autoPlayInterval && imageCount() > 1) {
+        if (props.autoPlayInterval && imageCount() > 1 && !isHovered()) {
             clearInterval(cycleIntervalID);
             cycleIntervalID = setInterval(() => {
                 setCurrentIndex((i) => (i + 1) % imageCount());
@@ -109,10 +110,21 @@ export function ScreenshotGallery(props: ScreenshotGalleryProps) {
         <div class="flex flex-col">
             {/* Main Image */}
             <div
-                class="relative aspect-video rounded-xl overflow-hidden bg-secondary-20/30 shadow-lg"
+                class="relative aspect-video rounded-xl transition-all duration-200 overflow-hidden bg-secondary-20/30 shadow-lg"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
+                classList={{
+                    "ring ring-accent/60 scale-105 lg:scale-101": isHovered(),
+                }}
+                onMouseEnter={() => {
+                    setIsHovered(true);
+                    clearInterval(cycleIntervalID);
+                }}
+                onMouseLeave={() => {
+                    setIsHovered(false);
+                    startCycle();
+                }}
             >
                 {/* Loading state when no images yet */}
                 <Show when={imageCount() === 0}>
