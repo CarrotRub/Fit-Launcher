@@ -3,7 +3,7 @@
 use std::time::{Duration, Instant};
 
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
-use futures::{StreamExt, stream};
+use futures::StreamExt;
 use itertools::Itertools;
 use reqwest::Response;
 use scraper::Html;
@@ -13,7 +13,6 @@ use tracing::{error, info, warn};
 
 use crate::captcha::handle_ddos_guard_captcha;
 use crate::db::{self, hash_url};
-use crate::discovery::try_high_res_img;
 use crate::errors::ScrapingError;
 use crate::parser::{find_preview_image, parse_game_from_article};
 use crate::structs::Game;
@@ -251,14 +250,6 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
         }
 
         final_games.retain(|g| !g.href.is_empty());
-
-        for g in &mut final_games {
-            g.secondary_images = stream::iter(g.secondary_images.clone())
-                .map(|s| async move { try_high_res_img(&s).await })
-                .buffer_unordered(5)
-                .collect::<Vec<_>>()
-                .await;
-        }
     }
 
     write_games_to_db(&app, &final_games, "popular")?;
