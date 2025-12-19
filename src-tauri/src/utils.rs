@@ -1,5 +1,4 @@
 use anyhow::Result;
-use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::StreamExt;
 use lru::LruCache;
 use scraper::{Html, Selector};
@@ -20,6 +19,10 @@ use tauri::{AppHandle, Emitter, Manager, State, Window};
 use tauri_specta::Event;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
+
+use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
+use fit_launcher_scraping::db;
+
 // Define a shared boolean flag
 static STOP_FLAG: AtomicBool = AtomicBool::new(false);
 
@@ -186,7 +189,15 @@ pub async fn get_games_images(
     }
 
     // Fetch images with progressive emission
-    let image_srcs = scrape_and_emit_images(&app_handle, &game_link).await?;
+    let image_srcs = if let Ok(Some(game)) = db::open_connection(&app_handle).and_then(|conn| {
+        let url_hash = db::hash_url(&game_link);
+        db::get_game_by_hash(&conn, url_hash)
+    }) && !game.secondary_images.is_empty()
+    {
+        game.secondary_images
+    } else {
+        scrape_and_emit_images(&app_handle, &game_link).await?
+    };
 
     {
         let mut cache = image_cache.lock().await;
