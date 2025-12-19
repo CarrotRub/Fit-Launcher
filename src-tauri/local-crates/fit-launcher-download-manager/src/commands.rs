@@ -183,8 +183,8 @@ pub async fn dm_extract_and_install(
     }
 
     for paths in groups.values_mut() {
-        // Sort to ensure we extract from the first part (e.g., .part1.rar, not .part3.rar)
-        paths.sort();
+        // pick a random path is fine,`extract_archive` computes
+        // first archive name internally
         if let Some(first) = paths.first() {
             info!("Extracting {first:?} in-place...");
             extract_archive(first)?;
