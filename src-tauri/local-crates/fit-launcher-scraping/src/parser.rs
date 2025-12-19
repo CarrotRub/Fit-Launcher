@@ -258,7 +258,7 @@ pub fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
 pub fn extract_secondary_images(article: ElementRef<'_>) -> Vec<String> {
     let mut secondary = Vec::new();
 
-    for p in 3..=5 {
+    for p in 3..=6 {
         let sel = scraper::Selector::parse(&format!(".entry-content p:nth-of-type({p}) img[src]"))
             .unwrap();
         for img_el in article.select(&sel) {
