@@ -147,6 +147,8 @@ fn extract_description_and_dlcs(article: ElementRef<'_>) -> (String, String, Str
 }
 
 /// Parse an article element into a Game struct
+///
+/// Note: to have high-res secondary images, try [`crate::discovery::try_high_res_img`]
 pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
     let title = article
         .select(&scraper::Selector::parse(".entry-title").unwrap())
@@ -211,6 +213,8 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         })
         .unwrap_or_default();
 
+    let secondary_images = extract_secondary_images(article);
+
     Game {
         title,
         img,
@@ -222,7 +226,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         magnetlink,
         href,
         tag,
-        secondary_images: Vec::new(),
+        secondary_images,
         pastebin_link,
     }
 }
@@ -254,8 +258,10 @@ pub fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
     None
 }
 
-/// Extract secondary images from an article (for discovery games)
-pub fn extract_secondary_images(article: ElementRef<'_>) -> Vec<String> {
+/// Extract secondary images from an article
+///
+/// Needed for detail page
+fn extract_secondary_images(article: ElementRef<'_>) -> Vec<String> {
     let mut secondary = Vec::new();
 
     for p in 3..=6 {

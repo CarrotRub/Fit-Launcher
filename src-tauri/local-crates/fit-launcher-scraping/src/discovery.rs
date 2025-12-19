@@ -14,7 +14,7 @@ use tracing::info;
 
 use crate::db::{self, hash_url};
 use crate::errors::ScrapingError;
-use crate::parser::{extract_secondary_images, parse_game_from_article};
+use crate::parser::parse_game_from_article;
 use crate::scraping::fetch_page;
 use crate::structs::Game;
 
@@ -39,7 +39,7 @@ async fn head_ok(url: &str) -> bool {
         .unwrap_or(false)
 }
 
-async fn fix_img(src: &str) -> String {
+pub async fn try_high_res_img(src: &str) -> String {
     if !src.contains("jpg.240p.") {
         return src.into();
     }
@@ -55,14 +55,13 @@ async fn fix_img(src: &str) -> String {
 }
 
 fn parse_discovery_article(article: scraper::element_ref::ElementRef) -> Option<Game> {
-    let mut game = parse_game_from_article(article);
+    let game = parse_game_from_article(article);
 
     // Only include games with imageban images
     if !game.img.contains("imageban") {
         return None;
     }
 
-    game.secondary_images = extract_secondary_images(article);
     Some(game)
 }
 
@@ -137,7 +136,7 @@ pub async fn refresh_discovery_games(app: AppHandle) -> Result<(), ScrapingError
         // Upgrade secondary image quality
         for g in &mut fresh {
             g.secondary_images = stream::iter(g.secondary_images.clone())
-                .map(|s| async move { fix_img(&s).await })
+                .map(|s| async move { try_high_res_img(&s).await })
                 .buffer_unordered(5)
                 .collect::<Vec<_>>()
                 .await;

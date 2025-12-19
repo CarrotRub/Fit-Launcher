@@ -234,6 +234,7 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
                     if game.img.is_empty() {
                         game.img = find_preview_image(article).unwrap_or_default();
                     }
+
                     Ok::<Game, ScrapingError>(game)
                 }
             }))
