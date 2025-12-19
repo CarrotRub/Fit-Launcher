@@ -227,7 +227,7 @@ const DownloadGameUUIDPage = () => {
             <div class="text-center p-6 bg-popup-background rounded-lg border border-secondary-20 w-full max-w-sm">
               <Info class="w-10 h-10 text-accent mx-auto mb-3" />
               <h2 class="text-xl font-bold mb-2">Game Not Found</h2>
-              <p class="text-sm text-muted mb-4">We couldn"t find the game you"re looking for</p>
+              <p class="text-sm text-muted mb-4">The game you're looking for couldn't be found in our library</p>
               <button onClick={handleReturn} class="w-full px-4 py-2 bg-accent hover:bg-accent/90 text-background rounded-lg transition-colors text-sm">
                 Back to Library
               </button>
@@ -251,31 +251,55 @@ const DownloadGameUUIDPage = () => {
             </div>
 
             {/* Main Content */}
-            <div class="flex-1 overflow-y-auto custom-scrollbar bg-background">
+            <div class="flex-1 overflow-y-auto custom-scrollbar bg-popup-background">
               <div class="max-w-300 md:max-w-full md:px-24 mx-auto p-4 md:p-6">
                 <div class="h-4" />
 
                 {/* Top Section: Gallery + Sidebar */}
                 <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-6 lg:gap-8 mb-8">
                   {/* Gallery */}
-                  <div class="min-w-0">
+                  <div class="min-w-0 bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
                     <ScreenshotGallery images={additionalImages} autoPlayInterval={5000} />
                   </div>
 
                   {/* Sidebar */}
-                  <div class="flex flex-col gap-6">
+                  <div class="flex flex-col py-12 justify-between gap-6 bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
                     {/* Title */}
-                    <div>
-                      <h1 class="text-3xl font-bold leading-tight mb-2 text-text">
-                        {extractMainTitle(game()!.title)}
-                      </h1>
-                      <p class="text-sm text-muted line-clamp-3 leading-relaxed">
-                        {game()?.description?.slice(0, 150) || game()!.title}...
-                      </p>
+                    <div class="flex flex-col gap-6">
+                      <div>
+                        <h1 class="text-3xl font-bold leading-tight mb-2 text-text">
+                          {extractMainTitle(game()!.title)}
+                        </h1>
+                        <p class="text-sm text-muted line-clamp-3 leading-relaxed">
+                          {game()?.description?.slice(0, 150) || game()!.title}...
+                        </p>
+                      </div>
+                      {/* Tags */}
+                      <div class="flex flex-wrap gap-1.5">
+                        <For each={gameDetails().tags.split(",")}>
+                          {(tag) => (
+                            <span
+                              class="px-3 py-1.5 bg-secondary/10 text-text/90 rounded-lg text-xs font-medium uppercase tracking-wider border border-white/20 transition-all duration-300 hover:bg-accent/50 hover:border-accent/50 hover:scale-105"
+                            >
+                              {tag}
+                            </span>
+                          )}
+                        </For>
+                      </div>
+
+                      {/* Metadata */}
+                      <div class="flex flex-col lg:mt-6 gap-1 text-sm bg-popup-background/50 p-4 rounded-lg border border-secondary-20/50">
+                        <MetadataRow label="Download Size" value={gameDetails().repackSize} valueClass="text-accent font-mono" />
+                        <MetadataRow label="Orig Size" value={gameDetails().originalSize} valueClass="text-primary font-mono" />
+                        <MetadataRow label="Publisher" value={gameDetails().companies} />
+                        <MetadataRow label="Languages" value={gameDetails().language} last />
+                      </div>
                     </div>
 
+
+
                     {/* Download Actions */}
-                    <div class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-3 ">
                       <Button
                         icon={<Magnet class="w-4 h-4" />}
                         label="Torrent Download"
@@ -298,25 +322,6 @@ const DownloadGameUUIDPage = () => {
                         />
                       </div>
                     </div>
-
-                    {/* Metadata */}
-                    <div class="flex flex-col gap-1 text-sm bg-popup-background/50 p-4 rounded-lg border border-secondary-20/50">
-                      <MetadataRow label="Download Size" value={gameDetails().repackSize} valueClass="text-accent font-mono" />
-                      <MetadataRow label="Orig Size" value={gameDetails().originalSize} valueClass="text-primary font-mono" />
-                      <MetadataRow label="Publisher" value={gameDetails().companies} />
-                      <MetadataRow label="Languages" value={gameDetails().language} last />
-                    </div>
-
-                    {/* Tags */}
-                    <div class="flex flex-wrap gap-1.5">
-                      <For each={gameDetails().tags.split(",")}>
-                        {(tag) => (
-                          <span class="px-2 py-1 bg-secondary-20/30 text-secondary-foreground text-xs rounded hover:bg-secondary-20/50 cursor-default transition-colors">
-                            {tag.trim()}
-                          </span>
-                        )}
-                      </For>
-                    </div>
                   </div>
                 </div>
 
@@ -324,15 +329,44 @@ const DownloadGameUUIDPage = () => {
                 <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-8">
                   {/* Left: About */}
                   <div class="space-y-6 flex-row">
-                    <Show when={game()?.description}>
-                      <ContentSection title="About This Game">
-                        <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify whitespace-pre-wrap">
-                          {game()?.description}
-                        </div>
-                      </ContentSection>
-                    </Show>
+                    <div class="bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
+                      <div class="flex items-center gap-3 mb-6">
+                        <div class="w-1.5 h-6 bg-linear-to-b from-accent to-primary rounded-full"></div>
+                        <h2 class="text-xl font-bold bg-linear-to-r from-text to-accent bg-clip-text text-transparent">About This Game</h2>
+                      </div>
+                      <div class="text-sm text-muted/90 leading-relaxed space-y-4 text-justify whitespace-pre-wrap font-light">
+                        {game()?.description}
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col gap-6">
+                      <Show when={game()?.included_dlcs}>
+                        <SidebarCard title="Included DLCs">
+                          <div class="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-1">
+                            <For each={game()?.included_dlcs.split("\n").filter(d => d.trim() && d.trim() !== ":")}>
+                              {(dlc) => (
+                                <div class="text-xs text-muted/80 hover:text-text transition-colors py-1 border-b border-secondary-20/10 last:border-0">
+                                  {dlc.trim()}
+                                </div>
+                              )}
+                            </For>
+                          </div>
+                        </SidebarCard>
+                      </Show>
+
+                      <Show when={game()?.executable_info?.executable_path}>
+                        <SidebarCard title="Your Activity">
+                          <div class="grid grid-cols-1 gap-4">
+                            <StatItem icon={<Clock class="w-5 h-5" />} iconBg="bg-accent/20 text-accent" label="Time Played" value={formatPlayTime(game()!.executable_info.executable_play_time)} />
+                            <StatItem icon={<Play class="w-5 h-5" />} iconBg="bg-primary/20 text-primary" label="Last Session" value={formatDate(game()!.executable_info.executable_last_opened_date)} small />
+                          </div>
+                        </SidebarCard>
+                      </Show>
+                    </div>
+                  </div>
+                  <div>
                     <Show when={game()?.gameplay_features || game()?.features}>
-                      <div class="mb-6">
+                      <div class="mb-6 bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
                         <div class="flex gap-2 mb-4 border-b items-center transition-all duration-300  border-secondary-20/40 ">
                           <div class="w-1 h-4 bg-accent rounded-full"></div>
                           <Show when={game()?.gameplay_features} >
@@ -340,7 +374,7 @@ const DownloadGameUUIDPage = () => {
                               onClick={() => setInfoTab("game")}
                               class={`px-4 py-2 text-lg font-semibold transition-colors
                               ${infoTab() === "game"
-                                  ? "text-accent border-b-2 border-accent"
+                                  ? " font-bold bg-linear-to-r from-text to-accent bg-clip-text text-transparent"
                                   : "text-muted hover:text-text"
                                 }`}
                             >
@@ -352,12 +386,13 @@ const DownloadGameUUIDPage = () => {
                               onClick={() => setInfoTab("repack")}
                               class={`px-4 py-2 text-lg font-semibold transition-colors
                               ${infoTab() === "repack"
-                                  ? "text-accent border-b-2 border-accent"
+                                  ? " font-bold bg-linear-to-r from-text to-accent bg-clip-text text-transparent"
                                   : "text-muted hover:text-text"
                                 }`}
                             >
                               Repack Features
-                            </button></Show>
+                            </button>
+                          </Show>
 
                         </div>
 
@@ -392,34 +427,11 @@ const DownloadGameUUIDPage = () => {
                           </Switch>
                         </div>
                       </div>
+
                     </Show>
                   </div>
-
                   {/* Right: Extras */}
-                  <div class="flex flex-col gap-6">
-                    <Show when={game()?.included_dlcs}>
-                      <SidebarCard title="Included DLCs">
-                        <div class="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-1">
-                          <For each={game()?.included_dlcs.split("\n").filter(d => d.trim() && d.trim() !== ":")}>
-                            {(dlc) => (
-                              <div class="text-xs text-muted/80 hover:text-text transition-colors py-1 border-b border-secondary-20/10 last:border-0">
-                                {dlc.trim()}
-                              </div>
-                            )}
-                          </For>
-                        </div>
-                      </SidebarCard>
-                    </Show>
 
-                    <Show when={game()?.executable_info?.executable_path}>
-                      <SidebarCard title="Your Activity">
-                        <div class="grid grid-cols-1 gap-4">
-                          <StatItem icon={<Clock class="w-5 h-5" />} iconBg="bg-accent/20 text-accent" label="Time Played" value={formatPlayTime(game()!.executable_info.executable_play_time)} />
-                          <StatItem icon={<Play class="w-5 h-5" />} iconBg="bg-primary/20 text-primary" label="Last Session" value={formatDate(game()!.executable_info.executable_last_opened_date)} small />
-                        </div>
-                      </SidebarCard>
-                    </Show>
-                  </div>
                 </div>
               </div>
             </div>
@@ -441,15 +453,15 @@ const MetadataRow = (props: { label: string; value: string; valueClass?: string;
   </div>
 );
 
-const ContentSection = (props: { title: string; children: any }) => (
-  <div class="mb-6 last:mb-0">
-    <div class="flex items-center gap-3 mb-4 pb-3 border-b border-secondary-20/40">
-      <div class="w-1 h-4 bg-accent rounded-full"></div>
-      <h2 class="text-lg font-semibold tracking-wide text-text">{props.title}</h2>
-    </div>
-    {props.children}
-  </div>
-);
+// const ContentSection = (props: { title: string; children: any }) => (
+//   <div class="mb-6 last:mb-0">
+//     <div class="flex items-center gap-3 mb-4 pb-3 border-b border-secondary-20/40">
+//       <div class="w-1 h-4 bg-accent rounded-full"></div>
+//       <h2 class="text-lg font-semibold tracking-wide text-text">{props.title}</h2>
+//     </div>
+//     {props.children}
+//   </div>
+// );
 
 // const CollapsibleContent = (props: { title: string; expanded: boolean; onToggle: () => void; children: any }) => (
 //   <div class="mb-6 last:mb-0">
@@ -476,7 +488,7 @@ const ContentSection = (props: { title: string; children: any }) => (
 // );
 
 const SidebarCard = (props: { title: string; children: any }) => (
-  <div class="bg-secondary-20/10 border border-secondary-20/30 rounded-xl p-5 hover:border-secondary-20/50 transition-colors">
+  <div class="bg-secondary-20/10  shadow-lg border border-primary/20 rounded-xl p-5 hover:border-secondary-20/50 transition-colors">
     <div class="flex items-center gap-2 mb-4 pb-3 border-b border-secondary-20/30">
       <div class="w-2 h-2 rounded-full bg-accent"></div>
       <h3 class="text-sm font-semibold uppercase tracking-wider text-text">{props.title}</h3>
