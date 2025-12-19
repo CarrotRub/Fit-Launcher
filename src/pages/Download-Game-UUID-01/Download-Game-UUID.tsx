@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Bookmark,
   BookmarkCheck,
-  ChevronDown,
   Clock,
   Globe,
   Info,
@@ -58,7 +57,8 @@ const DownloadGameUUIDPage = () => {
   const [additionalImages, setAdditionalImages] = createSignal<string[]>([]);
   const [isToDownloadLater, setToDownloadLater] = createSignal(false);
   const [hasDebridCached, setHasDebridCached] = createSignal(false);
-  const [repackFeaturesExpanded, setRepackFeaturesExpanded] = createSignal(false);
+
+  const [infoTab, setInfoTab] = createSignal<"game" | "repack">("game");
 
   // Derived: game details extracted from description
   const gameDetails = createMemo(() => {
@@ -66,8 +66,8 @@ const DownloadGameUUIDPage = () => {
     if (!description) {
       return { tags: "N/A", companies: "N/A", language: "N/A", originalSize: "N/A", repackSize: "N/A" };
     }
-    const originalBytes = parseGameSize(description, 'original');
-    const repackBytes = parseGameSize(description, 'repack');
+    const originalBytes = parseGameSize(description, "original");
+    const repackBytes = parseGameSize(description, "repack");
     const tagsMatch = description.match(/Genres\/Tags:\s*([^\n]+)/i);
     return {
       tags: tagsMatch?.[1]?.trim() ?? "N/A",
@@ -159,8 +159,19 @@ const DownloadGameUUIDPage = () => {
         } catch { /* ignore */ }
       })());
     }
+    const hasGame = !!game()?.gameplay_features;
+    const hasRepack = !!game()?.features;
+    const tab = infoTab();
 
-    // Fire all tasks concurrently - don't await
+    if (tab === "game" && !hasGame && hasRepack) {
+      setInfoTab("repack");
+    }
+
+    if (tab === "repack" && !hasRepack && hasGame) {
+      setInfoTab("game");
+    }
+
+    // Fire all tasks concurrently - don"t await
     Promise.all(initTasks);
   });
 
@@ -216,7 +227,7 @@ const DownloadGameUUIDPage = () => {
             <div class="text-center p-6 bg-popup-background rounded-lg border border-secondary-20 w-full max-w-sm">
               <Info class="w-10 h-10 text-accent mx-auto mb-3" />
               <h2 class="text-xl font-bold mb-2">Game Not Found</h2>
-              <p class="text-sm text-muted mb-4">We couldn't find the game you're looking for</p>
+              <p class="text-sm text-muted mb-4">We couldn"t find the game you"re looking for</p>
               <button onClick={handleReturn} class="w-full px-4 py-2 bg-accent hover:bg-accent/90 text-background rounded-lg transition-colors text-sm">
                 Back to Library
               </button>
@@ -241,7 +252,7 @@ const DownloadGameUUIDPage = () => {
 
             {/* Main Content */}
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-background">
-              <div class="max-w-[1200px] md:max-w-full mx-auto p-4 md:p-6">
+              <div class="max-w-300 md:max-w-full md:px-24 mx-auto p-4 md:p-6">
                 <div class="h-4" />
 
                 {/* Top Section: Gallery + Sidebar */}
@@ -298,7 +309,7 @@ const DownloadGameUUIDPage = () => {
 
                     {/* Tags */}
                     <div class="flex flex-wrap gap-1.5">
-                      <For each={gameDetails().tags.split(',')}>
+                      <For each={gameDetails().tags.split(",")}>
                         {(tag) => (
                           <span class="px-2 py-1 bg-secondary-20/30 text-secondary-foreground text-xs rounded hover:bg-secondary-20/50 cursor-default transition-colors">
                             {tag.trim()}
@@ -312,7 +323,7 @@ const DownloadGameUUIDPage = () => {
                 {/* Lower Section */}
                 <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-8">
                   {/* Left: About */}
-                  <div class="space-y-6">
+                  <div class="space-y-6 flex-row">
                     <Show when={game()?.description}>
                       <ContentSection title="About This Game">
                         <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify whitespace-pre-wrap">
@@ -320,28 +331,67 @@ const DownloadGameUUIDPage = () => {
                         </div>
                       </ContentSection>
                     </Show>
-                    <Show when={game()?.gameplay_features}>
-                      <ContentSection title="Game Features">
-                        <div class="text-sm text-muted leading-7 space-y-4 font-light text-justify">
-                          <For each={game()?.gameplay_features.split('\n').filter(f => f.trim())}>
-                            {(feature) => (
-                              <div class="pl-2 border-l-2 border-accent/20"><p>{feature}</p></div>
-                            )}
-                          </For>
-                        </div>
-                      </ContentSection>
-                    </Show>
+                    <Show when={game()?.gameplay_features || game()?.features}>
+                      <div class="mb-6">
+                        <div class="flex gap-2 mb-4 border-b items-center transition-all duration-300  border-secondary-20/40 ">
+                          <div class="w-1 h-4 bg-accent rounded-full"></div>
+                          <Show when={game()?.gameplay_features} >
+                            <button
+                              onClick={() => setInfoTab("game")}
+                              class={`px-4 py-2 text-lg font-semibold transition-colors
+                              ${infoTab() === "game"
+                                  ? "text-accent border-b-2 border-accent"
+                                  : "text-muted hover:text-text"
+                                }`}
+                            >
+                              Game Features
+                            </button>
+                          </Show>
+                          <Show when={game()?.features}>
+                            <button
+                              onClick={() => setInfoTab("repack")}
+                              class={`px-4 py-2 text-lg font-semibold transition-colors
+                              ${infoTab() === "repack"
+                                  ? "text-accent border-b-2 border-accent"
+                                  : "text-muted hover:text-text"
+                                }`}
+                            >
+                              Repack Features
+                            </button></Show>
 
-                    <Show when={game()?.features}>
-                      <CollapsibleContent
-                        title="Repack Features"
-                        expanded={repackFeaturesExpanded()}
-                        onToggle={() => setRepackFeaturesExpanded(!repackFeaturesExpanded())}
-                      >
-                        <div class="text-sm text-muted leading-6 whitespace-pre-wrap font-mono bg-secondary-20/20 p-4 rounded border border-secondary-20/30">
-                          {game()?.features}
                         </div>
-                      </CollapsibleContent>
+
+                        {/* Content */}
+                        <div class="bg-secondary-20/10 border border-secondary-20/30 rounded-lg p-4 max-h-80 overflow-y-auto custom-scrollbar">
+                          <Switch>
+                            <Match when={infoTab() === "game"}>
+                              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-muted leading-6">
+                                <For
+                                  each={game()?.gameplay_features
+                                    ?.split("\n")
+                                    .map(f => f.trim())
+                                    .filter(Boolean)
+                                    .sort((a, b) => b.length - a.length)
+                                  }
+                                >
+                                  {(feature) => (
+                                    <div class="flex gap-2">
+                                      <span class="mt-1 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                                      <p>{feature}</p>
+                                    </div>
+                                  )}
+                                </For>
+                              </div>
+                            </Match>
+
+                            <Match when={infoTab() === "repack"}>
+                              <div class="text-xs font-mono text-muted whitespace-pre-wrap leading-6">
+                                {game()?.features}
+                              </div>
+                            </Match>
+                          </Switch>
+                        </div>
+                      </div>
                     </Show>
                   </div>
 
@@ -350,7 +400,7 @@ const DownloadGameUUIDPage = () => {
                     <Show when={game()?.included_dlcs}>
                       <SidebarCard title="Included DLCs">
                         <div class="max-h-64 overflow-y-auto custom-scrollbar pr-2 space-y-1">
-                          <For each={game()?.included_dlcs.split('\n').filter(d => d.trim() && d.trim() !== ":")}>
+                          <For each={game()?.included_dlcs.split("\n").filter(d => d.trim() && d.trim() !== ":")}>
                             {(dlc) => (
                               <div class="text-xs text-muted/80 hover:text-text transition-colors py-1 border-b border-secondary-20/10 last:border-0">
                                 {dlc.trim()}
@@ -383,52 +433,69 @@ const DownloadGameUUIDPage = () => {
 // --- Inline Sub-Components ---
 
 const MetadataRow = (props: { label: string; value: string; valueClass?: string; last?: boolean }) => (
-  <div class={`flex justify-between items-baseline py-1 ${props.last ? 'pt-2' : 'border-b border-secondary-20/30'}`}>
+  <div class={`flex justify-between items-baseline py-1 ${props.last ? "pt-2" : "border-b border-secondary-20/30"}`}>
     <span class="text-muted/70 text-xs font-bold uppercase tracking-wider">{props.label}</span>
-    <span class={`max-w-[200px] truncate ${props.valueClass || 'text-secondary-foreground'}`} title={props.value}>
+    <span class={`max-w-50 truncate ${props.valueClass || "text-secondary-foreground"}`} title={props.value}>
       {props.value}
     </span>
   </div>
 );
 
 const ContentSection = (props: { title: string; children: any }) => (
-  <div>
-    <div class="flex items-center gap-2 mb-2 pb-1 border-b border-secondary-20">
-      <h2 class="text-lg font-semibold uppercase tracking-wide text-text">{props.title}</h2>
+  <div class="mb-6 last:mb-0">
+    <div class="flex items-center gap-3 mb-4 pb-3 border-b border-secondary-20/40">
+      <div class="w-1 h-4 bg-accent rounded-full"></div>
+      <h2 class="text-lg font-semibold tracking-wide text-text">{props.title}</h2>
     </div>
     {props.children}
   </div>
 );
 
-const CollapsibleContent = (props: { title: string; expanded: boolean; onToggle: () => void; children: any }) => (
-  <div>
-    <button onClick={props.onToggle} class="flex items-center justify-between w-full gap-2 mb-2 pb-1 border-b border-secondary-20 cursor-pointer hover:opacity-80 transition-opacity">
-      <h2 class="text-lg font-semibold uppercase tracking-wide text-text">{props.title}</h2>
-      <ChevronDown class={`w-5 h-5 text-muted transition-transform duration-200 ${props.expanded ? 'rotate-180' : ''}`} />
-    </button>
-    <div class={`overflow-hidden transition-all duration-200 ${props.expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-      {props.children}
-    </div>
-  </div>
-);
+// const CollapsibleContent = (props: { title: string; expanded: boolean; onToggle: () => void; children: any }) => (
+//   <div class="mb-6 last:mb-0">
+//     <button
+//       onClick={props.onToggle}
+//       class="flex items-center justify-between w-full gap-3 mb-3 cursor-pointer group"
+//     >
+//       <div class="flex items-center gap-3">
+//         <div class={`w-1 h-4 transition-all duration-200 ${props.expanded ? "bg-accent" : "bg-secondary-20/40"}`}></div>
+//         <h2 class="text-lg font-semibold tracking-wide text-text group-hover:text-accent/80 transition-colors">
+//           {props.title}
+//         </h2>
+//       </div>
+//       <ChevronDown
+//         class={`w-5 h-5 text-muted transition-all duration-300 ${props.expanded ? "rotate-180 text-accent" : ""}`}
+//       />
+//     </button>
+//     <div class={`overflow-hidden transition-all duration-300 ${props.expanded ? "max-h-500 opacity-100" : "max-h-0 opacity-0"}`}>
+//       <div class="pt-2">
+//         {props.children}
+//       </div>
+//     </div>
+//   </div>
+// );
 
 const SidebarCard = (props: { title: string; children: any }) => (
-  <div class="bg-gradient-to-br from-secondary-20/30 to-background border border-secondary-20 rounded-lg p-4">
-    <div class="flex items-center gap-2 mb-3 pb-1 border-b border-secondary-20/50">
-      <h3 class="text-sm font-bold uppercase tracking-wider text-text">{props.title}</h3>
+  <div class="bg-secondary-20/10 border border-secondary-20/30 rounded-xl p-5 hover:border-secondary-20/50 transition-colors">
+    <div class="flex items-center gap-2 mb-4 pb-3 border-b border-secondary-20/30">
+      <div class="w-2 h-2 rounded-full bg-accent"></div>
+      <h3 class="text-sm font-semibold uppercase tracking-wider text-text">{props.title}</h3>
     </div>
     {props.children}
   </div>
 );
 
 const StatItem = (props: { icon: any; iconBg: string; label: string; value: string; small?: boolean }) => (
-  <div class="flex items-center gap-3">
-    <div class={`p-2 rounded ${props.iconBg}`}>{props.icon}</div>
-    <div>
-      <div class="text-xs text-muted uppercase font-bold">{props.label}</div>
-      <div class={`font-mono text-text ${props.small ? 'text-sm' : 'text-lg'}`}>{props.value}</div>
+  <div class="flex items-center gap-4 p-3 hover:bg-secondary-20/20 rounded-lg transition-colors">
+    <div class={`p-3 rounded-lg ${props.iconBg}`}>
+      {props.icon}
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="text-xs text-muted uppercase tracking-wide mb-1">{props.label}</div>
+      <div class={`font-medium text-text truncate ${props.small ? "text-sm" : "text-base"}`}>
+        {props.value}
+      </div>
     </div>
   </div>
 );
-
 export default DownloadGameUUIDPage;
