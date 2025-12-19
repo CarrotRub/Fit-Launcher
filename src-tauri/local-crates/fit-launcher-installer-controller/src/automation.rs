@@ -11,6 +11,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows_result::BOOL;
 
+use crate::utils::encode_utf16le_with_null;
+
 const RETRY_TIMEOUT_MS: u64 = 5000;
 const RETRY_INTERVAL_MS: u64 = 50;
 const SETUP_WINDOW_PREFIX: &str = "Setup -";
@@ -212,7 +214,7 @@ pub fn set_install_path(path: &str) {
     };
 
     unsafe {
-        let utf16: Vec<u16> = path.encode_utf16().chain(Some(0)).collect();
+        let utf16: Vec<u16> = encode_utf16le_with_null(path);
         let _ = SendMessageW(
             hwnd,
             WM_SETTEXT,
