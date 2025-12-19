@@ -7,7 +7,7 @@ use windows::Win32::Foundation::{CloseHandle, FALSE, HWND, LPARAM, TRUE, WPARAM}
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_TERMINATE, TerminateProcess};
 use windows::Win32::UI::WindowsAndMessaging::{
     BM_CLICK, EnumChildWindows, EnumWindows, GetClassNameW, GetWindowTextW, PostMessageW,
-    SendMessageW, WM_SETTEXT,
+    SC_MINIMIZE, SendMessageW, WM_SETTEXT, WM_SYSCOMMAND,
 };
 use windows_result::BOOL;
 
@@ -156,6 +156,25 @@ fn click(label: &str, window_prefix: &str) -> bool {
 
 pub fn click_ok() {
     click("OK", LANGUAGE_WINDOW);
+}
+
+pub fn minimize_setup() {
+    let Some(hwnd) = retry_until(RETRY_TIMEOUT_MS, RETRY_INTERVAL_MS, || {
+        window_with_title(SETUP_WINDOW_PREFIX)
+    }) else {
+        error!("failed to find window hwnd of setup");
+        return;
+    };
+    unsafe {
+        if let Err(e) = PostMessageW(
+            Some(hwnd),
+            WM_SYSCOMMAND,
+            WPARAM(SC_MINIMIZE as _),
+            LPARAM(0),
+        ) {
+            error!("PostMessageW failed with {e}");
+        }
+    }
 }
 
 pub fn click_next() {

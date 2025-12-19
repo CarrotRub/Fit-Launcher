@@ -13,8 +13,8 @@ use windows::Win32::UI::WindowsAndMessaging::SW_SHOWMINNOACTIVE;
 use windows::core::PCWSTR;
 
 use crate::automation::{
-    click_install, click_next, click_ok, completed_setup, kill_process, mute_process_audio,
-    needs_ram_limit, set_install_path, toggle_ram_limit,
+    click_install, click_next, click_ok, completed_setup, kill_process, minimize_setup,
+    mute_process_audio, needs_ram_limit, set_install_path, toggle_ram_limit,
 };
 use crate::events::{EventMonitor, InstallEvent};
 use crate::ipc::protocol::{Event, InstallOptions, InstallPhase};
@@ -226,6 +226,8 @@ impl InstallerRunner {
     fn run_automation(&self) -> Result<()> {
         click_ok();
         std::thread::sleep(Duration::from_millis(1000));
+
+        minimize_setup();
 
         let system_has_low_ram = needs_ram_limit();
         let user_wants_limit = self.options.two_gb_limit;
