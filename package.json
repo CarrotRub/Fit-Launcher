@@ -32,6 +32,8 @@
     "solid-notifications": "^1.2.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
     "@tailwindcss/cli": "^4.1.10",
     "@tauri-apps/cli": "^2.1.0",
     "@tauri-apps/plugin-dialog": "2.4.2",
