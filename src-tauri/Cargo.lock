@@ -1510,6 +1510,7 @@ dependencies = [
  "fit-launcher-scraping",
  "fit-launcher-torrent",
  "fit-launcher-ui-automation",
+ "futures",
  "image",
  "lru",
  "once_cell",
