@@ -23,7 +23,7 @@ use crate::{
 };
 
 static PER_HOST_SEMAPHORE: LazyLock<SkipMap<String, Semaphore>> = LazyLock::new(SkipMap::new);
-static PER_URL_RWLOCK: LazyLock<SkipMap<String, RwLock<()>>> = LazyLock::new(SkipMap::new);
+static PER_URL_RWLOCK: LazyLock<SkipMap<String, Arc<RwLock<()>>>> = LazyLock::new(SkipMap::new);
 
 #[tauri::command]
 #[specta]
@@ -74,8 +74,9 @@ pub async fn cached_download_image(
     manager: tauri::State<'_, Arc<CacheManager>>,
     image_url: String,
 ) -> Result<String, CacheError> {
-    let entry = PER_URL_RWLOCK.get_or_insert_with(image_url.clone(), || RwLock::const_new(()));
-    let lock = entry.value();
+    let entry =
+        PER_URL_RWLOCK.get_or_insert_with(image_url.clone(), || Arc::new(RwLock::const_new(())));
+    let lock = entry.value().clone();
 
     // Check cache first
     let read_guard = lock.read().await;
@@ -85,7 +86,7 @@ pub async fn cached_download_image(
     }
     drop(read_guard);
 
-    let _write_guard = lock.write().await;
+    let write_guard = lock.write().await;
 
     let client_guard = CUSTOM_DNS_CLIENT.read().await;
     let client = &*client_guard;
@@ -135,8 +136,8 @@ pub async fn cached_download_image(
                 let mime_clone = mime.clone();
 
                 tauri::async_runtime::spawn(async move {
-                    cache_image_async(&manager, image_url_clone, mime_clone, bytes, file_size)
-                        .await;
+                    cache_image_async(manager, image_url_clone, mime_clone, bytes, file_size).await;
+                    let _ = write_guard;
                 });
 
                 return Ok(data_uri);
@@ -157,7 +158,7 @@ pub async fn cached_download_image(
 }
 
 async fn cache_image_async(
-    manager: &CacheManager,
+    manager: Arc<CacheManager>,
     image_url: String,
     mime: String,
     bytes: Arc<Vec<u8>>,
@@ -178,7 +179,10 @@ async fn cache_image_async(
 
     // Only claim once,
     // it will remove at least `exceed` bytes on each call
-    claim_space(manager, exceed).await;
+    let manager_ = manager.clone();
+    tokio::task::spawn(async move {
+        claim_space(&manager_, exceed).await;
+    });
 
     let mimeext = mime2ext::mime2ext(&mime).unwrap_or("png");
     let img_path = image_path(&image_url).with_extension(mimeext);
