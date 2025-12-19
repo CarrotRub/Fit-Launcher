@@ -210,9 +210,11 @@ impl InstallerRunner {
         let system_has_low_ram = needs_ram_limit();
         let user_wants_limit = self.options.two_gb_limit;
 
-        if system_has_low_ram != user_wants_limit && (system_has_low_ram || user_wants_limit) {
-            toggle_ram_limit();
-            std::thread::sleep(Duration::from_millis(200));
+        if system_has_low_ram != user_wants_limit {
+            if system_has_low_ram || user_wants_limit {
+                toggle_ram_limit();
+                std::thread::sleep(Duration::from_millis(200));
+            }
         }
 
         click_next();
