@@ -16,7 +16,7 @@ use tokio::{
     io::AsyncWriteExt as _,
     sync::{RwLock, Semaphore},
 };
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     CacheManager, error::CacheError, image_path, initialize_used_cache_size, store::Command,
@@ -81,7 +81,7 @@ pub async fn cached_download_image(
     // Check cache first
     let read_guard = lock.read().await;
     if let Ok(data_uri) = data_uri_from_cache(&manager, &image_url).await {
-        debug!("cache hit: {image_url}");
+        trace!("cache hit: {image_url}");
         return Ok(data_uri);
     }
     drop(read_guard);
