@@ -62,7 +62,7 @@ jobs:
         run: |
           cd src-tauri
           cargo build --release -p fit-launcher-automation
-          Move-Item -Force "target/release/fit-launcher-automation.exe" "binaries/fit-launcher-automation-x86_64-pc-windows-msvc.exe"
+          Move-Item -Force "target/release/FitLauncherService.exe" "binaries/FitLauncherService-x86_64-pc-windows-msvc.exe"
 
       - name: install frontend dependencies
         run: npm install # change this to npm or pnpm depending on which one you use.
