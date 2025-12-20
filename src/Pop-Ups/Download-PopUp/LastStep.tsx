@@ -267,6 +267,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             const path = settings.data.general.download_dir;
 
             if (folderExclusion()) {
+                console.log("performing folder exclusion...");
                 try {
                     const exclusionAction: ExclusionAction = { Add: path };
                     const res = await commands.folderExclusion(exclusionAction);
@@ -300,6 +301,8 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 } else {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
+
+                    console.log("adding DDL aria2 task...");
 
                     const result = await DM.addDdl(selectedLinks, path, game);
                     if (result.status === "error") {
