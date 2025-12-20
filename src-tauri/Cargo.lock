@@ -1568,6 +1568,7 @@ name = "fit-launcher-automation"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "directories",
  "serde",
  "serde_json",
  "sysinfo",
@@ -1575,6 +1576,7 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "tracing",
+ "tracing-appender",
  "tracing-subscriber",
  "windows 0.62.2",
  "windows-result 0.4.1",
