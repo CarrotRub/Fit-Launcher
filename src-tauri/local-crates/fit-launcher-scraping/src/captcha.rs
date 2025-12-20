@@ -4,7 +4,7 @@ use fit_launcher_config::client::{
     cookies::{Cookie, Cookies},
     dns::{CUSTOM_DNS_CLIENT, build_dns_client},
 };
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use tauri::{Listener, Url, WindowEvent};
 use time::format_description::well_known::Rfc2822;
 use tokio::sync::Mutex;
@@ -21,7 +21,7 @@ pub async fn handle_ddos_guard_captcha(
     app: &tauri::AppHandle,
     url: &str,
 ) -> Result<(), ScrapingError> {
-    static COOKIES_UPDATED: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+    static COOKIES_UPDATED: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
 
     let mut cookies_updated = COOKIES_UPDATED.lock().await;
     if *cookies_updated {

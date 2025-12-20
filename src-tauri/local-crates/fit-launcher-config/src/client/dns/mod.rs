@@ -1,6 +1,5 @@
 use directories::BaseDirs;
 
-use once_cell::sync::Lazy;
 use reqwest::Client;
 use reqwest::ClientBuilder;
 use reqwest::header::COOKIE;
@@ -9,6 +8,7 @@ use specta::Type;
 use std::fs;
 use std::io::Write;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use tauri::http::HeaderMap;
 use tauri::http::HeaderValue;
 use tokio::sync::RwLock;
@@ -127,7 +127,8 @@ pub fn build_dns_client() -> Client {
 }
 
 // Only ONE custom_dns_client, protocol decided by the DnsConfig file found in the
-pub static CUSTOM_DNS_CLIENT: Lazy<RwLock<Client>> = Lazy::new(|| RwLock::new(build_dns_client()));
+pub static CUSTOM_DNS_CLIENT: LazyLock<RwLock<Client>> =
+    LazyLock::new(|| RwLock::new(build_dns_client()));
 
 mod resolver;
 pub use resolver::HickoryResolverWithProtocol;

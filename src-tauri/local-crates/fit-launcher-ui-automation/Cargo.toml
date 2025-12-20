@@ -20,8 +20,6 @@ specta = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
-parking_lot = { workspace = true }
-once_cell = { workspace = true }
 tokio-util = { workspace = true }
 uuid = { workspace = true }
 unrar = "0.5.8"

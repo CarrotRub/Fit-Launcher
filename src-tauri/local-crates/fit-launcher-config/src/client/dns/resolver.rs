@@ -11,7 +11,6 @@ use hickory_resolver::{
     TokioResolver, name_server::TokioConnectionProvider, proto::xfer::Protocol,
     system_conf::read_system_conf,
 };
-use once_cell::sync::Lazy;
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use tracing::{debug, info, warn};
 
@@ -24,7 +23,7 @@ use std::io;
 const CUSTOM_DNS_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// Persists across the session to avoid repeated failures when custom DNS is blocked.
-static USE_SYSTEM_DNS_FALLBACK: Lazy<AtomicBool> = Lazy::new(|| AtomicBool::new(false));
+static USE_SYSTEM_DNS_FALLBACK: AtomicBool = AtomicBool::new(false);
 
 /// DNS resolver with automatic system fallback.
 ///
