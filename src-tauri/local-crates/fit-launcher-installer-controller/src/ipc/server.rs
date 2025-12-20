@@ -38,6 +38,7 @@ use windows::core::PCWSTR;
 use crate::defender::{ExclusionAction, ExclusionCleanupPolicy, folder_exclusion};
 use crate::installer::InstallerRunner;
 use crate::ipc::protocol::{Command, Event, decode_message, encode_message};
+use crate::utils::encode_utf16le_with_null;
 
 const BUFFER_SIZE: u32 = 65536;
 
@@ -59,7 +60,7 @@ impl IpcServer {
     /// - SYSTEM / service accounts  
     /// - Processes running under different user sessions
     pub fn new(pipe_name: &str) -> Result<Self> {
-        let pipe_wide: Vec<u16> = pipe_name.encode_utf16().chain(std::iter::once(0)).collect();
+        let pipe_wide: Vec<u16> = encode_utf16le_with_null(pipe_name);
 
         // Get current process token to extract user SID
         let mut token_handle = HANDLE::default();

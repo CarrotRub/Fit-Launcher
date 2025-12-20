@@ -24,6 +24,7 @@ pub fn start_executable(path: String) {
 
     #[cfg(target_os = "windows")]
     {
+        use crate::encode_utf16le_with_null;
         use windows::Win32::UI::Shell::ShellExecuteW;
         use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
         use windows::core::PCWSTR;
@@ -64,13 +65,6 @@ pub fn start_executable(path: String) {
     // by allowing custom commands, `protonrun` e.g. should be supported automatically
     // Add usage of wine + check beforehand with Flatpak if steamos
     {}
-}
-
-#[cfg(windows)]
-fn encode_utf16le_with_null(s: impl AsRef<std::ffi::OsStr>) -> Vec<u16> {
-    use std::os::windows::ffi::OsStrExt;
-
-    s.as_ref().encode_wide().chain(std::iter::once(0)).collect()
 }
 
 #[tauri::command]
