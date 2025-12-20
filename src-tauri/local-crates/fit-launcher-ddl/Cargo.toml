@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 tauri = { workspace = true }
+tokio = { workspace = true }
 specta = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true }
