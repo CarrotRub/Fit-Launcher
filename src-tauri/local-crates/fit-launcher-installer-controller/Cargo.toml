@@ -38,9 +38,6 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
-# Async
-tokio = { workspace = true }
-
 # System info
 sysinfo = { workspace = true }
 

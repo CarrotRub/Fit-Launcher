@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 aria2-ws = { workspace = true }
 fit-launcher-torrent = { workspace = true }
-fit-launcher-config = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -16,7 +15,6 @@ tokio = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing = { workspace = true }
 fit-launcher-ddl = { path = "../fit-launcher-ddl" }
-sha2 = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 anyhow = { workspace = true }
