@@ -250,7 +250,7 @@ impl ControllerClient {
             if re.is_err() {
                 use windows::Win32::Foundation::{
                     ERROR_INVALID_USER_BUFFER, ERROR_IO_PENDING, ERROR_NOT_ENOUGH_MEMORY,
-                    ERROR_NOT_ENOUGH_QUOTA, ERROR_OPERATION_ABORTED,
+                    ERROR_NOT_ENOUGH_QUOTA, ERROR_OPERATION_ABORTED, ERROR_PIPE_NOT_CONNECTED,
                 };
 
                 let err_code = GetLastError();
@@ -260,9 +260,10 @@ impl ControllerClient {
                     ERROR_IO_PENDING => "pending operation",
                     ERROR_OPERATION_ABORTED => "operation was cancelled",
                     ERROR_NOT_ENOUGH_QUOTA => "caller buffer could not be page-locked",
+                    ERROR_PIPE_NOT_CONNECTED => "named pipe not connected",
                     _ => "unknown error",
                 };
-                return re.context(context);
+                return re.context(format!("{err_code:?}: {context}"));
             }
         }
         // FlushFileBuffers is unnecessary for named pipes and can cause deadlocks
