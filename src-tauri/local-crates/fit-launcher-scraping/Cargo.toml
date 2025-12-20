@@ -8,11 +8,9 @@ tauri = { workspace = true, features = ["unstable"] }
 specta = { workspace = true }
 fit-launcher-config = { workspace = true }
 futures = { workspace = true }
-directories = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true, features = ["cookies"] }
-anyhow = { workspace = true }
 scraper = { workspace = true, features = ["atomic"] }
 regex = { workspace = true }
 serde = { workspace = true }

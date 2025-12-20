@@ -10,11 +10,9 @@ specta = { workspace = true }
 regex = { workspace = true }
 once_cell = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
-thiserror = { workspace = true }
 reqwest = { workspace = true }
 scraper = { workspace = true }
 fit-launcher-config = { workspace = true }
