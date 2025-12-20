@@ -239,9 +239,12 @@ impl InstallerRunner {
         click_next();
         set_install_path(&self.install_path.to_string_lossy());
         click_next();
-        click_install();
 
-        minimize_setup();
+        click_install();
+        std::thread::spawn(|| {
+            std::thread::sleep(Duration::from_millis(2000));
+            minimize_setup();
+        });
 
         std::thread::sleep(Duration::from_millis(500));
 
