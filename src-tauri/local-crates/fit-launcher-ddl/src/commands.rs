@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     FUCKINGFAST_SIZE_REGEX,
     functions::{get_all_download_links, parse_size_to_bytes},
@@ -5,6 +7,7 @@ use crate::{
 };
 use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream::FuturesUnordered};
+use reqwest::{Method, Request};
 use specta::specta;
 use tracing::{error, info, warn};
 
@@ -15,16 +18,36 @@ pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<Dire
 
     for link in fuckingfast_links {
         let fut = async move {
-            let text = CUSTOM_DNS_CLIENT
-                .read()
-                .await
-                .get(&link)
-                .send()
-                .await?
-                .text()
-                .await?;
-            let filename = link.split_once('#').unwrap_or_default().1.to_string();
-            Ok::<_, reqwest::Error>((text, filename))
+            let request = Request::new(
+                Method::GET,
+                link.parse().map_err(|_| anyhow::anyhow!("invalid URL"))?,
+            );
+            let mut i = 0;
+            loop {
+                i += 1;
+
+                let sleep = Duration::from_millis((500 * 2_u64.pow(i)).min(4000));
+                match CUSTOM_DNS_CLIENT
+                    .read()
+                    .await
+                    .execute(request.try_clone().unwrap())
+                    .await
+                {
+                    Err(e) if i < 5 => {
+                        error!("retry: {e}, sleep...");
+                        tokio::time::sleep(sleep).await;
+                    }
+                    Err(e) => {
+                        break Result::<_, anyhow::Error>::Err(e.into());
+                    }
+                    Ok(resp) => {
+                        if let Ok(text) = resp.text().await {
+                            let filename = link.split_once('#').unwrap_or_default().1.to_string();
+                            break Ok((text, filename));
+                        }
+                    }
+                }
+            }
         };
         futures.push(fut);
     }
