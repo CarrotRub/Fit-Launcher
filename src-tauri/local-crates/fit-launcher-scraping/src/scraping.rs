@@ -235,6 +235,8 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
                         game.img = find_preview_image(article).unwrap_or_default();
                     }
 
+                    game.secondary_images.clear();
+
                     Ok::<Game, ScrapingError>(game)
                 }
             }))
@@ -339,7 +341,11 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
                     .next()
                     .ok_or(ScrapingError::ArticleNotFound(link.clone()))?;
 
-                Ok::<Game, ScrapingError>(parse_game_from_article(article))
+                let game = Game {
+                    secondary_images: vec![],
+                    ..parse_game_from_article(article)
+                };
+                Ok::<Game, ScrapingError>(game)
             }
         }))
         .buffer_unordered(10);
