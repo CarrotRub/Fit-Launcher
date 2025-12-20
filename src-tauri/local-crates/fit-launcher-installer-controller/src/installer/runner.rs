@@ -227,8 +227,6 @@ impl InstallerRunner {
         click_ok();
         std::thread::sleep(Duration::from_millis(1000));
 
-        minimize_setup();
-
         let system_has_low_ram = needs_ram_limit();
         let user_wants_limit = self.options.two_gb_limit;
 
@@ -242,6 +240,9 @@ impl InstallerRunner {
         set_install_path(&self.install_path.to_string_lossy());
         click_next();
         click_install();
+
+        minimize_setup();
+
         std::thread::sleep(Duration::from_millis(500));
 
         Ok(())
