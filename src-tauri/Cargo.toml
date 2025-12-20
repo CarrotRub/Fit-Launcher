@@ -55,7 +55,6 @@ serde_json = { workspace = true }
 
 # Utilities
 directories = { workspace = true }
-once_cell = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 
@@ -94,13 +93,15 @@ fit-launcher-torrent = { path = "./local-crates/fit-launcher-torrent" }
 fit-launcher-ui-automation = { path = "./local-crates/fit-launcher-ui-automation" }
 fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-scraping = { path = "./local-crates/fit-launcher-scraping" }
-fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
-fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 fit-launcher-download-manager = { path = "./local-crates/fit-launcher-download-manager" }
-fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
 fit-launcher-cache = { workspace = true }
 tauri-plugin-notification = "2.3.3"
+
+# Used for bindgen
+fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
+fit-launcher-ddl = { path = "./local-crates/fit-launcher-ddl" }
+fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
 
 # Workspace configuration
 [workspace]

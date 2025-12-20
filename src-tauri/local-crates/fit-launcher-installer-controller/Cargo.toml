@@ -35,11 +35,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Logging
+directories = { workspace = true }
 tracing = { workspace = true }
+tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
-
-# Async
-tokio = { workspace = true }
 
 # System info
 sysinfo = { workspace = true }

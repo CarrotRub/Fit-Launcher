@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 #[cfg(windows)]
-use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
+use crate::encode_utf16le_with_null;
+#[cfg(windows)]
+use windows::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, INVALID_HANDLE_VALUE};
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_SHARE_NONE,
@@ -172,13 +174,9 @@ impl ControllerClient {
     pub fn spawn_and_connect(controller_path: &PathBuf, pipe_name: &str) -> Result<Self> {
         info!("Spawning elevated controller: {:?}", controller_path);
 
-        let verb: Vec<u16> = "runas\0".encode_utf16().collect();
-        let file: Vec<u16> = controller_path
-            .to_string_lossy()
-            .encode_utf16()
-            .chain(std::iter::once(0))
-            .collect();
-        let params: Vec<u16> = pipe_name.encode_utf16().chain(std::iter::once(0)).collect();
+        let verb = encode_utf16le_with_null("runas");
+        let file = encode_utf16le_with_null(controller_path);
+        let params = encode_utf16le_with_null(pipe_name);
 
         let mut sei = SHELLEXECUTEINFOW {
             cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
@@ -204,7 +202,9 @@ impl ControllerClient {
     }
 
     fn connect_with_timeout(pipe_name: &str, timeout_ms: u32) -> Result<Self> {
-        let pipe_wide: Vec<u16> = pipe_name.encode_utf16().chain(std::iter::once(0)).collect();
+        use crate::encode_utf16le_with_null;
+
+        let pipe_wide = encode_utf16le_with_null(pipe_name);
 
         unsafe {
             if !WaitNamedPipeW(PCWSTR(pipe_wide.as_ptr()), timeout_ms).as_bool() {
@@ -246,8 +246,25 @@ impl ControllerClient {
         let mut written = 0u32;
 
         unsafe {
-            WriteFile(self.pipe_handle, Some(&data), Some(&mut written), None)
-                .context("Failed to write to pipe")?;
+            let re = WriteFile(self.pipe_handle, Some(&data), Some(&mut written), None);
+            if re.is_err() {
+                use windows::Win32::Foundation::{
+                    ERROR_INVALID_USER_BUFFER, ERROR_IO_PENDING, ERROR_NOT_ENOUGH_MEMORY,
+                    ERROR_NOT_ENOUGH_QUOTA, ERROR_OPERATION_ABORTED, ERROR_PIPE_NOT_CONNECTED,
+                };
+
+                let err_code = GetLastError();
+                let context = match err_code {
+                    ERROR_INVALID_USER_BUFFER => "too many async op",
+                    ERROR_NOT_ENOUGH_MEMORY => "not enough memory",
+                    ERROR_IO_PENDING => "pending operation",
+                    ERROR_OPERATION_ABORTED => "operation was cancelled",
+                    ERROR_NOT_ENOUGH_QUOTA => "caller buffer could not be page-locked",
+                    ERROR_PIPE_NOT_CONNECTED => "named pipe not connected",
+                    _ => "unknown error",
+                };
+                return re.context(format!("{err_code:?}: {context}"));
+            }
         }
         // FlushFileBuffers is unnecessary for named pipes and can cause deadlocks
 

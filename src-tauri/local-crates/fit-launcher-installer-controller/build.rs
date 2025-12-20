@@ -3,6 +3,8 @@
 //! Sets the Windows application manifest to require administrator privileges.
 
 fn main() {
+    // Note: Tauri does not support cross-platform building,
+    // this condition is for build host but acceptable
     #[cfg(windows)]
     {
         let mut res = tauri_winres::WindowsResource::new();

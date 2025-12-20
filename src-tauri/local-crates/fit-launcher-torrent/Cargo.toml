@@ -4,27 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tauri-plugin-shell = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 specta = { workspace = true }
 aria2-ws = { workspace = true }
-http = { workspace = true }
-reqwest = { workspace = true }
 parking_lot = { workspace = true }
 tracing = { workspace = true }
 serde_with = { workspace = true }
 tauri = { workspace = true }
 tokio = { workspace = true }
-tracing-subscriber = { workspace = true }
-tracing-appender = { workspace = true }
 directories = { workspace = true }
 fit-launcher-ui-automation = { workspace = true }
-fit-launcher-config = { workspace = true }
 fit-launcher-scraping = { path = "../fit-launcher-scraping" }
 fitgirl-decrypt = { workspace = true }
-once_cell = { workspace = true }
-rand = { workspace = true }
 
 librqbit-core = { workspace = true }
 librqbit-buffers = { workspace = true }
@@ -33,7 +25,6 @@ serde_json = { workspace = true }
 
 librqbit = { version = "8.1.1", features = ["http-api-client"] }
 strum = { version = "0.27.2", features = ["derive"] }
-hex = "0.4.3"
 
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = [

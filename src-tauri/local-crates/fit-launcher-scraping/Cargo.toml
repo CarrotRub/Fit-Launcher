@@ -8,18 +8,15 @@ tauri = { workspace = true, features = ["unstable"] }
 specta = { workspace = true }
 fit-launcher-config = { workspace = true }
 futures = { workspace = true }
-directories = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true, features = ["cookies"] }
-anyhow = { workspace = true }
 scraper = { workspace = true, features = ["atomic"] }
 regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["chrono"] }
 tracing = { workspace = true }
-once_cell = { workspace = true }
 ahash = { workspace = true }
 
 time = { version = "0.3.41", features = ["formatting"] }
