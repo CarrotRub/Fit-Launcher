@@ -10,7 +10,7 @@ use tracing::{debug, info};
 #[cfg(windows)]
 use crate::encode_utf16le_with_null;
 #[cfg(windows)]
-use windows::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
+use windows::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, INVALID_HANDLE_VALUE};
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_SHARE_NONE,
@@ -246,8 +246,24 @@ impl ControllerClient {
         let mut written = 0u32;
 
         unsafe {
-            WriteFile(self.pipe_handle, Some(&data), Some(&mut written), None)
-                .context("Failed to write to pipe")?;
+            let re = WriteFile(self.pipe_handle, Some(&data), Some(&mut written), None);
+            if re.is_err() {
+                use windows::Win32::Foundation::{
+                    ERROR_INVALID_USER_BUFFER, ERROR_IO_PENDING, ERROR_NOT_ENOUGH_MEMORY,
+                    ERROR_NOT_ENOUGH_QUOTA, ERROR_OPERATION_ABORTED,
+                };
+
+                let err_code = GetLastError();
+                let context = match err_code {
+                    ERROR_INVALID_USER_BUFFER => "too many async op",
+                    ERROR_NOT_ENOUGH_MEMORY => "not enough memory",
+                    ERROR_IO_PENDING => "pending operation",
+                    ERROR_OPERATION_ABORTED => "operation was cancelled",
+                    ERROR_NOT_ENOUGH_QUOTA => "caller buffer could not be page-locked",
+                    _ => "unknown error",
+                };
+                return re.context(context);
+            }
         }
         // FlushFileBuffers is unnecessary for named pipes and can cause deadlocks
 
