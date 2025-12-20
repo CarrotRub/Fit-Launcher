@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use once_cell::sync::Lazy;
 use specta::Type;
+use std::sync::LazyLock;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -56,7 +56,7 @@ unsafe impl Send for ManagerState {}
 // Singleton Manager
 // ─────────────────────────────────────────────────────────────────────────────
 
-static MANAGER: Lazy<ControllerManager> = Lazy::new(|| ControllerManager {
+static MANAGER: LazyLock<ControllerManager> = LazyLock::new(|| ControllerManager {
     state: Mutex::new(ManagerState::default()),
 });
 

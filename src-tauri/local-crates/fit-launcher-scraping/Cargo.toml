@@ -17,7 +17,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["chrono"] }
 tracing = { workspace = true }
-once_cell = { workspace = true }
 ahash = { workspace = true }
 
 time = { version = "0.3.41", features = ["formatting"] }

@@ -1,10 +1,8 @@
-use once_cell::sync::OnceCell;
-use std::fs;
+use std::{fs, sync::OnceLock};
 use tracing::info;
 use tracing_subscriber::{EnvFilter, prelude::*};
 
-static LOG_GUARD: once_cell::sync::OnceCell<tracing_appender::non_blocking::WorkerGuard> =
-    OnceCell::new();
+static LOG_GUARD: OnceLock<tracing_appender::non_blocking::WorkerGuard> = OnceLock::new();
 
 pub fn init_logging() {
     let logs_dir = directories::BaseDirs::new()
