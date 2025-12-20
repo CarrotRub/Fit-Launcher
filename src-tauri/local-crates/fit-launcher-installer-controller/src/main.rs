@@ -48,11 +48,21 @@ use tracing_subscriber::FmtSubscriber;
 use crate::ipc::server::IpcServer;
 
 fn main() {
+    let logs_dir = directories::BaseDirs::new()
+        .expect("Could not determine base directories")
+        .config_dir()
+        .join("com.fitlauncher.carrotrub")
+        .join("logs");
+
+    let file_appender = tracing_appender::rolling::never(&logs_dir, "controller.log");
+    let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
+
     // Initialize logging
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::DEBUG)
         .with_target(true)
         .with_thread_ids(true)
+        .with_writer(file_writer)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
