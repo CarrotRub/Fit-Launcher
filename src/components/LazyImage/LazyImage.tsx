@@ -26,6 +26,7 @@ export default function LazyImage(props: LazyImageProps) {
     const [entry, setEntry] = createSignal<IntersectionObserverEntry | null>(null);
     const [loaded, setLoaded] = createSignal(false);
     const [currentSrc, setCurrentSrc] = createSignal<string>();
+    const [currentUrl, setCurrentUrl] = createSignal<string>();
 
     let el!: HTMLDivElement;
     let abort = new AbortController();
@@ -38,10 +39,11 @@ export default function LazyImage(props: LazyImageProps) {
     });
 
     createEffect(async () => {
-        setCurrentSrc(props.src)
         const e = entry();
         if (!e) return;
-        if (loaded()) return;
+        if (loaded() && props.src == currentUrl()) return;
+
+        setCurrentUrl(props.src);
 
         abort.abort();
         abort = new AbortController();
