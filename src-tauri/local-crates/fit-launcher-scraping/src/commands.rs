@@ -2,12 +2,14 @@
 //!
 //! These are thin adapters that delegate to core logic modules.
 
+use futures::{StreamExt as _, stream};
 use specta::specta;
 use std::time::Instant;
 use tauri::AppHandle;
 use tracing::info;
 
 use crate::db::{self, SearchIndexEntry};
+use crate::discovery::try_high_res_img;
 use crate::errors::ScrapingError;
 use crate::parser::parse_game_from_article;
 use crate::structs::Game;
@@ -123,7 +125,7 @@ pub async fn get_singular_game_info(
         .await
         .map_err(|e| ScrapingError::HttpStatusCodeError(e.to_string()))?;
 
-    let game = tokio::task::spawn_blocking(move || -> Result<Game, ScrapingError> {
+    let mut game = tokio::task::spawn_blocking(move || -> Result<Game, ScrapingError> {
         let doc = Html::parse_document(&body);
         let article = doc
             .select(&scraper::Selector::parse("article").unwrap())
@@ -133,6 +135,13 @@ pub async fn get_singular_game_info(
     })
     .await
     .unwrap()?;
+
+    // Try enhance image quality
+    game.secondary_images = stream::iter(game.secondary_images.clone())
+        .map(|s| async move { try_high_res_img(&s).await })
+        .buffer_unordered(5)
+        .collect::<Vec<_>>()
+        .await;
 
     // Write to cache
     db::upsert_game(&conn, url_hash, &game)?;
