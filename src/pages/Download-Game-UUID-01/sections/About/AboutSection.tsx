@@ -2,7 +2,6 @@ import { Accessor, Show } from "solid-js";
 import { DownloadedGame } from "../../../../bindings";
 
 import { DLCSection } from "./DLCSection";
-import { ActivitySection } from "./ActivitySection";
 import { InfoContainer } from "../../components/InfoContainer";
 
 type AboutSectionProps = {
@@ -28,9 +27,6 @@ export const AboutSection = (props: AboutSectionProps) => {
                     <DLCSection game={props.game} />
                 </Show>
 
-                <Show when={props.downloadedGame()}>
-                    <ActivitySection game={props.downloadedGame} />
-                </Show>
             </div>
         </div>
     )

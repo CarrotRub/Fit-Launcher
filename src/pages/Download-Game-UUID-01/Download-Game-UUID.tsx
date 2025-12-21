@@ -11,6 +11,7 @@ import { SidebarSection } from "./sections/SidebarSection";
 import { AboutSection } from "./sections/About/AboutSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 import { GamePageState } from "../../types/game";
+import { ActivitySection } from "./sections/About/ActivitySection";
 
 
 const GridCard = (props: { children: JSX.Element; class?: string }) => (
@@ -80,6 +81,9 @@ const DownloadGameUUIDPage = () => {
                     <GridCard>
                       <FeaturesSection game={currentGame} />
                     </GridCard>
+                  </Show>
+                  <Show when={currentGame()?.executable_info.executable_path !== "" && currentGame()?.executable_info.executable_path}>
+                    <ActivitySection game={downloadedGame} />
                   </Show>
                 </div>
               </div>

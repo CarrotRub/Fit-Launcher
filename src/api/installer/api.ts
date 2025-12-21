@@ -46,15 +46,16 @@ class InstallerService {
       const payload = event.payload as { id: string; success: boolean };
 
       for (const [jobId, job] of this.pendingJobs.entries()) {
-        this.activeInstalls.set(payload.id, job);
-        this.installingJobs.add(job.id);
-        this.pendingJobs.delete(jobId);
-        console.log(`[Installer] Hook started: ${job.game.title}`);
-        emit("installer::state::changed", {
-          jobId: job.id,
-          state: "installing",
-        });
-        break;
+        if (jobId === payload.id) {
+          this.activeInstalls.set(payload.id, job);
+          this.installingJobs.add(job.id);
+          this.pendingJobs.delete(jobId);
+          emit("installer::state::changed", {
+            jobId: job.id,
+            state: "installing",
+          });
+          break;
+        }
       }
     });
 
@@ -148,7 +149,11 @@ class InstallerService {
       } else {
         this.failedInstalls.add(job.id);
         const errorMsg = this.lastErrors.get(job.id);
-        emit("installer::state::changed", { error: errorMsg, jobId: job.id, state: "failed" });
+        emit("installer::state::changed", {
+          error: errorMsg,
+          jobId: job.id,
+          state: "failed",
+        });
         this.lastErrors.delete(job.id);
       }
 
