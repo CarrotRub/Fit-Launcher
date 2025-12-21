@@ -566,6 +566,14 @@ async getDnsSettings() : Promise<FitLauncherDnsConfig> {
 async getDnsSettingsPath() : Promise<string> {
     return await TAURI_INVOKE("get_dns_settings_path");
 },
+async getDownloadedGame(gameHref: string) : Promise<Result<DownloadedGame | null, string>> {
+    try {
+    return { data: await TAURI_INVOKE("get_downloaded_game", { gameHref }), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async getDownloadedGames() : Promise<DownloadedGame[]> {
     return await TAURI_INVOKE("get_downloaded_games");
 },

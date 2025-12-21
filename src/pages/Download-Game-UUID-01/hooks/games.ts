@@ -9,7 +9,7 @@ import {
 import { LibraryApi } from "../../../api/library/api";
 import { GamesCacheApi } from "../../../api/cache/api";
 import { listen } from "@tauri-apps/api/event";
-import { DownloadedGame } from "../../../bindings";
+import { commands, DownloadedGame } from "../../../bindings";
 import * as Debrid from "../../../api/debrid/api";
 import { useToast } from "solid-notifications";
 import {
@@ -211,6 +211,18 @@ export const useGameDetails = (
 
 export const useGameDatabase = (
   game: Accessor<DownloadedGame | null | undefined>
-): Accessor<boolean> => {
-  return createMemo(() => !!game()?.installation_info);
+): Accessor<DownloadedGame | null | undefined> => {
+  const [isDownloaded] = createResource(
+    () => game()?.href,
+    async (href) => {
+      if (!href) return null;
+      const res = await commands.getDownloadedGame(href);
+      if (res.status === "ok") {
+        return res.data;
+      }
+      return null;
+    }
+  );
+
+  return () => isDownloaded();
 };

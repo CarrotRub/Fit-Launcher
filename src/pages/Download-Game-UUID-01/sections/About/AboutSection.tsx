@@ -6,6 +6,7 @@ import { ActivitySection } from "./ActivitySection";
 
 type AboutSectionProps = {
     game: Accessor<DownloadedGame | null | undefined>;
+    downloadedGame: Accessor<DownloadedGame | null | undefined>
 }
 
 export const AboutSection = (props: AboutSectionProps) => {
@@ -26,8 +27,8 @@ export const AboutSection = (props: AboutSectionProps) => {
                     <DLCSection game={props.game} />
                 </Show>
 
-                <Show when={props.game()?.executable_info?.executable_path}>
-                    <ActivitySection game={props.game} />
+                <Show when={props.downloadedGame()}>
+                    <ActivitySection game={props.downloadedGame} />
                 </Show>
             </div>
         </div>

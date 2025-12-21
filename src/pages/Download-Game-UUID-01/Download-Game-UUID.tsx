@@ -3,7 +3,7 @@ import { useLocation } from "@solidjs/router";
 
 
 import LoadingPage from "../LoadingPage-01/LoadingPage";
-import { useDebridCache, useFavorites, useGameDetails, useGameImages, useGameResource } from "./hooks/games";
+import { useDebridCache, useFavorites, useGameDatabase, useGameDetails, useGameImages, useGameResource } from "./hooks/games";
 import { ErrorNotFound } from "./sections/ErrorNotFound";
 import { TopbarSection } from "./sections/TopbarSection";
 import GallerySection from "./sections/GallerySection";
@@ -22,6 +22,9 @@ const DownloadGameUUIDPage = () => {
   const debrid = useDebridCache(game);
   const favorites = useFavorites(game);
   const gameDetails = useGameDetails(game);
+  const downloadedGame = useGameDatabase(game);
+
+  const currentGame = () => downloadedGame() ?? game();
 
   return (
     <Switch>
@@ -48,14 +51,14 @@ const DownloadGameUUIDPage = () => {
               <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-6 lg:gap-8 mb-8">
                 <GallerySection images={images} />
                 <SidebarSection
-                  game={game!}
+                  game={currentGame!}
                   gameDetails={gameDetails}
                   hasDebridCached={debrid}
                 />
               </div>
 
               <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-8">
-                <AboutSection game={game!} />
+                <AboutSection game={game!} downloadedGame={downloadedGame} />
 
                 <Show when={game()?.gameplay_features || game()?.features}>
                   <FeaturesSection game={game!} />
