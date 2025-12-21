@@ -1,4 +1,4 @@
-import { Switch, Match, Show } from "solid-js";
+import { Switch, Match, Show, JSX } from "solid-js";
 import { useLocation } from "@solidjs/router";
 
 
@@ -12,6 +12,12 @@ import { AboutSection } from "./sections/About/AboutSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 import { GamePageState } from "../../types/game";
 
+
+const GridCard = (props: { children: JSX.Element; class?: string }) => (
+  <div class={`flex flex-col ${props.class ?? ""}`}>
+    {props.children}
+  </div>
+);
 
 const DownloadGameUUIDPage = () => {
   const location = useLocation<GamePageState>();
@@ -48,22 +54,36 @@ const DownloadGameUUIDPage = () => {
             <div class="max-w-300 md:max-w-full md:px-24 mx-auto p-4 md:p-6">
               <div class="h-4" />
 
-              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-6 lg:gap-8 mb-8">
-                <GallerySection images={images} />
-                <SidebarSection
-                  game={currentGame!}
-                  gameDetails={gameDetails}
-                  hasDebridCached={debrid}
-                />
+              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-6 lg:gap-8">
+                {/* Left column */}
+                <div class="flex flex-col gap-6">
+                  <GridCard>
+                    <GallerySection images={images} />
+                  </GridCard>
+
+                  <GridCard>
+                    <AboutSection game={currentGame} downloadedGame={downloadedGame} />
+                  </GridCard>
+                </div>
+
+                {/* Right column */}
+                <div class="flex flex-col gap-6">
+                  <GridCard>
+                    <SidebarSection
+                      game={currentGame}
+                      gameDetails={gameDetails}
+                      hasDebridCached={debrid}
+                    />
+                  </GridCard>
+
+                  <Show when={currentGame()?.gameplay_features || currentGame()?.features}>
+                    <GridCard>
+                      <FeaturesSection game={currentGame} />
+                    </GridCard>
+                  </Show>
+                </div>
               </div>
 
-              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(330px,1fr)] gap-8">
-                <AboutSection game={game!} downloadedGame={downloadedGame} />
-
-                <Show when={game()?.gameplay_features || game()?.features}>
-                  <FeaturesSection game={game!} />
-                </Show>
-              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { Accessor, createSignal, For, Match, Show, Switch } from "solid-js"
+import { Accessor, createSignal, For, Match, onMount, Show, Switch } from "solid-js"
 import { DownloadedGame } from "../../../bindings"
 import { InfoContainer } from "../components/InfoContainer"
 
@@ -8,9 +8,15 @@ export type FeaturesSectionProps = {
 
 export const FeaturesSection = (props: FeaturesSectionProps) => {
     const [infoTab, setInfoTab] = createSignal<"game" | "repack">("game");
-
+    onMount(() => {
+        if (!props.game()?.gameplay_features) {
+            setInfoTab("repack");
+        } else {
+            setInfoTab("game")
+        }
+    })
     return (
-        <InfoContainer class="mb-6">
+        <InfoContainer >
             <div class="flex gap-2 mb-4 border-b items-center transition-all duration-300 border-secondary-20/40 ">
                 <div class="w-1 h-4 bg-accent rounded-full"></div>
                 <Show when={props.game()?.gameplay_features} >

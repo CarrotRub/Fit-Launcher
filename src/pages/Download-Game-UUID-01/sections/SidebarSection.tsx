@@ -55,7 +55,7 @@ export const SidebarSection = (props: SidebarSectionProps) => {
     };
 
     return (
-        <InfoContainer class="flex flex-col py-12 justify-between gap-6">
+        <InfoContainer class="flex flex-col  justify-between gap-6">
             {/* Title */}
             <div class="flex flex-col gap-6">
                 <div>
