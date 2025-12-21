@@ -93,20 +93,33 @@ async fn scrape_new_games_page(page: u32, app: AppHandle) -> Result<Vec<Game>, S
 pub async fn scrape_new_games(app: AppHandle) -> Result<(), ScrapingError> {
     let start = Instant::now();
 
-    let stream = futures::stream::iter((1..=2).map(|page| {
-        let ah = app.clone();
-        async move { scrape_new_games_page(page, ah).await }
-    }))
-    .buffer_unordered(2);
+    const PAGE_COUNT: u32 = 3;
 
-    let mut scraped_games = Vec::new();
+    let stream = futures::stream::iter(0..PAGE_COUNT)
+        .map(|page| {
+            let ah = app.clone();
+            async move {
+                let res = scrape_new_games_page(page, ah).await;
+                (page, res)
+            }
+        })
+        .buffer_unordered(2);
+
+    let mut per_page: Vec<Vec<Game>> = vec![Vec::new(); PAGE_COUNT as usize];
+
     futures::pin_mut!(stream);
-    while let Some(result) = stream.next().await {
+    while let Some((page, result)) = stream.next().await {
         match result {
-            Ok(mut page_games) => scraped_games.append(&mut page_games),
-            Err(e) => error!("Page scrape failed: {:?}", e),
+            Ok(mut page_games) => {
+                per_page[page as usize].append(&mut page_games);
+            }
+            Err(e) => {
+                error!("Page {} scrape failed: {:?}", page, e);
+            }
         }
     }
+
+    let scraped_games: Vec<Game> = per_page.into_iter().flatten().collect();
 
     if scraped_games.is_empty() {
         warn!("No newly added games found on website");
@@ -118,6 +131,7 @@ pub async fn scrape_new_games(app: AppHandle) -> Result<(), ScrapingError> {
 
     let conn = db::open_connection(&app)?;
     let existing_games = db::get_games_by_category(&conn, "newly_added").unwrap_or_default();
+
     let existing_urls: std::collections::HashSet<_> =
         existing_games.iter().map(|g| g.href.clone()).collect();
 
@@ -137,6 +151,7 @@ pub async fn scrape_new_games(app: AppHandle) -> Result<(), ScrapingError> {
 
     write_games_to_db(&app, &scraped_games, "newly_added")?;
     info!("New games synced in {:?}", start.elapsed());
+
     Ok(())
 }
 
@@ -192,33 +207,29 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
     );
 
     let mut final_games = Vec::with_capacity(popular_data.len());
-    let mut missing_links = Vec::new();
+    let mut missing = Vec::new();
 
-    for (href, thumb_img) in &popular_data {
+    for (idx, (href, thumb_img)) in popular_data.iter().enumerate() {
         let url_hash = hash_url(href);
         if let Ok(Some(mut game)) = db::get_game_by_hash(&conn, url_hash) {
-            // Prefer imageban URLs for better quality
             if game.img.is_empty() || !game.img.contains("imageban") {
                 game.img = thumb_img.clone();
             }
             final_games.push(game);
         } else {
-            // Track position so we can insert at correct index after parallel fetch
-            missing_links.push((href.clone(), thumb_img.clone(), final_games.len()));
             final_games.push(Game::default());
+            missing.push((idx, href.clone(), thumb_img.clone()));
         }
     }
     drop(conn);
 
-    let fetched_count = missing_links.len();
-    if !missing_links.is_empty() {
+    let fetched_count = missing.len();
+    if !missing.is_empty() {
         info!("Fetching {} new popular games", fetched_count);
 
-        let results: Vec<_> =
-            futures::stream::iter(missing_links.iter().map(|(link, thumb, _)| {
+        let stream = futures::stream::iter(missing.into_iter())
+            .map(|(idx, link, thumb)| {
                 let ah = app.clone();
-                let link = link.clone();
-                let thumb = thumb.clone();
                 async move {
                     let body = fetch_page(&link, &ah).await?;
                     let doc = Html::parse_document(&body);
@@ -229,24 +240,21 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
 
                     let mut game = parse_game_from_article(article);
                     if game.img.is_empty() {
-                        game.img = thumb;
+                        game.img = thumb.clone();
                     }
                     if game.img.is_empty() {
                         game.img = find_preview_image(article).unwrap_or_default();
                     }
 
-                    game.secondary_images.clear();
-
-                    Ok::<Game, ScrapingError>(game)
+                    Ok::<(usize, Game), ScrapingError>((idx, game))
                 }
-            }))
-            .buffer_unordered(10)
-            .collect()
-            .await;
+            })
+            .buffer_unordered(10);
 
-        for ((_, _, idx), result) in missing_links.into_iter().zip(results) {
+        futures::pin_mut!(stream);
+        while let Some(result) = stream.next().await {
             match result {
-                Ok(game) => final_games[idx] = game,
+                Ok((idx, game)) => final_games[idx] = game,
                 Err(e) => error!("Popular game scrape failed: {:?}", e),
             }
         }
@@ -261,6 +269,7 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
         final_games.len(),
         fetched_count
     );
+
     Ok(())
 }
 
@@ -313,55 +322,57 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
         existing.len()
     );
 
-    let mut valid_games = Vec::with_capacity(links.len());
-    let mut missing_links = Vec::new();
+    let mut final_games: Vec<Game> = vec![Game::default(); links.len()];
+    let mut missing = Vec::new();
 
-    for href in &links {
+    for (idx, href) in links.iter().enumerate() {
         let url_hash = hash_url(href);
         if let Ok(Some(game)) = db::get_game_by_hash(&conn, url_hash) {
-            valid_games.push(game);
+            final_games[idx] = game;
         } else {
-            missing_links.push(href.clone());
+            missing.push((idx, href.clone()));
         }
     }
     drop(conn);
 
-    if !missing_links.is_empty() {
+    if !missing.is_empty() {
         info!(
             "Fetching {} recently updated games not in DB",
-            missing_links.len()
+            missing.len()
         );
-        let stream = futures::stream::iter(missing_links.into_iter().map(|link| {
-            let ah = app.clone();
-            async move {
-                let body = fetch_page(&link, &ah).await?;
-                let doc = Html::parse_document(&body);
-                let article = doc
-                    .select(&scraper::Selector::parse("article").unwrap())
-                    .next()
-                    .ok_or(ScrapingError::ArticleNotFound(link.clone()))?;
 
-                let game = Game {
-                    secondary_images: vec![],
-                    ..parse_game_from_article(article)
-                };
-                Ok::<Game, ScrapingError>(game)
-            }
-        }))
-        .buffer_unordered(10);
+        let stream = futures::stream::iter(missing.into_iter())
+            .map(|(idx, link)| {
+                let ah = app.clone();
+                async move {
+                    let body = fetch_page(&link, &ah).await?;
+                    let doc = Html::parse_document(&body);
+                    let article = doc
+                        .select(&scraper::Selector::parse("article").unwrap())
+                        .next()
+                        .ok_or(ScrapingError::ArticleNotFound(link.clone()))?;
+
+                    Ok::<(usize, Game), ScrapingError>((idx, parse_game_from_article(article)))
+                }
+            })
+            .buffer_unordered(10);
 
         futures::pin_mut!(stream);
         while let Some(result) = stream.next().await {
             match result {
-                Ok(game) => valid_games.push(game),
+                Ok((idx, game)) => final_games[idx] = game,
                 Err(e) => error!("Recent update scrape failed: {:?}", e),
             }
         }
     }
 
-    write_games_to_db(&app, &valid_games, "recently_updated")?;
+    // Drop any still-empty slots (failed fetches)
+    final_games.retain(|g| !g.href.is_empty());
+
+    write_games_to_db(&app, &final_games, "recently_updated")?;
     app.emit("scraping_complete", "Recent updates scraped").ok();
     info!("Recent updates synced in {:?}", start.elapsed());
+
     Ok(())
 }
 
