@@ -1,19 +1,19 @@
-#[cfg(windows)]
-pub mod controller_client;
-#[cfg(windows)]
-pub mod controller_manager;
-pub mod emitter;
-pub mod extraction;
+#![cfg_attr(not(windows), allow(unused))]
 
-#[cfg(windows)]
+pub mod controller_client;
+pub mod controller_manager;
 pub mod defender;
 
 pub mod mighty_commands;
+pub use mighty_commands::*;
+
+pub mod emitter;
+pub mod extraction;
+
 pub mod process_utils;
 use std::time::Duration;
 
 pub use extraction::*;
-pub use mighty_commands::*;
 pub use process_utils::*;
 use serde::{Deserialize, Serialize};
 use specta::Type;

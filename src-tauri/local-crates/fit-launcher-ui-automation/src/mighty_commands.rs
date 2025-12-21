@@ -69,6 +69,21 @@ pub fn start_executable(path: String) {
 
 #[tauri::command]
 #[specta]
+#[cfg(not(windows))]
+pub async fn folder_exclusion(action: ExclusionAction) -> Result<(), String> {
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
+#[cfg(not(windows))]
+pub async fn folder_exclusion_cleanup(policy: ExclusionCleanupPolicy) -> Result<(), String> {
+    Ok(())
+}
+
+#[tauri::command]
+#[specta]
+#[cfg(windows)]
 pub async fn folder_exclusion(action: ExclusionAction) -> Result<(), String> {
     let manager = ControllerManager::global();
 
@@ -179,6 +194,7 @@ pub async fn folder_exclusion(action: ExclusionAction) -> Result<(), String> {
 
 #[tauri::command]
 #[specta]
+#[cfg(windows)]
 pub async fn folder_exclusion_cleanup(policy: ExclusionCleanupPolicy) -> Result<(), String> {
     let manager = ControllerManager::global();
 
