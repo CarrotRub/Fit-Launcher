@@ -1634,6 +1634,7 @@ dependencies = [
  "serde",
  "specta",
  "tauri",
+ "tokio",
  "tracing",
 ]
 
