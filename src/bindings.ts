@@ -566,6 +566,14 @@ async getDnsSettings() : Promise<FitLauncherDnsConfig> {
 async getDnsSettingsPath() : Promise<string> {
     return await TAURI_INVOKE("get_dns_settings_path");
 },
+async getDownloadedGame(gameHref: string) : Promise<Result<DownloadedGame | null, string>> {
+    try {
+    return { data: await TAURI_INVOKE("get_downloaded_game", { gameHref }), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async getDownloadedGames() : Promise<DownloadedGame[]> {
     return await TAURI_INVOKE("get_downloaded_games");
 },
@@ -970,7 +978,7 @@ export type FileStatus = { gid: string | null; status: DownloadState; total_leng
  * 2. Aria2 RPC block
  * 
  */
-export type FitLauncherConfigAria2 = { port: number; token: string | null; start_daemon: boolean; file_allocation: FileAllocation }
+export type FitLauncherConfigAria2 = { port: number; librqbit_port: number; token: string | null; start_daemon: boolean; file_allocation: FileAllocation }
 export type FitLauncherConfigV2 = { general: General; cache: CacheSettings; limits: TransferLimits; network: Connection; bittorrent: Bittorrent; rpc: FitLauncherConfigAria2 }
 export type FitLauncherDnsConfig = { system_conf: boolean; protocol: string; primary: string | null; secondary: string | null }
 /**

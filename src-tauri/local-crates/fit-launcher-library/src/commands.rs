@@ -150,6 +150,20 @@ pub async fn add_downloaded_game(game: DownloadedGame) -> Result<(), String> {
 
     Ok(())
 }
+
+#[tauri::command]
+#[specta]
+pub async fn get_downloaded_game(game_href: String) -> Result<Option<DownloadedGame>, String> {
+    let games = get_downloaded_games().await;
+
+    let res_game = games.iter().find(|g| g.href == game_href);
+    if let Some(game) = res_game {
+        Ok(Some(game.clone()))
+    } else {
+        Ok(None)
+    }
+}
+
 #[tauri::command]
 #[specta]
 pub async fn remove_downloaded_game(game_title: String) -> Result<(), String> {

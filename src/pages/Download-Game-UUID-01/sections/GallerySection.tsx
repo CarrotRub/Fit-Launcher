@@ -1,10 +1,11 @@
 import { Accessor } from "solid-js";
 import { ScreenshotGallery } from "../components/ScreenshotGallery/ScreenshotGallery";
+import { InfoContainer } from "../components/InfoContainer";
 
 export const GallerySection = (props: { images: Accessor<string[]> }) => (
-    <div class="bg-secondary-20/10 rounded-xl p-6 border border-primary/20">
+    <InfoContainer>
         <ScreenshotGallery images={props.images} autoPlayInterval={5000} />
-    </div>
+    </InfoContainer>
 );
 
 export default GallerySection;

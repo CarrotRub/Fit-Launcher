@@ -1,5 +1,6 @@
-import { Accessor, createSignal, For, Match, Show, Switch } from "solid-js"
+import { Accessor, createSignal, For, Match, onMount, Show, Switch } from "solid-js"
 import { DownloadedGame } from "../../../bindings"
+import { InfoContainer } from "../components/InfoContainer"
 
 export type FeaturesSectionProps = {
     game: Accessor<DownloadedGame | null | undefined>
@@ -7,10 +8,16 @@ export type FeaturesSectionProps = {
 
 export const FeaturesSection = (props: FeaturesSectionProps) => {
     const [infoTab, setInfoTab] = createSignal<"game" | "repack">("game");
-
+    onMount(() => {
+        if (!props.game()?.gameplay_features) {
+            setInfoTab("repack");
+        } else {
+            setInfoTab("game")
+        }
+    })
     return (
-        <div class="mb-6 bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
-            <div class="flex gap-2 mb-4 border-b items-center transition-all duration-300  border-secondary-20/40 ">
+        <InfoContainer >
+            <div class="flex gap-2 mb-4 border-b items-center transition-all duration-300 border-secondary-20/40 ">
                 <div class="w-1 h-4 bg-accent rounded-full"></div>
                 <Show when={props.game()?.gameplay_features} >
                     <button
@@ -39,8 +46,7 @@ export const FeaturesSection = (props: FeaturesSectionProps) => {
 
             </div>
 
-            {/* Content */}
-            <div class="bg-secondary-20/10 border border-secondary-20/30 rounded-lg p-4 max-h-80 overflow-y-auto custom-scrollbar">
+            <InfoContainer class="p-4 max-h-80 overflow-y-auto custom-scrollbar">
                 <Switch>
                     <Match when={infoTab() === "game"}>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-muted leading-6">
@@ -68,7 +74,7 @@ export const FeaturesSection = (props: FeaturesSectionProps) => {
                         </div>
                     </Match>
                 </Switch>
-            </div>
-        </div>
+            </InfoContainer>
+        </InfoContainer>
     )
 }

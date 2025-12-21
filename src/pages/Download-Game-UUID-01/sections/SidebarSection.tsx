@@ -1,13 +1,17 @@
-import { Accessor, For, JSX, Show } from "solid-js"
+import { Accessor, For, JSX, Match, Show, Switch } from "solid-js"
 import { DownloadedGame } from "../../../bindings";
 import { extractMainTitle } from "../../../helpers/format";
 import Button from "../../../components/UI/Button/Button";
-import { Globe, Magnet, Zap } from "lucide-solid";
+import { Globe, Magnet, Play, Zap } from "lucide-solid";
 import { useNavigate } from "@solidjs/router";
 import { DownloadType } from "../../../types/popup";
 import createDownloadPopup from "../../../Pop-Ups/Download-PopUp/Download-PopUp";
 import { MetadataRow } from "./MetadataRow";
 import { GameDetails } from "../../../types/game";
+import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
+import { LibraryApi } from "../../../api/library/api";
+import { showError } from "../../../helpers/error";
+import { InfoContainer } from "../components/InfoContainer";
 
 
 export type SidebarSectionProps = {
@@ -18,7 +22,7 @@ export type SidebarSectionProps = {
 
 export const SidebarSection = (props: SidebarSectionProps) => {
     const navigate = useNavigate();
-
+    const api = new LibraryApi();
 
     const handleDownloadPopup = (downloadType: DownloadType) => {
         const g = props.game();
@@ -36,8 +40,22 @@ export const SidebarSection = (props: SidebarSectionProps) => {
         });
     };
 
+    const handleStartGame = (path: string) => {
+        createBasicChoicePopup({
+            infoTitle: "Launch Game",
+            infoMessage: "Do you want to launch the game now?",
+            action: async () => {
+                try {
+                    await api.runExecutable(path);
+                } catch (err) {
+                    await showError(err, "Error");
+                }
+            },
+        });
+    };
+
     return (
-        <div class="flex flex-col py-12 justify-between gap-6 bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
+        <InfoContainer class="flex flex-col  justify-between gap-6">
             {/* Title */}
             <div class="flex flex-col gap-6">
                 <div>
@@ -73,39 +91,59 @@ export const SidebarSection = (props: SidebarSectionProps) => {
 
 
             {/* Download Actions */}
-            <div class="flex flex-col gap-3 ">
-                <Button
-                    icon={<Magnet class="w-4 h-4" />}
-                    label="Torrent Download"
-                    onClick={() => handleDownloadPopup("bittorrent")}
-                    class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
-                    variant="bordered"
-                />
-                <div class="relative w-full">
-                    <Show when={props.hasDebridCached()}>
-                        <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-text text-[10px] font-bold uppercase rounded-sm shadow-md tracking-wider">
-                            <Zap class="w-3 h-3" /> Fast
+            <Switch>
+                {/* If the game is not installed */}
+                <Match when={props.game()?.executable_info.executable_path === "" || props.game()?.executable_info.executable_path === undefined}>
+                    <div class="flex flex-col gap-3">
+                        {/* Torrent Download */}
+                        <Button
+                            icon={<Magnet class="w-4 h-4" />}
+                            label="Torrent Download"
+                            onClick={() => handleDownloadPopup("bittorrent")}
+                            class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
+                            variant="bordered"
+                        />
+
+                        {/* Direct Download with optional Fast badge */}
+                        <div class="relative w-full">
+                            <Show when={props.hasDebridCached()}>
+                                <div class="absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-text text-[10px] font-bold uppercase rounded-sm shadow-md tracking-wider">
+                                    <Zap class="w-3 h-3" /> Fast
+                                </div>
+                            </Show>
+                            <Button
+                                icon={<Globe class="w-4 h-4" />}
+                                label="Direct Download"
+                                onClick={() => handleDownloadPopup("direct_download")}
+                                class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
+                                variant="bordered"
+                            />
                         </div>
-                    </Show>
+                    </div>
+                </Match>
+
+                <Match when={props.game()?.executable_info.executable_path !== undefined && props.game()?.executable_info.executable_path !== ""}>
                     <Button
-                        icon={<Globe class="w-4 h-4" />}
-                        label="Direct Download"
-                        onClick={() => handleDownloadPopup("direct_download")}
-                        class="w-full py-3 justify-center text-sm font-semibold uppercase tracking-wide border border-secondary-20 bg-secondary-20/50 hover:bg-secondary-20 hover:text-text transition-all"
-                        variant="bordered"
+                        icon={<Play class="w-4 h-4" />}
+                        label="Play Now"
+                        onClick={() => handleStartGame(props.game()!.executable_info.executable_path)}
+                        class="w-full"
+                        variant="solid"
                     />
-                </div>
-            </div>
-        </div>)
+                </Match>
+
+            </Switch>
+        </InfoContainer>
+    )
 
 }
 
 export const SidebarCard = (props: { title: string; children: JSX.Element }) => (
-    <div class="bg-secondary-20/10  shadow-lg border border-primary/20 rounded-xl p-5 hover:border-secondary-20/50 transition-colors">
+    <InfoContainer>
         <div class="flex items-center gap-2 mb-4 pb-3 border-b border-secondary-20/30">
             <div class="w-2 h-2 rounded-full bg-accent"></div>
             <h3 class="text-sm font-semibold uppercase tracking-wider text-text">{props.title}</h3>
         </div>
         {props.children}
-    </div>
+    </InfoContainer>
 );
