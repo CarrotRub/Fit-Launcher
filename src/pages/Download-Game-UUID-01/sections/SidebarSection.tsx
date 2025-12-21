@@ -11,6 +11,7 @@ import { GameDetails } from "../../../types/game";
 import createBasicChoicePopup from "../../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { LibraryApi } from "../../../api/library/api";
 import { showError } from "../../../helpers/error";
+import { InfoContainer } from "../components/InfoContainer";
 
 
 export type SidebarSectionProps = {
@@ -54,7 +55,7 @@ export const SidebarSection = (props: SidebarSectionProps) => {
     };
 
     return (
-        <div class="flex flex-col py-12 justify-between gap-6 bg-secondary-20/10 rounded-xl p-6 shadow-lg border border-primary/20">
+        <InfoContainer class="flex flex-col py-12 justify-between gap-6">
             {/* Title */}
             <div class="flex flex-col gap-6">
                 <div>
@@ -92,7 +93,7 @@ export const SidebarSection = (props: SidebarSectionProps) => {
             {/* Download Actions */}
             <Switch>
                 {/* If the game is not installed */}
-                <Match when={!props.game()?.installation_info}>
+                <Match when={props.game()?.executable_info.executable_path === "" || props.game()?.executable_info.executable_path === undefined}>
                     <div class="flex flex-col gap-3">
                         {/* Torrent Download */}
                         <Button
@@ -121,7 +122,7 @@ export const SidebarSection = (props: SidebarSectionProps) => {
                     </div>
                 </Match>
 
-                <Match when={!!props.game()?.installation_info}>
+                <Match when={props.game()?.executable_info.executable_path !== undefined && props.game()?.executable_info.executable_path !== ""}>
                     <Button
                         icon={<Play class="w-4 h-4" />}
                         label="Play Now"
@@ -132,16 +133,17 @@ export const SidebarSection = (props: SidebarSectionProps) => {
                 </Match>
 
             </Switch>
-        </div>)
+        </InfoContainer>
+    )
 
 }
 
 export const SidebarCard = (props: { title: string; children: JSX.Element }) => (
-    <div class="bg-secondary-20/10  shadow-lg border border-primary/20 rounded-xl p-5 ">
+    <InfoContainer>
         <div class="flex items-center gap-2 mb-4 pb-3 border-b border-secondary-20/30">
             <div class="w-2 h-2 rounded-full bg-accent"></div>
             <h3 class="text-sm font-semibold uppercase tracking-wider text-text">{props.title}</h3>
         </div>
         {props.children}
-    </div>
+    </InfoContainer>
 );

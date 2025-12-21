@@ -211,18 +211,19 @@ export const useGameDetails = (
 
 export const useGameDatabase = (
   game: Accessor<DownloadedGame | null | undefined>
-): Accessor<DownloadedGame | null | undefined> => {
-  const [isDownloaded] = createResource(
-    () => game()?.href,
-    async (href) => {
-      if (!href) return null;
-      const res = await commands.getDownloadedGame(href);
-      if (res.status === "ok") {
-        return res.data;
-      }
-      return null;
-    }
-  );
+): Accessor<DownloadedGame | null> => {
+  const [downloadedGames] = createResource(async () => {
+    return await commands.getDownloadedGames();
+  });
 
-  return () => isDownloaded();
+  const foundGame = createMemo<DownloadedGame | null>(() => {
+    const g = game();
+    const list = downloadedGames();
+
+    if (!g || !list) return null;
+
+    return list.find((dg) => dg.href === g.href) ?? null;
+  });
+
+  return foundGame;
 };

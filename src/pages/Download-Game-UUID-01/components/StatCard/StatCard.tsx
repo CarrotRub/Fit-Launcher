@@ -1,4 +1,5 @@
 import { JSX } from "solid-js";
+import { InfoContainer } from "../InfoContainer";
 
 interface StatItemProps {
     icon: JSX.Element;
@@ -9,7 +10,8 @@ interface StatItemProps {
 }
 
 export const StatItem = (props: StatItemProps) => (
-    <div class="flex items-center gap-4 p-3 bg-secondary-20/10 rounded-xl  border border-primary/20">
+
+    <InfoContainer class="flex items-center gap-4 p-3">
         <div class={`p-3 rounded-lg ${props.iconBg}`}>
             {props.icon}
         </div>
@@ -19,5 +21,5 @@ export const StatItem = (props: StatItemProps) => (
                 {props.value}
             </div>
         </div>
-    </div>
+    </InfoContainer>
 );
