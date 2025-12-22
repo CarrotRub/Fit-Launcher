@@ -4,8 +4,13 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
-use serde::{Deserialize, Serialize};
+
 use tracing::{debug, info};
+
+pub use fit_launcher_ipc::{
+    Command as ControllerCommand, Event as ControllerEvent, InstallOptions, InstallPhase,
+    decode_message, encode_message,
+};
 
 #[cfg(windows)]
 use crate::encode_utf16le_with_null;
@@ -24,134 +29,6 @@ use windows::Win32::UI::Shell::{SHELLEXECUTEINFOW, ShellExecuteExW};
 use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
 #[cfg(windows)]
 use windows::core::PCWSTR;
-
-use crate::defender::{ExclusionAction, ExclusionCleanupPolicy};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Protocol Types (mirrored from controller crate)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InstallOptions {
-    pub two_gb_limit: bool,
-    pub install_directx: bool,
-    pub install_vcredist: bool,
-}
-
-impl Default for InstallOptions {
-    fn default() -> Self {
-        Self {
-            two_gb_limit: false,
-            install_directx: true,
-            install_vcredist: true,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ControllerCommand {
-    StartInstall {
-        job_id: String,
-        setup_path: String,
-        install_path: String,
-        options: InstallOptions,
-    },
-    CancelInstall {
-        job_id: String,
-    },
-    FolderExclusion {
-        action: ExclusionAction,
-    },
-    CleanupPolicy {
-        exclusion_folder: ExclusionCleanupPolicy,
-    },
-    Shutdown,
-    ShutdownIfIdle,
-    Ping,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum InstallPhase {
-    SelectLanguage,
-    Welcome,
-    Information,
-    SelectDestination,
-    SelectComponents,
-    Preparing,
-    Extracting,
-    Unpacking,
-    Finalizing,
-    Completed,
-    Failed,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ControllerEvent {
-    Ready,
-    Pong,
-    Phase {
-        job_id: String,
-        phase: InstallPhase,
-    },
-    Progress {
-        job_id: String,
-        percent: f32,
-    },
-    File {
-        job_id: String,
-        path: String,
-    },
-    GameTitle {
-        job_id: String,
-        title: String,
-    },
-    Completed {
-        job_id: String,
-        success: bool,
-        install_path: Option<String>,
-        error: Option<String>,
-    },
-    FolderExclusionResult {
-        success: bool,
-        error: Option<String>,
-    },
-    Error {
-        job_id: Option<String>,
-        message: String,
-    },
-    ShuttingDown,
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Wire Format (length-prefixed JSON)
-// ─────────────────────────────────────────────────────────────────────────────
-
-fn encode_message<T: Serialize>(msg: &T) -> Result<Vec<u8>> {
-    let json = serde_json::to_vec(msg)?;
-    let mut buf = Vec::with_capacity(4 + json.len());
-    buf.extend_from_slice(&(json.len() as u32).to_le_bytes());
-    buf.extend_from_slice(&json);
-    Ok(buf)
-}
-
-fn decode_message<T: for<'de> Deserialize<'de>>(buf: &[u8]) -> Result<Option<(T, usize)>> {
-    if buf.len() < 4 {
-        return Ok(None);
-    }
-
-    let len = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]) as usize;
-    let total = 4 + len;
-
-    if buf.len() < total {
-        return Ok(None);
-    }
-
-    let msg: T = serde_json::from_slice(&buf[4..total])?;
-    Ok(Some((msg, total)))
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Controller Client
