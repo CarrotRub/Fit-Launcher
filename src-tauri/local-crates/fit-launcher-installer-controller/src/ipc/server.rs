@@ -35,9 +35,12 @@ use windows::Win32::System::Pipes::{
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use windows::core::PCWSTR;
 
-use crate::defender::{ExclusionAction, ExclusionCleanupPolicy, folder_exclusion};
+use fit_launcher_ipc::{
+    Command, Event, ExclusionAction, ExclusionCleanupPolicy, decode_message, encode_message,
+};
+
+use crate::defender::folder_exclusion;
 use crate::installer::InstallerRunner;
-use crate::ipc::protocol::{Command, Event, decode_message, encode_message};
 use crate::utils::encode_utf16le_with_null;
 
 const BUFFER_SIZE: u32 = 65536;

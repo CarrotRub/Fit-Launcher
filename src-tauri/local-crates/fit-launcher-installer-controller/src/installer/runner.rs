@@ -9,12 +9,13 @@ use std::time::Duration;
 use anyhow::{Context, Result, bail};
 use tracing::{info, warn};
 
+use fit_launcher_ipc::{Event, InstallOptions, InstallPhase};
+
 use crate::automation::{
     click_install, click_next, click_ok, completed_setup, kill_process, mute_process_audio,
     needs_ram_limit, set_install_path, toggle_ram_limit,
 };
 use crate::events::{EventMonitor, InstallEvent};
-use crate::ipc::protocol::{Event, InstallOptions, InstallPhase};
 
 /// Orchestrates the complete installation workflow.
 pub struct InstallerRunner {
@@ -351,19 +352,19 @@ impl InstallerRunner {
 }
 
 /// Convert internal event phase to IPC protocol phase.
-fn convert_phase(phase: crate::events::InstallPhase) -> InstallPhase {
+fn convert_phase(phase: InstallPhase) -> InstallPhase {
     match phase {
-        crate::events::InstallPhase::SelectLanguage => InstallPhase::SelectLanguage,
-        crate::events::InstallPhase::Welcome => InstallPhase::Welcome,
-        crate::events::InstallPhase::Information => InstallPhase::Information,
-        crate::events::InstallPhase::SelectDestination => InstallPhase::SelectDestination,
-        crate::events::InstallPhase::SelectComponents => InstallPhase::SelectComponents,
-        crate::events::InstallPhase::Preparing => InstallPhase::Preparing,
-        crate::events::InstallPhase::Extracting => InstallPhase::Extracting,
-        crate::events::InstallPhase::Unpacking => InstallPhase::Unpacking,
-        crate::events::InstallPhase::Finalizing => InstallPhase::Finalizing,
-        crate::events::InstallPhase::Completed => InstallPhase::Completed,
-        crate::events::InstallPhase::Failed => InstallPhase::Failed,
+        InstallPhase::SelectLanguage => InstallPhase::SelectLanguage,
+        InstallPhase::Welcome => InstallPhase::Welcome,
+        InstallPhase::Information => InstallPhase::Information,
+        InstallPhase::SelectDestination => InstallPhase::SelectDestination,
+        InstallPhase::SelectComponents => InstallPhase::SelectComponents,
+        InstallPhase::Preparing => InstallPhase::Preparing,
+        InstallPhase::Extracting => InstallPhase::Extracting,
+        InstallPhase::Unpacking => InstallPhase::Unpacking,
+        InstallPhase::Finalizing => InstallPhase::Finalizing,
+        InstallPhase::Completed => InstallPhase::Completed,
+        InstallPhase::Failed => InstallPhase::Failed,
     }
 }
 

@@ -118,6 +118,7 @@ members = [
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",
     "local-crates/fit-launcher-cache",
+    "local-crates/fit-launcher-ipc",
 ]
 resolver = "3"
 

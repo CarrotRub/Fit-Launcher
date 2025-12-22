@@ -1566,6 +1566,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "directories",
+ "fit-launcher-ipc",
  "serde",
  "serde_json",
  "sysinfo",
@@ -1678,6 +1679,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fit-launcher-ipc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "specta",
+]
+
+[[package]]
 name = "fit-launcher-library"
 version = "0.1.0"
 dependencies = [
@@ -1747,6 +1758,7 @@ dependencies = [
  "anyhow",
  "directories",
  "fit-launcher-config",
+ "fit-launcher-ipc",
  "fit-launcher-scraping",
  "fix-path-env",
  "inno",

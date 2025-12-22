@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use tracing::error;
 
+pub use fit_launcher_ipc::{ExclusionAction, ExclusionCleanupPolicy};
+
 fn ensure_path(path: &PathBuf, is_file: bool) {
     if is_file {
         if let Some(parent) = path.parent()
@@ -24,21 +26,6 @@ fn ensure_path(path: &PathBuf, is_file: bool) {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-pub enum ExclusionAction {
-    Add(String),
-    Remove(String),
-}
-
-impl std::fmt::Display for ExclusionAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Add(p) => write!(f, "Add: {p}"),
-            Self::Remove(p) => write!(f, "Remove: {p}"),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Type)]
 pub struct FolderExclusionEntry {
     pub path: String,
@@ -48,21 +35,6 @@ pub struct FolderExclusionEntry {
 #[derive(Debug, Serialize, Deserialize, Default, Type)]
 pub struct FolderExclusionsFile {
     pub entries: Vec<FolderExclusionEntry>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Type)]
-pub enum ExclusionCleanupPolicy {
-    Keep(String),
-    RemoveAfterInstall(String),
-}
-
-impl std::fmt::Display for ExclusionCleanupPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Keep(p) => write!(f, "Keep: {p}"),
-            Self::RemoveAfterInstall(p) => write!(f, "RemoveAfterInstall: {p}"),
-        }
-    }
 }
 
 pub(crate) fn now_utc() -> i64 {
