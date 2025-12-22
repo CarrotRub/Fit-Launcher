@@ -63,6 +63,7 @@ fn main() {
         .with_target(true)
         .with_thread_ids(true)
         .with_writer(file_writer)
+        .with_ansi(false)
         .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("Failed to set tracing subscriber");
