@@ -526,6 +526,17 @@ async extractFuckingfastDdl(fuckingfastLinks: string[]) : Promise<DirectLink[]> 
 async findGameExecutable(folderPath: string) : Promise<string | null> {
     return await TAURI_INVOKE("find_game_executable", { folderPath });
 },
+/**
+ * Find local installed games
+ */
+async findLocalGames() : Promise<Result<InstalledEntry[], ScrapingError>> {
+    try {
+    return { data: await TAURI_INVOKE("find_local_games"), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async folderExclusion(action: ExclusionAction) : Promise<Result<null, string>> {
     try {
     return { data: await TAURI_INVOKE("folder_exclusion", { action }), status: "ok" };
@@ -978,7 +989,7 @@ export type FileStatus = { gid: string | null; status: DownloadState; total_leng
  * 2. Aria2 RPC block
  * 
  */
-export type FitLauncherConfigAria2 = { port: number; librqbit_port: number; token: string | null; start_daemon: boolean; file_allocation: FileAllocation }
+export type FitLauncherConfigAria2 = { port: number; token: string | null; start_daemon: boolean; file_allocation: FileAllocation }
 export type FitLauncherConfigV2 = { general: General; cache: CacheSettings; limits: TransferLimits; network: Connection; bittorrent: Bittorrent; rpc: FitLauncherConfigAria2 }
 export type FitLauncherDnsConfig = { system_conf: boolean; protocol: string; primary: string | null; secondary: string | null }
 /**
@@ -1022,6 +1033,31 @@ export type GlobalStat = { downloadSpeed: number; uploadSpeed: number; numActive
 export type InstallationError = { IOError: string } | "AdminModeError"
 export type InstallationInfo = { output_folder: string; download_folder: string; file_list: string[] }
 export type InstallationSettings = { auto_clean: boolean; auto_install: boolean; two_gb_limit: boolean; directx_install: boolean; microsoftcpp_install: boolean }
+export type InstalledEntry = { 
+/**
+ * (database) Url hash
+ */
+url_hash: number | null; 
+/**
+ * display name of game
+ */
+name: string; 
+/**
+ * install date
+ */
+install_date: string; 
+/**
+ * installed directory
+ */
+location: string; 
+/**
+ * installation size, in KiB
+ */
+size: number; 
+/**
+ * inno setup version
+ */
+version: string }
 export type Job = { id: string; metadata: JobMetadata; game: Game; job_path: string; source: DownloadSource; gids: string[]; ddl: DdlJob | null; torrent: TorrentJob | null; state: DownloadState; status: AggregatedStatus | null }
 export type JobMetadata = { game_title: string; target_path: string; created_at: string; updated_at: string }
 export type LegacyDownloadedGame = { torrentExternInfo: TorrentExternInfo; torrentIdx: string; torrentOutputFolder: string; torrentDownloadFolder: string; torrentFileList: string[]; checkboxesList: boolean; executableInfo: ExecutableInfo }
