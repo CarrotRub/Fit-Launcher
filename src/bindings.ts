@@ -1043,7 +1043,7 @@ url_hash: number | null;
  */
 name: string; 
 /**
- * install date
+ * install date, `YYYYMMDD`
  */
 install_date: string; 
 /**

@@ -41,7 +41,7 @@ pub struct InstalledEntry {
     pub url_hash: Option<i64>,
     /// display name of game
     pub name: String,
-    /// install date
+    /// install date, `YYYYMMDD`
     pub install_date: String,
     /// installed directory
     pub location: PathBuf,
