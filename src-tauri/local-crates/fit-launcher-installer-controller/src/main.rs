@@ -61,7 +61,7 @@ fn main() {
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::DEBUG)
         .with_target(true)
-        .with_thread_ids(true)
+        .with_thread_ids(false)
         .with_writer(file_writer)
         .with_ansi(false)
         .finish();

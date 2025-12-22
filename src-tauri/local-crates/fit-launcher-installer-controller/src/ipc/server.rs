@@ -192,10 +192,7 @@ impl IpcServer {
             match self.receive_command() {
                 Ok(Some(cmd)) => {
                     debug!("Received command: {:?}", cmd);
-                    if self
-                        .handle_command(cmd, &mut installer)
-                        .is_ok_and(|shutdown| shutdown)
-                    {
+                    if self.handle_command(cmd, &mut installer)? {
                         break;
                     }
                 }
