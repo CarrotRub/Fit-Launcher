@@ -978,7 +978,7 @@ export type FileStatus = { gid: string | null; status: DownloadState; total_leng
  * 2. Aria2 RPC block
  * 
  */
-export type FitLauncherConfigAria2 = { port: number; librqbit_port: number; token: string | null; start_daemon: boolean; file_allocation: FileAllocation }
+export type FitLauncherConfigAria2 = { port: number; token: string | null; start_daemon: boolean; file_allocation: FileAllocation }
 export type FitLauncherConfigV2 = { general: General; cache: CacheSettings; limits: TransferLimits; network: Connection; bittorrent: Bittorrent; rpc: FitLauncherConfigAria2 }
 export type FitLauncherDnsConfig = { system_conf: boolean; protocol: string; primary: string | null; secondary: string | null }
 /**
