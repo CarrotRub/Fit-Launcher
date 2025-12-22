@@ -13,6 +13,74 @@ use crate::discovery::try_high_res_img;
 use crate::errors::ScrapingError;
 use crate::parser::parse_game_from_article;
 use crate::structs::Game;
+use crate::structs::InstalledEntry;
+
+/// Find local installed games
+#[tauri::command]
+#[specta]
+#[cfg(windows)]
+pub fn find_local_games(app: AppHandle) -> Result<Vec<InstalledEntry>, ScrapingError> {
+    use std::error::Error;
+    use std::path::PathBuf;
+
+    use winreg::{RegKey, enums::HKEY_LOCAL_MACHINE};
+
+    let conn = db::open_connection(&app)?;
+    let games = db::list_all_games(&conn)?;
+
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let uninstall =
+        hklm.open_subkey(r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall")?;
+
+    let local_entries: Vec<InstalledEntry> = uninstall
+        .enum_keys()
+        .flatten()
+        .filter(|keyname| keyname.ends_with("_is1"))
+        .flat_map(|keyname| -> Result<InstalledEntry, Box<dyn Error>> {
+            let regkey = uninstall.open_subkey(keyname)?;
+
+            let name: String = regkey.get_value("DisplayName")?;
+            let size: u32 = regkey.get_value("EstimatedSize")?;
+            let install_date: String = regkey.get_value("InstallDate")?;
+            let location: PathBuf =
+                PathBuf::from(regkey.get_value::<String, _>("InstallLocation")?);
+            let version: String = regkey.get_value("Inno Setup: Setup Version")?;
+
+            Ok(InstalledEntry {
+                name,
+                location,
+                install_date,
+                version,
+                size,
+                url_hash: None,
+            })
+        })
+        .filter(|e| e.version.starts_with("5.5"))
+        .filter(|e| e.location.exists())
+        .filter_map(|e| {
+            let name = e.name.chars().collect::<Vec<_>>();
+
+            let meta = games
+                .iter()
+                .find(|&meta| sorensen::distance(&meta.title, &name) >= 0.8)?;
+
+            Some(InstalledEntry {
+                url_hash: Some(meta.url_hash),
+                ..e
+            })
+        })
+        .collect();
+
+    Ok(local_entries)
+}
+
+/// Find local installed games
+#[tauri::command]
+#[specta]
+#[cfg(not(windows))]
+pub fn find_local_games(app: AppHandle) -> Result<Vec<InstalledEntry>, ScrapingError> {
+    Ok(vec![])
+}
 
 // ============================================================================
 // Game Data Commands

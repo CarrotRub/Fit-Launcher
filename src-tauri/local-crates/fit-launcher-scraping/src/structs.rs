@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -31,4 +33,20 @@ pub struct Game {
     pub secondary_images: Vec<String>,
     #[serde(default)]
     pub pastebin_link: String,
+}
+
+#[derive(Debug, specta::Type, Serialize, Deserialize)]
+pub struct InstalledEntry {
+    /// (database) Url hash
+    pub url_hash: Option<i64>,
+    /// display name of game
+    pub name: String,
+    /// install date
+    pub install_date: String,
+    /// installed directory
+    pub location: PathBuf,
+    /// installation size, in KiB
+    pub size: u32,
+    /// inno setup version
+    pub version: String,
 }

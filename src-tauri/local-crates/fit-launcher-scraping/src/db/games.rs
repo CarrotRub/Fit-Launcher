@@ -35,6 +35,27 @@ pub fn extract_slug(url: &str) -> String {
         .to_string()
 }
 
+pub struct GameMeta {
+    pub url_hash: i64,
+    pub title: Vec<char>,
+}
+
+pub fn list_all_games(conn: &Connection) -> Result<Vec<GameMeta>, ScrapingError> {
+    let mut stmt = conn.prepare_cached("SELECT `url_hash`, `title` FROM `games`")?;
+    Ok(stmt
+        .query_map((), |row| {
+            let url_hash = row.get(0)?;
+            let title = row.get::<_, String>(1)?;
+            let title = title.split_once(" - ").map(|p| p.0).unwrap_or(&title);
+            let title = title.split_once(" – ").map(|p| p.0).unwrap_or(title);
+            let title = title.split_once(", v").map(|p| p.0).unwrap_or(title);
+            let title = title.chars().collect();
+            Ok(GameMeta { url_hash, title })
+        })?
+        .flatten()
+        .collect())
+}
+
 /// Insert a minimal game entry from sitemap (is_scraped = 0).
 pub fn insert_sitemap_stub(
     conn: &Connection,

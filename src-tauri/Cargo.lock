@@ -171,6 +171,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert_float_eq"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd9777fd8234cccd34019d9e26d70c8247f9baf24c8fdc0b56c548cf943af2ed"
+
+[[package]]
 name = "async-broadcast"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1706,12 +1712,14 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "sorensen",
  "specta",
  "tauri",
  "thiserror 2.0.17",
  "time",
  "tokio",
  "tracing",
+ "winreg 0.55.0",
 ]
 
 [[package]]
@@ -6008,6 +6016,15 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "sorensen"
+version = "0.2.0"
+source = "git+https://github.com/waylyrics/sorensen/?branch=use-std-HashMap#1614559e9eebb10d862e12aa5c944820ecc63a63"
+dependencies = [
+ "ahash",
+ "assert_float_eq",
 ]
 
 [[package]]

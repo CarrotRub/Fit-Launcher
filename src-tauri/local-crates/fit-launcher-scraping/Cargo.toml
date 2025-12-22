@@ -23,3 +23,7 @@ time = { version = "0.3.41", features = ["formatting"] }
 rand = { workspace = true }
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 itertools = "0.14"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
+sorensen = { git = "https://github.com/waylyrics/sorensen/", branch = "use-std-HashMap" }
