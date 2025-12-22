@@ -281,21 +281,7 @@ impl IpcServer {
                             success: false,
                             error: Some(err.to_string()),
                         })?;
-
-                        return Err(anyhow::anyhow!(err));
                     }
-                }
-            }
-            Command::Shutdown => {
-                info!("Shutdown requested");
-                self.send_event(&Event::ShuttingDown)?;
-                return Ok(true);
-            }
-            Command::ShutdownIfIdle => {
-                if installer.is_none() {
-                    info!("ShutdownIfIdle: no active install, shutting down");
-                    self.send_event(&Event::ShuttingDown)?;
-                    return Ok(true);
                 }
             }
             Command::CleanupPolicy { exclusion_folder } => {
@@ -325,12 +311,22 @@ impl IpcServer {
                                 success: false,
                                 error: Some(err.to_string()),
                             })?;
-
-                            return Err(anyhow::anyhow!(err));
                         }
                     }
                 } else {
                     info!("Folder  will be kept in excluded list");
+                }
+            }
+            Command::Shutdown => {
+                info!("Shutdown requested");
+                self.send_event(&Event::ShuttingDown)?;
+                return Ok(true);
+            }
+            Command::ShutdownIfIdle => {
+                if installer.is_none() {
+                    info!("ShutdownIfIdle: no active install, shutting down");
+                    self.send_event(&Event::ShuttingDown)?;
+                    return Ok(true);
                 }
             }
         }
