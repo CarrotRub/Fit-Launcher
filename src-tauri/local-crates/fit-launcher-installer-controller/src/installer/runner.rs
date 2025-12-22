@@ -83,6 +83,7 @@ impl InstallerRunner {
         std::thread::sleep(Duration::from_millis(1500));
 
         if self.is_cancelled() {
+            info!("canceled installation for {:?}", self.setup_path);
             kill_process(root_pid);
             return Ok(());
         }
@@ -96,6 +97,7 @@ impl InstallerRunner {
         self.run_automation()?;
 
         if self.is_cancelled() {
+            info!("canceled installation for {:?}", self.setup_path);
             kill_process(root_pid);
             return Ok(());
         }
