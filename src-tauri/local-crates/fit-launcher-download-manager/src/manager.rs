@@ -165,6 +165,7 @@ impl DownloadManager {
         // Use UUID as folder name to avoid unicode/ASCII issues with installer controller
         // The installer controller has issues with certain unicode characters, but setup.exe
         // doesn't care about its parent folder name - only the final install path matters
+        //todo: fix here use same uuid logic
         let job_id = Uuid::new_v4();
         let folder_name = job_id.to_string();
         let dir = target.join(folder_name);
@@ -341,6 +342,12 @@ impl DownloadManager {
 
     #[allow(unused)]
     pub async fn resume(self: &Arc<Self>, job_id: &str) -> Result<()> {
+        // ensure runnin because we might try to resume a download after restarting the app which will then not ask for UAC rights until install which is bad.
+        if let Err(e) = fit_launcher_ui_automation::controller_manager::ControllerManager::global()
+            .ensure_running()
+        {
+            error!("ControllerManager failed to start: {:?}", e);
+        }
         // We'll follow lock order AGAIN: read job metadata under jobs lock then release lock before RPC.
         // Acquire a clone of the job to operate on, but keep a marker that we will update the real job later. This was decided to avoid any heavy locking.
         let job_opt = {
@@ -388,8 +395,15 @@ impl DownloadManager {
 
     async fn resume_ddl(&self, job: &Job) -> Result<()> {
         if let Some(ddl) = &job.ddl {
+            println!("Resume: {:#?}", job);
             let cfg = self.aria_cfg.clone();
-            let dir = Some(job.metadata.target_path.to_string_lossy().to_string());
+            let dir = Some(
+                job.metadata
+                    .target_path
+                    .join(&job.id)
+                    .to_string_lossy()
+                    .to_string(),
+            );
             let mut new_gids = Vec::with_capacity(ddl.files.len());
 
             for f in ddl.files.iter() {
