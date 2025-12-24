@@ -137,7 +137,7 @@ async fn scrape_and_emit_images(app_handle: &AppHandle, game_link: &str) -> Resu
                 }
             }
         })
-        .buffer_unordered(4)
+        .buffer_unordered(8)
         .filter_map(|x| async move { x })
         .collect::<Vec<_>>()
         .await;
