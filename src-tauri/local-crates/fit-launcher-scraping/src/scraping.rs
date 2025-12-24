@@ -352,7 +352,12 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
                         .next()
                         .ok_or(ScrapingError::ArticleNotFound(link.clone()))?;
 
-                    Ok::<(usize, Game), ScrapingError>((idx, parse_game_from_article(article)))
+                    let mut game = parse_game_from_article(article);
+                    //this is a quick fix, it's gettin low res images
+                    //todo: find a better way to do this
+                    game.secondary_images.clear();
+
+                    Ok::<(usize, Game), ScrapingError>((idx, game))
                 }
             })
             .buffer_unordered(10);
