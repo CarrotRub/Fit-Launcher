@@ -4,13 +4,14 @@ use directories::BaseDirs;
 use fit_launcher_scraping::db;
 use librqbit::{
     AddTorrent, AddTorrentOptions, AddTorrentResponse, ListOnlyResponse, Magnet, Session,
-    api::TorrentIdOrHash,
+    SessionOptions, api::TorrentIdOrHash,
 };
+use librqbit_dht::PersistentDhtConfig;
 use parking_lot::Mutex;
 use tokio::io::AsyncWriteExt;
 use tracing::{error, info, warn};
 
-use crate::{decrypt_torrent_from_paste, errors::TorrentApiError};
+use crate::{decrypt_torrent_from_paste, dht::dht_config_with_udp, errors::TorrentApiError};
 
 pub struct LibrqbitSession {
     session: Arc<Mutex<Option<Arc<Session>>>>,
@@ -26,9 +27,20 @@ impl Clone for LibrqbitSession {
 
 impl LibrqbitSession {
     pub async fn new() -> Self {
-        let session = Session::new("/temp/".into())
+        let dht_runtime = dht_config_with_udp().expect("Error getting dht path");
+
+        let ses_opts = SessionOptions {
+            dht_config: Some(PersistentDhtConfig {
+                config_filename: Some(dht_runtime.config_path.clone()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let session = Session::new_with_opts("/temp/".into(), ses_opts)
             .await
             .expect("Failed to start Session");
+
         Self {
             session: Arc::new(Mutex::new(Some(session))),
         }
