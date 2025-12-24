@@ -7,6 +7,7 @@ edition = "2024"
 tracing-subscriber = { workspace = true }
 
 [dependencies]
+fit-launcher-ipc = { path = "../fit-launcher-ipc", features = ["specta"] }
 fit-launcher-scraping = { path = "../fit-launcher-scraping" }
 
 directories = { workspace = true }

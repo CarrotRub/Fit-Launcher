@@ -3,37 +3,9 @@ use std::{os::windows::process::CommandExt, path::Path};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use fit_launcher_ipc::ExclusionAction;
+
 const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ExclusionAction {
-    Add(String),
-    Remove(String),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ExclusionCleanupPolicy {
-    Keep(String),
-    RemoveAfterInstall(String),
-}
-
-impl std::fmt::Display for ExclusionCleanupPolicy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Keep(p) => write!(f, "Keep: {p}"),
-            Self::RemoveAfterInstall(p) => write!(f, "RemoveAfterInstall: {p}"),
-        }
-    }
-}
-
-impl std::fmt::Display for ExclusionAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Add(p) => write!(f, "Add: {p}"),
-            Self::Remove(p) => write!(f, "Remove: {p}"),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error)]
 pub enum ExclusionError {

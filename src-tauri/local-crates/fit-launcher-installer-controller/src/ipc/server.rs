@@ -35,9 +35,12 @@ use windows::Win32::System::Pipes::{
 use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 use windows::core::PCWSTR;
 
-use crate::defender::{ExclusionAction, ExclusionCleanupPolicy, folder_exclusion};
+use fit_launcher_ipc::{
+    Command, Event, ExclusionAction, ExclusionCleanupPolicy, decode_message, encode_message,
+};
+
+use crate::defender::folder_exclusion;
 use crate::installer::InstallerRunner;
-use crate::ipc::protocol::{Command, Event, decode_message, encode_message};
 use crate::utils::encode_utf16le_with_null;
 
 const BUFFER_SIZE: u32 = 65536;
@@ -189,7 +192,10 @@ impl IpcServer {
             match self.receive_command() {
                 Ok(Some(cmd)) => {
                     debug!("Received command: {:?}", cmd);
-                    if self.handle_command(cmd, &mut installer)? {
+                    if self
+                        .handle_command(cmd, &mut installer)
+                        .inspect_err(|e| error!("handle error: {e}"))?
+                    {
                         break;
                     }
                 }
@@ -275,21 +281,7 @@ impl IpcServer {
                             success: false,
                             error: Some(err.to_string()),
                         })?;
-
-                        return Err(anyhow::anyhow!(err));
                     }
-                }
-            }
-            Command::Shutdown => {
-                info!("Shutdown requested");
-                self.send_event(&Event::ShuttingDown)?;
-                return Ok(true);
-            }
-            Command::ShutdownIfIdle => {
-                if installer.is_none() {
-                    info!("ShutdownIfIdle: no active install, shutting down");
-                    self.send_event(&Event::ShuttingDown)?;
-                    return Ok(true);
                 }
             }
             Command::CleanupPolicy { exclusion_folder } => {
@@ -319,12 +311,22 @@ impl IpcServer {
                                 success: false,
                                 error: Some(err.to_string()),
                             })?;
-
-                            return Err(anyhow::anyhow!(err));
                         }
                     }
                 } else {
                     info!("Folder  will be kept in excluded list");
+                }
+            }
+            Command::Shutdown => {
+                info!("Shutdown requested");
+                self.send_event(&Event::ShuttingDown)?;
+                return Ok(true);
+            }
+            Command::ShutdownIfIdle => {
+                if installer.is_none() {
+                    info!("ShutdownIfIdle: no active install, shutting down");
+                    self.send_event(&Event::ShuttingDown)?;
+                    return Ok(true);
                 }
             }
         }

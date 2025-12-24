@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::time::Duration;
 
+use fit_launcher_ipc::InstallPhase;
 use tracing::{info, warn};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
@@ -14,22 +15,6 @@ use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, GetWindowTextW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage,
     WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum InstallPhase {
-    SelectLanguage,
-    Welcome,
-    Information,
-    SelectDestination,
-    SelectComponents,
-    Preparing,
-    Extracting,
-    Unpacking,
-    Finalizing,
-    Completed,
-    Failed,
-}
-
 #[derive(Debug, Clone)]
 pub enum InstallEvent {
     Phase { phase: InstallPhase },
