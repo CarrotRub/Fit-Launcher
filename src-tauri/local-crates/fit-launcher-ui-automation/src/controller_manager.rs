@@ -75,6 +75,11 @@ impl ControllerManager {
         self.state.lock().map_err(|e| e.to_string())
     }
 
+    #[cfg(not(windows))]
+    pub fn ensure_running(&self) -> Result<(), String> {
+        Err("Unsupported platform".into())
+    }
+
     /// Spawns the controller if not already running.
     /// Uses `pipe_name.is_some()` as ground truth for controller existence.
     /// A controller may be temporarily unavailable (borrowed via take_client)
