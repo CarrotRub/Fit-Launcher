@@ -34,11 +34,11 @@ export const TYPE_PRIORITY: Record<string, number> = {
 };
 
 /**
- * Extracts commit type from a line (e.g., "feat:", "fix:")
+ * Extracts commit type from a line (e.g., "feat:", "fix(scope):")
  */
 function extractType(line: string): string | null {
   const match = line.match(
-    /^[*\-]\s*(feat|fix|refactor|core|perf|docs|style|test|chore|ci|build):/i
+    /^[*\-]\s*(feat|fix|refactor|core|perf|docs|style|test|chore|ci|build)(?:\([^)]+\))?(?:!)?:/i
   );
   return match ? match[1].toLowerCase() : null;
 }
@@ -168,6 +168,35 @@ export async function fetchLatestGithubRelease(
       version: release.tag_name || release.name || "Unknown",
     },
   ];
+}
+
+export async function customChangelogPopup(
+  markdown: string,
+  options?: {
+    version?: string;
+    date?: Date;
+    url?: string;
+  }
+): Promise<ChangelogEntry[]> {
+  if (!markdown || !markdown.trim()) {
+    throw new Error("Changelog markdown is empty");
+  }
+
+  const cleaned = cleanReleaseBody(markdown);
+  const sanitizedHtml = await convertMarkdownToHtml(cleaned);
+  const changelogEntry: ChangelogEntry[] = [
+    {
+      body: sanitizedHtml,
+      date: (options?.date ?? new Date()).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      url: options?.url ?? "",
+      version: options?.version ?? "Unreleased",
+    },
+  ];
+  return changelogEntry;
 }
 
 /**
