@@ -523,6 +523,7 @@ impl DownloadManager {
                     let mut ih = self.infohash_index.write().await;
                     ih.remove(&t.info_hash);
                 }
+                #[cfg(windows)]
                 if let Ok(uuid) = Uuid::parse_str(job_id) {
                     let _ =
                         fit_launcher_ui_automation::controller_manager::ControllerManager::global()
