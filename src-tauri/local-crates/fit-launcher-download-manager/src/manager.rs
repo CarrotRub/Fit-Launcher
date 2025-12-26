@@ -14,7 +14,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
@@ -22,6 +22,9 @@ use uuid::Uuid;
 
 /// Debounce time for saving to disk
 const SAVE_DEBOUNCE_MS: u64 = 400;
+
+/// Minimum time between emissions for the same job (in milliseconds)
+const EMIT_THROTTLE_MS: u64 = 250;
 
 /// Download Manager
 ///
@@ -39,6 +42,8 @@ pub struct DownloadManager {
     gid_index: RwLock<HashMap<Gid, JobId>>,
     /// infohash -> JobId index
     infohash_index: RwLock<HashMap<String, JobId>>,
+    /// Track last emission time per job to throttle events
+    last_emit: RwLock<HashMap<JobId, Instant>>,
     persist_path: PathBuf,
     tauri_handle: tauri::AppHandle,
     pub aria_cfg: FitLauncherConfigAria2,
@@ -75,6 +80,7 @@ impl DownloadManager {
             save,
             gid_index: RwLock::new(HashMap::new()),
             infohash_index: RwLock::new(HashMap::new()),
+            last_emit: RwLock::new(HashMap::new()),
             persist_path,
             tauri_handle: handle,
             aria_cfg,
@@ -84,6 +90,31 @@ impl DownloadManager {
 
     pub async fn request_save_debounced(&self) {
         self.save.request_save().await;
+    }
+
+    /// Emit job_updated event only if enough time has passed since last emission
+    /// Always emits for state changes (Active/Paused/Complete), throttles progress updates
+    async fn emit_job_updated_throttled(&self, job: &Job, force: bool) {
+        let job_id = job.id.clone();
+        let should_emit = if force {
+            true
+        } else {
+            let mut last_emit = self.last_emit.write().await;
+            let now = Instant::now();
+            let should = last_emit
+                .get(&job_id)
+                .map(|last| now.duration_since(*last).as_millis() >= EMIT_THROTTLE_MS as u128)
+                .unwrap_or(true);
+
+            if should {
+                last_emit.insert(job_id.clone(), now);
+            }
+            should
+        };
+
+        if should_emit {
+            let _ = self.tauri_handle.emit("download::job_updated", job.clone());
+        }
     }
 
     /// Load persisted jobs and rebuild indicess. (guys lock order: jobs -> gid_index -> infohash_index)
@@ -205,7 +236,7 @@ impl DownloadManager {
             jobs.insert(job.id.clone(), job.clone());
         }
 
-        let _ = self.tauri_handle.emit("download::job_updated", job.clone());
+        self.emit_job_updated_throttled(&job, true).await;
 
         self.request_save_debounced().await;
         Ok(job.id)
@@ -305,28 +336,32 @@ impl DownloadManager {
             jobs.insert(job.id.clone(), job.clone());
         }
 
-        let _ = self.tauri_handle.emit("download::job_updated", job.clone());
+        self.emit_job_updated_throttled(&job, true).await;
         self.request_save_debounced().await;
         Ok(job.id)
     }
 
     pub async fn pause(&self, job_id: &str) -> Result<()> {
         // clone gids while holding the job lock, then do RPC outside
-        let gids: Option<Vec<Gid>> = {
+        let (gids, job_snapshot): (Option<Vec<Gid>>, Option<Job>) = {
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(job_id) {
                 let g = job.gids.clone();
                 job.state = DownloadState::Paused;
                 job.status = None;
                 job.metadata.updated_at = Utc::now();
-                let _ = self.tauri_handle.emit("download::job_updated", job.clone());
+                let snap = job.clone();
 
                 self.request_save_debounced().await;
-                Some(g)
+                (Some(g), Some(snap))
             } else {
-                None
+                (None, None)
             }
         };
+
+        if let Some(job) = job_snapshot {
+            self.emit_job_updated_throttled(&job, true).await;
+        }
 
         if let Some(gids) = gids {
             for gid in gids {
@@ -375,11 +410,19 @@ impl DownloadManager {
         }
 
         if any_resumed {
-            let mut jobs_lock = self.jobs.write().await;
-            if let Some(j) = jobs_lock.get_mut(job_id) {
-                j.state = DownloadState::Active;
-                j.metadata.updated_at = Utc::now();
-                let _ = self.tauri_handle.emit("download::job_updated", j.clone());
+            let job_snapshot = {
+                let mut jobs_lock = self.jobs.write().await;
+                if let Some(j) = jobs_lock.get_mut(job_id) {
+                    j.state = DownloadState::Active;
+                    j.metadata.updated_at = Utc::now();
+                    Some(j.clone())
+                } else {
+                    None
+                }
+            };
+
+            if let Some(job) = job_snapshot {
+                self.emit_job_updated_throttled(&job, true).await;
             }
             self.request_save_debounced().await;
             return Ok(());
@@ -423,20 +466,28 @@ impl DownloadManager {
             }
 
             if !new_gids.is_empty() {
-                let mut jobs = self.jobs.write().await;
-                if let Some(j) = jobs.get_mut(&job.id) {
-                    j.gids.extend(new_gids.iter().cloned());
-                    j.gids.sort();
-                    j.gids.dedup();
+                let job_snapshot = {
+                    let mut jobs = self.jobs.write().await;
+                    if let Some(j) = jobs.get_mut(&job.id) {
+                        j.gids.extend(new_gids.iter().cloned());
+                        j.gids.sort();
+                        j.gids.dedup();
 
-                    let mut gid_idx = self.gid_index.write().await;
-                    for g in j.gids.iter() {
-                        gid_idx.insert(g.clone(), j.id.clone());
+                        let mut gid_idx = self.gid_index.write().await;
+                        for g in j.gids.iter() {
+                            gid_idx.insert(g.clone(), j.id.clone());
+                        }
+
+                        j.state = DownloadState::Active;
+                        j.metadata.updated_at = Utc::now();
+                        Some(j.clone())
+                    } else {
+                        None
                     }
+                };
 
-                    j.state = DownloadState::Active;
-                    j.metadata.updated_at = Utc::now();
-                    let _ = self.tauri_handle.emit("download::job_updated", j.clone());
+                if let Some(job) = job_snapshot {
+                    self.emit_job_updated_throttled(&job, true).await;
                 }
                 self.request_save_debounced().await;
             }
@@ -484,18 +535,26 @@ impl DownloadManager {
         let aria_guard = self.aria.lock().await;
         match aria_guard.add_torrent(torrent_bytes, dir, files_list).await {
             Ok(new_gid) => {
-                let mut jobs = self.jobs.write().await;
-                if let Some(j) = jobs.get_mut(&job.id) {
-                    j.gids = vec![new_gid.clone()];
-                    j.state = DownloadState::Active;
-                    j.metadata.updated_at = Utc::now();
-                    let mut gid_idx = self.gid_index.write().await;
-                    gid_idx.insert(new_gid, j.id.clone());
-                    if let Some(t) = &j.torrent {
-                        let mut ih = self.infohash_index.write().await;
-                        ih.insert(t.info_hash.clone(), j.id.clone());
+                let job_snapshot = {
+                    let mut jobs = self.jobs.write().await;
+                    if let Some(j) = jobs.get_mut(&job.id) {
+                        j.gids = vec![new_gid.clone()];
+                        j.state = DownloadState::Active;
+                        j.metadata.updated_at = Utc::now();
+                        let mut gid_idx = self.gid_index.write().await;
+                        gid_idx.insert(new_gid, j.id.clone());
+                        if let Some(t) = &j.torrent {
+                            let mut ih = self.infohash_index.write().await;
+                            ih.insert(t.info_hash.clone(), j.id.clone());
+                        }
+                        Some(j.clone())
+                    } else {
+                        None
                     }
-                    let _ = self.tauri_handle.emit("download::job_updated", j.clone());
+                };
+
+                if let Some(job) = job_snapshot {
+                    self.emit_job_updated_throttled(&job, true).await;
                 }
                 self.request_save_debounced().await;
             }
@@ -523,6 +582,11 @@ impl DownloadManager {
                     let mut ih = self.infohash_index.write().await;
                     ih.remove(&t.info_hash);
                 }
+
+                // Clean up throttle tracking
+                let mut last_emit = self.last_emit.write().await;
+                last_emit.remove(job_id);
+
                 if let Ok(uuid) = Uuid::parse_str(job_id) {
                     let _ =
                         fit_launcher_ui_automation::controller_manager::ControllerManager::global()
@@ -565,10 +629,11 @@ impl DownloadManager {
 
         if let Some(job_id) = job_id_opt {
             let mut job_infohash_to_insert: Option<(String, JobId)> = None;
-
-            {
+            let (job_snapshot, state_changed) = {
                 let mut jobs = self.jobs.write().await;
                 if let Some(job) = jobs.get_mut(&job_id) {
+                    let old_state = job.state.clone();
+
                     let mut agg = job.status.clone().unwrap_or_default();
 
                     agg.per_file.insert(gid.to_string(), fs.clone());
@@ -626,11 +691,15 @@ impl DownloadManager {
                             job_infohash_to_insert = Some((info_hash, job.id.clone()));
                         }
                     }
+
+                    let state_changed = old_state != job.state;
+                    (Some(job.clone()), state_changed)
                 } else {
                     let mut idx = self.gid_index.write().await;
                     idx.remove(gid);
+                    (None, false)
                 }
-            }
+            };
 
             if let Some((h, id)) = job_infohash_to_insert {
                 let mut ih = self.infohash_index.write().await;
@@ -642,13 +711,9 @@ impl DownloadManager {
                 gid_idx.insert(gid.to_string(), job_id.clone());
             }
 
-            let job_snapshot_opt = {
-                let jobs = self.jobs.read().await;
-                jobs.get(&job_id).cloned()
-            };
-
-            if let Some(js) = job_snapshot_opt {
-                let _ = self.tauri_handle.emit("download::job_updated", js.clone());
+            if let Some(js) = job_snapshot {
+                // Force emit on state changes, throttle progress updates
+                self.emit_job_updated_throttled(&js, state_changed).await;
 
                 if matches!(js.state, DownloadState::Complete)
                     || js
