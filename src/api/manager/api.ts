@@ -22,18 +22,37 @@ export class GlobalDownloadManager {
   private completedCbs: Set<JobCallback> = new Set();
   private removedCbs: Set<RemovedCallback> = new Set();
 
+  private pendingUpdates = new Map<string, Job>();
+  private flushScheduled = false;
+  private readonly FLUSH_INTERVAL = 250;
+
   private unlistenUpdated: UnlistenFn | null = null;
   private unlistenRemoved: UnlistenFn | null = null;
   private unlistenCompleted: UnlistenFn | null = null;
 
+  private flushUpdates() {
+    this.flushScheduled = false;
+
+    for (const [id, job] of this.pendingUpdates) {
+      this.jobs.set(id, job);
+      this.updatedCbs.forEach((cb) => cb(job));
+    }
+
+    this.pendingUpdates.clear();
+  }
+
   async setup() {
     if (!this.unlistenUpdated) {
       this.unlistenUpdated = await listen("download::job_updated", (e) => {
-        const job = (e.payload as any) ?? null;
-        if (!job || !job.id) return;
-        this.jobs.set(job.id, job);
+        const job = e.payload as Job | null;
+        if (!job?.id) return;
 
-        this.updatedCbs.forEach((cb) => cb(job));
+        this.pendingUpdates.set(job.id, job);
+
+        if (!this.flushScheduled) {
+          this.flushScheduled = true;
+          setTimeout(() => this.flushUpdates(), this.FLUSH_INTERVAL);
+        }
       });
     }
     if (!this.unlistenRemoved) {
