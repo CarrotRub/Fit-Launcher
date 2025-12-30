@@ -11,7 +11,7 @@ pub async fn aria2_add_uri(
     url: Vec<String>,
     dir: Option<String>,
     filename: Option<String>,
-    aria2_cfg: FitLauncherConfigAria2,
+    #[cfg_attr(not(windows), allow(unused))] aria2_cfg: FitLauncherConfigAria2,
 ) -> Result<String, Aria2Error> {
     let mut options = TaskOptions {
         split: Some(1),
