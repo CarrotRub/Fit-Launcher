@@ -18,6 +18,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { lt } from 'semver';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { load as loadStore } from '@tauri-apps/plugin-store';
+import { DM } from './api/manager/api';
 
 const themeManager = new ThemeManagerApi();
 
@@ -26,6 +27,7 @@ export const pageAbortController = new AbortController();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function App(props: { children: number | boolean | Node | JSX.ArrayElement | (string & {}) | null | undefined; }) {
+  let cleanupInterval: number | undefined;
   onMount(async () => {
 
 
@@ -38,6 +40,10 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
     } catch (err) {
       console.error('Failed to load stored theme:', err);
     }
+
+    cleanupInterval = setInterval(() => {
+      DM.cleanup();
+    }, 5 * 60 * 1000);
 
     try {
       const { applied, blur } = await themeManager.loadBackgroundState();
@@ -70,6 +76,9 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
   });
   onCleanup(() => {
     pageAbortController.abort();
+    if (cleanupInterval !== undefined) {
+      clearInterval(cleanupInterval);
+    }
   });
   async function handleChangelog() {
     const latestVer = localStorage.getItem("version");

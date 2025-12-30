@@ -22,35 +22,107 @@ export class GlobalDownloadManager {
   private completedCbs: Set<JobCallback> = new Set();
   private removedCbs: Set<RemovedCallback> = new Set();
 
+  private pendingUpdates = new Map<string, Job>();
+  private flushScheduled = false;
+  private readonly FLUSH_INTERVAL = 250;
+  private flushTimer: number | null = null;
+
+  // Keep only the last N completed jobs in memory
+  private readonly MAX_COMPLETED_JOBS = 50;
+  private completedJobIds = new Set<string>();
+
   private unlistenUpdated: UnlistenFn | null = null;
   private unlistenRemoved: UnlistenFn | null = null;
   private unlistenCompleted: UnlistenFn | null = null;
 
+  private flushUpdates() {
+    this.flushScheduled = false;
+    this.flushTimer = null;
+
+    for (const [id, job] of this.pendingUpdates) {
+      this.jobs.set(id, job);
+
+      this.updatedCbs.forEach((cb) => {
+        try {
+          cb(job);
+        } catch (err) {
+          console.error("Error in job updated callback:", err);
+        }
+      });
+    }
+
+    this.pendingUpdates.clear();
+
+    this.cleanupCompletedJobs();
+  }
+
+  private cleanupCompletedJobs() {
+    if (this.completedJobIds.size > this.MAX_COMPLETED_JOBS) {
+      const toRemove = this.completedJobIds.size - this.MAX_COMPLETED_JOBS;
+      const idsArray = Array.from(this.completedJobIds);
+
+      for (let i = 0; i < toRemove; i++) {
+        const oldId = idsArray[i];
+        this.jobs.delete(oldId);
+        this.completedJobIds.delete(oldId);
+      }
+    }
+  }
+
   async setup() {
     if (!this.unlistenUpdated) {
       this.unlistenUpdated = await listen("download::job_updated", (e) => {
-        const job = (e.payload as any) ?? null;
-        if (!job || !job.id) return;
-        this.jobs.set(job.id, job);
+        const job = e.payload as Job | null;
+        if (!job?.id) return;
 
-        this.updatedCbs.forEach((cb) => cb(job));
+        // Only keep the latest update per job
+        this.pendingUpdates.set(job.id, job);
+
+        if (!this.flushScheduled) {
+          this.flushScheduled = true;
+          this.flushTimer = window.setTimeout(
+            () => this.flushUpdates(),
+            this.FLUSH_INTERVAL
+          );
+        }
       });
     }
+
     if (!this.unlistenRemoved) {
       this.unlistenRemoved = await listen("download::job_removed", (e) => {
         const id = e.payload as string;
-        const job = this.jobs.get(id) ?? null;
-        this.jobs.delete(id);
 
-        this.removedCbs.forEach((cb) => cb(id));
+        this.jobs.delete(id);
+        this.pendingUpdates.delete(id);
+        this.completedJobIds.delete(id);
+
+        this.removedCbs.forEach((cb) => {
+          try {
+            cb(id);
+          } catch (err) {
+            console.error("Error in job removed callback:", err);
+          }
+        });
       });
     }
+
     if (!this.unlistenCompleted) {
       this.unlistenCompleted = await listen("download::job_completed", (e) => {
         const job = (e.payload as any) ?? null;
         if (!job || !job.id) return;
+
         this.jobs.set(job.id, job);
-        this.completedCbs.forEach((cb) => cb(job));
+        this.completedJobIds.add(job.id);
+
+        this.completedCbs.forEach((cb) => {
+          try {
+            cb(job);
+          } catch (err) {
+            console.error("Error in job completed callback:", err);
+          }
+        });
+
+        this.cleanupCompletedJobs();
       });
     }
 
@@ -62,8 +134,14 @@ export class GlobalDownloadManager {
       }
       if (Array.isArray(all)) {
         for (const j of all) {
-          if (j && j.id) this.jobs.set(j.id, j);
+          if (j && j.id) {
+            this.jobs.set(j.id, j);
+            if (j.state === "complete") {
+              this.completedJobIds.add(j.id);
+            }
+          }
         }
+        this.cleanupCompletedJobs();
       }
     } catch (err) {
       console.warn("dmAllJobs failed:", err);
@@ -74,8 +152,55 @@ export class GlobalDownloadManager {
   getAll(): Job[] {
     return Array.from(this.jobs.values());
   }
+
+  getAllActive(): Job[] {
+    return Array.from(this.jobs.values()).filter(
+      (j) =>
+        j.state === "active" || j.state === "paused" || j.state === "waiting"
+    );
+  }
+
+  getAllCompleted(): Job[] {
+    return Array.from(this.jobs.values()).filter((j) => j.state === "complete");
+  }
+
   get(id: string): Job | undefined {
     return this.jobs.get(id);
+  }
+
+  // Manual cleanup method
+  // call this when user navigates away from downloads page
+  // todo: call this cuz i dont have time rn
+  cleanup() {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    this.pendingUpdates.clear();
+    this.flushScheduled = false;
+
+    const activeJobs = new Map<string, Job>();
+    for (const [id, job] of this.jobs) {
+      if (job.state !== "complete") {
+        activeJobs.set(id, job);
+      }
+    }
+
+    const completedJobs = Array.from(this.jobs.values())
+      .filter((j) => j.state === "complete")
+      .slice(-10);
+
+    this.jobs.clear();
+    this.completedJobIds.clear();
+
+    for (const [id, job] of activeJobs) {
+      this.jobs.set(id, job);
+    }
+
+    for (const job of completedJobs) {
+      this.jobs.set(job.id, job);
+      this.completedJobIds.add(job.id);
+    }
   }
 
   // commands
@@ -220,6 +345,11 @@ export class GlobalDownloadManager {
   }
 
   async teardown() {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+
     if (this.unlistenUpdated) {
       this.unlistenUpdated();
       this.unlistenUpdated = null;
@@ -232,10 +362,15 @@ export class GlobalDownloadManager {
       this.unlistenCompleted();
       this.unlistenCompleted = null;
     }
+
     this.updatedCbs.clear();
     this.removedCbs.clear();
     this.completedCbs.clear();
+
     this.jobs.clear();
+    this.pendingUpdates.clear();
+    this.completedJobIds.clear();
+    this.flushScheduled = false;
   }
 }
 

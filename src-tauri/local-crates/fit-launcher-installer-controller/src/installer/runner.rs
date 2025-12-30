@@ -355,19 +355,7 @@ impl InstallerRunner {
 
 /// Convert internal event phase to IPC protocol phase.
 fn convert_phase(phase: InstallPhase) -> InstallPhase {
-    match phase {
-        InstallPhase::SelectLanguage => InstallPhase::SelectLanguage,
-        InstallPhase::Welcome => InstallPhase::Welcome,
-        InstallPhase::Information => InstallPhase::Information,
-        InstallPhase::SelectDestination => InstallPhase::SelectDestination,
-        InstallPhase::SelectComponents => InstallPhase::SelectComponents,
-        InstallPhase::Preparing => InstallPhase::Preparing,
-        InstallPhase::Extracting => InstallPhase::Extracting,
-        InstallPhase::Unpacking => InstallPhase::Unpacking,
-        InstallPhase::Finalizing => InstallPhase::Finalizing,
-        InstallPhase::Completed => InstallPhase::Completed,
-        InstallPhase::Failed => InstallPhase::Failed,
-    }
+    phase
 }
 
 /// Find child process of a given PID.
