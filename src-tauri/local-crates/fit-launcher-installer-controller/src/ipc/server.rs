@@ -208,6 +208,7 @@ impl IpcServer {
                         break;
                     }
                     warn!("Error receiving command: {:#}", e);
+                    return Err(e);
                 }
             }
         }
