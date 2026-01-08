@@ -165,7 +165,7 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
               </div>
 
               <Topbar />
-              <div class="flex-1 overflow-y-auto no-scrollbar">
+              <div class="flex-1 overflow-y-auto no-scrollbar" id="scrollElement">
                 {props.children}
               </div>
 
