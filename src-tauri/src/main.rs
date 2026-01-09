@@ -1,6 +1,5 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-pub mod game_comments;
 pub mod utils;
 
 pub mod bootstrap;
@@ -16,11 +15,11 @@ pub use crate::utils::*;
 
 #[tokio::main]
 async fn main() {
-  init_logging();
+    init_logging();
 
-  warn!("Starting application (bootstrap)");
+    warn!("Starting application (bootstrap)");
 
-  if let Err(e) = start_app().await {
-    eprintln!("Failed to start application: {:#?}", e);
-  }
+    if let Err(e) = start_app().await {
+        eprintln!("Failed to start application: {:#?}", e);
+    }
 }

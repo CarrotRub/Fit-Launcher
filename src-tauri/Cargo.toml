@@ -95,6 +95,7 @@ fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-scraping = { path = "./local-crates/fit-launcher-scraping" }
 fit-launcher-library = { path = "./local-crates/fit-launcher-library" }
 fit-launcher-download-manager = { path = "./local-crates/fit-launcher-download-manager" }
+fit-launcher-game-comments = { path = "./local-crates/fit-launcher-game-comments" }
 fit-launcher-cache = { workspace = true }
 tauri-plugin-notification = "2.3.3"
 
@@ -118,7 +119,9 @@ members = [
     "local-crates/fit-launcher-torrent",
     "local-crates/fit-launcher-ui-automation",
     "local-crates/fit-launcher-cache",
-    "local-crates/fit-launcher-ipc",
+    "local-crates/fit-launcher-aria2",
+    "local-crates/fit-launcher-ipc", 
+    "local-crates/fit-launcher-game-comments",
 ]
 resolver = "3"
 
@@ -199,6 +202,7 @@ fit-launcher-config = { path = "./local-crates/fit-launcher-config" }
 fit-launcher-aria2 = { path = "./local-crates/fit-launcher-aria2" }
 fit-launcher-integrations = { path = "./local-crates/fit-launcher-integrations" }
 fit-launcher-cache = { path = "./local-crates/fit-launcher-cache" }
+fit-launcher-game-comments = { path = "./local-crates/fit-launcher-game-comments" }
 
 hickory-resolver = { version = "0.25.2", features = ["https-ring"] }
 once_cell = "1.21.3"
