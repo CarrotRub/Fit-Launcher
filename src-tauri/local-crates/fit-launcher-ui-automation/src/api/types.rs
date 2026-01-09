@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use fit_launcher_scraping::db::extract_slug;
 use fit_launcher_scraping::structs::Game;
 use tauri::async_runtime::spawn_blocking;
 use tokio_util::sync::CancellationToken;
@@ -90,6 +89,7 @@ impl InstallationJob {
             use crate::controller_client::{ControllerCommand, ControllerEvent, InstallOptions};
             use crate::controller_manager::{ControllerManager, QueuedInstallJob};
             use fit_launcher_config::commands::get_installation_settings;
+            use fit_launcher_scraping::db::extract_slug;
 
             let setup_path = self.setup_executable_path();
             info!("Setup path: {}", setup_path.display());
@@ -367,9 +367,9 @@ impl InstallationJob {
             use tracing::info;
 
             info!("Automated setup installation is not supported on this platform");
-            return Err(InstallationError::IOError(
+            Err(InstallationError::IOError(
                 "Automated setup installation is not supported on this platform".to_string(),
-            ));
+            ))
         }
     }
 
