@@ -12,6 +12,7 @@ import { AboutSection } from "./sections/About/AboutSection";
 import { FeaturesSection } from "./sections/FeaturesSection";
 import { GamePageState } from "../../types/game";
 import { ActivitySection } from "./sections/About/ActivitySection";
+import { CommentsSection } from "./sections/CommentsSection";
 
 
 const GridCard = (props: { children: JSX.Element; class?: string }) => (
@@ -85,9 +86,12 @@ const DownloadGameUUIDPage = () => {
                   <Show when={currentGame()?.executable_info.executable_path !== "" && currentGame()?.executable_info.executable_path}>
                     <ActivitySection game={downloadedGame} />
                   </Show>
+
                 </div>
               </div>
-
+              <GridCard class="mt-6">
+                <CommentsSection title="User Comments" gameHref={gameHref()} />
+              </GridCard>
             </div>
           </div>
         </div>
