@@ -585,6 +585,14 @@ async getDownloadSettings() : Promise<Result<FitLauncherConfigV2, TorrentApiErro
     else return { error: e  as any, status: "error" };
 }
 },
+async getGameComments(url: string) : Promise<Result<Comments, string>> {
+    try {
+    return { data: await TAURI_INVOKE("get_game_comments", { url }), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async getGamehubSettings() : Promise<GamehubSettings> {
     return await TAURI_INVOKE("get_gamehub_settings");
 },
@@ -876,10 +884,13 @@ async updateDownloadedGameExecutableInfo(gameTitle: string, executableInfo: Exec
 /** user-defined types **/
 
 export type AggregatedStatus = { total_length: number; completed_length: number; download_speed: number; upload_speed: number; per_file: Partial<{ [key in string]: FileStatus }>; state: DownloadState; progress_percentage: number }
+export type AnswerComment = { id: number; text_template: string | null; data_create: string | null; user: User | null; raiting: Rating | null; attaches?: Attach[] | null; attaches_icons?: number[] | null; attaches_text: string | null; sort: number | null; edited: boolean | null; fixed: boolean | null; comment_type: number | null; answer_comment_root_id: number | null }
 export type Aria2Error = "NotConfigured" | { InitializationFailed: string } | { RPCError: string } | { Timeout: string } | "StaleConnection"
 export type AriaTask = { gid: string; filename: string }
 export type AriaTaskProgress = { completed: number; download_speed: number; total_length: number; completed_length: number }
 export type AriaTaskResult = { task: AriaTask | null; error: Aria2Error | null }
+export type Attach = { type: string; data?: AttachType[] }
+export type AttachType = { src: string | null; src_o: string | null; width: number | null; video: string | null; webp: string | null; height: number | null; title: string | null; type: string | null; description: string | null }
 export type BitTorrentFileMode = "single" | "multi"
 /**
  * https://aria2.github.io/manual/en/html/aria2c.html
@@ -917,6 +928,10 @@ export type CacheSettings = {
  * max image cache size, in bytes
  */
 cache_size?: number }
+export type Chat = { site_id: number; title: string; hash: string; identity: JsonValue | null; url: string; count_comment_all: number; count_comment_load: number; closed: boolean; format: number; root_id: number; fixed_comment: JsonValue | null }
+export type Comment = { id: number; text_template: string | null; data_create: string | null; user: User | null; raiting: Rating | null; attaches?: Attach[]; attaches_icons?: JsonValue[]; attaches_text: string | null; sort: JsonValue; edited: boolean | null; fixed: boolean | null; comment_type: number; answer_comment_root_id: number; answer_comment_count: number; answer_comment: AnswerComment | null }
+export type CommentData = { chat: Chat; comments: Comment[] }
+export type Comments = { data: CommentData }
 export type Connection = { "max-connection-per-server": number; split: number; "min-split-size": number; "connect-timeout": Duration; "rw-timeout": Duration }
 export type Cookie = { name: string; value: string; domain: string | null; path: string | null; expires: string | null; max_age: number | null }
 export type Cookies = Cookie[]
@@ -1024,8 +1039,10 @@ export type InstallationInfo = { output_folder: string; download_folder: string;
 export type InstallationSettings = { auto_clean: boolean; auto_install: boolean; two_gb_limit: boolean; directx_install: boolean; microsoftcpp_install: boolean }
 export type Job = { id: string; metadata: JobMetadata; game: Game; job_path: string; source: DownloadSource; gids: string[]; ddl: DdlJob | null; torrent: TorrentJob | null; state: DownloadState; status: AggregatedStatus | null }
 export type JobMetadata = { game_title: string; target_path: string; created_at: string; updated_at: string }
+export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type LegacyDownloadedGame = { torrentExternInfo: TorrentExternInfo; torrentIdx: string; torrentOutputFolder: string; torrentDownloadFolder: string; torrentFileList: string[]; checkboxesList: boolean; executableInfo: ExecutableInfo }
 export type QueueStatus = { queue: string[]; active: string | null }
+export type Rating = { id: number; val: number; user_val: number }
 export type ScrapingError = { type: "articleNotFound"; data: string } | { type: "reqwestError"; data: string } | { type: "selectorError"; data: string } | { type: "jsonError"; data: string } | { type: "generalError"; data: string } | { type: "httpStatusCodeError"; data: string } | { type: "timeoutError"; data: string } | { type: "ioerror"; data: string } | { type: "windowError"; data: string } | { type: "cookieError"; data: string } | { type: "urlParseError"; data: string } | { type: "regexError"; data: string } | { type: "semaphoreError"; data: string }
 export type SearchIndexEntry = { slug: string; title: string; href: string }
 export type SettingsConfigurationError = { message: string }
@@ -1144,6 +1161,7 @@ export type TransferLimits = {
 "max-upload": number | null }
 export type Uri = { status: UriStatus; uri: string }
 export type UriStatus = "used" | "waiting"
+export type User = { id: number | null; name: string; nick: string; ava: string; online: boolean; data_last_visit: string; admin: boolean; is_verified: boolean | null }
 export type Version = { enabledFeatures: string[]; version: string }
 
 /** tauri-specta globals **/
