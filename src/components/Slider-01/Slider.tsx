@@ -67,7 +67,8 @@ const Slider = (props: SliderProps): JSX.Element => {
     return (
         <>
             <div id={sliderId} class="w-full flex flex-col gap-3 pt-4">
-                <div class="slider-container flex gap-4 px-4 transition-transform duration-500 ease-out">
+                <div class="overflow-hidden w-full">
+                    <div class="slider-container flex gap-4 px-4 transition-transform duration-500 ease-out">
                     <For each={props.images}>
                         {(image, index) => (
                             <div
@@ -88,9 +89,10 @@ const Slider = (props: SliderProps): JSX.Element => {
                             </div>
                         )}
                     </For>
+                    </div>
                 </div>
             </div>
-            <div class="flex w-screen h-fit items-center justify-center gap-4 mt-3">
+            <div class="flex w-full h-fit items-center justify-center gap-4 mt-3">
                 <button
                     class={`skipper left p-2 rounded-full bg-background/90 border border-secondary-30 shadow backdrop-blur-md transition-all duration-200 hover:scale-105 ${currentIndex() === 0 ? 'opacity-0 cursor-default' : 'opacity-100 hover:bg-accent/10'}`}
                     onClick={goPrevious}
