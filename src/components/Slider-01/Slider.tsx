@@ -67,28 +67,31 @@ const Slider = (props: SliderProps): JSX.Element => {
     return (
         <>
             <div id={sliderId} class="w-full flex flex-col gap-3 pt-4">
-                <div class="overflow-hidden w-full">
+                <div class="overflow-x-auto w-full scroll-smooth no-scrollbar">
                     <div class="slider-container flex gap-4 px-4 transition-transform duration-500 ease-out">
-                    <For each={props.images}>
-                        {(image, index) => (
-                            <div
-                                class="w-48 h-64 shrink-0 rounded-xl overflow-hidden bg-background shadow border border-secondary-30 hover:shadow-lg relative cursor-pointer group/image transition-all duration-300 hover:scale-[1.02]"
-                                onClick={() => handleImageClick(props.titles[index()], props.filePath || '', props.hrefs[index()])}
-                            >
-                                <LazyImage
-                                    src={image}
-                                    alt={props.titles[index()]}
-                                    class="w-full h-full"
-                                />
-                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-background/80 to-transparent px-3 py-2 flex justify-between items-end">
-                                    <span class="text-text text-sm font-semibold truncate transition-all duration-300 group-hover/image:text-primary">
-                                        {props.titles[index()]}
-                                    </span>
-                                    <MoveRight class="text-accent opacity-80 group-hover/image:translate-x-1 transition-all duration-200" size={18} />
+                        <For each={props.images}>
+                            {(image, index) => (
+                                <div class="shrink-0">
+                                    <div
+                                        class="w-48 h-64 shrink-0 rounded-xl overflow-hidden bg-background shadow border border-secondary-30 hover:shadow-lg relative cursor-pointer group/image transition-all duration-300 hover:scale-[1.02]"
+                                        onClick={() => handleImageClick(props.titles[index()], props.filePath || '', props.hrefs[index()])}
+                                    >
+                                        <LazyImage
+                                            src={image}
+                                            alt={props.titles[index()]}
+                                            class="w-full h-full"
+                                        />
+                                        <div class="absolute bottom-0 w-full bg-gradient-to-t from-background/80 to-transparent px-3 py-2 flex justify-between items-end">
+                                            <span class="text-text text-sm font-semibold truncate transition-all duration-300 group-hover/image:text-primary">
+                                                {props.titles[index()]}
+                                            </span>
+                                            <MoveRight class="text-accent opacity-80 group-hover/image:translate-x-1 transition-all duration-200" size={18} />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </For>
+
+                            )}
+                        </For>
                     </div>
                 </div>
             </div>
