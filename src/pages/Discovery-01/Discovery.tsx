@@ -36,6 +36,7 @@ export default function DiscoveryPage() {
   const [data, { refetch }] = createResource(fetchDiscoveryData);
   const [filters, setFilters] = createSignal<FilterState>(DEFAULT_FILTER_STATE);
   const [currentPage, setCurrentPage] = createSignal(1);
+  const [scrollBehavior, setScrollBehavior] = createSignal<ScrollBehavior>('auto');
 
   onMount(() => {
     let unlisten: UnlistenFn | undefined;
@@ -44,7 +45,14 @@ export default function DiscoveryPage() {
       refetch();
     }).then(fn => { unlisten = fn; });
 
-    onCleanup(() => { unlisten?.(); });
+    // OS animation preference for scroll
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mapMotionToBehavior = (matches: boolean) => matches ? 'auto' : 'smooth';
+    setScrollBehavior(mapMotionToBehavior(mediaQuery.matches));
+    const mediaQueryScrollListener = (e: MediaQueryListEvent) => setScrollBehavior(mapMotionToBehavior(e.matches));
+    mediaQuery.addEventListener('change', mediaQueryScrollListener);
+
+    onCleanup(() => { unlisten?.(); mediaQuery.removeEventListener('change', mediaQueryScrollListener); });
   });
 
   // Derived state
@@ -54,7 +62,7 @@ export default function DiscoveryPage() {
   const availableGenres = createMemo(() => getAllGenres(games()));
   const repackSizeRange = createMemo(() => games().length ? getSizeRange(games(), 'repack') : DEFAULT_SIZE_RANGE);
   const originalSizeRange = createMemo(() => games().length ? getSizeRange(games(), 'original') : DEFAULT_SIZE_RANGE);
-
+  const scrollElement = createMemo(() => document.getElementById('scrollElement') as HTMLElement);
   const filteredGames = createMemo(() => filterGames(games(), filters()));
   const totalPages = createMemo(() => Math.ceil(filteredGames().length / ITEMS_PER_PAGE));
   const paginatedGames = createMemo(() => {
@@ -65,12 +73,12 @@ export default function DiscoveryPage() {
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
     setCurrentPage(1);
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    scrollElement().scrollTo({ top: 0, behavior: "instant" });
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollElement().scrollTo({ top: 0, behavior: scrollBehavior() })
   };
 
   return (
