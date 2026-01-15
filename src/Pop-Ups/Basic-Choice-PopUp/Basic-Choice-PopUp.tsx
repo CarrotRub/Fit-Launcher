@@ -12,12 +12,18 @@ export default function createBasicChoicePopup(props: PopupProps) {
         container.remove();
     };
 
+    const cancel = () => {
+        props.cancelAction?.();
+        destroy();
+    }
+
     render(
         () => (
             <Modal
                 {...props}
                 onConfirm={async () => props.action?.()}
                 onClose={destroy}
+                cancelAction={cancel}
                 disabledConfirm={props.disabledConfirm}
             >
                 <div class="space-y-4">

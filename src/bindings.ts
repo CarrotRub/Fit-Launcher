@@ -1031,7 +1031,7 @@ included_dlcs: string; magnetlink: string; href: string; tag: string;
  */
 secondary_images: string[]; pastebin_link?: string }
 export type GameCollection = { name: string; games_list: Game[] }
-export type GamehubSettings = { nsfw_censorship: boolean; auto_get_colors_popular_games: boolean; close_to_tray: boolean }
+export type GamehubSettings = { nsfw_censorship: boolean; auto_get_colors_popular_games: boolean; close_to_tray: boolean; game_page_allow_comments: boolean }
 export type General = { download_dir: string; concurrent_downloads?: number; folder_exclusion: boolean; folder_exclusion_cleanup: boolean }
 export type GlobalStat = { downloadSpeed: number; uploadSpeed: number; numActive: number; numWaiting: number; numStopped: number; numStoppedTotal: number }
 export type InstallationError = { IOError: string } | "AdminModeError"
