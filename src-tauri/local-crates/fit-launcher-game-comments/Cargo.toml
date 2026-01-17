@@ -1,0 +1,13 @@
+[package]
+name = "fit-launcher-game-comments"
+version = "0.1.0"
+edition = "2024"
+description = "FitLauncher Game Page Comments Fetcher"
+
+[dependencies]
+tauri = { workspace = true }
+specta = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+fit-launcher-config = { path = "../fit-launcher-config/" }

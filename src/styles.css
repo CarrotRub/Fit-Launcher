@@ -238,6 +238,12 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-secondary-20) transparent;
   }
+
+  /* GameComment comment.text_template link */
+  .com_link{
+    @apply text-blue-500;
+  }
+
 }
 
 body {

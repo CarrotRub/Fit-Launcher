@@ -82,7 +82,10 @@ export function Modal<T extends unknown[]>(props: ModalPopupProps<T>) {
                 <div class="flex justify-end gap-3 px-6 py-4 bg-popup">
                     <Button
                         id="popup-cancel-button"
-                        onClick={closePopup}
+                        onClick={() => {
+                            props.cancelAction?.();
+                            closePopup();
+                        }}
                         label={props.cancelLabel || "Cancel"}
                         variant="glass"
                         class="hover:bg-secondary-20"

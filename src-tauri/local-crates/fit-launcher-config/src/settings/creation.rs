@@ -30,6 +30,7 @@ pub struct GamehubSettings {
     pub nsfw_censorship: bool,
     pub auto_get_colors_popular_games: bool,
     pub close_to_tray: bool,
+    pub game_page_allow_comments: bool,
 }
 
 impl Default for GamehubSettings {
@@ -38,6 +39,7 @@ impl Default for GamehubSettings {
             nsfw_censorship: true,
             auto_get_colors_popular_games: false,
             close_to_tray: true,
+            game_page_allow_comments: false,
         }
     }
 }
