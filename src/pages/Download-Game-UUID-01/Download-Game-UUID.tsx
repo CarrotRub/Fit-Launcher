@@ -12,8 +12,8 @@ import { GamePageState } from "../../types/game";
 import { ActivitySection } from "./sections/About/ActivitySection";
 import { CommentsSection } from "./sections/CommentsSection";
 import { GlobalSettingsApi } from "../../api/settings/api";
-import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { showError } from "../../helpers/error";
+import createChoiceCheckboxPopup from "../../Pop-Ups/Choice-Checkbox-PopUp/Choice-Checkbox-PopUp";
 
 const GridCard = (props: { children: JSX.Element; class?: string }) => (
     <div class={`flex flex-col ${props.class ?? ""}`}>
@@ -51,14 +51,13 @@ const DownloadGameUUIDPage = () => {
     createEffect(() => {
         const hasSeenPopup = localStorage.getItem(COMMENTS_POPUP_SHOWN_KEY);
         if (!allowComments.loading && !allowComments() && !hasSeenPopup) {
-            createBasicChoicePopup({
+            createChoiceCheckboxPopup({
                 infoTitle: "Enable Comments",
                 infoMessage: "This involves fetching data from third party services.",
                 confirmLabel: "Allow",
-                cancelLabel: "Don't show again",
                 action: async () => {
                     try {
-                        const settings = await GlobalSettingsApi.getGamehubSettings()
+                        const settings = await GlobalSettingsApi.getGamehubSettings();
                         await GlobalSettingsApi.setGamehubSettings({ ...settings, game_page_allow_comments: true });
                         localStorage.setItem(COMMENTS_POPUP_SHOWN_KEY, "true");
                         await getAllowCommentsSetting();
@@ -69,7 +68,9 @@ const DownloadGameUUIDPage = () => {
                 cancelAction() {
                     localStorage.setItem(COMMENTS_POPUP_SHOWN_KEY, "true");
                 },
-            });
+                checkboxLabel: "Do not show again"
+            })
+
         }
     });
 
