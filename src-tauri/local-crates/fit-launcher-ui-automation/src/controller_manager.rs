@@ -68,15 +68,23 @@ impl ControllerManager {
     pub fn global() -> &'static ControllerManager {
         &MANAGER
     }
+}
 
+impl ControllerManager {
     fn lock_state(&self) -> Result<std::sync::MutexGuard<'_, ManagerState>, String> {
         self.state.lock().map_err(|e| e.to_string())
+    }
+
+    #[cfg(not(windows))]
+    pub fn ensure_running(&self) -> Result<(), String> {
+        Err("Unsupported platform".into())
     }
 
     /// Spawns the controller if not already running.
     /// Uses `pipe_name.is_some()` as ground truth for controller existence.
     /// A controller may be temporarily unavailable (borrowed via take_client)
     /// but still exists. Presence of pipe means no new elevation is allowed.
+    #[cfg(windows)]
     pub fn ensure_running(&self) -> Result<(), String> {
         let should_spawn = {
             let mut state = self.lock_state()?;
@@ -130,6 +138,7 @@ impl ControllerManager {
 
     /// Actually spawns and connects to the controller.
     /// Lock is NOT held during blocking I/O to avoid deadlocks.
+    #[cfg(windows)]
     fn spawn_controller(&self) -> Result<(), String> {
         info!("Spawning shared controller for install pipeline...");
 
@@ -181,6 +190,7 @@ impl ControllerManager {
 
     /// Registers a download as pending installation.
     /// Triggers early UAC prompt only if no controller exists yet.
+    #[cfg(windows)]
     pub fn register_download(&self, job_id: Uuid) -> Result<(), String> {
         let should_spawn = {
             let mut state = self.lock_state()?;
@@ -286,6 +296,7 @@ impl ControllerManager {
         Ok(())
     }
 
+    #[cfg(windows)]
     pub fn send_command(&self, command: &ControllerCommand) -> Result<(), String> {
         let mut state = self.lock_state()?;
         state
@@ -298,6 +309,7 @@ impl ControllerManager {
 
     /// Receives an event with timeout.
     /// WARNING: Holds mutex during blocking I/O. For long-polling, use take_client/put_client.
+    #[cfg(windows)]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Option<ControllerEvent>, String> {
         let mut state = self.lock_state()?;
         state
