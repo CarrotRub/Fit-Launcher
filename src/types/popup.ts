@@ -14,7 +14,15 @@ export type PopupProps<T extends unknown[] = []> = {
   confirmLabel?: string;
   action?: (...args: T) => void | Promise<void>;
   onConfirm?: () => void | Promise<void>;
+  cancelAction?: () => void;
   disabledConfirm?: Accessor<boolean>;
+};
+
+export type CheckboxPopupProps<T extends unknown[] = []> = PopupProps<T> & {
+  checkboxLabel: string;
+  defaultChecked?: boolean;
+
+  action?: (checked: boolean, ...args: T) => void | Promise<void>;
 };
 
 export type ModalPopupProps<T extends unknown[] = []> = PopupProps<T> & {

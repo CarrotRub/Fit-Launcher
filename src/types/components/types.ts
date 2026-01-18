@@ -8,6 +8,13 @@ export interface CheckboxProps {
   action?: (...args: any[]) => void | Promise<void>;
 }
 
+export interface CheckboxClassicProps {
+  checked: boolean;
+  label?: string;
+  action?: (checked: boolean) => void | Promise<void>;
+  disabled?: boolean;
+}
+
 export interface DropdownProps<T = string> {
   list: T[];
   activeItem?: T;

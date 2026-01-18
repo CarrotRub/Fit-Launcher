@@ -1505,6 +1505,7 @@ dependencies = [
  "fit-launcher-config",
  "fit-launcher-ddl",
  "fit-launcher-download-manager",
+ "fit-launcher-game-comments",
  "fit-launcher-integrations",
  "fit-launcher-library",
  "fit-launcher-scraping",
@@ -1662,6 +1663,18 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "fit-launcher-game-comments"
+version = "0.1.0"
+dependencies = [
+ "fit-launcher-config",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "specta",
+ "tauri",
 ]
 
 [[package]]
