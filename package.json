@@ -28,7 +28,7 @@
     "lucide-solid": "^0.561.0",
     "marked": "^17.0.1",
     "semver": "^7.7.3",
-    "solid-js": "^1.7.8",
+    "solid-js": "^1.9.6",
     "solid-notifications": "^1.2.0"
   },
   "devDependencies": {
