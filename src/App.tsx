@@ -1,5 +1,5 @@
 import { onMount, lazy, JSX, onCleanup } from 'solid-js';
-import { Route, Router } from '@solidjs/router';
+import { createMemoryHistory, MemoryRouter, Route } from '@solidjs/router';
 import Topbar from './components/Topbar-01/Topbar';
 import '@fontsource-variable/mulish';
 import '@fontsource-variable/lexend';
@@ -19,6 +19,7 @@ import { lt } from 'semver';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { load as loadStore } from '@tauri-apps/plugin-store';
 import { DM } from './api/manager/api';
+import { initRouteObserver } from './services/routeObserver';
 
 const themeManager = new ThemeManagerApi();
 
@@ -28,8 +29,10 @@ export const pageAbortController = new AbortController();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function App(props: { children: number | boolean | Node | JSX.ArrayElement | (string & {}) | null | undefined; }) {
   let cleanupInterval: number | undefined;
-  onMount(async () => {
+  const history = createMemoryHistory();
 
+  onMount(async () => {
+    initRouteObserver(history);
 
     installerService.start();
 
@@ -153,7 +156,8 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
   ];
 
   return (
-    <Router
+    <MemoryRouter
+      history={history}
       base="/"
       root={(props) => {
         return (
@@ -178,7 +182,7 @@ function App(props: { children: number | boolean | Node | JSX.ArrayElement | (st
       {sidebarRoutes.map((route) => (
         <Route path={route.path} component={route.component} />
       ))}
-    </Router>
+    </MemoryRouter>
   );
 }
 

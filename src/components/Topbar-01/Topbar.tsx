@@ -1,4 +1,4 @@
-import { A, useLocation } from "@solidjs/router";
+import { A } from "@solidjs/router";
 import { Compass, Download, Home, Library, Maximize2, Minimize2, Minus, Settings, X } from "lucide-solid";
 import { createSignal, onMount, Show } from "solid-js";
 import Searchbar from "./Topbar-Components-01/Searchbar-01/Searchbar";
@@ -8,12 +8,15 @@ import { sendNotification, isPermissionGranted, requestPermission } from "@tauri
 import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { GlobalSettingsApi } from "../../api/settings/api";
 import { commands } from "../../bindings";
+import { routeHistory } from "../../stores/routeStore";
 
 export default function Topbar() {
   const [isMaximized, setIsMaximized] = createSignal(false);
   const [isFullscreen, setIsFullscreen] = createSignal(false);
-  const location = useLocation();
-  const isActive = (path: string) => location.pathname === path;
+
+  const isActive = (path: string) => {
+    return routeHistory.at(-1) === path;
+  };
 
   const appWindow = getCurrentWebviewWindow();
 
@@ -92,10 +95,7 @@ export default function Topbar() {
     }
   }
 
-  function changeLocalStorageLatestHref(href: string) {
-    localStorage.setItem("latestGlobalHref", href);
-    console.log("Updated latestGlobalHref:", href);
-  }
+
 
   onMount(async () => {
     setIsMaximized(await appWindow.isMaximized());
@@ -154,7 +154,6 @@ export default function Topbar() {
           href="/"
           class={`flex items-center gap-2 px-4 h-full transition-colors ${isActive("/") ? "text-accent border-b-2 border-accent" : "text-muted hover:text-text"
             }`}
-          onClick={() => changeLocalStorageLatestHref("/")}
           end
         >
           <Home size={18} />
@@ -165,7 +164,6 @@ export default function Topbar() {
           href="/discovery-page"
           class={`flex items-center gap-2 px-4 h-full transition-colors ${isActive("/discovery-page") ? "text-accent border-b-2 border-accent" : "text-muted hover:text-text"
             }`}
-          onClick={() => changeLocalStorageLatestHref("/discovery-page")}
         >
           <Compass size={18} />
           <span class="font-medium">Discovery</span>
@@ -175,7 +173,6 @@ export default function Topbar() {
           href="/library"
           class={`flex items-center gap-2 px-4 h-full transition-colors ${isActive("/library") ? "text-accent border-b-2 border-accent" : "text-muted hover:text-text"
             }`}
-          onClick={() => changeLocalStorageLatestHref("/library")}
         >
           <Library size={18} />
           <span class="font-medium">Library</span>
@@ -185,7 +182,6 @@ export default function Topbar() {
           href="/downloads-page"
           class={`flex items-center gap-2 px-4 h-full transition-colors ${isActive("/downloads-page") ? "text-accent border-b-2 border-accent" : "text-muted hover:text-text"
             }`}
-          onClick={() => changeLocalStorageLatestHref("/downloads-page")}
         >
           <Download size={18} />
           <span class="font-medium">Downloads</span>
@@ -195,7 +191,6 @@ export default function Topbar() {
           href="/settings"
           class={`flex items-center gap-2 px-4 h-full transition-colors ${isActive("/settings") ? "text-accent border-b-2 border-accent" : "text-muted hover:text-text"
             }`}
-          onClick={() => changeLocalStorageLatestHref("/settings")}
         >
           <Settings size={18} />
           <span class="font-medium">Settings</span>
