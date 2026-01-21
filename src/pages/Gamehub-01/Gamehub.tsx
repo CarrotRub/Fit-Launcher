@@ -6,7 +6,6 @@ import { GamehubProvider, useGamehub } from "./GamehubContext";
 
 function GamehubContent() {
     const { filters, setFilters, availableGenres, repackSizeRange, originalSizeRange } = useGamehub();
-
     return (
         <div class="relative flex flex-col gap-4 divide-y divide-accent/70 w-full h-full overflow-y-auto no-scrollbar">
             <PopularGames />
