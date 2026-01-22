@@ -9,6 +9,7 @@ use fit_launcher_ui_automation::{
 use specta::specta;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tauri::State;
+#[cfg_attr(not(windows), allow(unused))]
 use tracing::{error, info};
 use uuid::Uuid;
 
