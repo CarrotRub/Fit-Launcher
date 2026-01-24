@@ -12,7 +12,7 @@ use fit_launcher_torrent::model::FileInfo;
 use fit_launcher_torrent::{FitLauncherConfigAria2, LibrqbitSession};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, State};
