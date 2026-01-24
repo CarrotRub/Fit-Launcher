@@ -8,7 +8,7 @@ aria2-ws = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true }
+uuid = { workspace = true, features = ["v5"] }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

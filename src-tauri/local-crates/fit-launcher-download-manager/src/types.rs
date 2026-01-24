@@ -6,7 +6,7 @@ use fit_launcher_torrent::model::FileInfo;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 pub type JobId = String;
@@ -16,6 +16,30 @@ pub type Gid = String;
 pub enum DownloadSource {
     Ddl,
     Torrent,
+}
+
+pub enum JobFiles<'a> {
+    DirectLinks(&'a [DirectLink]),
+    TorrentFiles(&'a [FileInfo]),
+}
+
+pub fn generate_deterministic_job_id(game: &Game, target: &Path, files: Option<JobFiles>) -> Uuid {
+    let files_part = match files {
+        Some(JobFiles::DirectLinks(ddl)) => ddl
+            .iter()
+            .map(|f| f.url.as_str())
+            .collect::<Vec<_>>()
+            .join("|"),
+        Some(JobFiles::TorrentFiles(torrent)) => torrent
+            .iter()
+            .map(|f| f.file_name.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("|"),
+        None => String::new(),
+    };
+
+    let input = format!("{}:{}:{}", game.title, target.to_string_lossy(), files_part);
+    Uuid::new_v5(&Uuid::NAMESPACE_URL, input.as_bytes())
 }
 
 #[derive(Clone, Serialize, Deserialize, Type)]
@@ -140,7 +164,12 @@ impl Job {
         let now = Utc::now();
 
         Job {
-            id: Uuid::new_v4().to_string(),
+            id: generate_deterministic_job_id(
+                &game,
+                &target_path,
+                Some(JobFiles::DirectLinks(&ddl_files)),
+            )
+            .to_string(),
             source: DownloadSource::Ddl,
             gids: vec![],
             job_path,
@@ -174,7 +203,12 @@ impl Job {
         let now = Utc::now();
 
         Job {
-            id: Uuid::new_v4().to_string(),
+            id: generate_deterministic_job_id(
+                &game,
+                &target_path,
+                Some(JobFiles::TorrentFiles(&torrent_files)),
+            )
+            .to_string(),
             source: DownloadSource::Torrent,
             gids: vec![],
             job_path,
