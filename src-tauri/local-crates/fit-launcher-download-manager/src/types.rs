@@ -23,22 +23,8 @@ pub enum JobFiles<'a> {
     TorrentFiles(&'a [FileInfo]),
 }
 
-pub fn generate_deterministic_job_id(game: &Game, target: &Path, files: Option<JobFiles>) -> Uuid {
-    let files_part = match files {
-        Some(JobFiles::DirectLinks(ddl)) => ddl
-            .iter()
-            .map(|f| f.url.as_str())
-            .collect::<Vec<_>>()
-            .join("|"),
-        Some(JobFiles::TorrentFiles(torrent)) => torrent
-            .iter()
-            .map(|f| f.file_name.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join("|"),
-        None => String::new(),
-    };
-
-    let input = format!("{}:{}:{}", game.title, target.to_string_lossy(), files_part);
+pub fn generate_deterministic_job_id(game: &Game, target: &Path) -> Uuid {
+    let input = format!("{}:{}", game.title, target.to_string_lossy());
     Uuid::new_v5(&Uuid::NAMESPACE_URL, input.as_bytes())
 }
 
@@ -164,12 +150,7 @@ impl Job {
         let now = Utc::now();
 
         Job {
-            id: generate_deterministic_job_id(
-                &game,
-                &target_path,
-                Some(JobFiles::DirectLinks(&ddl_files)),
-            )
-            .to_string(),
+            id: generate_deterministic_job_id(&game, &target_path).to_string(),
             source: DownloadSource::Ddl,
             gids: vec![],
             job_path,
@@ -203,12 +184,7 @@ impl Job {
         let now = Utc::now();
 
         Job {
-            id: generate_deterministic_job_id(
-                &game,
-                &target_path,
-                Some(JobFiles::TorrentFiles(&torrent_files)),
-            )
-            .to_string(),
+            id: generate_deterministic_job_id(&game, &target_path).to_string(),
             source: DownloadSource::Torrent,
             gids: vec![],
             job_path,
