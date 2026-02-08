@@ -19,7 +19,7 @@ serde_with = { workspace = true, features = ["chrono"] }
 tracing = { workspace = true }
 ahash = { workspace = true }
 
-time = { version = "0.3.41", features = ["formatting"] }
+time = { version = "0.3.47", features = ["formatting"] }
 rand = { workspace = true }
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 itertools = "0.14"
