@@ -21,182 +21,9 @@ async addGameToCollection(collectionName: string, game: Game) : Promise<Result<n
     else return { error: e  as any, status: "error" };
 }
 },
-async aria2GetAllList() : Promise<Result<Status[], Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_get_all_list"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-async aria2GetListActive() : Promise<Result<Status[], Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_get_list_active"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-async aria2GetListStopped() : Promise<Result<Status[], Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_get_list_stopped"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-async aria2GetListWaiting() : Promise<Result<Status[], Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_get_list_waiting"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.tellStatus
- */
-async aria2GetStatus(gid: string) : Promise<Result<Status, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_get_status", { gid }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.getVersion
- */
-async aria2GetVersion() : Promise<Result<Version, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_get_version"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
 async aria2GlobalStat() : Promise<Result<GlobalStat, Aria2Error>> {
     try {
     return { data: await TAURI_INVOKE("aria2_global_stat"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.pause
- */
-async aria2Pause(gid: string) : Promise<Result<null, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_pause", { gid }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.pauseAll
- */
-async aria2PauseAll() : Promise<Result<null, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_pause_all"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.remove
- */
-async aria2Remove(gid: string) : Promise<Result<null, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_remove", { gid }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpause
- */
-async aria2Resume(gid: string) : Promise<Result<null, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_resume", { gid }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * https://aria2.github.io/manual/en/html/aria2c.html#aria2.unpauseAll
- */
-async aria2ResumeAll() : Promise<Result<null, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_resume_all"), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * ### params
- * 
- * `url`:
- * > target URL to download
- * 
- * `dir`:
- * > optional, aria2 will download the file to this directory.
- * >
- * > when not specified, aria2 will follow its startup options
- * 
- * `filename`:
- * > aria2 will ignore the filename suggestion from URL or `Content-Disposition`,
- * >
- * > instead use this filename
- * 
- * ### returns
- * 
- * `gid` of the download task.
- */
-async aria2StartDownload(url: string[], dir: string | null, filename: string | null) : Promise<Result<string, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_start_download", { dir, filename, url }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * `selected_files`: list of torrent metadata files index
- * when left empty, does nothing.
- */
-async aria2StartTorrent(torrent: number[], dir: string | null, selectedFiles: number[]) : Promise<Result<string, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_start_torrent", { dir, selectedFiles, torrent }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * get total completed bytes
- */
-async aria2TaskProgress(tasks: AriaTask[]) : Promise<Result<AriaTaskProgress, Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_task_progress", { tasks }), status: "ok" };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { error: e  as any, status: "error" };
-}
-},
-/**
- * start download and receive corresponding gid's.
- * 
- * dir: output directory, leave None to use default (user Downloads)
- */
-async aria2TaskSpawn(directLinks: DirectLink[], dir: string | null) : Promise<Result<AriaTaskResult[], Aria2Error>> {
-    try {
-    return { data: await TAURI_INVOKE("aria2_task_spawn", { dir, directLinks }), status: "ok" };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { error: e  as any, status: "error" };
@@ -750,9 +577,6 @@ async openLogsDirectory() : Promise<Result<null, string>> {
     else return { error: e  as any, status: "error" };
 }
 },
-async panicForce() : Promise<void> {
-    await TAURI_INVOKE("panic_force");
-},
 async querySearchIndex(query: string) : Promise<Result<SearchIndexEntry[], ScrapingError>> {
     try {
     return { data: await TAURI_INVOKE("query_search_index", { query }), status: "ok" };
@@ -886,12 +710,8 @@ async updateDownloadedGameExecutableInfo(gameTitle: string, executableInfo: Exec
 export type AggregatedStatus = { total_length: number; completed_length: number; download_speed: number; upload_speed: number; per_file: Partial<{ [key in string]: FileStatus }>; state: DownloadState; progress_percentage: number }
 export type AnswerComment = { id: number; text_template: string | null; data_create: string | null; user: User | null; raiting: Rating | null; attaches?: Attach[] | null; attaches_icons?: number[] | null; attaches_text: string | null; sort: number | null; edited: boolean | null; fixed: boolean | null; comment_type: number | null; answer_comment_root_id: number | null }
 export type Aria2Error = "NotConfigured" | { InitializationFailed: string } | { RPCError: string } | { Timeout: string } | "StaleConnection"
-export type AriaTask = { gid: string; filename: string }
-export type AriaTaskProgress = { completed: number; download_speed: number; total_length: number; completed_length: number }
-export type AriaTaskResult = { task: AriaTask | null; error: Aria2Error | null }
 export type Attach = { type: string; data?: AttachType[] }
 export type AttachType = { src: string | null; src_o: string | null; width: number | null; video: string | null; webp: string | null; height: number | null; title: string | null; type: string | null; description: string | null }
-export type BitTorrentFileMode = "single" | "multi"
 /**
  * https://aria2.github.io/manual/en/html/aria2c.html
  */
@@ -921,7 +741,6 @@ export type Bittorrent = {
  * If `None`, no time limit is enforced (infinite seeding allowed).
  */
 "seed-time": number | null }
-export type BittorrentStatus = { announceList: string[][]; comment: string | null; creationDate?: string | null; mode: BitTorrentFileMode | null }
 export type CacheError = { LRU: string } | { Reqwest: string } | { Kanal: string } | { IO: string } | "CacheMissing" | "MimeGuess" | "ZeroCapacity"
 export type CacheSettings = { 
 /**
@@ -1046,96 +865,6 @@ export type Rating = { id: number; val: number; user_val: number }
 export type ScrapingError = { type: "articleNotFound"; data: string } | { type: "reqwestError"; data: string } | { type: "selectorError"; data: string } | { type: "jsonError"; data: string } | { type: "generalError"; data: string } | { type: "httpStatusCodeError"; data: string } | { type: "timeoutError"; data: string } | { type: "ioerror"; data: string } | { type: "windowError"; data: string } | { type: "cookieError"; data: string } | { type: "urlParseError"; data: string } | { type: "regexError"; data: string } | { type: "semaphoreError"; data: string }
 export type SearchIndexEntry = { slug: string; title: string; href: string }
 export type SettingsConfigurationError = { message: string }
-/**
- * Full status of a task.
- * 
- * <https://aria2.github.io/manual/en/html/aria2c.html#aria2.tellStatus>
- */
-export type Status = { 
-/**
- * GID of the download.
- */
-gid: string; status: TaskStatus; totalLength: number; completedLength: number; uploadLength: number; 
-/**
- * Hexadecimal representation of the download progress.
- * 
- * The highest bit corresponds to the piece at index 0.
- * 
- * Any set bits indicate loaded pieces, while
- * unset bits indicate not yet loaded and/or missing pieces.
- * 
- * Any overflow bits at the end are set to zero.
- * 
- * When the download was not started yet,
- * this key will not be included in the response.
- */
-bitfield: string | null; downloadSpeed: number; uploadSpeed: number; 
-/**
- * InfoHash. BitTorrent only
- */
-infoHash: string | null; numSeeders?: number | null; 
-/**
- * true if the local endpoint is a seeder. Otherwise false. BitTorrent only.
- */
-seeder?: boolean | null; pieceLength: number; numPieces: number; connections: number; errorCode: string | null; errorMessage: string | null; 
-/**
- * List of GIDs which are generated as the result of this download.
- * 
- * For example, when aria2 downloads a Metalink file,
- * it generates downloads described in the Metalink (see the --follow-metalink option).
- * 
- * This value is useful to track auto-generated downloads.
- * 
- * If there are no such downloads, this key will not be included in the response.
- */
-followedBy: string[] | null; 
-/**
- * The reverse link for followedBy.
- * 
- * A download included in followedBy has this object's GID in its following value.
- */
-following: string | null; 
-/**
- * GID of a parent download.
- * 
- * Some downloads are a part of another download.
- * 
- * For example, if a file in a Metalink has BitTorrent resources,
- * the downloads of ".torrent" files are parts of that parent.
- * 
- * If this download has no parent, this key will not be included in the response.
- */
-belongsTo: string | null; dir: string; files: File[]; bittorrent: BittorrentStatus | null; 
-/**
- * The number of verified number of bytes while the files are being hash checked.
- * 
- * This key exists only when this download is being hash checked.
- */
-verifiedLength?: number | null; 
-/**
- * `true` if this download is waiting for the hash check in a queue.
- * 
- * This key exists only when this download is in the queue.
- */
-verifyIntegrityPending?: boolean | null }
-/**
- * Task status returned by `aria2.tellStatus`.
- * 
- * `Active` for currently downloading/seeding downloads.
- * 
- * `Waiting` for downloads in the queue; download is not started.
- * 
- * `Paused` for paused downloads.
- * 
- * `Error` for downloads that were stopped because of error.
- * 
- * `Complete` for stopped and completed downloads.
- * 
- * `Removed` for the downloads removed by user.
- * 
- * <https://aria2.github.io/manual/en/html/aria2c.html#aria2.tellStatus>
- */
-export type TaskStatus = "active" | "waiting" | "paused" | "error" | "complete" | "removed"
 export type TorrentApiError = { ApiConfigError: string } | "ConfigRetrievalError" | "AdminModeError" | { Aria2StartupError: string } | { ConfigurationError: string } | { InitError: string } | { IOError: string } | "LibrqbitError" | "MetadataError" | "TorrentNotFound" | "InvalidMagnet" | "UnexpectedTorrentState" | "ConfigChangeDuringDownload"
 export type TorrentExternInfo = { title: string; img: string; desc: string; magnetlink: string; href: string; tag: string }
 export type TorrentJob = { torrent_bytes: number[]; file_indices: number[]; torrent_files: FileInfo[]; info_hash: string; magnet: string }
@@ -1162,7 +891,6 @@ export type TransferLimits = {
 export type Uri = { status: UriStatus; uri: string }
 export type UriStatus = "used" | "waiting"
 export type User = { id: number | null; name: string; nick: string; ava: string; online: boolean; data_last_visit: string; admin: boolean; is_verified: boolean | null }
-export type Version = { enabledFeatures: string[]; version: string }
 
 /** tauri-specta globals **/
 

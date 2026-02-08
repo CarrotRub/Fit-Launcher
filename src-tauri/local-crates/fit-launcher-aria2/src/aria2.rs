@@ -1,4 +1,4 @@
-use aria2_ws::{Client, Map, TaskOptions, response::Status};
+use aria2_ws::{Client, Map, TaskOptions};
 use fit_launcher_torrent::FitLauncherConfigAria2;
 use serde_json::Value;
 
@@ -65,20 +65,6 @@ pub async fn aria2_add_torrent(
             error!("Failed to add torrent: {}", e);
             Aria2Error::RPCError(format!("Failed to add torrent: {}", e))
         })
-}
-
-pub async fn aria2_get_all_list(aria2_client: &Client) -> Result<Vec<Status>, Aria2Error> {
-    let mut active = aria2_client.tell_active().await?;
-    let mut waiting = aria2_client.tell_waiting(0, 100).await?;
-    let mut stopped = aria2_client.tell_stopped(0, 100).await?;
-
-    let mut list: Vec<Status> = Vec::new();
-
-    list.append(&mut active);
-    list.append(&mut waiting);
-    list.append(&mut stopped);
-
-    Ok(list)
 }
 
 #[cfg(windows)]
