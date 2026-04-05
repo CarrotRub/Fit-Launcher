@@ -4,7 +4,7 @@ use crate::error::DownloadManagerError;
 use crate::persistence::{load_jobs, save_jobs_atomic};
 use crate::types::*;
 use anyhow::{Context, Result};
-use aria2_ws::response::{File, Status};
+use aria2_ws::response::Status;
 use chrono::Utc;
 use fit_launcher_ddl::DirectLink;
 use fit_launcher_scraping::structs::Game;
@@ -619,9 +619,71 @@ impl DownloadManager {
         Ok(())
     }
 
-    pub async fn apply_status_raw(&self, gid: &str, raw: Value) -> Result<()> {
-        let fs = Self::file_status_from_raw(&raw);
+    /// Convert an aria2 Status update vector into calls to apply_status_raw
+    pub async fn on_aria2_update(&self, statuses: Vec<Status>) {
+        for status in statuses {
+            let fs = FileStatus {
+                gid: Some(status.gid.clone()),
+                status: status.status.clone().into(),
+                total_length: status.total_length,
+                completed_length: status.completed_length,
+                download_speed: status.download_speed,
+                upload_speed: status.upload_speed,
+                files: status.files.clone(),
+                info_hash: status.info_hash.clone(),
+            };
+            if let Err(e) = self.apply_file_status(&status.gid, fs).await {
+                error!("apply_file_status failed for gid {}: {:?}", status.gid, e);
+            }
+        }
+    }
 
+    pub async fn apply_status_raw(&self, gid: &str, raw: Value) -> Result<()> {
+        let fs = FileStatus {
+            gid: raw.get("gid").and_then(|v| v.as_str()).map(String::from),
+            status: raw
+                .get("status")
+                .and_then(|v| v.as_str())
+                .map(|s| s.into())
+                .unwrap_or_default(),
+            total_length: raw
+                .get("totalLength")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            completed_length: raw
+                .get("completedLength")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            download_speed: raw
+                .get("downloadSpeed")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            upload_speed: raw
+                .get("uploadSpeed")
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+            files: raw
+                .get("files")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                        .collect()
+                })
+                .unwrap_or_default(),
+            info_hash: raw
+                .get("infoHash")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+        };
+        self.apply_file_status(gid, fs).await
+    }
+
+    pub async fn apply_file_status(&self, gid: &str, fs: FileStatus) -> Result<()> {
         let job_id_opt = {
             let idx = self.gid_index.read().await;
             idx.get(gid).cloned()
@@ -629,20 +691,18 @@ impl DownloadManager {
 
         if let Some(job_id) = job_id_opt {
             let mut job_infohash_to_insert: Option<(String, JobId)> = None;
+
             let (job_snapshot, state_changed) = {
                 let mut jobs = self.jobs.write().await;
                 if let Some(job) = jobs.get_mut(&job_id) {
                     let old_state = job.state.clone();
-
                     let mut agg = job.status.clone().unwrap_or_default();
 
                     agg.per_file.insert(gid.to_string(), fs.clone());
-
                     agg.total_length = agg.per_file.values().map(|s| s.total_length).sum();
                     agg.completed_length = agg.per_file.values().map(|s| s.completed_length).sum();
                     agg.download_speed = agg.per_file.values().map(|s| s.download_speed).sum();
                     agg.upload_speed = agg.per_file.values().map(|s| s.upload_speed).sum();
-
                     agg.progress_percentage = if agg.total_length > 0 {
                         (agg.completed_length as f64 / agg.total_length as f64) * 100.0
                     } else {
@@ -678,9 +738,7 @@ impl DownloadManager {
                     if let Some(info_hash) = fs.info_hash.clone() {
                         if let Some(t) = job.torrent.as_mut() {
                             t.info_hash = info_hash.clone();
-                            job_infohash_to_insert = Some((info_hash, job.id.clone()));
                         } else {
-                            // oprphan job
                             job.torrent = Some(TorrentJob {
                                 torrent_bytes: Vec::new(),
                                 file_indices: Vec::new(),
@@ -688,33 +746,25 @@ impl DownloadManager {
                                 torrent_files: Vec::new(),
                                 magnet: String::new(),
                             });
-                            job_infohash_to_insert = Some((info_hash, job.id.clone()));
                         }
+                        job_infohash_to_insert = Some((info_hash, job.id.clone()));
                     }
 
                     let state_changed = old_state != job.state;
                     (Some(job.clone()), state_changed)
                 } else {
-                    let mut idx = self.gid_index.write().await;
-                    idx.remove(gid);
+                    self.gid_index.write().await.remove(gid);
                     (None, false)
                 }
             };
 
             if let Some((h, id)) = job_infohash_to_insert {
-                let mut ih = self.infohash_index.write().await;
-                ih.insert(h, id);
+                self.infohash_index.write().await.insert(h, id);
             }
-
-            {
-                let mut gid_idx = self.gid_index.write().await;
-                gid_idx.insert(gid.to_string(), job_id.clone());
-            }
+            self.gid_index.write().await.insert(gid.to_string(), job_id);
 
             if let Some(js) = job_snapshot {
-                // Force emit on state changes, throttle progress updates
                 self.emit_job_updated_throttled(&js, state_changed).await;
-
                 if matches!(js.state, DownloadState::Complete)
                     || js
                         .status
@@ -730,125 +780,10 @@ impl DownloadManager {
 
             self.request_save_debounced().await;
         } else {
-            // This can happen for stale GIDs from completed/removed downloads
             debug!("Received update for unknown gid: {}", gid);
         }
 
         Ok(())
-    }
-
-    /// Convert an aria2 Status update vector into calls to apply_status_raw
-    pub async fn on_aria2_update(&self, statuses: Vec<Status>) {
-        for status in statuses.into_iter() {
-            let mut m = serde_json::Map::new();
-            m.insert(
-                "gid".to_string(),
-                serde_json::Value::String(status.gid.clone()),
-            );
-            m.insert(
-                "status".to_string(),
-                serde_json::Value::String(status.status.into()),
-            );
-            m.insert(
-                "totalLength".to_string(),
-                serde_json::Value::String(status.total_length.to_string()),
-            );
-            m.insert(
-                "completedLength".to_string(),
-                serde_json::Value::String(status.completed_length.to_string()),
-            );
-            m.insert(
-                "downloadSpeed".to_string(),
-                serde_json::Value::String(status.download_speed.to_string()),
-            );
-            m.insert(
-                "uploadSpeed".to_string(),
-                serde_json::Value::String(status.upload_speed.to_string()),
-            );
-            let percentage = if status.total_length > 0 {
-                (status.completed_length as f64 / status.total_length as f64) * 100.0
-            } else {
-                0.8
-            };
-            m.insert(
-                "progressPercentage".to_string(),
-                serde_json::Value::String(percentage.to_string()),
-            );
-            if let Some(info_hash) = &status.info_hash {
-                m.insert(
-                    "infoHash".to_string(),
-                    serde_json::Value::String(info_hash.clone()),
-                );
-            }
-            // files -> we can drop them as `file` conversion expects the array items
-            if !status.files.is_empty()
-                && let Ok(arr) = serde_json::to_value(&status.files)
-            {
-                m.insert("files".to_string(), arr);
-            }
-
-            let raw = serde_json::Value::Object(m);
-            if let Err(e) = self.apply_status_raw(&status.gid, raw).await {
-                error!("apply_status_raw failed for gid {}: {:?}", status.gid, e);
-            }
-        }
-    }
-
-    /// Convert raw JSON-ish value to FileStatus
-    fn file_status_from_raw(raw: &Value) -> FileStatus {
-        let gid = raw
-            .get("gid")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-        let status: DownloadState = raw
-            .get("status")
-            .and_then(|v| v.as_str())
-            .map(|s| s.into())
-            .unwrap_or(DownloadState::Waiting);
-        let total_length = raw
-            .get("totalLength")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-        let completed_length = raw
-            .get("completedLength")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-        let download_speed = raw
-            .get("downloadSpeed")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-        let upload_speed = raw
-            .get("uploadSpeed")
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<u64>().ok())
-            .unwrap_or(0);
-        let files: Vec<File> = raw
-            .get("files")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| serde_json::from_value(v.clone()).ok())
-                    .collect()
-            })
-            .unwrap_or_default();
-        let info_hash = raw
-            .get("infoHash")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        FileStatus {
-            gid,
-            status,
-            total_length,
-            completed_length,
-            download_speed,
-            upload_speed,
-            files,
-            info_hash,
-        }
     }
 
     /// Return a snapshot of all jobs
