@@ -1,13 +1,9 @@
-//! HTML parsing helpers for extracting game data from FitGirl pages.
+use crate::{Game, wordpress::rest::models::WpPost};
+use scraper::{ElementRef, Html, Selector};
 
-use scraper::ElementRef;
-
-use crate::structs::Game;
-
-// This is to precompute selector to avoid computing it hundreds of times, can be quite expensive on the CPU.
 lazy_static::lazy_static! {
-    static ref P_SELECTOR: scraper::Selector = scraper::Selector::parse(".entry-content p").unwrap();
-    static ref UL_LI_SELECTOR: scraper::Selector = scraper::Selector::parse(".entry-content ul li").unwrap();
+    static ref P_SELECTOR: scraper::Selector = scraper::Selector::parse("p").unwrap();
+    static ref UL_LI_SELECTOR: scraper::Selector = scraper::Selector::parse("ul li").unwrap();
     static ref SPOILER_SELECTOR: scraper::Selector = scraper::Selector::parse(".su-spoiler").unwrap();
     static ref SPOILER_TITLE_SELECTOR: scraper::Selector = scraper::Selector::parse(".su-spoiler-title").unwrap();
     static ref SPOILER_CONTENT_SELECTOR: scraper::Selector = scraper::Selector::parse(".su-spoiler-content").unwrap();
@@ -44,7 +40,7 @@ fn extract_details(article: ElementRef<'_>) -> String {
 fn extract_features(article: ElementRef<'_>) -> String {
     let mut in_features = false;
     let mut features_lines = Vec::new();
-    let p_selector = scraper::Selector::parse(".entry-content p, .entry-content ul li").unwrap();
+    let p_selector = scraper::Selector::parse("p, ul li").unwrap();
 
     for elem in article.select(&p_selector) {
         let text = elem.text().collect::<String>();
@@ -148,29 +144,28 @@ fn extract_description_and_dlcs(article: ElementRef<'_>) -> (String, String, Str
 
     (String::new(), String::new(), String::new())
 }
-
 /// Parse an article element into a Game struct
 ///
 /// Note: to have high-res secondary images, try [`crate::discovery::try_high_res_img`]
-pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
-    let title = article
-        .select(&scraper::Selector::parse(".entry-title").unwrap())
+pub fn parse_game_from_content(content: ElementRef<'_>) -> Game {
+    let title = content
+        .select(&scraper::Selector::parse("h3 > strong").unwrap())
         .next()
         .map(|e| e.text().collect())
         .unwrap_or_default();
 
-    let details = extract_details(article);
-    let features = extract_features(article);
-    let (description, gameplay_features, included_dlcs) = extract_description_and_dlcs(article);
+    let details = extract_details(content);
+    let features = extract_features(content);
+    let (description, gameplay_features, included_dlcs) = extract_description_and_dlcs(content);
 
-    let magnetlink = article
+    let magnetlink = content
         .select(&scraper::Selector::parse("a[href*='magnet']").unwrap())
         .next()
         .and_then(|e| e.value().attr("href"))
         .map(str::to_string)
         .unwrap_or_default();
 
-    let pastebin_link = article
+    let pastebin_link = content
         .select(&scraper::Selector::parse("a").unwrap())
         .find(|e| {
             let text = e.text().collect::<String>();
@@ -185,21 +180,21 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         .map(str::to_string)
         .unwrap_or_default();
 
-    let href = article
-        .select(&scraper::Selector::parse("span.entry-date > a").unwrap())
+    let href = content
+        .select(&scraper::Selector::parse("span > a").unwrap())
         .next()
         .and_then(|e| e.value().attr("href"))
         .map(str::to_string)
         .unwrap_or_default();
 
-    let img = article
-        .select(&scraper::Selector::parse(".entry-content p > a > img").unwrap())
+    let img = content
+        .select(&scraper::Selector::parse("p > a > img").unwrap())
         .next()
         .and_then(|e| e.value().attr("src"))
         .map(str::to_string)
         .unwrap_or_default();
 
-    let tag = article
+    let tag = content
         .select(&P_SELECTOR)
         .find_map(|p| {
             let text = p.text().collect::<String>();
@@ -216,7 +211,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
         })
         .unwrap_or_default();
 
-    let secondary_images = extract_secondary_images(article);
+    let secondary_images = extract_secondary_images(content);
 
     Game {
         title,
@@ -238,7 +233,7 @@ pub fn parse_game_from_article(article: ElementRef<'_>) -> Game {
 pub fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
     for i in 3..10 {
         let selector = match scraper::Selector::parse(&format!(
-            ".entry-content p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
+            "p:nth-of-type({i}) a[href] > img[src]:nth-child(1)"
         )) {
             Ok(s) => s,
             Err(_) => continue,
@@ -251,7 +246,7 @@ pub fn find_preview_image(article: ElementRef<'_>) -> Option<String> {
     }
 
     if let Some(img_el) = article
-        .select(&scraper::Selector::parse(".entry-content img").unwrap())
+        .select(&scraper::Selector::parse("img").unwrap())
         .next()
         && let Some(src) = img_el.value().attr("src")
     {
@@ -268,8 +263,7 @@ fn extract_secondary_images(article: ElementRef<'_>) -> Vec<String> {
     let mut secondary = Vec::new();
 
     for p in 3..=6 {
-        let sel = scraper::Selector::parse(&format!(".entry-content p:nth-of-type({p}) img[src]"))
-            .unwrap();
+        let sel = scraper::Selector::parse(&format!("p:nth-of-type({p}) img[src]")).unwrap();
         for img_el in article.select(&sel) {
             if let Some(s) = img_el.value().attr("src") {
                 secondary.push(s.to_string());
@@ -281,4 +275,17 @@ fn extract_secondary_images(article: ElementRef<'_>) -> Vec<String> {
     }
 
     secondary
+}
+
+pub(crate) fn parse_game_from_wp(post: WpPost) -> Option<Game> {
+    let doc = Html::parse_document(&post.content.rendered);
+    let body_selector = Selector::parse("body").unwrap();
+
+    let body = doc.select(&body_selector).next().unwrap();
+
+    let mut game_details = parse_game_from_content(body);
+
+    game_details.href = post.link;
+
+    Some(game_details)
 }

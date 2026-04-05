@@ -1,8 +1,12 @@
 use directories::BaseDirs;
+mod resolver;
+pub use resolver::HickoryResolverWithProtocol;
 
+use crate::client::cookies::Cookies;
+use crate::client::cookies::persist_response_cookies;
 use reqwest::Client;
 use reqwest::ClientBuilder;
-use reqwest::header::COOKIE;
+use reqwest::cookie::Jar;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::fs;
@@ -10,18 +14,16 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use tauri::http::HeaderMap;
-use tauri::http::HeaderValue;
 use tokio::sync::RwLock;
 use tracing::error;
 use tracing::info;
-use tracing::warn;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Type)]
 pub struct FitLauncherDnsConfig {
-    system_conf: bool,
-    protocol: String,
-    primary: Option<String>,
-    secondary: Option<String>,
+    pub system_conf: bool,
+    pub protocol: String,
+    pub primary: Option<String>,
+    pub secondary: Option<String>,
 }
 
 impl Default for FitLauncherDnsConfig {
@@ -48,7 +50,7 @@ impl FitLauncherDnsConfig {
     }
 }
 
-fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
+pub fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
     let base_dirs = BaseDirs::new().expect("Failed to determine base directories");
     let config_path = base_dirs
         .config_dir()
@@ -94,27 +96,31 @@ fn ensure_and_load_dns_config() -> FitLauncherDnsConfig {
 pub fn build_dns_client() -> Client {
     let dns_config = ensure_and_load_dns_config();
 
+    let headers = HeaderMap::new();
+    // headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+    // headers.insert(ACCEPT_ENCODING, HeaderValue::from_static("gzip"));
+    // headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"));
+    // headers.insert(CONNECTION, HeaderValue::from_static("keep-alive"));
+    // headers.insert(DNT, HeaderValue::from_static("1"));
+
+    let cookie_jar = Arc::new(Jar::default());
+    if let Ok(cookies) = Cookies::load_cookies() {
+        let url = "https://fitgirl-repacks.site".parse().unwrap();
+        cookie_jar.add_cookie_str(&cookies.to_header(), &url);
+    }
+
     // * Important : The pool_max_idle_per_host should never be greater than 0 due to the "runtime dropped the dispatch task" error that can happen when running awaiting task into multiple streams.
     // * Even in terms of performance it will only be a 5% to 10% increase but the drawback is too big and this is too unstable.
     let mut client_builder = ClientBuilder::new()
         .use_rustls_tls()
+        .tcp_nodelay(true)
+        .http1_only()
         .gzip(true)
         .brotli(true)
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+        .user_agent("curl/8.11.0")
+        .default_headers(headers)
+        .cookie_provider(cookie_jar)
         .pool_max_idle_per_host(0);
-
-    match Cookies::load_cookies() {
-        Ok(cookies) => {
-            client_builder = client_builder.default_headers(HeaderMap::from_iter([(
-                COOKIE,
-                HeaderValue::from_str(&cookies.to_header()).expect("invalid cookies value"),
-            )]))
-        }
-        Err(e) => {
-            warn!("failed to read cookies: {e}");
-        }
-    }
-
     // Conditionally set the custom DNS resolver only if sys_conf is disabled
     if !dns_config.system_conf {
         client_builder =
@@ -126,11 +132,24 @@ pub fn build_dns_client() -> Client {
         .expect("Failed to build custom DNS reqwest client")
 }
 
+pub async fn refresh_cookies() {
+    let new_client = build_dns_client();
+    *CUSTOM_DNS_CLIENT.write().await = new_client;
+}
+
+pub async fn warmup_connection(url: &str) {
+    let response = {
+        let client = CUSTOM_DNS_CLIENT.read().await;
+        client
+            .get(url)
+            .send()
+            .await
+            .expect("Error in response during warmup")
+    }; // read lock dropped here
+    persist_response_cookies(&response);
+    refresh_cookies().await;
+}
+
 // Only ONE custom_dns_client, protocol decided by the DnsConfig file found in the
 pub static CUSTOM_DNS_CLIENT: LazyLock<RwLock<Client>> =
     LazyLock::new(|| RwLock::new(build_dns_client()));
-
-mod resolver;
-pub use resolver::HickoryResolverWithProtocol;
-
-use crate::client::cookies::Cookies;

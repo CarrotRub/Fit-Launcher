@@ -18,7 +18,7 @@ pub async fn perform_network_request(app_handle: AppHandle) {
         let app_handle_clone = app_handle.clone();
 
         main_window.listen("frontend-ready", move |_| {
-            info!("Frontend signalled ready — performing network check");
+            info!("Frontend signalled ready... performing network check");
 
             let app_handle_inner = app_handle_clone.clone();
 

@@ -197,7 +197,7 @@ impl DownloadManager {
         // The installer controller has issues with certain unicode characters, but setup.exe
         // doesn't care about its parent folder name - only the final install path matters
         //todo: fix here use same uuid logic
-        let job_id = Uuid::new_v4();
+        let job_id = generate_deterministic_job_id(&game, &target);
         let folder_name = job_id.to_string();
         let dir = target.join(folder_name);
 
@@ -296,7 +296,7 @@ impl DownloadManager {
 
         // Use UUID as folder name to avoid unicode/ASCII issues with installer controller
         // This ensures consistency with DDL downloads and avoids any character encoding problems
-        let job_id = Uuid::new_v4();
+        let job_id = generate_deterministic_job_id(&game, &target);
         let folder_name = job_id.to_string();
         let job_path = target.join(&folder_name);
 

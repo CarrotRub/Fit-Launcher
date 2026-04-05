@@ -16,6 +16,7 @@ use crate::db::{self, hash_url};
 use crate::errors::ScrapingError;
 use crate::parser::{find_preview_image, parse_game_from_article};
 use crate::structs::Game;
+use crate::wordpress::WpGameFetcher;
 
 fn likely_guarded(resp: &Response) -> bool {
     resp.status().as_u16() == 403
@@ -70,89 +71,6 @@ pub async fn fetch_page(url: &str, app: &AppHandle) -> Result<String, ScrapingEr
 fn write_games_to_db(app: &AppHandle, games: &[Game], category: &str) -> Result<(), ScrapingError> {
     let conn = db::open_connection(app)?;
     db::set_category_games(&conn, category, games, hash_url)
-}
-
-async fn scrape_new_games_page(page: u32, app: AppHandle) -> Result<Vec<Game>, ScrapingError> {
-    let url = format!("https://fitgirl-repacks.site/category/lossless-repack/page/{page}");
-    let body = fetch_page(&url, &app).await?;
-    let document = Html::parse_document(&body);
-    let article_selector = scraper::Selector::parse("article")
-        .map_err(|e| ScrapingError::SelectorError(format!("{:?}", e)))?;
-
-    let mut games = Vec::new();
-    for article in document.select(&article_selector) {
-        let game = parse_game_from_article(article);
-        if game.title.is_empty() || game.img.is_empty() || game.href.is_empty() {
-            continue;
-        }
-        games.push(game);
-    }
-    Ok(games)
-}
-
-pub async fn scrape_new_games(app: AppHandle) -> Result<(), ScrapingError> {
-    let start = Instant::now();
-
-    const PAGE_COUNT: u32 = 3;
-
-    let stream = futures::stream::iter(0..PAGE_COUNT)
-        .map(|page| {
-            let ah = app.clone();
-            async move {
-                let res = scrape_new_games_page(page, ah).await;
-                (page, res)
-            }
-        })
-        .buffer_unordered(2);
-
-    let mut per_page: Vec<Vec<Game>> = vec![Vec::new(); PAGE_COUNT as usize];
-
-    futures::pin_mut!(stream);
-    while let Some((page, result)) = stream.next().await {
-        match result {
-            Ok(mut page_games) => {
-                per_page[page as usize].append(&mut page_games);
-            }
-            Err(e) => {
-                error!("Page {} scrape failed: {:?}", page, e);
-            }
-        }
-    }
-
-    let scraped_games: Vec<Game> = per_page.into_iter().flatten().collect();
-
-    if scraped_games.is_empty() {
-        warn!("No newly added games found on website");
-        return Ok(());
-    }
-
-    let current_urls: std::collections::HashSet<_> =
-        scraped_games.iter().map(|g| g.href.clone()).collect();
-
-    let conn = db::open_connection(&app)?;
-    let existing_games = db::get_games_by_category(&conn, "newly_added").unwrap_or_default();
-
-    let existing_urls: std::collections::HashSet<_> =
-        existing_games.iter().map(|g| g.href.clone()).collect();
-
-    if current_urls == existing_urls && existing_games.len() == scraped_games.len() {
-        info!(
-            "Newly added games already in sync ({} games), skipping",
-            existing_games.len()
-        );
-        return Ok(());
-    }
-
-    info!(
-        "Syncing newly added games: {} on site, {} in DB",
-        scraped_games.len(),
-        existing_games.len()
-    );
-
-    write_games_to_db(&app, &scraped_games, "newly_added")?;
-    info!("New games synced in {:?}", start.elapsed());
-
-    Ok(())
 }
 
 /// Always syncs with website's current popular list - compares URLs with DB,
@@ -353,8 +271,7 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
                         .ok_or(ScrapingError::ArticleNotFound(link.clone()))?;
 
                     let mut game = parse_game_from_article(article);
-                    //this is a quick fix, it's gettin low res images
-                    //todo: find a better way to do this
+                    // TODO: find a better way to get proper res images here
                     game.secondary_images.clear();
 
                     Ok::<(usize, Game), ScrapingError>((idx, game))
@@ -371,7 +288,6 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
         }
     }
 
-    // Drop any still-empty slots (failed fetches)
     final_games.retain(|g| !g.href.is_empty());
 
     write_games_to_db(&app, &final_games, "recently_updated")?;
@@ -386,9 +302,11 @@ pub async fn run_all_scrapers(app: AppHandle) -> Result<(), ScrapingError> {
 
     let local = tokio::task::LocalSet::new();
 
-    let a = tokio::spawn(scrape_new_games(app.clone()));
+    let a = {
+        let app = app.clone();
+        tokio::spawn(async move { WpGameFetcher::new().sync_recent_games(&app, 50).await })
+    };
     let c = tokio::spawn(scrape_recently_updated(app.clone()));
-
     let b = local.run_until(async { scrape_popular_games(app.clone()).await });
 
     let (ra, rb, rc) = tokio::join!(a, b, c);

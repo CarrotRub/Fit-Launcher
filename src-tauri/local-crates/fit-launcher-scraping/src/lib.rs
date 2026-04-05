@@ -12,6 +12,8 @@ pub mod scraping;
 pub mod sitemap;
 pub mod structs;
 
+mod tests;
+pub mod wordpress;
 // Re-export commands for Tauri registration
 pub use commands::*;
 
