@@ -39,11 +39,11 @@ pub async fn try_high_res_img(src: &str) -> String {
     let mid = hi.replace("jpg.1080p.", "");
 
     tokio::select! {
-        true = head_ok(&hi) => return hi,
-        true = head_ok(&mid) => return mid,
+        true = head_ok(&hi) => hi,
+        true = head_ok(&mid) => mid,
     }
 
-    src.into()
+    // src.into()
 }
 
 fn read_meta_ts(conn: &rusqlite::Connection) -> Option<DateTime<Utc>> {

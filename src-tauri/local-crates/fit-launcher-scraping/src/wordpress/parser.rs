@@ -1,6 +1,4 @@
-use crate::{
-    Game, ScrapingError, parser::parse_game_from_article, wordpress::rest::models::WpPost,
-};
+use crate::{Game, wordpress::rest::models::WpPost};
 use scraper::{ElementRef, Html, Selector};
 
 lazy_static::lazy_static! {

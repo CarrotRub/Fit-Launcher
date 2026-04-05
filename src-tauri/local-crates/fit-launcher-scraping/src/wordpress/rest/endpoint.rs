@@ -1,6 +1,5 @@
 use crate::ScrapingError;
 use curl::easy::Easy;
-use reqwest::Method;
 use serde::{Serialize, de::DeserializeOwned};
 use std::marker::PhantomData;
 
