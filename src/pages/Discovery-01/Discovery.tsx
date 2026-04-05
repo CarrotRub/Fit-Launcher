@@ -14,7 +14,7 @@ const gameCacheInst = new GamesCacheApi();
 const libraryInst = new LibraryApi();
 
 const ITEMS_PER_PAGE = 10;
-const DEFAULT_SIZE_RANGE: SizeRange = { min: 0, max: 100 * 1024 * 1024 * 1024 };
+const DEFAULT_SIZE_RANGE: SizeRange = { min: 0, max: 600 * 1024 * 1024 * 1024 };
 
 // Fetcher for createResource
 async function fetchDiscoveryData() {
@@ -23,10 +23,16 @@ async function fetchDiscoveryData() {
     libraryInst.getGamesToDownload()
   ]);
 
+  const res = await gameCacheInst.getDiscoveryGames();
+  if (res.status === "ok") {
+    console.log("Games", res.data.length)
+  }
   const toDownloadLater = new Set(downloadLaterList.map(g => g.title));
 
   if (resultGame.status === "ok") {
+
     const games = await gameCacheInst.removeNSFW(resultGame.data);
+
     return { games, toDownloadLater };
   }
   return { games: [] as Game[], toDownloadLater };
@@ -102,8 +108,8 @@ export default function DiscoveryPage() {
       </div>
 
       {/* Games Grid */}
-      <div class="relative flex flex-col bg-gradient-to-br from-background to-background-70 w-full grow overflow-y-auto no-scrollbar">
-        <div class="flex flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-[1920px] mx-auto w-full">
+      <div class="relative flex flex-col bg-linear-to-br from-background to-background-70 w-full grow overflow-y-auto no-scrollbar">
+        <div class="flex flex-col gap-6 p-4 md:p-6 lg:p-8 max-w-480 mx-auto w-full">
           <For each={paginatedGames()}>
             {(game) => (
               <LazyDiscoveryRow
