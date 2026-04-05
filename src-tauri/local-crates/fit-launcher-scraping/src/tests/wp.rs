@@ -1,8 +1,5 @@
 use std::time::Instant;
 
-use fit_launcher_config::client::dns::{CUSTOM_DNS_CLIENT, refresh_cookies, warmup_connection};
-use reqwest::Client;
-
 use crate::wordpress::get_game_list_wp;
 
 #[tokio::test]

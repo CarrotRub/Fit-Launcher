@@ -174,12 +174,12 @@ impl WpGameFetcher {
     }
 
     pub fn is_recent_games_fresh(app: &AppHandle) -> Result<bool, ScrapingError> {
-        Ok(Self::recent_games_age_secs(app)?.map_or(false, |age| age < RECENT_GAMES_MAX_AGE_SECS))
+        Ok(Self::recent_games_age_secs(app)?.is_some_and(|age| age < RECENT_GAMES_MAX_AGE_SECS))
     }
 
     pub fn is_discovery_games_fresh(app: &AppHandle) -> Result<bool, ScrapingError> {
         Ok(Self::discovery_games_age_secs(app)?
-            .map_or(false, |age| age < DISCOVERY_GAMES_MAX_AGE_SECS))
+            .is_some_and(|age| age < DISCOVERY_GAMES_MAX_AGE_SECS))
     }
 
     pub fn load_recent_games_from_db(&mut self, app: &AppHandle) -> Result<(), ScrapingError> {
