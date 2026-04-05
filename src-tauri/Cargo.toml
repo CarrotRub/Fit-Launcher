@@ -120,7 +120,7 @@ members = [
     "local-crates/fit-launcher-ui-automation",
     "local-crates/fit-launcher-cache",
     "local-crates/fit-launcher-aria2",
-    "local-crates/fit-launcher-ipc", 
+    "local-crates/fit-launcher-ipc",
     "local-crates/fit-launcher-game-comments",
 ]
 resolver = "3"
@@ -167,6 +167,7 @@ reqwest = { version = "0.12.24", features = [
     "deflate",
     "hickory-dns",
 ] }
+curl = { version = "0.4.49", features = ["static-curl"] }
 parking_lot = "0.12.5"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.20", features = [

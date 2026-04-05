@@ -22,6 +22,9 @@ pub enum ScrapingError {
     #[error("HTTP status error: {0}")]
     HttpStatusCodeError(String),
 
+    #[error("Blocked by DDOS Guard: {0}")]
+    DdsGuardError(String),
+
     #[error("Timeout error: {0}")]
     TimeoutError(String),
 
@@ -42,6 +45,9 @@ pub enum ScrapingError {
 
     #[error("Semaphore error: {0}")]
     SemaphoreError(String),
+
+    #[error("UrlEncoder error: {0}")]
+    UrlEncoder(String),
 }
 
 impl From<reqwest::Error> for ScrapingError {
