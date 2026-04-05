@@ -24,7 +24,7 @@
     "@tauri-apps/plugin-shell": "^2.3.0",
     "@tauri-apps/plugin-store": "2.4.1",
     "@tauri-apps/plugin-updater": "^2.3.0",
-    "dompurify": "^3.3.0",
+    "dompurify": "^3.3.2",
     "lucide-solid": "^0.561.0",
     "marked": "^17.0.1",
     "semver": "^7.7.3",
