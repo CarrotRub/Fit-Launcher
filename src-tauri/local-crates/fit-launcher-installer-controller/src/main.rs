@@ -43,6 +43,7 @@ pub mod utils;
 
 use std::env;
 use tracing::{Level, error, info};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::FmtSubscriber;
 
 use crate::ipc::server::IpcServer;
@@ -54,12 +55,17 @@ fn main() {
         .join("com.fitlauncher.carrotrub")
         .join("logs");
 
-    let file_appender = tracing_appender::rolling::never(&logs_dir, "controller.log");
+    let file_appender = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("controller")
+        .filename_suffix("log")
+        .max_log_files(7)
+        .build(&logs_dir)
+        .expect("Failed to build rolling file appender");
     let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
 
-    // Initialize logging
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::DEBUG)
+        .with_max_level(Level::INFO)
         .with_target(true)
         .with_thread_ids(false)
         .with_writer(file_writer)

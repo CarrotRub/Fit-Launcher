@@ -35,7 +35,7 @@ pub async fn get_game_list_wp(game_number: u8) -> Result<Vec<Game>, ScrapingErro
         })
         .await?;
 
-    let games: Vec<Game> = futures::stream::iter(posts.into_iter())
+    let games: Vec<Game> = futures::stream::iter(posts)
         .map(|post| async move { parse_game_from_wp(post) })
         .buffer_unordered(10)
         .filter_map(async move |opt| opt)
@@ -73,7 +73,7 @@ impl WpGameFetcher {
                 break;
             }
 
-            let games: Vec<Game> = futures::stream::iter(posts.into_iter())
+            let games: Vec<Game> = futures::stream::iter(posts)
                 .map(|post| async move { parse_game_from_wp(post) })
                 .buffer_unordered(10)
                 .filter_map(async move |opt| opt)
@@ -95,7 +95,7 @@ impl WpGameFetcher {
             })
             .await?;
 
-        self.recent_games = futures::stream::iter(posts.into_iter())
+        self.recent_games = futures::stream::iter(posts)
             .map(|post| async move { parse_game_from_wp(post) })
             .buffer_unordered(10)
             .filter_map(async move |opt| opt)

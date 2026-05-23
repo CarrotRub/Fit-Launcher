@@ -145,7 +145,7 @@ pub async fn scrape_popular_games(app: AppHandle) -> Result<(), ScrapingError> {
     if !missing.is_empty() {
         info!("Fetching {} new popular games", fetched_count);
 
-        let stream = futures::stream::iter(missing.into_iter())
+        let stream = futures::stream::iter(missing)
             .map(|(idx, link, thumb)| {
                 let ah = app.clone();
                 async move {
@@ -259,7 +259,7 @@ pub async fn scrape_recently_updated(app: AppHandle) -> Result<(), ScrapingError
             missing.len()
         );
 
-        let stream = futures::stream::iter(missing.into_iter())
+        let stream = futures::stream::iter(missing)
             .map(|(idx, link)| {
                 let ah = app.clone();
                 async move {

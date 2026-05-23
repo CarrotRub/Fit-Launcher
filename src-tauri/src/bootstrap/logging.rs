@@ -1,5 +1,6 @@
 use std::{fs, sync::OnceLock};
 use tracing::info;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{EnvFilter, prelude::*};
 
 static LOG_GUARD: OnceLock<tracing_appender::non_blocking::WorkerGuard> = OnceLock::new();
@@ -24,7 +25,13 @@ pub fn init_logging() {
         eprintln!("Failed to create settings dir {:?}: {:?}", settings_dir, e);
     }
 
-    let file_appender = tracing_appender::rolling::never(&logs_dir, "app.log");
+    let file_appender = RollingFileAppender::builder()
+        .rotation(Rotation::DAILY)
+        .filename_prefix("app")
+        .filename_suffix("log")
+        .max_log_files(7)
+        .build(&logs_dir)
+        .expect("Failed to build rolling file appender");
     let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
     LOG_GUARD.set(guard).unwrap();
 

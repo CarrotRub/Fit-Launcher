@@ -254,55 +254,48 @@ impl InstallationJob {
                         last_event_time = std::time::Instant::now();
 
                         match &event {
-                            ControllerEvent::Progress { job_id, percent } => {
-                                if *job_id == job_id_str {
-                                    let _ = app_handle.emit("setup::progress::percent", percent);
-                                }
+                            ControllerEvent::Progress { job_id, percent }
+                                if *job_id == job_id_str =>
+                            {
+                                let _ = app_handle.emit("setup::progress::percent", percent);
                             }
-                            ControllerEvent::Phase { job_id, phase } => {
-                                if *job_id == job_id_str {
-                                    let _ = app_handle
-                                        .emit("setup::progress::phase", format!("{:?}", phase));
-                                }
+                            ControllerEvent::Phase { job_id, phase } if *job_id == job_id_str => {
+                                let _ = app_handle
+                                    .emit("setup::progress::phase", format!("{:?}", phase));
                             }
-                            ControllerEvent::File { job_id, path } => {
-                                if *job_id == job_id_str {
-                                    let _ = app_handle.emit("setup::progress::file", path);
-                                }
+                            ControllerEvent::File { job_id, path } if *job_id == job_id_str => {
+                                let _ = app_handle.emit("setup::progress::file", path);
                             }
-                            ControllerEvent::GameTitle { job_id, title } => {
-                                if *job_id == job_id_str {
-                                    let _ = app_handle.emit("setup::progress::title", title);
-                                }
+                            ControllerEvent::GameTitle { job_id, title }
+                                if *job_id == job_id_str =>
+                            {
+                                let _ = app_handle.emit("setup::progress::title", title);
                             }
                             ControllerEvent::Completed {
                                 job_id,
                                 success: ok,
                                 install_path,
                                 error,
-                            } => {
-                                if *job_id == job_id_str {
-                                    success = *ok;
-                                    install_path_received = install_path.clone();
-                                    if success {
-                                        info!("Installation completed successfully");
-                                        let _ = app_handle
-                                            .emit("setup::progress::finished", &install_path);
-                                    } else {
-                                        let msg = error.as_deref().unwrap_or("Unknown error");
-                                        error!("Installation failed: {}", msg);
-                                        let _ = app_handle.emit("setup::progress::error", msg);
-                                    }
-                                    break;
+                            } if *job_id == job_id_str => {
+                                success = *ok;
+                                install_path_received = install_path.clone();
+                                if success {
+                                    info!("Installation completed successfully");
+                                    let _ =
+                                        app_handle.emit("setup::progress::finished", &install_path);
+                                } else {
+                                    let msg = error.as_deref().unwrap_or("Unknown error");
+                                    error!("Installation failed: {}", msg);
+                                    let _ = app_handle.emit("setup::progress::error", msg);
                                 }
+                                break;
                             }
-                            ControllerEvent::Error { job_id, message } => {
-                                // Some errors might be global or specific
-                                if job_id.as_deref() == Some(&job_id_str) || job_id.is_none() {
-                                    error!("Controller error: {}", message);
-                                    let _ = app_handle.emit("setup::progress::error", message);
-                                    break;
-                                }
+                            ControllerEvent::Error { job_id, message }
+                                if job_id.as_deref() == Some(&job_id_str) || job_id.is_none() =>
+                            {
+                                error!("Controller error: {}", message);
+                                let _ = app_handle.emit("setup::progress::error", message);
+                                break;
                             }
                             ControllerEvent::ShuttingDown => {
                                 info!("Controller shutting down unexpectedly");
