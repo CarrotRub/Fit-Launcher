@@ -400,7 +400,7 @@ pub fn find_game_executable(folder_path: String) -> Option<String> {
     }
 
     // Sort by size (larger files are more likely to be the main game exe)
-    candidates.sort_by(|a, b| b.1.cmp(&a.1));
+    candidates.sort_by_key(|c| std::cmp::Reverse(c.1));
 
     // Return the largest exe that's not suspiciously small (< 1MB might be a launcher stub)
     for (path, size) in &candidates {
