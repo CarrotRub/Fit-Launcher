@@ -82,6 +82,11 @@ pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<Dire
                 filename,
                 size,
             });
+        } else {
+            // Surface the HTML head so the next time FF changes their page we
+            // notice without users not knowing what happened
+            let snippet: String = html.chars().take(400).collect();
+            warn!("FUCKINGFAST_DDL_REGEX miss for {filename}; head: {snippet}");
         }
     }
 

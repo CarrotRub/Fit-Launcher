@@ -3,8 +3,10 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 use std::sync::LazyLock;
 
+// FF moved direct download URLs onto the dl. subdomain, and the script now
+// also calls window.open(atob(ad), '_blank') for an ad URL that we must skip.
 pub static FUCKINGFAST_DDL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"window\.open\(\"(https://fuckingfast.co/dl/[^"]*)\"\)"#).unwrap()
+    Regex::new(r#"window\.open\(\"(https://(?:dl\.)?fuckingfast\.co/dl/[^"]+)\""#).unwrap()
 });
 pub static FUCKINGFAST_SIZE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"Size:\s*([0-9\.]+)\s*([KMGTP]?B)"#).unwrap());

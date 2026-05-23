@@ -15,6 +15,23 @@ import {
 type JobCallback = (job: Job) => void;
 type RemovedCallback = (id: string) => void;
 
+export type Aria2ConnState =
+  | "idle"
+  | "connected"
+  | "reconnecting"
+  | "disconnected";
+export interface Aria2StatusEvent {
+  state: Aria2ConnState;
+  message?: string | null;
+}
+export interface ManagerErrorEvent {
+  kind: string;
+  message: string;
+  jobId?: string | null;
+}
+type StatusCallback = (s: Aria2StatusEvent) => void;
+type ErrorCallback = (e: ManagerErrorEvent) => void;
+
 export class GlobalDownloadManager {
   private jobs = new Map<string, Job>();
 
@@ -34,6 +51,16 @@ export class GlobalDownloadManager {
   private unlistenUpdated: UnlistenFn | null = null;
   private unlistenRemoved: UnlistenFn | null = null;
   private unlistenCompleted: UnlistenFn | null = null;
+  private unlistenManagerReady: UnlistenFn | null = null;
+  private unlistenAria2Status: UnlistenFn | null = null;
+  private unlistenManagerError: UnlistenFn | null = null;
+
+  private readyCbs: Set<() => void> = new Set();
+  private isReady = false;
+
+  private statusCbs: Set<StatusCallback> = new Set();
+  private errorCbs: Set<ErrorCallback> = new Set();
+  private currentStatus: Aria2StatusEvent = { state: "reconnecting" };
 
   private flushUpdates() {
     this.flushScheduled = false;
@@ -70,6 +97,7 @@ export class GlobalDownloadManager {
   }
 
   async setup() {
+    // Listeners must be attached BEFORE the initial dmAllJobs call
     if (!this.unlistenUpdated) {
       this.unlistenUpdated = await listen("download::job_updated", (e) => {
         const job = e.payload as Job | null;
@@ -126,26 +154,144 @@ export class GlobalDownloadManager {
       });
     }
 
+    if (!this.unlistenAria2Status) {
+      this.unlistenAria2Status = await listen(
+        "download::aria2_status",
+        (e) => {
+          const s = e.payload as Aria2StatusEvent;
+          if (!s?.state) return;
+          this.notifyStatus(s);
+        }
+      );
+    }
+
+    if (!this.unlistenManagerError) {
+      this.unlistenManagerError = await listen(
+        "download::manager_error",
+        (e) => {
+          const err = e.payload as ManagerErrorEvent;
+          if (!err?.message) return;
+          this.errorCbs.forEach((cb) => {
+            try {
+              cb(err);
+            } catch (cbErr) {
+              console.error("Error in manager error callback:", cbErr);
+            }
+          });
+        }
+      );
+    }
+
+    // Backend spawns the manager async, so the initial fetch races; manager_ready triggers a refetch.
+    if (!this.unlistenManagerReady) {
+      this.unlistenManagerReady = await listen(
+        "download::manager_ready",
+        () => {
+          this.isReady = true;
+          this.refetchAll().catch((err) =>
+            console.error("Refetch after manager_ready failed:", err)
+          );
+          this.refetchAria2Status().catch((err) =>
+            console.error("Aria2 status refetch after manager_ready failed:", err)
+          );
+          this.readyCbs.forEach((cb) => {
+            try {
+              cb();
+            } catch (err) {
+              console.error("Error in manager ready callback:", err);
+            }
+          });
+        }
+      );
+    }
+
+    await this.refetchAria2Status();
+    await this.refetchAll();
+  }
+
+  private notifyStatus(s: Aria2StatusEvent) {
+    this.currentStatus = s;
+    this.statusCbs.forEach((cb) => {
+      try {
+        cb(s);
+      } catch (err) {
+        console.error("Error in aria2 status callback:", err);
+      }
+    });
+  }
+
+  private async refetchAria2Status() {
+    try {
+      const res = await commands.dmAria2Status();
+      if (res.status === "ok") {
+        this.notifyStatus(res.data);
+      }
+    } catch (err) {
+      console.warn("dmAria2Status failed:", err);
+    }
+  }
+
+  private async refetchAll() {
     try {
       const resAll = await commands.dmAllJobs();
-      let all: Job[] = [];
-      if (resAll.status === "ok") {
-        all = resAll.data;
+      if (resAll.status !== "ok") {
+        console.warn("dmAllJobs not ready:", resAll.error);
+        return;
       }
-      if (Array.isArray(all)) {
-        for (const j of all) {
-          if (j && j.id) {
-            this.jobs.set(j.id, j);
-            if (j.state === "complete") {
-              this.completedJobIds.add(j.id);
-            }
+      const all = resAll.data;
+      if (!Array.isArray(all)) return;
+
+      for (const j of all) {
+        if (j && j.id) {
+          this.jobs.set(j.id, j);
+          if (j.state === "complete") {
+            this.completedJobIds.add(j.id);
           }
+          // Notify subscribers on cold restart; stale gids may never trigger a live update.
+          this.updatedCbs.forEach((cb) => {
+            try {
+              cb(j);
+            } catch (err) {
+              console.error("Error in job updated callback:", err);
+            }
+          });
         }
-        this.cleanupCompletedJobs();
       }
+      this.cleanupCompletedJobs();
     } catch (err) {
       console.warn("dmAllJobs failed:", err);
     }
+  }
+
+  onReady(cb: () => void) {
+    this.readyCbs.add(cb);
+    if (this.isReady) {
+      try {
+        cb();
+      } catch (err) {
+        console.error("Error in manager ready callback:", err);
+      }
+    }
+    return () => this.readyCbs.delete(cb);
+  }
+
+  getAria2Status(): Aria2StatusEvent {
+    return this.currentStatus;
+  }
+
+  onAria2Status(cb: StatusCallback) {
+    this.statusCbs.add(cb);
+    try {
+      cb(this.currentStatus);
+    } catch (err) {
+      console.error("Error in aria2 status callback:", err);
+    }
+    return () => this.statusCbs.delete(cb);
+  }
+
+  onError(cb: ErrorCallback) {
+    this.errorCbs.add(cb);
+    return () => this.errorCbs.delete(cb);
   }
 
   // getters
@@ -250,6 +396,7 @@ export class GlobalDownloadManager {
   async resume(jobId: string): Promise<Result<void, string>> {
     try {
       await commands.dmResume(jobId);
+      await this.refetchAria2Status();
       return { data: undefined, status: "ok" };
     } catch (e) {
       return {
@@ -362,10 +509,27 @@ export class GlobalDownloadManager {
       this.unlistenCompleted();
       this.unlistenCompleted = null;
     }
+    if (this.unlistenManagerReady) {
+      this.unlistenManagerReady();
+      this.unlistenManagerReady = null;
+    }
+    if (this.unlistenAria2Status) {
+      this.unlistenAria2Status();
+      this.unlistenAria2Status = null;
+    }
+    if (this.unlistenManagerError) {
+      this.unlistenManagerError();
+      this.unlistenManagerError = null;
+    }
 
     this.updatedCbs.clear();
     this.removedCbs.clear();
     this.completedCbs.clear();
+    this.readyCbs.clear();
+    this.statusCbs.clear();
+    this.errorCbs.clear();
+    this.isReady = false;
+    this.currentStatus = { state: "reconnecting" };
 
     this.jobs.clear();
     this.pendingUpdates.clear();

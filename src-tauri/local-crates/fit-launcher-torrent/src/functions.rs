@@ -11,10 +11,7 @@ use std::{
 };
 
 use tokio::{
-    sync::{
-        Mutex,
-        oneshot::{Receiver, Sender, channel},
-    },
+    sync::oneshot::{Receiver, Sender, channel},
     time::sleep,
 };
 
@@ -40,7 +37,8 @@ pub struct TorrentSession {
     pub config_filename: String,
     shared: Arc<RwLock<Option<StateShared>>>,
     init_lock: Arc<tokio::sync::Mutex<()>>,
-    aria2_child: Arc<tokio::sync::Mutex<Option<tokio::process::Child>>>,
+    // PID captured before Child moves into the shutdown task, for liveness checks.
+    aria2_pid: Arc<parking_lot::RwLock<Option<u32>>>,
 }
 
 unsafe impl Send for TorrentSession {}
@@ -139,6 +137,9 @@ fn build_aria2_args(
     // Session persistence --------------------------------------------------
     a.push("--save-session".into());
     a.push(session_path.display().to_string());
+    // 5s flush so a hard kill loses at most 5s of resume progress (default 60s).
+    a.push("--auto-save-interval=5".into());
+    a.push("--save-session-interval=5".into());
     a.push("--log".into());
     a.push(log_path.display().to_string());
     a.push("--log-level=warn".into());
@@ -162,7 +163,7 @@ pub async fn aria2_client_from_config(
     session_path: impl AsRef<OsStr>,
     log_path: impl AsRef<OsStr>,
     v2_path: impl AsRef<Path>,
-) -> anyhow::Result<aria2_ws::Client> {
+) -> anyhow::Result<(aria2_ws::Client, Option<u32>)> {
     let FitLauncherConfigAria2 {
         port,
         token,
@@ -181,7 +182,7 @@ pub async fn aria2_client_from_config(
         )
         .await
         {
-            Ok(client) => return Ok(client),
+            Ok(client) => return Ok((client, None)),
             Err(e) => {
                 warn!("Existing aria2 connection failed: {}", e);
             }
@@ -280,6 +281,8 @@ pub async fn aria2_client_from_config(
 
         info!("Successfully connected to newly created aria2c instance on port: {rpc_port}");
 
+        let pid = child.id();
+
         let (close_tx, close_rx) = channel::<()>();
         let (done_tx, done_rx) = channel::<()>();
 
@@ -297,7 +300,7 @@ pub async fn aria2_client_from_config(
         });
 
         *guard = Some((close_tx, done_rx, rpc_port));
-        Ok(client)
+        Ok((client, pid))
     } else {
         // when we don't start `aria2` ourself,
         // try to connect to the existing instance with configured port
@@ -307,7 +310,7 @@ pub async fn aria2_client_from_config(
         {
             Ok(client) => {
                 info!("Connected to existing aria2c instance on port: {port}");
-                Ok(client)
+                Ok((client, None))
             }
             Err(err) => {
                 error!("Failed to connect to existing aria2c instance on port {port}: {err}");
@@ -319,6 +322,29 @@ pub async fn aria2_client_from_config(
 
 fn is_port_available(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
+#[cfg(windows)]
+fn pid_alive(pid: u32) -> bool {
+    use windows::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
+    use windows::Win32::System::Threading::{
+        GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    unsafe {
+        let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
+            return false;
+        };
+        let mut code: u32 = 0;
+        let alive = GetExitCodeProcess(handle, &mut code).is_ok() && code == STILL_ACTIVE.0 as u32;
+        let _ = CloseHandle(handle);
+        alive
+    }
+}
+
+#[cfg(unix)]
+fn pid_alive(pid: u32) -> bool {
+    // kill(pid, 0) sends no signal but returns ESRCH if the process is gone.
+    unsafe { libc::kill(pid as i32, 0) == 0 }
 }
 
 impl Default for TorrentSession {
@@ -349,7 +375,7 @@ impl TorrentSession {
 
         let final_config = load_or_migrate(legacy_path, v2_path);
 
-        let aria2_client =
+        let aria2_result =
             aria2_client_from_config(&final_config, aria2_session, aria2_log, v2_path)
                 .await
                 .inspect(|_| {
@@ -359,6 +385,12 @@ impl TorrentSession {
                     error!("Failed to connect to aria2: {:#}", e);
                 })
                 .ok();
+
+        let (aria2_client, aria2_pid) = match aria2_result {
+            Some((c, p)) => (Some(c), p),
+            None => (None, None),
+        };
+        self.set_aria2_pid(aria2_pid);
 
         let mut shared_guard = self.shared.write();
         if let Some(shared) = shared_guard.as_mut() {
@@ -399,8 +431,25 @@ impl TorrentSession {
             config_filename: v2_path.to_string_lossy().into(),
             shared,
             init_lock: Arc::new(tokio::sync::Mutex::new(())),
-            aria2_child: Arc::new(Mutex::new(None)),
+            aria2_pid: Arc::new(parking_lot::RwLock::new(None)),
         }
+    }
+
+    /// Spawned aria2c PID; None when connecting to an external instance.
+    pub fn aria2_pid(&self) -> Option<u32> {
+        *self.aria2_pid.read()
+    }
+
+    /// True when we don't own the daemon (can't verify) or its PID is still alive.
+    pub fn aria2_alive(&self) -> bool {
+        match self.aria2_pid() {
+            None => true,
+            Some(pid) => pid_alive(pid),
+        }
+    }
+
+    fn set_aria2_pid(&self, pid: Option<u32>) {
+        *self.aria2_pid.write() = pid;
     }
 
     pub async fn aria2_client(&self) -> anyhow::Result<aria2_ws::Client> {
@@ -454,24 +503,14 @@ impl TorrentSession {
     }
 
     pub async fn shutdown(&self) {
-        {
-            let handles = {
-                let mut guard = ARIA2_DAEMON.lock().await;
-                guard.take()
-            };
-            if let Some((close_tx, done_rx, _port)) = handles {
-                let _ = close_tx.send(());
-                let _ = done_rx.await;
-            }
+        let handles = {
+            let mut guard = ARIA2_DAEMON.lock().await;
+            guard.take()
+        };
+        if let Some((close_tx, done_rx, _port)) = handles {
+            let _ = close_tx.send(());
+            let _ = done_rx.await;
         }
-
-        if let Some(mut child) = self.aria2_child.lock().await.take() {
-            info!("Killing aria2c child process...");
-            if let Err(e) = child.kill().await {
-                error!("Failed to kill aria2c: {:?}", e);
-            } else {
-                let _ = child.wait().await;
-            }
-        }
+        *self.aria2_pid.write() = None;
     }
 }

@@ -5,6 +5,7 @@ use crate::utils::*;
 use fit_launcher_cache::CacheManager;
 use fit_launcher_download_manager::aria2::Aria2WsClient;
 use fit_launcher_download_manager::manager::DownloadManager;
+use fit_launcher_download_manager::types::Aria2ConnState;
 use fit_launcher_scraping::{
     discovery::refresh_discovery_games, rebuild_search_index, scraping::run_all_scrapers,
     sitemap::download_all_sitemaps,
@@ -138,21 +139,36 @@ pub async fn start_app() -> anyhow::Result<()> {
                                     let session_arc = Arc::clone(&session);
 
                                     info!("Download subsystem spawn: creating DownloadManager");
+                                    let aria_ws = Arc::new(Mutex::new(Aria2WsClient::new(
+                                        client.clone(),
+                                        session_arc,
+                                    )));
                                     let manager = DownloadManager::new(
-                                        Arc::new(Mutex::new(Aria2WsClient::new(client.clone(), session_arc))),
+                                        aria_ws.clone(),
                                         app.clone(),
                                         session.config().await.rpc,
                                         librqbit.clone(),
                                     );
 
+                                    // Register the manager BEFORE load_from_disk
+                                    app.manage(manager.clone());
+
                                     if let Err(e) = manager.load_from_disk().await {
                                         error!("Failed to load persisted jobs: {:?}", e);
+                                        manager.emit_manager_error(
+                                            "load_from_disk",
+                                            format!("{}", e),
+                                            None,
+                                        );
+                                    }
+                                    if manager.is_empty().await {
+                                        aria_ws.lock().await.shutdown_if_owned().await;
+                                        manager.emit_aria2_status(Aria2ConnState::Idle, None);
                                     }
 
-                                    info!("Download subsystem spawn: managing DownloadManager and starting dispatcher");
-                                    app.manage(manager.clone());
+                                    info!("Download subsystem spawn: starting dispatcher");
                                     fit_launcher_download_manager::dispatch::spawn_dispatcher(
-                                        manager, client,
+                                        manager, aria_ws,
                                     );
                                     info!("Download subsystem spawn: complete");
                                 }
@@ -277,8 +293,24 @@ pub async fn start_app() -> anyhow::Result<()> {
                 // This ensures ports are released for relaunch scenarios.
                 info!("RunEvent::Exit - shutting down subsystems");
 
+                // Flush pending debounced writes so a quick tray-quit doesn't drop the queue.
+                if let Some(manager) = app_handle.try_state::<Arc<DownloadManager>>() {
+                    let manager = manager.inner().clone();
+                    if let Err(e) = tauri::async_runtime::block_on(manager.save_now()) {
+                        error!("Final save_now failed during shutdown: {:?}", e);
+                    }
+                }
+
                 if let Some(librqbit) = app_handle.try_state::<LibrqbitSession>() {
                     librqbit.shutdown();
+                }
+
+                // Tear down idle install controller so a leaked pipe doesn't block the next launch.
+                #[cfg(windows)]
+                {
+                    let _ =
+                        fit_launcher_ui_automation::controller_manager::ControllerManager::global()
+                            .shutdown_if_idle();
                 }
 
                 info!("Subsystems shut down, process exiting");

@@ -92,6 +92,11 @@ pub(crate) mod windows {
             unsafe { TerminateProcess(self.process, 1).ok() };
             Ok(())
         }
+
+        /// Mirrors `tokio::process::Child::id` for cross-platform PID capture.
+        pub fn id(&self) -> Option<u32> {
+            Some(self.pid)
+        }
     }
 
     /// Spawn a Child inside of a job object.

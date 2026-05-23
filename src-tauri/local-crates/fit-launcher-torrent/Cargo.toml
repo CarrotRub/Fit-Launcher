@@ -17,7 +17,6 @@ directories = { workspace = true }
 fit-launcher-ui-automation = { workspace = true }
 fit-launcher-scraping = { path = "../fit-launcher-scraping" }
 fitgirl-decrypt = { workspace = true }
-
 librqbit-core = { workspace = true }
 librqbit-buffers = { workspace = true }
 librqbit-dht = { version = "5.3.1" }
@@ -33,3 +32,6 @@ windows = { workspace = true, features = [
     "Win32_System_JobObjects",
     "Win32_Security",
 ] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

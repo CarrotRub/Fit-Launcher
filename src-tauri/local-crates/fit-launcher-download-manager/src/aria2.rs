@@ -7,11 +7,8 @@ use fit_launcher_aria2::{
     error::Aria2Error,
 };
 use fit_launcher_torrent::{FitLauncherConfigAria2, functions::TorrentSession};
-use sha2::Digest;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
-
-use crate::manager::DownloadManager;
+use tracing::{info, warn};
 
 /// Timeout for aria2 operations (health check uses a shorter timeout)
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(15);
@@ -27,6 +24,15 @@ pub struct Aria2WsClient {
 impl Aria2WsClient {
     pub fn new(client: Arc<Mutex<Client>>, session: Arc<TorrentSession>) -> Self {
         Self { client, session }
+    }
+
+    /// True when daemon is external (can't verify) or the recorded PID still exists.
+    pub fn is_child_alive(&self) -> bool {
+        self.session.aria2_alive()
+    }
+
+    pub async fn shutdown_if_owned(&self) {
+        self.session.shutdown().await;
     }
 
     /// Check if the connection is healthy by doing a quick version call
@@ -46,7 +52,7 @@ impl Aria2WsClient {
     }
 
     /// Ensure connection is healthy, reconnecting if necessary
-    async fn ensure_connected(&self) -> Result<(), Aria2Error> {
+    pub async fn ensure_connected(&self) -> Result<(), Aria2Error> {
         if self.is_healthy().await {
             return Ok(());
         }
@@ -183,52 +189,5 @@ impl Aria2WsClient {
         list.extend(stopped);
 
         Ok(list)
-    }
-
-    /// Spawn a background polling task that feeds DownloadManager
-    pub fn spawn_status_listener(self, manager: Arc<DownloadManager>) {
-        tokio::spawn(async move {
-            let mut last_hash = String::new();
-            let mut consecutive_errors = 0u32;
-
-            loop {
-                let statuses_result = self.list_all().await;
-
-                match statuses_result {
-                    Ok(statuses) => {
-                        consecutive_errors = 0;
-                        if let Ok(serialized) = serde_json::to_string(&statuses) {
-                            let hash = format!("{:x}", sha2::Sha256::digest(serialized.as_bytes()));
-                            if hash != last_hash {
-                                last_hash = hash.clone();
-
-                                manager.on_aria2_update(statuses).await;
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        consecutive_errors += 1;
-                        error!(
-                            "Aria2 status poll error (consecutive: {}): {:?}",
-                            consecutive_errors, err
-                        );
-
-                        // If we have multiple consecutive errors, try to reconnect
-                        if consecutive_errors >= 3 {
-                            warn!(
-                                "Multiple consecutive aria2 poll errors, attempting reconnection..."
-                            );
-                            if let Err(e) = self.ensure_connected().await {
-                                error!("Failed to reconnect aria2: {:?}", e);
-                            } else {
-                                consecutive_errors = 0;
-                            }
-                        }
-                    }
-                }
-
-                tokio::time::sleep(Duration::from_millis(500)).await;
-            }
-        });
     }
 }

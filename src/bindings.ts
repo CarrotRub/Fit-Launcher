@@ -275,6 +275,14 @@ async dmAllJobs() : Promise<Result<Job[], string>> {
     else return { error: e  as any, status: "error" };
 }
 },
+async dmAria2Status() : Promise<Result<Aria2StatusEvent, string>> {
+    try {
+    return { data: await TAURI_INVOKE("dm_aria2_status"), status: "ok" };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { error: e  as any, status: "error" };
+}
+},
 async dmCleanJob(jobId: string, installationId: string) : Promise<Result<null, InstallationError>> {
     try {
     return { data: await TAURI_INVOKE("dm_clean_job", { installationId, jobId }), status: "ok" };
@@ -709,7 +717,9 @@ async updateDownloadedGameExecutableInfo(gameTitle: string, executableInfo: Exec
 
 export type AggregatedStatus = { total_length: number; completed_length: number; download_speed: number; upload_speed: number; per_file: Partial<{ [key in string]: FileStatus }>; state: DownloadState; progress_percentage: number }
 export type AnswerComment = { id: number; text_template: string | null; data_create: string | null; user: User | null; raiting: Rating | null; attaches?: Attach[] | null; attaches_icons?: number[] | null; attaches_text: string | null; sort: number | null; edited: boolean | null; fixed: boolean | null; comment_type: number | null; answer_comment_root_id: number | null }
+export type Aria2ConnState = "idle" | "connected" | "reconnecting" | "disconnected"
 export type Aria2Error = "NotConfigured" | { InitializationFailed: string } | { RPCError: string } | { Timeout: string } | "StaleConnection"
+export type Aria2StatusEvent = { state: Aria2ConnState; message: string | null }
 export type Attach = { type: string; data?: AttachType[] }
 export type AttachType = { src: string | null; src_o: string | null; width: number | null; video: string | null; webp: string | null; height: number | null; title: string | null; type: string | null; description: string | null }
 /**
