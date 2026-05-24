@@ -505,7 +505,6 @@ impl DownloadManager {
                     && matches!(
                         job.state,
                         DownloadState::Active
-                            | DownloadState::Paused
                             | DownloadState::Waiting
                             | DownloadState::Error
                     )
