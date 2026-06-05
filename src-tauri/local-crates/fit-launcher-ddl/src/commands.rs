@@ -5,11 +5,25 @@ use crate::{
     functions::{get_all_download_links, parse_size_to_bytes},
     structs::{DirectLink, FUCKINGFAST_DDL_REGEX},
 };
-use fit_launcher_config::client::dns::CUSTOM_DNS_CLIENT;
 use futures::{StreamExt, stream::FuturesUnordered};
-use reqwest::{Method, Request};
+use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderValue, USER_AGENT};
+use reqwest::{Client, Url};
 use specta::specta;
+use std::sync::LazyLock;
 use tracing::{error, info, warn};
+
+const FUCKINGFAST_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+
+static FUCKINGFAST_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    Client::builder()
+        .use_rustls_tls()
+        .tcp_nodelay(true)
+        .gzip(true)
+        .brotli(true)
+        .user_agent(FUCKINGFAST_UA)
+        .build()
+        .expect("Failed to build FuckingFast reqwest client")
+});
 
 #[tauri::command]
 #[specta]
@@ -18,19 +32,23 @@ pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<Dire
 
     for link in fuckingfast_links {
         let fut = async move {
-            let request = Request::new(
-                Method::GET,
-                link.parse().map_err(|_| anyhow::anyhow!("invalid URL"))?,
-            );
+            let url: Url = link.parse().map_err(|_| anyhow::anyhow!("invalid URL"))?;
             let mut i = 0;
             loop {
                 i += 1;
 
                 let sleep = Duration::from_millis((500 * 2_u64.pow(i)).min(4000));
-                match CUSTOM_DNS_CLIENT
-                    .read()
-                    .await
-                    .execute(request.try_clone().unwrap())
+                match FUCKINGFAST_CLIENT
+                    .get(url.clone())
+                    .header(
+                        ACCEPT,
+                        HeaderValue::from_static(
+                            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        ),
+                    )
+                    .header(ACCEPT_LANGUAGE, HeaderValue::from_static("en-US,en;q=0.9"))
+                    .header(USER_AGENT, HeaderValue::from_static(FUCKINGFAST_UA))
+                    .send()
                     .await
                 {
                     Err(e) if i < 5 => {
@@ -82,6 +100,11 @@ pub async fn extract_fuckingfast_ddl(fuckingfast_links: Vec<String>) -> Vec<Dire
                 filename,
                 size,
             });
+        } else {
+            // Surface the HTML head so the next time FF changes their page we
+            // notice without users not knowing what happened
+            let snippet: String = html.chars().take(400).collect();
+            warn!("FUCKINGFAST_DDL_REGEX miss for {filename}; head: {snippet}");
         }
     }
 

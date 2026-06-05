@@ -14,6 +14,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::RwLock as StdRwLock;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, State};
 use tokio::sync::RwLock;
@@ -49,6 +50,7 @@ pub struct DownloadManager {
     pub aria_cfg: FitLauncherConfigAria2,
     /// Librqbit session owned here to regenerate metadata when needed
     torrent_session: Arc<LibrqbitSession>,
+    aria_status: StdRwLock<Aria2StatusEvent>,
 }
 
 //todo: make it DRY
@@ -85,11 +87,46 @@ impl DownloadManager {
             tauri_handle: handle,
             aria_cfg,
             torrent_session: librqbit_sess,
+            aria_status: StdRwLock::new(Aria2StatusEvent {
+                state: Aria2ConnState::Reconnecting,
+                message: None,
+            }),
         })
     }
 
     pub async fn request_save_debounced(&self) {
         self.save.request_save().await;
+    }
+
+    pub async fn is_empty(&self) -> bool {
+        self.jobs.read().await.is_empty()
+    }
+
+    pub fn emit_aria2_status(&self, state: Aria2ConnState, message: Option<String>) {
+        let status = Aria2StatusEvent { state, message };
+        match self.aria_status.write() {
+            Ok(mut current) => *current = status.clone(),
+            Err(e) => *e.into_inner() = status.clone(),
+        }
+        let _ = self.tauri_handle.emit("download::aria2_status", status);
+    }
+
+    pub fn aria2_status(&self) -> Aria2StatusEvent {
+        self.aria_status
+            .read()
+            .map(|s| s.clone())
+            .unwrap_or_else(|e| e.into_inner().clone())
+    }
+
+    pub fn emit_manager_error(&self, kind: &str, message: String, job_id: Option<String>) {
+        let _ = self.tauri_handle.emit(
+            "download::manager_error",
+            ManagerErrorEvent {
+                kind: kind.to_string(),
+                message,
+                job_id,
+            },
+        );
     }
 
     /// Emit job_updated event only if enough time has passed since last emission
@@ -121,7 +158,7 @@ impl DownloadManager {
     pub async fn load_from_disk(self: &Arc<Self>) -> Result<()> {
         let map = load_jobs(&self.persist_path).await.context("load jobs")?;
 
-        {
+        let restored_jobs: Vec<Job> = {
             let mut jobs_lock = self.jobs.write().await;
             let mut idx_lock = self.gid_index.write().await;
             let mut idx_hash = self.infohash_index.write().await;
@@ -144,9 +181,18 @@ impl DownloadManager {
 
                 jobs_lock.insert(id.clone(), job);
             }
-        }
 
-        info!("Loaded {} jobs from disk", self.jobs.read().await.len());
+            jobs_lock.values().cloned().collect()
+        };
+
+        info!("Loaded {} jobs from disk", restored_jobs.len());
+
+        for job in restored_jobs.iter() {
+            let _ = self.tauri_handle.emit("download::job_updated", job.clone());
+        }
+        let _ = self
+            .tauri_handle
+            .emit("download::manager_ready", restored_jobs.len());
 
         {
             let dm = Arc::clone(self);
@@ -348,7 +394,10 @@ impl DownloadManager {
             if let Some(job) = jobs.get_mut(job_id) {
                 let g = job.gids.clone();
                 job.state = DownloadState::Paused;
-                job.status = None;
+                // Keep last status; clearing strands the job at 0% if its gid drops off tell_active.
+                if let Some(s) = job.status.as_mut() {
+                    s.state = DownloadState::Paused;
+                }
                 job.metadata.updated_at = Utc::now();
                 let snap = job.clone();
 
@@ -364,27 +413,127 @@ impl DownloadManager {
         }
 
         if let Some(gids) = gids {
+            let mut dead_gids: Vec<Gid> = Vec::new();
             for gid in gids {
                 let aria_guard = self.aria.lock().await;
                 if let Err(e) = aria_guard.pause(&gid).await {
-                    error!("aria pause failed for gid {}: {:?}", gid, e);
+                    let msg = e.to_string();
+                    // Daemon restart leaves stale gids; prune silently instead of toasting.
+                    if msg.contains("is not found") {
+                        debug!("pause: gid {} no longer in aria2, pruning", gid);
+                        dead_gids.push(gid);
+                    } else if msg.contains("cannot be paused now") {
+                        // gid is alive but already in a non-pausable state (complete, paused, errored).
+                        debug!("pause: gid {} not pausable, skipping", gid);
+                    } else {
+                        error!("aria pause failed for gid {}: {:?}", gid, e);
+                        self.emit_manager_error(
+                            "pause",
+                            format!("Pause failed for gid {}: {}", gid, e),
+                            Some(job_id.to_string()),
+                        );
+                    }
                 }
+            }
+
+            if !dead_gids.is_empty() {
+                self.prune_dead_gids(job_id, &dead_gids).await;
             }
         }
 
         Ok(())
     }
 
+    /// Drop dead gids from job, gid_index, and per-file aggregate.
+    async fn prune_dead_gids(&self, job_id: &str, dead: &[Gid]) {
+        let snap = {
+            let mut jobs = self.jobs.write().await;
+            let Some(job) = jobs.get_mut(job_id) else {
+                return;
+            };
+            job.gids.retain(|g| !dead.contains(g));
+            if let Some(s) = job.status.as_mut() {
+                for g in dead {
+                    s.per_file.remove(g);
+                }
+            }
+            job.metadata.updated_at = Utc::now();
+            job.clone()
+        };
+        {
+            let mut idx = self.gid_index.write().await;
+            for g in dead {
+                idx.remove(g);
+            }
+        }
+        self.emit_job_updated_throttled(&snap, true).await;
+        self.request_save_debounced().await;
+    }
+
+    /// Prune jobs against aria2's live gid set; respawn any that lost all gids.
+    pub async fn reconcile_after_reconnect(self: &Arc<Self>) {
+        use std::collections::HashSet;
+
+        let live: HashSet<String> = {
+            let aria_guard = self.aria.lock().await;
+            match aria_guard.list_all().await {
+                Ok(s) => s.into_iter().map(|st| st.gid).collect(),
+                Err(e) => {
+                    error!("reconcile: list_all failed: {:?}", e);
+                    return;
+                }
+            }
+        };
+
+        let mut respawn_targets: Vec<JobId> = Vec::new();
+        let mut prune_targets: Vec<(JobId, Vec<Gid>)> = Vec::new();
+        {
+            let jobs = self.jobs.read().await;
+            for (id, job) in jobs.iter() {
+                let dead: Vec<Gid> = job
+                    .gids
+                    .iter()
+                    .filter(|g| !live.contains(*g))
+                    .cloned()
+                    .collect();
+                if dead.is_empty() {
+                    continue;
+                }
+                let surviving = job.gids.len() - dead.len();
+                prune_targets.push((id.clone(), dead));
+                if surviving == 0
+                    && matches!(
+                        job.state,
+                        DownloadState::Active
+                            | DownloadState::Waiting
+                            | DownloadState::Error
+                    )
+                {
+                    respawn_targets.push(id.clone());
+                }
+            }
+        }
+
+        for (id, dead) in prune_targets {
+            self.prune_dead_gids(&id, &dead).await;
+        }
+
+        for id in respawn_targets {
+            info!("reconcile: respawning orphaned job {}", id);
+            if let Err(e) = self.resume(&id).await {
+                error!("reconcile: respawn failed for {}: {:?}", id, e);
+            }
+        }
+    }
+
     #[allow(unused)]
     pub async fn resume(self: &Arc<Self>, job_id: &str) -> Result<()> {
-        // ensure runnin because we might try to resume a download after restarting the app which will then not ask for UAC rights until install which is bad.
         if let Err(e) = fit_launcher_ui_automation::controller_manager::ControllerManager::global()
             .ensure_running()
         {
             error!("ControllerManager failed to start: {:?}", e);
         }
-        // We'll follow lock order AGAIN: read job metadata under jobs lock then release lock before RPC.
-        // Acquire a clone of the job to operate on, but keep a marker that we will update the real job later. This was decided to avoid any heavy locking.
+        // Read job metadata under the jobs lock, then release it before RPC.
         let job_opt = {
             let jobs = self.jobs.read().await;
             jobs.get(job_id).cloned()
@@ -425,6 +574,7 @@ impl DownloadManager {
                 self.emit_job_updated_throttled(&job, true).await;
             }
             self.request_save_debounced().await;
+            self.emit_aria2_status(Aria2ConnState::Connected, None);
             return Ok(());
         }
 
@@ -449,6 +599,7 @@ impl DownloadManager {
             );
             let mut new_gids = Vec::with_capacity(ddl.files.len());
 
+            let mut respawn_errors: Vec<String> = Vec::new();
             for f in ddl.files.iter() {
                 let aria_guard = self.aria.lock().await;
                 match aria_guard
@@ -461,19 +612,42 @@ impl DownloadManager {
                     .await
                 {
                     Ok(gid) => new_gids.push(gid),
-                    Err(e) => error!("Failed to respawn DDL gid for {}: {:?}", job.id, e),
+                    Err(e) => {
+                        error!("Failed to respawn DDL gid for {}: {:?}", job.id, e);
+                        respawn_errors.push(format!("{}: {}", f.filename, e));
+                    }
                 }
+            }
+
+            if new_gids.is_empty() && !respawn_errors.is_empty() {
+                self.emit_manager_error(
+                    "resume",
+                    format!("Could not resume DDL job: {}", respawn_errors.join("; ")),
+                    Some(job.id.clone()),
+                );
+            } else if !respawn_errors.is_empty() {
+                self.emit_manager_error(
+                    "resume_partial",
+                    format!("Some files failed to resume: {}", respawn_errors.join("; ")),
+                    Some(job.id.clone()),
+                );
             }
 
             if !new_gids.is_empty() {
                 let job_snapshot = {
                     let mut jobs = self.jobs.write().await;
                     if let Some(j) = jobs.get_mut(&job.id) {
-                        j.gids.extend(new_gids.iter().cloned());
-                        j.gids.sort();
-                        j.gids.dedup();
+                        // Replace stale gids; appending leaks dead entries into gid_index across restarts.
+                        let old_gids = std::mem::take(&mut j.gids);
+                        j.gids = new_gids.clone();
 
                         let mut gid_idx = self.gid_index.write().await;
+                        for g in old_gids.iter() {
+                            gid_idx.remove(g);
+                            if let Some(s) = j.status.as_mut() {
+                                s.per_file.remove(g);
+                            }
+                        }
                         for g in j.gids.iter() {
                             gid_idx.insert(g.clone(), j.id.clone());
                         }
@@ -490,6 +664,7 @@ impl DownloadManager {
                     self.emit_job_updated_throttled(&job, true).await;
                 }
                 self.request_save_debounced().await;
+                self.emit_aria2_status(Aria2ConnState::Connected, None);
             }
         }
         Ok(())
@@ -538,10 +713,18 @@ impl DownloadManager {
                 let job_snapshot = {
                     let mut jobs = self.jobs.write().await;
                     if let Some(j) = jobs.get_mut(&job.id) {
+                        // Drop stale gids before installing the new one to keep gid_index clean across restarts.
+                        let old_gids = std::mem::take(&mut j.gids);
                         j.gids = vec![new_gid.clone()];
                         j.state = DownloadState::Active;
                         j.metadata.updated_at = Utc::now();
                         let mut gid_idx = self.gid_index.write().await;
+                        for g in old_gids.iter() {
+                            gid_idx.remove(g);
+                            if let Some(s) = j.status.as_mut() {
+                                s.per_file.remove(g);
+                            }
+                        }
                         gid_idx.insert(new_gid, j.id.clone());
                         if let Some(t) = &j.torrent {
                             let mut ih = self.infohash_index.write().await;
@@ -557,9 +740,15 @@ impl DownloadManager {
                     self.emit_job_updated_throttled(&job, true).await;
                 }
                 self.request_save_debounced().await;
+                self.emit_aria2_status(Aria2ConnState::Connected, None);
             }
             Err(e) => {
                 error!("Failed to respawn torrent for job {}: {:?}", job.id, e);
+                self.emit_manager_error(
+                    "resume",
+                    format!("Could not resume torrent job: {}", e),
+                    Some(job.id.clone()),
+                );
                 return Err(e.into());
             }
         }
@@ -569,10 +758,11 @@ impl DownloadManager {
 
     pub async fn remove(&self, job_id: &str) -> Result<()> {
         // Remove job under lock and capture gids to remove outside
-        let gids_opt: Option<Vec<Gid>> = {
+        let remove_result: Option<(Vec<Gid>, bool)> = {
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.remove(job_id) {
                 let gids = job.gids.clone();
+                let empty_after_remove = jobs.is_empty();
 
                 let mut gid_idx = self.gid_index.write().await;
                 for gid in gids.iter() {
@@ -600,18 +790,22 @@ impl DownloadManager {
                 let _ = self
                     .tauri_handle
                     .emit("download::job_removed", job_id.to_string());
-                Some(gids)
+                Some((gids, empty_after_remove))
             } else {
                 None
             }
         };
 
-        if let Some(gids) = gids_opt {
+        if let Some((gids, empty_after_remove)) = remove_result {
             for gid in gids {
                 let aria_guard = self.aria.lock().await;
                 if let Err(e) = aria_guard.remove(&gid).await {
                     debug!("Failed to remove gid {} from aria2: {:?}", gid, e);
                 }
+            }
+            if empty_after_remove {
+                self.aria.lock().await.shutdown_if_owned().await;
+                self.emit_aria2_status(Aria2ConnState::Idle, None);
             }
             self.request_save_debounced().await;
         }
@@ -761,17 +955,16 @@ impl DownloadManager {
             if let Some((h, id)) = job_infohash_to_insert {
                 self.infohash_index.write().await.insert(h, id);
             }
-            self.gid_index.write().await.insert(gid.to_string(), job_id);
 
             if let Some(js) = job_snapshot {
                 self.emit_job_updated_throttled(&js, state_changed).await;
-                if matches!(js.state, DownloadState::Complete)
-                    || js
-                        .status
-                        .as_ref()
-                        .map(|s| s.completed_length >= s.total_length)
-                        .unwrap_or(false)
-                {
+                // Require total_length > 0 so 0/0 jobs don't fire spurious complete events.
+                let progress_complete = js
+                    .status
+                    .as_ref()
+                    .map(|s| s.total_length > 0 && s.completed_length >= s.total_length)
+                    .unwrap_or(false);
+                if matches!(js.state, DownloadState::Complete) || progress_complete {
                     let _ = self
                         .tauri_handle
                         .emit("download::job_completed", js.clone());

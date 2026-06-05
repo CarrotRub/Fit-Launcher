@@ -1,5 +1,5 @@
-import { Component, createMemo, createSignal } from "solid-js";
-import { CloudDownload, Funnel, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, ArrowUp, Activity } from "lucide-solid";
+import { Component, createMemo, createSignal, For, Show } from "solid-js";
+import { CloudDownload, Funnel, Magnet, DownloadCloud, Zap, Trash2, ArrowDown, ArrowUp, Activity, AlertTriangle, WifiOff, RefreshCw, X } from "lucide-solid";
 import Button from "../../components/UI/Button/Button";
 import { useNavigate } from "@solidjs/router";
 import InstallQueueStatus from "../../components/InstallQueue/QueueStatus";
@@ -9,6 +9,7 @@ import { DM } from "../../api/manager/api";
 import { AggregatedStatus, DownloadSource } from "../../bindings";
 import { DownloadsStore } from "../../stores/download";
 import { GlobalStatsStore } from "../../stores/globalStats";
+import { ManagerStatusStore } from "../../stores/managerStatus";
 
 type FilterType = DownloadSource | "All" | "Active";
 
@@ -64,8 +65,57 @@ const DownloadPage: Component = () => {
 
 
 
+    const { status: aria2Status, recentErrors, dismissError } = ManagerStatusStore;
+
     return (
         <div class="min-h-screen bg-gradient-to-br from-background to-background-950 p-4 w-full">
+            <div class="max-w-[1800px] mx-auto">
+                <Show when={aria2Status().state === "reconnecting" || aria2Status().state === "disconnected"}>
+                    <div
+                        class={`flex items-center gap-3 px-4 py-3 rounded-xl border mb-4 ${aria2Status().state === "disconnected"
+                            ? "bg-red-500/10 border-red-400/40 text-red-300"
+                            : "bg-amber-500/10 border-amber-400/40 text-amber-300"
+                            }`}
+                    >
+                        {aria2Status().state === "disconnected" ? (
+                            <WifiOff class="w-5 h-5 shrink-0" />
+                        ) : (
+                            <RefreshCw class="w-5 h-5 shrink-0 animate-spin" />
+                        )}
+                        <div class="flex flex-col">
+                            <span class="font-bold">
+                                {aria2Status().state === "disconnected"
+                                    ? "Download engine disconnected"
+                                    : "Reconnecting to download engine..."}
+                            </span>
+                            <Show when={aria2Status().message}>
+                                <span class="text-xs opacity-80">{aria2Status().message}</span>
+                            </Show>
+                        </div>
+                    </div>
+                </Show>
+
+                <For each={recentErrors()}>
+                    {(err) => (
+                        <div class="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-400/40 bg-red-500/10 text-red-200 mb-2">
+                            <AlertTriangle class="w-5 h-5 shrink-0 mt-0.5" />
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="font-bold text-sm uppercase tracking-wider opacity-80">
+                                    {err.kind.replace(/_/g, " ")}
+                                </span>
+                                <span class="text-sm break-words">{err.message}</span>
+                            </div>
+                            <button
+                                onClick={() => dismissError(err)}
+                                class="p-1 rounded hover:bg-red-500/20 transition-colors shrink-0"
+                                aria-label="Dismiss"
+                            >
+                                <X class="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                </For>
+            </div>
             <div class="max-w-[1800px] mx-auto mb-8">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                     <h1 class="text-3xl font-bold flex items-center gap-3">

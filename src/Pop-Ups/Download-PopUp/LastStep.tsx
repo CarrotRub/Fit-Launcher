@@ -183,12 +183,10 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 if (props.downloadType === "bittorrent") {
                     await initTorrent();
                 } else {
-                    await initDDL();
-                    // Also check if any debrid providers have this cached
-                    await checkDebridProviders();
+                    void checkDebridProviders();
                 }
             } catch (e) {
-                console.error("init error", e);
+                console.error("[download-modal] init error", e);
                 setError("Failed to initialize download");
             } finally {
                 setLoading(false);
@@ -213,20 +211,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             } else {
                 console.error("getTorrentFileList failed", resultFiles.error);
                 setError("Failed to get torrent file list");
-            }
-        }
-
-        async function initDDL() {
-            try {
-                const links = await DM.getDatahosterLinks(props.downloadedGame.href, "");
-                if (!links || links.length === 0) {
-                    setError("No download links found for this game");
-                    return;
-                }
-                // don't auto-select hoster here — user picks one
-            } catch (e) {
-                console.error("initDDL error", e);
-                setError("Failed to initialize DDL links");
             }
         }
 
@@ -267,13 +251,12 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             const path = settings.data.general.download_dir;
 
             if (folderExclusion()) {
-                console.log("performing folder exclusion...");
                 try {
                     const exclusionAction: ExclusionAction = { Add: path };
                     const res = await commands.folderExclusion(exclusionAction);
                     console.log("Folder successfully excluded:", res);
                 } catch (err) {
-                    console.error("Failed to exclude folder from Defender:", err);
+                    console.error("[download-modal] folder exclusion failed", err);
                     await showError(
                         "Could not exclude download folder from Windows Defender. The installation might be blocked.",
                         "Warning"
@@ -281,7 +264,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 }
             }
 
-            // If debrid provider is selected, use the debrid download handler
             if (selectedDebridProvider()) {
                 return handleDebridDownload();
             }
@@ -289,7 +271,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
             try {
 
-                // Convert DownloadedGame to Game for DM API
                 const game = { ...props.downloadedGame, secondary_images: [] as string[] };
 
                 if (props.downloadType === "bittorrent") {
@@ -302,8 +283,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     const selectedLinks = directLinks().filter(l => ddlSelectedUrls().has(l.url));
                     if (!selectedLinks.length) throw new Error("No files selected");
 
-                    console.log("adding DDL aria2 task...");
-
                     const result = await DM.addDdl(selectedLinks, path, game);
                     if (result.status === "error") {
                         throw new Error(result.error);
@@ -315,6 +294,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
+                console.error("[download-modal] start download failed", err);
                 await showError(err, "Download Failed");
                 setError(err.message ?? "Failed");
             } finally {
@@ -344,7 +324,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                         setLoading(false);
                         return;
                     }
-                    // adapt to wrapper
                     const wrapped = extracted.map((e) => ({ ...e } as DirectLinkWrapper));
                     setDirectLinks(wrapped);
                     setDdlSelectedUrls(new Set(wrapped.map((w) => w.url)));
@@ -354,7 +333,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     setDdlSelectedUrls(new Set(wrapped.map((w) => w.url)));
                 }
             } catch (e) {
-                console.error("loadHosterLinks error", e);
+                console.error("[download-modal] loadHosterLinks error", e);
                 setError(`Failed to load ${toTitleCaseExceptions(hoster)} links`);
             } finally {
                 setLoading(false);
@@ -365,54 +344,60 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
         async function checkDebridProviders() {
             setDebridProvidersLoading(true);
 
-            const magnet = props.downloadedGame.magnetlink;
-            const hash = magnet ? Debrid.extractHashFromMagnet(magnet) : null;
+            try {
+                const magnet = props.downloadedGame.magnetlink;
+                const hash = magnet ? Debrid.extractHashFromMagnet(magnet) : null;
 
-            const providerInfoList = await Debrid.listProviders();
-            setAllDebridProviders(providerInfoList);
+                const providerInfoList = await Debrid.listProviders();
+                setAllDebridProviders(providerInfoList);
 
-            const credInfo = await Debrid.listCredentials();
-            const configuredIds = new Set(credInfo.status === "ok" ? credInfo.data.configured_providers : []);
-            setConfiguredDebridProviders(configuredIds);
-            setDebridProvidersLoading(false);
+                const credInfo = await Debrid.listCredentials();
+                const configuredIds = new Set(credInfo.status === "ok" ? credInfo.data.configured_providers : []);
+                setConfiguredDebridProviders(configuredIds);
+                setDebridProvidersLoading(false);
 
-            if (hash && configuredIds.size > 0) {
-                const providersWithCreds = providerInfoList.filter(p => configuredIds.has(p.id));
-                await Promise.all(
-                    providersWithCreds
-                        .filter(p => p.supports_cache_check)
-                        .map(async (p) => {
-                            try {
-                                const result = await Debrid.checkCache(p.id, hash);
-                                if (result.status === "ok") {
-                                    setDebridCacheStatus(prev => {
-                                        const next = new Map(prev);
-                                        next.set(p.id, result.data.is_cached);
-                                        return next;
-                                    });
-                                } else {
-                                    if (result.error === "InvalidApiKey") {
-                                        setInvalidApiProviders(prev => {
-                                            const next = new Set(prev);
-                                            next.add(p.id);
+                if (hash && configuredIds.size > 0) {
+                    const providersWithCreds = providerInfoList.filter(p => configuredIds.has(p.id));
+                    await Promise.all(
+                        providersWithCreds
+                            .filter(p => p.supports_cache_check)
+                            .map(async (p) => {
+                                try {
+                                    const result = await Debrid.checkCache(p.id, hash);
+                                    if (result.status === "ok") {
+                                        setDebridCacheStatus(prev => {
+                                            const next = new Map(prev);
+                                            next.set(p.id, result.data.is_cached);
+                                            return next;
+                                        });
+                                    } else {
+                                        if (result.error === "InvalidApiKey") {
+                                            setInvalidApiProviders(prev => {
+                                                const next = new Set(prev);
+                                                next.add(p.id);
+                                                return next;
+                                            });
+                                        }
+                                        setDebridCacheStatus(prev => {
+                                            const next = new Map(prev);
+                                            next.set(p.id, false);
                                             return next;
                                         });
                                     }
+                                } catch {
                                     setDebridCacheStatus(prev => {
                                         const next = new Map(prev);
                                         next.set(p.id, false);
                                         return next;
                                     });
                                 }
-                            } catch {
-                                setDebridCacheStatus(prev => {
-                                    const next = new Map(prev);
-                                    next.set(p.id, false);
-                                    return next;
-                                });
-                            }
-                        })
-                );
+                            })
+                    );
+                }
+            } catch (e) {
+                console.error("[download-modal] debrid providers failed", e);
+            } finally {
+                setDebridProvidersLoading(false);
             }
         }
 
@@ -430,7 +415,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             try {
                 const magnet = props.downloadedGame.magnetlink;
 
-                // Add torrent to provider (returns torrent ID)
                 const addResult = await Debrid.addTorrent(provider, magnet);
                 if (addResult.status !== "ok") {
                     throw new Error(`Failed to add torrent: ${addResult.error}`);
@@ -439,14 +423,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 const torrentId = addResult.data;
                 setDebridTorrentId(torrentId);
 
-                // For providers that don't support cache check, we poll for ready status
                 const providerInfo = allDebridProviders().find(p => p.id === provider);
                 if (providerInfo && !providerInfo.supports_cache_check) {
-                    // Poll for up to 3 seconds to see if torrent becomes ready
                     const readyResult = await Debrid.waitForTorrentReady(provider, torrentId, 3000, 500);
 
                     if (!readyResult.ready && readyResult.status) {
-                        // Torrent is still caching - show caching UI
                         setDebridCachingStatus({
                             isCaching: true,
                             progress: readyResult.status.progress,
@@ -463,7 +444,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     }
                 }
 
-                // Get torrent info with file list
                 const infoResult = await Debrid.getTorrentInfo(provider, torrentId);
                 if (infoResult.status !== "ok") {
                     throw new Error(`Failed to get torrent info: ${infoResult.error}`);
@@ -472,12 +452,11 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                 const files = infoResult.data.files;
                 setDebridFiles(files);
 
-                // Auto-select all files
                 setSelectedDebridFiles(new Set(files.map(f => f.id)));
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (e: any) {
-                console.error("loadDebridProvider error", e);
+                console.error("[download-modal] loadDebridProvider error", e);
                 setError(e.message ?? `Failed to load from ${provider}`);
                 setSelectedDebridProvider(null);
             } finally {
@@ -499,7 +478,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
             const status = result.data;
             if (status.is_ready) {
-                // Torrent is now ready! Load the files
                 setDebridCachingStatus(null);
                 setLoading(true);
 
@@ -514,12 +492,12 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     setSelectedDebridFiles(new Set(files.map(f => f.id)));
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 } catch (e: any) {
+                    console.error("[download-modal] debrid ready load failed", e);
                     setError(e.message ?? "Failed to load files");
                 } finally {
                     setLoading(false);
                 }
             } else {
-                // Still caching - update progress
                 setDebridCachingStatus({
                     isCaching: true,
                     progress: status.progress,
@@ -539,7 +517,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
             try {
                 await Debrid.deleteTorrent(provider, torrentId);
             } catch (e) {
-                console.error("Failed to delete torrent", e);
+                console.error("[download-modal] failed to delete torrent", e);
             }
 
             setDebridCachingStatus(null);
@@ -586,7 +564,6 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                 const path = settings.data.general.download_dir;
 
-                // Filter selected files
                 const selectedIds = selectedDebridFiles();
                 const filesToDownload = debridFiles().filter(f => selectedIds.has(f.id));
 
@@ -594,16 +571,13 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
                     throw new Error("No files selected");
                 }
 
-                // Get download links for selected files
                 const linksResult = await Debrid.getDownloadLinks(provider, torrentId, filesToDownload);
                 if (linksResult.status !== "ok") {
                     throw new Error(`Failed to get download links: ${linksResult.error}`);
                 }
 
-                // Convert to DirectLinkWrapper for aria2
                 const wrappedLinks: DirectLinkWrapper[] = Debrid.toDirectLinks(linksResult.data);
 
-                // Use existing DDL mechanism - convert DownloadedGame to Game
                 const gameForDm = { ...props.downloadedGame, secondary_images: [] as string[] };
                 await DM.addDdl(wrappedLinks, path, gameForDm);
 
@@ -612,6 +586,7 @@ export default function createLastStepDownloadPopup(props: DownloadPopupProps) {
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
+                console.error("[download-modal] debrid download failed", err);
                 await showError(err, "Error");
                 setError(err.message ?? "Failed");
             } finally {

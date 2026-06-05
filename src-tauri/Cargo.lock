@@ -1783,6 +1783,7 @@ dependencies = [
  "fit-launcher-scraping",
  "fit-launcher-ui-automation",
  "fitgirl-decrypt",
+ "libc",
  "librqbit",
  "librqbit-buffers",
  "librqbit-core",

@@ -34,6 +34,30 @@ pub enum ExclusionAction {
     Remove(String),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "kebab-case")]
+pub enum Aria2ConnState {
+    Idle,
+    Connected,
+    Reconnecting,
+    Disconnected,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Aria2StatusEvent {
+    pub state: Aria2ConnState,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerErrorEvent {
+    pub kind: String,
+    pub message: String,
+    pub job_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type)]
 #[serde(rename_all = "kebab-case")]
 #[derive(Default)]

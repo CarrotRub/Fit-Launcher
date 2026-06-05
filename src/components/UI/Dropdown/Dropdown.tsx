@@ -6,7 +6,6 @@ import { DropdownProps } from "../../../types/components/types";
 export default function Dropdown<T extends string | number>(props: DropdownProps<T>) {
     const [isOpen, setIsOpen] = createSignal(false);
     const [isAnimating, setIsAnimating] = createSignal(false);
-    const [setHoveredItem] = createSignal<T | null>(null);
 
     const handleSelection = async (item: T) => {
         setIsAnimating(true);
@@ -53,11 +52,7 @@ export default function Dropdown<T extends string | number>(props: DropdownProps
                             const isActive = item === props.activeItem;
 
                             return (
-                                <li
-                                    class="relative group flex justify-between min-w-full"
-                                    onMouseEnter={() => setHoveredItem(() => item)}
-                                    onMouseLeave={() => setHoveredItem(null)}
-                                >
+                                <li class="relative group flex justify-between min-w-full">
                                     <button
                                         onClick={() => handleSelection(item)}
                                         class={`

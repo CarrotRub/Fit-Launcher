@@ -38,12 +38,12 @@ pub async fn try_high_res_img(src: &str) -> String {
     let hi = src.replace("240p", "1080p");
     let mid = hi.replace("jpg.1080p.", "");
 
+    // Fall back to the original src when neither high-res candidate exists
     tokio::select! {
         true = head_ok(&hi) => hi,
         true = head_ok(&mid) => mid,
+        else => src.into(),
     }
-
-    // src.into()
 }
 
 fn read_meta_ts(conn: &rusqlite::Connection) -> Option<DateTime<Utc>> {

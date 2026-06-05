@@ -20,6 +20,14 @@ pub async fn dm_all_jobs(dm: State<'_, Arc<DownloadManager>>) -> Result<Vec<Job>
 
 #[tauri::command]
 #[specta]
+pub async fn dm_aria2_status(
+    dm: State<'_, Arc<DownloadManager>>,
+) -> Result<Aria2StatusEvent, String> {
+    Ok(dm.aria2_status())
+}
+
+#[tauri::command]
+#[specta]
 pub async fn dm_add_ddl_job(
     dm: State<'_, Arc<DownloadManager>>,
     files: Vec<DirectLink>,
