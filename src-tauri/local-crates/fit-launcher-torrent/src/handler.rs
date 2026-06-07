@@ -91,14 +91,15 @@ impl LibrqbitSession {
                     if let Some(parent) = torrent_path.parent() {
                         _ = tokio::fs::create_dir_all(parent).await;
                     }
-                    if let Ok(mut file) = tokio::fs::OpenOptions::new()
-                        .share_mode(0) // exclusive open
-                        .create(true)
-                        .write(true)
-                        .truncate(true)
-                        .open(torrent_path)
-                        .await
+                    let mut options = tokio::fs::OpenOptions::new();
+                    let options = options.create(true).write(true).truncate(true);
+                    #[cfg(windows)]
                     {
+                        options = options.share_mode(0);
+                    }
+                    let file = options.open(torrent_path).await;
+
+                    if let Ok(mut file) = file {
                         _ = file.write_all(&torrent_bytes).await;
                     }
                 });

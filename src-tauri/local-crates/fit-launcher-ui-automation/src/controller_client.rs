@@ -34,8 +34,8 @@ use windows::core::PCWSTR;
 // Controller Client
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[cfg(windows)]
 pub struct ControllerClient {
+    #[cfg(windows)]
     pipe_handle: HANDLE,
     read_buffer: Vec<u8>,
     pending_data: Vec<u8>,
@@ -211,6 +211,13 @@ impl ControllerClient {
             Some(ControllerEvent::Pong) => Ok(true),
             _ => Ok(false),
         }
+    }
+}
+
+#[cfg(not(windows))]
+impl ControllerClient {
+    pub fn shutdown(&self) -> Result<()> {
+        Ok(())
     }
 }
 
