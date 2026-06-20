@@ -1,5 +1,6 @@
 import { createMemo, Show } from 'solid-js';
 import Slider from '../../../../components/Slider-01/Slider';
+import { t } from '../../../../i18n';
 import { useGamehub } from '../../GamehubContext';
 
 export default function NewlyAddedGames() {
@@ -15,7 +16,7 @@ export default function NewlyAddedGames() {
   return (
     <div class="flex flex-col h-fit pb-4">
       <div class="text-2xl text-text font-bold text-center pl-3">
-        <p>Newly Added Games</p>
+        <p>{t("gamehub.newlyAdded")}</p>
       </div>
       <Show when={filteredNewlyAdded().length > 0}>
         <Slider

@@ -1,0 +1,68 @@
+{
+  "common": {
+    "cancel": "取消",
+    "remove": "移除"
+  },
+  "topbar": {
+    "logoAlt": "fitgirl repack 标志",
+    "gameHub": "游戏中心",
+    "discovery": "发现",
+    "library": "游戏库",
+    "downloads": "下载",
+    "settings": "设置",
+    "minimize": "最小化",
+    "exitFullscreen": "退出全屏",
+    "restoreDown": "还原窗口",
+    "maximize": "最大化",
+    "close": "关闭",
+    "trayTitle": "FitLauncher 正在托盘中运行",
+    "trayBody": "应用已最小化到系统托盘。你可以在设置中更改此行为。",
+    "installationInProgress": "安装正在进行",
+    "installationExitWarning": "当前有安装任务正在运行。关闭应用会停止安装。\n\n确定要退出吗？",
+    "exitAnyway": "仍然退出"
+  },
+  "search": {
+    "placeholder": "搜索游戏...",
+    "failed": "搜索失败",
+    "indexError": "搜索索引错误"
+  },
+  "gamehub": {
+    "newlyAdded": "新添加游戏",
+    "recentlyUpdated": "最近更新游戏"
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "配置你的应用偏好",
+    "invalidGroup": "无效分组",
+    "globalConfiguration": "全局配置",
+    "downloadConfiguration": "下载配置",
+    "appSettings": "应用设置",
+    "dnsSettings": "DNS 设置",
+    "installSettings": "安装设置",
+    "cacheAndLogs": "缓存与日志",
+    "appInfo": "应用信息",
+    "general": "通用",
+    "transferLimits": "传输限制",
+    "network": "网络",
+    "debridServices": "Debrid 服务",
+    "bittorrent": "BitTorrent",
+    "aria2Rpc": "Aria2 RPC",
+    "display": {
+      "title": "显示设置",
+      "language": "语言",
+      "languageDescription": "选择应用界面语言",
+      "hideNsfw": "隐藏 NSFW 内容",
+      "hideNsfwDescription": "除已下载游戏外，在所有位置隐藏 NSFW 内容",
+      "comments": "在游戏页面显示评论",
+      "commentsDescription": "允许从社区获取并显示游戏页面评论",
+      "closeToTray": "关闭到托盘",
+      "closeToTrayDescription": "关闭窗口时最小化到系统托盘，而不是完全退出",
+      "themes": "切换主题",
+      "themesDescription": "按你的喜好切换主题，也可以添加自己的主题！",
+      "backgroundImage": "添加背景图片",
+      "backgroundImageDescription": "暂时禁用，此功能目前不够稳定",
+      "backgroundBlur": "调整背景模糊",
+      "backgroundBlurDescription": "仅在选择背景图片后生效"
+    }
+  }
+}

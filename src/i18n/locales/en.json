@@ -1,0 +1,68 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "remove": "Remove"
+  },
+  "topbar": {
+    "logoAlt": "fitgirl repack logo",
+    "gameHub": "GameHub",
+    "discovery": "Discovery",
+    "library": "Library",
+    "downloads": "Downloads",
+    "settings": "Settings",
+    "minimize": "Minimize",
+    "exitFullscreen": "Exit Fullscreen",
+    "restoreDown": "Restore Down",
+    "maximize": "Maximize",
+    "close": "Close",
+    "trayTitle": "FitLauncher is running in the tray",
+    "trayBody": "The app was minimized to the system tray. You can change this behavior in Settings.",
+    "installationInProgress": "Installation In Progress",
+    "installationExitWarning": "An installation is currently running. Closing will stop the installation.\n\nAre you sure you want to exit?",
+    "exitAnyway": "Exit Anyway"
+  },
+  "search": {
+    "placeholder": "Search Game...",
+    "failed": "Search failed",
+    "indexError": "Search index error"
+  },
+  "gamehub": {
+    "newlyAdded": "Newly Added Games",
+    "recentlyUpdated": "Recently Updated Games"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your application preferences",
+    "invalidGroup": "Invalid group",
+    "globalConfiguration": "Global Configuration",
+    "downloadConfiguration": "Download Configuration",
+    "appSettings": "App Settings",
+    "dnsSettings": "DNS Settings",
+    "installSettings": "Install Settings",
+    "cacheAndLogs": "Cache & Logs",
+    "appInfo": "App Info",
+    "general": "General",
+    "transferLimits": "Transfer Limits",
+    "network": "Network",
+    "debridServices": "Debrid Services",
+    "bittorrent": "Bittorrent",
+    "aria2Rpc": "Aria2 RPC",
+    "display": {
+      "title": "Display Settings",
+      "language": "Language",
+      "languageDescription": "Choose the application language",
+      "hideNsfw": "Hide NSFW Content",
+      "hideNsfwDescription": "Hides any NSFW content everywhere except in downloaded games",
+      "comments": "Display comments on game pages",
+      "commentsDescription": "Allow to fetch and display comments on game pages from the community",
+      "closeToTray": "Close to Tray",
+      "closeToTrayDescription": "When closing, minimize to system tray instead of fully exiting",
+      "themes": "Change Themes",
+      "themesDescription": "Change themes as you want, you can even add your own!",
+      "backgroundImage": "Add Background Image",
+      "backgroundImageDescription": "Disabled for now, too unpredictable",
+      "backgroundBlur": "Change Background Blur",
+      "backgroundBlurDescription": "Only works when an image is chosen"
+    }
+  }
+}

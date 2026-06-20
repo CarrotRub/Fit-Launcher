@@ -23,6 +23,7 @@ import type {
   SettingsGroup,
   DownloadSettingsPart
 } from "../../types/settings/types";
+import { t } from "../../i18n";
 import { SettingsProvider, useSettingsContext } from "./SettingsContext";
 
 function SettingsFull(): JSX.Element {
@@ -53,7 +54,7 @@ function SettingsContent(): JSX.Element {
 
   return (
     <div class="bg-popup-background border-l border-secondary-20 p-6 min-h-full shadow-lg">
-      {contentMap[activeGroup()]?.() ?? <p class="text-text">Invalid group</p>}
+      {contentMap[activeGroup()]?.() ?? <p class="text-text">{t("settings.invalidGroup")}</p>}
     </div>
   );
 }
@@ -93,31 +94,31 @@ function SettingsSidebar(): JSX.Element {
   return (
     <div class="bg-popup-background border-r border-secondary-20 h-full w-fit flex flex-col overflow-y-auto">
       <div class="p-4 border-b border-secondary-20">
-        <h1 class="text-2xl font-bold text-text">Settings</h1>
-        <p class="text-sm text-muted mt-1">Configure your application preferences</p>
+        <h1 class="text-2xl font-bold text-text">{t("settings.title")}</h1>
+        <p class="text-sm text-muted mt-1">{t("settings.subtitle")}</p>
       </div>
 
       <div class="flex flex-col gap-1 pr-2 py-4">
         <div class="mb-4">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Global Configuration</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">{t("settings.globalConfiguration")}</h2>
           <ul class="space-y-1">
-            <SidebarLink id="settings-display" label="App Settings" icon={Monitor} onClick={() => handleActivateElem("settings-display", "global-display")} />
-            <SidebarLink id="settings-dns" label="DNS Settings" icon={Network} onClick={() => handleActivateElem("settings-dns", "global-dns")} />
-            <SidebarLink id="settings-install" label="Install Settings" icon={HardDriveDownload} onClick={() => handleActivateElem("settings-install", "global-install")} />
-            <SidebarLink id="settings-cache" label="Cache & Logs" icon={Archive} onClick={() => handleActivateElem("settings-cache", "global-cache")} />
-            <SidebarLink id="settings-appinfo" label="App Info" icon={Info} onClick={() => handleActivateElem("settings-appinfo", "global-appinfo")} />
+            <SidebarLink id="settings-display" label={t("settings.appSettings")} icon={Monitor} onClick={() => handleActivateElem("settings-display", "global-display")} />
+            <SidebarLink id="settings-dns" label={t("settings.dnsSettings")} icon={Network} onClick={() => handleActivateElem("settings-dns", "global-dns")} />
+            <SidebarLink id="settings-install" label={t("settings.installSettings")} icon={HardDriveDownload} onClick={() => handleActivateElem("settings-install", "global-install")} />
+            <SidebarLink id="settings-cache" label={t("settings.cacheAndLogs")} icon={Archive} onClick={() => handleActivateElem("settings-cache", "global-cache")} />
+            <SidebarLink id="settings-appinfo" label={t("settings.appInfo")} icon={Info} onClick={() => handleActivateElem("settings-appinfo", "global-appinfo")} />
           </ul>
         </div>
 
         <div class="mb-4">
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">Download Configuration</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-muted px-4 py-2">{t("settings.downloadConfiguration")}</h2>
           <ul class="space-y-1">
-            <SidebarLink id="settings-general" label="General" icon={Settings} onClick={() => handleActivateElem("settings-general", "general")} />
-            <SidebarLink id="settings-limits" label="Transfer Limits" icon={Gauge} onClick={() => handleActivateElem("settings-limits", "limits")} />
-            <SidebarLink id="settings-network" label="Network" icon={Globe} onClick={() => handleActivateElem("settings-network", "network")} />
-            <SidebarLink id="settings-debrid" label="Debrid Services" icon={Zap} onClick={() => handleActivateElem("settings-debrid", "global-debrid")} />
-            <SidebarLink id="settings-bittorrent" label="Bittorrent" icon={Magnet} onClick={() => handleActivateElem("settings-bittorrent", "bittorrent")} />
-            <SidebarLink id="settings-rpc" label="Aria2 RPC" icon={Cpu} onClick={() => handleActivateElem("settings-rpc", "rpc")} />
+            <SidebarLink id="settings-general" label={t("settings.general")} icon={Settings} onClick={() => handleActivateElem("settings-general", "general")} />
+            <SidebarLink id="settings-limits" label={t("settings.transferLimits")} icon={Gauge} onClick={() => handleActivateElem("settings-limits", "limits")} />
+            <SidebarLink id="settings-network" label={t("settings.network")} icon={Globe} onClick={() => handleActivateElem("settings-network", "network")} />
+            <SidebarLink id="settings-debrid" label={t("settings.debridServices")} icon={Zap} onClick={() => handleActivateElem("settings-debrid", "global-debrid")} />
+            <SidebarLink id="settings-bittorrent" label={t("settings.bittorrent")} icon={Magnet} onClick={() => handleActivateElem("settings-bittorrent", "bittorrent")} />
+            <SidebarLink id="settings-rpc" label={t("settings.aria2Rpc")} icon={Cpu} onClick={() => handleActivateElem("settings-rpc", "rpc")} />
           </ul>
         </div>
 
