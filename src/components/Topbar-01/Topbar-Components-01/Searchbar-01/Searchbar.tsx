@@ -3,6 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import { Search, X, Sparkles, Loader2 } from "lucide-solid";
 import { commands } from "../../../../bindings";
 import { listen } from "@tauri-apps/api/event";
+import { t } from "../../../../i18n";
 
 interface SearchbarProps {
   isTopBar?: boolean;
@@ -47,7 +48,7 @@ export default function Searchbar(props: SearchbarProps) {
     });
 
     errorUnlisten = await listen<string>("search-index-error", (event) => {
-      setIndexError(event.payload || "Search index error");
+      setIndexError(event.payload || t("search.indexError"));
     });
   });
 
@@ -95,7 +96,7 @@ export default function Searchbar(props: SearchbarProps) {
         setSearchResults([]);
         // Only show error if it's not a "database not found" (index still building)
         if (!String(result.error).includes("not found")) {
-          setIndexError("Search failed");
+          setIndexError(t("search.failed"));
         }
       }
     } catch (err) {
@@ -176,7 +177,7 @@ export default function Searchbar(props: SearchbarProps) {
 
         <input
           type="text"
-          placeholder="Search Game..."
+          placeholder={t("search.placeholder")}
           value={searchTerm()}
           onInput={handleInputChange}
           onFocus={() => setIsFocused(true)}

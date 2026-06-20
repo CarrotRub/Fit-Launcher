@@ -8,6 +8,7 @@ import { sendNotification, isPermissionGranted, requestPermission } from "@tauri
 import createBasicChoicePopup from "../../Pop-Ups/Basic-Choice-PopUp/Basic-Choice-PopUp";
 import { GlobalSettingsApi } from "../../api/settings/api";
 import { commands } from "../../bindings";
+import { t } from "../../i18n";
 import { routeHistory } from "../../stores/routeStore";
 
 export default function Topbar() {
@@ -33,8 +34,8 @@ export default function Topbar() {
       }
       if (permissionGranted) {
         sendNotification({
-          title: "FitLauncher is running in the tray",
-          body: "The app was minimized to the system tray. You can change this behavior in Settings."
+          title: t("topbar.trayTitle"),
+          body: t("topbar.trayBody")
         });
       }
       return;
@@ -46,10 +47,10 @@ export default function Topbar() {
     if (controllerRunning) {
       // Warn user that controller will be killed
       createBasicChoicePopup({
-        infoTitle: "Installation In Progress",
-        infoMessage: "An installation is currently running. Closing will stop the installation.\n\nAre you sure you want to exit?",
-        confirmLabel: "Exit Anyway",
-        cancelLabel: "Cancel",
+        infoTitle: t("topbar.installationInProgress"),
+        infoMessage: t("topbar.installationExitWarning"),
+        confirmLabel: t("topbar.exitAnyway"),
+        cancelLabel: t("common.cancel"),
         action: async () => {
           await commands.quitApp();
         },
@@ -138,7 +139,7 @@ export default function Topbar() {
       {/* Logo */}
       <img
         src='/Square310x310Logo.png'
-        alt='fitgirl repack logo'
+        alt={t("topbar.logoAlt")}
         class="w-8 h-8 rounded-md object-cover"
         style="-webkit-app-region: no-drag;"
       />
@@ -157,7 +158,7 @@ export default function Topbar() {
           end
         >
           <Home size={18} />
-          <span class="font-medium">GameHub</span>
+          <span class="font-medium">{t("topbar.gameHub")}</span>
         </A>
 
         <A
@@ -166,7 +167,7 @@ export default function Topbar() {
             }`}
         >
           <Compass size={18} />
-          <span class="font-medium">Discovery</span>
+          <span class="font-medium">{t("topbar.discovery")}</span>
         </A>
 
         <A
@@ -175,7 +176,7 @@ export default function Topbar() {
             }`}
         >
           <Library size={18} />
-          <span class="font-medium">Library</span>
+          <span class="font-medium">{t("topbar.library")}</span>
         </A>
 
         <A
@@ -184,7 +185,7 @@ export default function Topbar() {
             }`}
         >
           <Download size={18} />
-          <span class="font-medium">Downloads</span>
+          <span class="font-medium">{t("topbar.downloads")}</span>
         </A>
 
         <A
@@ -193,7 +194,7 @@ export default function Topbar() {
             }`}
         >
           <Settings size={18} />
-          <span class="font-medium">Settings</span>
+          <span class="font-medium">{t("topbar.settings")}</span>
         </A>
       </div>
 
@@ -205,7 +206,7 @@ export default function Topbar() {
           <button
             id="titlebar-minimize"
             class="p-1.5 rounded-full text-muted hover:bg-secondary-20/30 hover:text-accent transition-colors"
-            title="Minimize"
+            title={t("topbar.minimize")}
           >
             <Minus size={16} />
           </button>
@@ -216,10 +217,10 @@ export default function Topbar() {
             onClick={handleMaximize}
             title={
               isFullscreen()
-                ? "Exit Fullscreen"
+                ? t("topbar.exitFullscreen")
                 : isMaximized()
-                  ? "Restore Down"
-                  : "Maximize"
+                  ? t("topbar.restoreDown")
+                  : t("topbar.maximize")
             }
           >
             <Show when={isFullscreen() || isMaximized()} fallback={<Maximize2 size={16} />}>
@@ -230,7 +231,7 @@ export default function Topbar() {
           <button
             id="titlebar-close"
             class="p-1.5 rounded-full text-muted hover:bg-red-500/20 hover:text-red-500 transition-colors"
-            title="Close"
+            title={t("topbar.close")}
           >
             <X size={16} />
           </button>

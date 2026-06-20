@@ -9,7 +9,10 @@ import LabelCheckboxSettings from "../../Components/UI/LabelCheckbox/LabelCheckb
 import LabelDropdownSettings from "../../Components/UI/LabelDropdown/LabelDropdown";
 import LabelButtonSettings from "../../Components/UI/LabelButton/LabelButton";
 import LabelRangeSettings from "../../Components/UI/LabelRange/LabelRange";
+import TitleLabel from "../../Components/UI/TitleLabel/TitleLabel";
+import Dropdown from "../../../../../components/UI/Dropdown/Dropdown";
 import { ThemeManagerApi } from "../../../../../api/theme/api";
+import { changeLanguage, languageCodeToDisplay, languageDisplayToCode, locale, SUPPORTED_LANGUAGES, t } from "../../../../../i18n";
 
 const themeAPI = new ThemeManagerApi();
 
@@ -48,28 +51,40 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
 
     return (
         <Show when={props.settings} fallback={<LoadingPage />}>
-            <PageGroup title="Display Settings">
+            <PageGroup title={t("settings.display.title")}>
+                <li class="flex items-center justify-between gap-4 bg-background-70 p-4 rounded-lg border border-secondary-20 hover:border-accent/30 transition-colors">
+                    <TitleLabel
+                        text={t("settings.display.language")}
+                        typeText={t("settings.display.languageDescription")}
+                    />
+                    <Dropdown
+                        list={Object.values(SUPPORTED_LANGUAGES)}
+                        activeItem={languageCodeToDisplay(locale())}
+                        onListChange={async (selected) => changeLanguage(languageDisplayToCode(selected))}
+                        placeholder={languageCodeToDisplay(locale())}
+                    />
+                </li>
                 <LabelCheckboxSettings
-                    text="Hide NSFW Content"
-                    typeText="Hides any NSFW content everywhere except in downloaded games"
+                    text={t("settings.display.hideNsfw")}
+                    typeText={t("settings.display.hideNsfwDescription")}
                     action={() => props.handleSwitchCheckChange?.("display.nsfw_censorship")}
                     checked={props.settings().nsfw_censorship}
                 />
                 <LabelCheckboxSettings
-                    text="Display comments on game pages"
-                    typeText="Allow to fetch and display comments on game pages from the community"
+                    text={t("settings.display.comments")}
+                    typeText={t("settings.display.commentsDescription")}
                     action={() => props.handleSwitchCheckChange?.("display.game_page_allow_comments")}
                     checked={props.settings().game_page_allow_comments}
                 />
                 <LabelCheckboxSettings
-                    text="Close to Tray"
-                    typeText="When closing, minimize to system tray instead of fully exiting"
+                    text={t("settings.display.closeToTray")}
+                    typeText={t("settings.display.closeToTrayDescription")}
                     action={() => props.handleSwitchCheckChange?.("display.close_to_tray")}
                     checked={props.settings().close_to_tray}
                 />
                 <LabelDropdownSettings
-                    text="Change Themes"
-                    typeText="Change themes as you want, you can even add your own!"
+                    text={t("settings.display.themes")}
+                    typeText={t("settings.display.themesDescription")}
                     list={[...defaultThemes, ...newThemes()]}
                     activeItem={currentTheme()}
                     onListChange={async (selected) => {
@@ -96,8 +111,8 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
                     }}
                 />
                 <LabelButtonSettings
-                    text="Add Background Image"
-                    typeText="Disabled for now, too unpredictable"
+                    text={t("settings.display.backgroundImage")}
+                    typeText={t("settings.display.backgroundImageDescription")}
                     action={async () => {
                         await themeAPI.chooseAndSetBackgroundImage(blurAmount());
                     }}
@@ -105,8 +120,8 @@ export default function DisplayPart(props: SettingsSectionProps<GamehubSettings>
                     disabled={true}
                 />
                 <LabelRangeSettings
-                    text="Change Background Blur"
-                    typeText="Only works when an image is chosen"
+                    text={t("settings.display.backgroundBlur")}
+                    typeText={t("settings.display.backgroundBlurDescription")}
                     min={0}
                     max={50}
                     value={blurAmount()}

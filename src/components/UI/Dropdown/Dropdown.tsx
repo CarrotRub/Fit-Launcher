@@ -1,12 +1,13 @@
 import { ChevronDown, X } from "lucide-solid";
 import { createSignal, Show } from "solid-js";
+import { t } from "../../../i18n";
 import { DropdownProps } from "../../../types/components/types";
 
 
 export default function Dropdown<T extends string | number>(props: DropdownProps<T>) {
     const [isOpen, setIsOpen] = createSignal(false);
     const [isAnimating, setIsAnimating] = createSignal(false);
-    const [setHoveredItem] = createSignal<T | null>(null);
+    const [, setHoveredItem] = createSignal<T | null>(null);
 
     const handleSelection = async (item: T) => {
         setIsAnimating(true);
@@ -81,7 +82,7 @@ export default function Dropdown<T extends string | number>(props: DropdownProps
                                                     await props.onRemove?.(item);
                                                 }}
                                                 class="p-2 h-full border-l-1 border-secondary-20/50 transition-all duration-200 text-muted hover:text-primary hover:bg-accent/30"
-                                                title="Remove"
+                                                title={t("common.remove")}
                                             >
                                                 <X size={14} class="transition-transform hover:scale-110" />
                                             </button>
