@@ -34,6 +34,10 @@ Fit Launcher is a 🚀 **blazingly fast** 🚀 (sorry it's made in rust, I have 
    Once downloaded, simply execute the setup and install it inside
    `C:/Program Files/` then run the executable :) !
 
+### Verifying downloads
+
+Each installer on the release page has a matching `.sig` file. These are **not GPG signatures**: they are base64-encoded [minisign](https://jedisct1.github.io/minisign/) signatures, checked against [`minisign.pub`](minisign.pub). See [doc/verifying_downloads.md](doc/verifying_downloads.md) for how to verify them.
+
 ### Development Mode
 
 If you want to run the launcher in development mode, follow these steps:

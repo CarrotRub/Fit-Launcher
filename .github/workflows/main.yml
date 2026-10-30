@@ -68,6 +68,7 @@ jobs:
         run: npm install # change this to npm or pnpm depending on which one you use.
 
       - uses: tauri-apps/tauri-action@v0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY : ${{  secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -75,7 +76,28 @@ jobs:
         with:
           tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
           releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: |
+            See the assets to download this version and install.
+
+            The `.sig` files are base64-encoded minisign signatures (not GPG). See [how to verify a download](https://github.com/CarrotRub/Fit-Launcher/blob/master/doc/verifying_downloads.md) and the public key in [minisign.pub](https://github.com/CarrotRub/Fit-Launcher/blob/master/minisign.pub).
           releaseDraft: true
           prerelease: false
           args: ''
+
+      # The .sig files are base64-encoded minisign signatures used by the updater.
+      # Also attach them decoded as .minisig so `minisign -V` can use them directly.
+      - name: Attach decoded .minisig signatures
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_PATHS: ${{ steps.tauri.outputs.artifactPaths }}
+          RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
+        run: |
+          $tag = gh api "repos/${{ github.repository }}/releases/$env:RELEASE_ID" --jq .tag_name
+          $minisigs = foreach ($sig in ($env:ARTIFACT_PATHS | ConvertFrom-Json) -like '*.sig') {
+            $name = (Split-Path $sig -Leaf) -replace '\.sig$', '.minisig' -replace ' ', '.'
+            $out = Join-Path $env:RUNNER_TEMP $name
+            [IO.File]::WriteAllBytes($out, [Convert]::FromBase64String((Get-Content $sig -Raw).Trim()))
+            $out
+          }
+          gh release upload $tag @minisigs --clobber --repo ${{ github.repository }}
