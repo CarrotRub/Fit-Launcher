@@ -75,7 +75,10 @@ jobs:
         with:
           tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
           releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseBody: |
+            See the assets to download this version and install.
+
+            The `.sig` files are base64-encoded minisign signatures (not GPG). See [how to verify a download](https://github.com/CarrotRub/Fit-Launcher/blob/master/doc/verifying_downloads.md) and the public key in [minisign.pub](https://github.com/CarrotRub/Fit-Launcher/blob/master/minisign.pub).
           releaseDraft: true
           prerelease: false
           args: ''
